@@ -82,8 +82,8 @@ The `iftgen.py` program supoorts these functions:
 
 - generate text from templates:
 ```bash
-    python3 iftgen.py --cmd generate --genconf gencfg_default_neo4j.json \\
-        --dbconf neo4j-TEST-config.json --tmpl sample-tmpl-attack.json \\
+    python3 iftgen.py --cmd generate --genconf gencfg_default_neo4j.json \
+        --dbconf neo4j-TEST-config.json --tmpl sample-tmpl-attack.json \
         --results_dir ift_dataset-dir
 ```
 - populate test CTI neo4j DB using the current MITRE ATT&CK Enterprise source document:
