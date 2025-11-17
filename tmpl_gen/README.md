@@ -1,5 +1,9 @@
 # Sophia `tmpl_gen`: Text Generation from Graphical Templates
 
+## Author
+Dr. Ionut Cardei
+
+
 `tmpl_gen` is a Python module and command-line tool for generating structured text from graph-based templates. It supports template expressions that reference nodes, edges, and node properties stored in a graph database such as Neo4j.
 
 Its primary objective is to generate Instruction Fine Tuning (IFT) triples for the ASG CTI LLM.
