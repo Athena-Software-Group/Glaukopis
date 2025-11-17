@@ -1,3 +1,3 @@
-# Sophia Template BAsed Generator.
+# Sophia Template Based Generator.
 
-Check out [README.me](README.me) in the tmpl_gen directory.
+Check out [README.me](tmpl_gen/README.me) in the tmpl_gen directory.
