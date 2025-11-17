@@ -1,0 +1,7 @@
+{   
+    "comment": "Connection configuration to the TEST neo4j service: GUI and bolt JSON/HTTP interface",
+    "uri": "bolt://localhost:7687",
+    "auth": ["neo4j", "neo4jneo4j"],    
+    "db_name": "test-cti2",
+    "nickname": "ASG-CTI"
+}

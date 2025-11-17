@@ -1,0 +1,20 @@
+[project]
+name = "tmpl_gen"
+version = "0.1.0"
+description = "Template-based text generation from graph DB. Used fine-tuning the ASG CTI LLMs."
+authors = [{ name = "I. Cardei", email = "ionut@athenasecuritygrp.com" }]
+readme = "README.md"
+requires-python = ">=3.10"
+
+dependencies = [
+    "lark",
+    "neo4j",
+    "xmltodict"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
