@@ -1,0 +1,547 @@
+{
+    "nodes": [
+        {
+            "type": "x-mitre-tactic",
+            "properties": [
+                "description",
+                "x_mitre_shortname",
+                "created",
+                "modified",
+                "name",
+                "stix_id",
+                "mitre_id"
+            ]
+        },
+        {
+            "type": "attack-pattern",
+            "properties": [
+                "description",
+                "kill_chain_phases",
+                "x_mitre_deprecated",
+                "created",
+                "is_subtechnique",
+                "modified",
+                "name",
+                "stix_id",
+                "mitre_id"
+            ]
+        },
+        {
+            "type": "Campaign",
+            "properties": [
+                "stix_id",
+                "mitre_id"
+            ]
+        },
+        {
+            "type": "Malware",
+            "properties": [
+                "stix_id",
+                "mitre_id"
+            ]
+        },
+        {
+            "type": "Tool",
+            "properties": [
+                "stix_id",
+                "mitre_id"
+            ]
+        },
+        {
+            "type": "CAPEC",
+            "properties": [
+                "stix_id",
+                "capec_id"
+            ]
+        },
+        {
+            "type": "Weakness",
+            "properties": [
+                "description",
+                "id",
+                "name"
+            ]
+        },
+        {
+            "type": "Mitigation",
+            "properties": [
+                "description",
+                "id",
+                "phase"
+            ]
+        },
+        {
+            "type": "Detection_Method",
+            "properties": [
+                "Detection_Method_ID",
+                "description",
+                "method"
+            ]
+        },
+        {
+            "type": "CVE",
+            "properties": [
+                "affected",
+                "description",
+                "state",
+                "created",
+                "metrics",
+                "problem_types",
+                "id",
+                "modified"
+            ]
+        },
+        {
+            "type": "KEV",
+            "properties": [
+                "stix_id",
+                "cve_id"
+            ]
+        }
+    ],
+    "relationships": [
+        {
+            "type": "related-to",
+            "properties": []
+        },
+        {
+            "type": "achieves",
+            "properties": []
+        },
+        {
+            "type": "subtechnique-of",
+            "properties": [
+                "description",
+                "x_mitre_deprecated",
+                "created",
+                "modified",
+                "relationship_type"
+            ]
+        },
+        {
+            "type": "revoked-by",
+            "properties": [
+                "description",
+                "x_mitre_deprecated",
+                "created",
+                "modified",
+                "relationship_type"
+            ]
+        },
+        {
+            "type": "uses",
+            "properties": [
+                "description",
+                "x_mitre_deprecated",
+                "created",
+                "modified",
+                "relationship_type"
+            ]
+        },
+        {
+            "type": "CHILD_OF",
+            "properties": []
+        },
+        {
+            "type": "CAN_PRECEDE",
+            "properties": []
+        },
+        {
+            "type": "EXPLOITS",
+            "properties": []
+        },
+        {
+            "type": "PEER_OF",
+            "properties": []
+        },
+        {
+            "type": "RELATED_TO",
+            "properties": []
+        },
+        {
+            "type": "CAN_FOLLOW",
+            "properties": []
+        },
+        {
+            "type": "mitigated_by",
+            "properties": []
+        },
+        {
+            "type": "detected_by",
+            "properties": []
+        },
+        {
+            "type": "observed_as",
+            "properties": [
+                "Description"
+            ]
+        },
+        {
+            "type": "ChildOf",
+            "properties": []
+        },
+        {
+            "type": "CanPrecede",
+            "properties": []
+        },
+        {
+            "type": "PeerOf",
+            "properties": []
+        },
+        {
+            "type": "problemType",
+            "properties": []
+        },
+        {
+            "type": "impacts",
+            "properties": []
+        }
+    ],
+    "graph_structure": [
+        {
+            "from_node": [
+                "x-mitre-tactic"
+            ],
+            "relationship": "related-to",
+            "to_node": [
+                "attack-pattern"
+            ]
+        },
+        {
+            "from_node": [
+                "attack-pattern"
+            ],
+            "relationship": "achieves",
+            "to_node": [
+                "x-mitre-tactic"
+            ]
+        },
+        {
+            "from_node": [
+                "attack-pattern"
+            ],
+            "relationship": "subtechnique-of",
+            "to_node": [
+                "attack-pattern"
+            ]
+        },
+        {
+            "from_node": [
+                "attack-pattern"
+            ],
+            "relationship": "revoked-by",
+            "to_node": [
+                "attack-pattern"
+            ]
+        },
+        {
+            "from_node": [
+                "Campaign"
+            ],
+            "relationship": "uses",
+            "to_node": [
+                "attack-pattern"
+            ]
+        },
+        {
+            "from_node": [
+                "Campaign"
+            ],
+            "relationship": "uses",
+            "to_node": [
+                "Tool"
+            ]
+        },
+        {
+            "from_node": [
+                "Campaign"
+            ],
+            "relationship": "uses",
+            "to_node": [
+                "Malware"
+            ]
+        },
+        {
+            "from_node": [
+                "Malware"
+            ],
+            "relationship": "uses",
+            "to_node": [
+                "attack-pattern"
+            ]
+        },
+        {
+            "from_node": [
+                "Malware"
+            ],
+            "relationship": "revoked-by",
+            "to_node": [
+                "Tool"
+            ]
+        },
+        {
+            "from_node": [
+                "Malware"
+            ],
+            "relationship": "revoked-by",
+            "to_node": [
+                "Malware"
+            ]
+        },
+        {
+            "from_node": [
+                "Tool"
+            ],
+            "relationship": "uses",
+            "to_node": [
+                "attack-pattern"
+            ]
+        },
+        {
+            "from_node": [
+                "CAPEC"
+            ],
+            "relationship": "CHILD_OF",
+            "to_node": [
+                "CAPEC"
+            ]
+        },
+        {
+            "from_node": [
+                "CAPEC"
+            ],
+            "relationship": "CAN_PRECEDE",
+            "to_node": [
+                "CAPEC"
+            ]
+        },
+        {
+            "from_node": [
+                "CAPEC"
+            ],
+            "relationship": "EXPLOITS",
+            "to_node": [
+                "Weakness"
+            ]
+        },
+        {
+            "from_node": [
+                "CAPEC"
+            ],
+            "relationship": "PEER_OF",
+            "to_node": [
+                "CAPEC"
+            ]
+        },
+        {
+            "from_node": [
+                "CAPEC"
+            ],
+            "relationship": "RELATED_TO",
+            "to_node": [
+                "CAPEC"
+            ]
+        },
+        {
+            "from_node": [
+                "CAPEC"
+            ],
+            "relationship": "CAN_FOLLOW",
+            "to_node": [
+                "CAPEC"
+            ]
+        },
+        {
+            "from_node": [
+                "Weakness"
+            ],
+            "relationship": "mitigated_by",
+            "to_node": [
+                "Mitigation"
+            ]
+        },
+        {
+            "from_node": [
+                "Weakness"
+            ],
+            "relationship": "detected_by",
+            "to_node": [
+                "Detection_Method"
+            ]
+        },
+        {
+            "from_node": [
+                "Weakness"
+            ],
+            "relationship": "observed_as",
+            "to_node": [
+                "CVE"
+            ]
+        },
+        {
+            "from_node": [
+                "Weakness"
+            ],
+            "relationship": "ChildOf",
+            "to_node": [
+                "Weakness"
+            ]
+        },
+        {
+            "from_node": [
+                "Weakness"
+            ],
+            "relationship": "CanPrecede",
+            "to_node": [
+                "Weakness"
+            ]
+        },
+        {
+            "from_node": [
+                "Weakness"
+            ],
+            "relationship": "PeerOf",
+            "to_node": [
+                "Weakness"
+            ]
+        },
+        {
+            "from_node": [
+                "CVE"
+            ],
+            "relationship": "problemType",
+            "to_node": [
+                "Weakness"
+            ]
+        },
+        {
+            "from_node": [
+                "CVE"
+            ],
+            "relationship": "impacts",
+            "to_node": [
+                "CAPEC"
+            ]
+        }
+    ],
+    "adj_lst": {
+        "x-mitre-tactic": [
+            [
+                "related-to",
+                "attack-pattern"
+            ]
+        ],
+        "attack-pattern": [
+            [
+                "achieves",
+                "x-mitre-tactic"
+            ],
+            [
+                "subtechnique-of",
+                "attack-pattern"
+            ],
+            [
+                "revoked-by",
+                "attack-pattern"
+            ]
+        ],
+        "Campaign": [
+            [
+                "uses",
+                "attack-pattern"
+            ],
+            [
+                "uses",
+                "Tool"
+            ],
+            [
+                "uses",
+                "Malware"
+            ]
+        ],
+        "Tool": [
+            [
+                "uses",
+                "attack-pattern"
+            ]
+        ],
+        "Malware": [
+            [
+                "uses",
+                "attack-pattern"
+            ],
+            [
+                "revoked-by",
+                "Tool"
+            ],
+            [
+                "revoked-by",
+                "Malware"
+            ]
+        ],
+        "CAPEC": [
+            [
+                "CHILD_OF",
+                "CAPEC"
+            ],
+            [
+                "CAN_PRECEDE",
+                "CAPEC"
+            ],
+            [
+                "EXPLOITS",
+                "Weakness"
+            ],
+            [
+                "PEER_OF",
+                "CAPEC"
+            ],
+            [
+                "RELATED_TO",
+                "CAPEC"
+            ],
+            [
+                "CAN_FOLLOW",
+                "CAPEC"
+            ]
+        ],
+        "Weakness": [
+            [
+                "mitigated_by",
+                "Mitigation"
+            ],
+            [
+                "detected_by",
+                "Detection_Method"
+            ],
+            [
+                "observed_as",
+                "CVE"
+            ],
+            [
+                "ChildOf",
+                "Weakness"
+            ],
+            [
+                "CanPrecede",
+                "Weakness"
+            ],
+            [
+                "PeerOf",
+                "Weakness"
+            ]
+        ],
+        "Mitigation": [],
+        "Detection_Method": [],
+        "CVE": [
+            [
+                "problemType",
+                "Weakness"
+            ],
+            [
+                "impacts",
+                "CAPEC"
+            ]
+        ]
+    }
+}
