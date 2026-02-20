@@ -122,17 +122,22 @@ class Neo4jDriver:
                 for record in node_results:
                     schema["nodes"].append({
                         "type": record["label"],
-                        "properties": list(set([prop for props in record["properties"] for prop in props]))
+                        "properties": sorted(set([prop for props in record["properties"] for prop in props]))
                     })
+
+                schema["nodes"].sort(key=lambda nd: nd["type"].lower())
+                # print("SORTED")            
     
                 # Get relationship types and properties
                 rel_results = session.run(RELATIONSHIP_PROPERTIES_QUERY)
                 for record in rel_results:
                     schema["relationships"].append({
                         "type": record["type"],
-                        "properties": list(set([prop for props in record["properties"] for prop in props]))
+                        "properties": sorted(set([prop for props in record["properties"] for prop in props]))
                     })
                 
+                schema["relationships"].sort(key=lambda rel: rel["type"].lower())
+
                 # Get graph structure
                 structure_results = session.run(RELATIONSHIP_STRUCTURE_QUERY)
                 for record in structure_results:
@@ -141,6 +146,9 @@ class Neo4jDriver:
                         "relationship": record["relationship"],
                         "to_node": record["to_node"]
                     })
+
+                schema["graph_structure"].sort(
+                    key=lambda r: (r["from_node"][0] + r["relationship"] + r["to_node"][0]).lower())
                 
                 # create a nice adjacency list:
                 ad = schema["adj_lst"]
@@ -225,6 +233,8 @@ class DebugNeo4jDriver:
     
 def neo4j_get_db_schema(cfg_dct:dict):
     """
+    NOTE: *** NOT USED BY --cmd get-schema ***
+    
     Connects to the Neo4j database, executes queries to retrieve schema information,
     and returns it as a dictionary.
     """
@@ -246,17 +256,21 @@ def neo4j_get_db_schema(cfg_dct:dict):
             for record in node_results:
                 schema["nodes"].append({
                     "label": record["label"],
-                    "properties": list(set([prop for props in record["properties"] for prop in props]))
+                    "properties": sorted(set([prop for props in record["properties"] for prop in props]))
                 })
 
+            schema["nodes"].sort(key=lambda nd: nd["type"])
+            
             # Get relationship types and properties
             rel_results = session.run(RELATIONSHIP_PROPERTIES_QUERY)
             for record in rel_results:
                 schema["relationships"].append({
                     "type": record["type"],
-                    "properties": list(set([prop for props in record["properties"] for prop in props]))
+                    "properties": sorted(set([prop for props in record["properties"] for prop in props]))
                 })
             
+            schema["relationships"].sort(key=lambda rel: rel["type"])
+
             # Get graph structure
             structure_results = session.run(RELATIONSHIP_STRUCTURE_QUERY)
             for record in structure_results:
@@ -265,6 +279,9 @@ def neo4j_get_db_schema(cfg_dct:dict):
                     "relationship": record["relationship"],
                     "to_node": record["to_node"]
                 })
+            
+            schema["graph_structure"].sort(
+                key=lambda r: r["from_node"] + r["relationship"] + r["to_node"])            
             
             # create a nice adjacency list:
             ad = schema["adj_lst"] = dict()
@@ -278,6 +295,7 @@ def neo4j_get_db_schema(cfg_dct:dict):
                 ad[rel["from_node"][0]].append((rel["relationship"], rel["to_node"][0]))
                 if rel["to_node"][0] not in ad:
                     ad[rel["to_node"][0]] = list()
+                    
     except Exception as e:
         msg = f"Error: Could not connect to Neo4j or execute query. {e}"
         print(msg)

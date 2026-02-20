@@ -31,6 +31,7 @@ def task_generate(args):
             "templates_file": args.tmpl,
             "neo4j_conf_file": args.dbconf,
             "results_dir": args.results_dir,
+            "count_max": args.count_max,
             "verbose": args.verbose
             }
         
@@ -154,6 +155,15 @@ CAUTION: The neo4j DB will be wiped out and recreated.",
          required=False,
          default="",
          help="Output file name for get_schema command.",
+    )
+
+    parser.add_argument(
+         "--count_max",
+         "-M",
+         type=int,
+         required=False,
+         default=-1,
+         help="Override count limit generation property: generate max. this many triples for each template.",
     )
 
     parser.add_argument('--verbose', '-v', action='count', default=0,

@@ -35,7 +35,7 @@
     "tags": ["list_prop"],
     "comment": "List properties",
     "text-long": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: What are the name and ID of a mitigation that mitigates technique {t:technique.name} (id {t.id}) on platforms {t.x_mitre_platforms} that is also used by malware {m:t.uses<malware.name}? \nAnswer: Mitigation {coa:t.mitigates<.name} mitigates technique {t.name}.",
-    "text": "technique {t:technique.name} (id {t.id}) platforms {t.x_mitre_platforms} malware {m:t.uses<malware.name} \nAnswer: Mitigation {coa:t.mitigates<.name} technique {t.name}.",
+    "text-short": "technique {t:technique.name} (id {t.id}) platforms {t.x_mitre_platforms} malware {m:t.uses<malware.name} \nAnswer: Mitigation {coa:t.mitigates<.name} technique {t.name}.",
     "count_limit": 100
     },
     
@@ -45,7 +45,7 @@
     "tags": ["filter"],
     "text-long": "TODO: Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion:  \nAnswer: Mitigation {coa:t.mitigates<.name} mitigates technique {t.name}.",
     "text-1": "data component {dc:x-mitre-data-component.name} detects {t:dc.detects.name} (id {t.id}) spec version {t.spec_version[_=2025-11-06T14:30:00]}",
-    "text": "data component {dc:x-mitre-data-component.name} detects {t:dc.detects.name} detects {t2:dc.detects.name} spec version {t.spec_version[_='2.1']} t.platform_0 :{t.x_mitre_platforms[0]}  any t: {t.x_mitre_platforms[?='Windows']} all t2:{t2.x_mitre_platforms[*='Linux']}" ,
+    "text": "Instruction: ... Question: .... Answer: data component {dc:x-mitre-data-component.name} detects {t:dc.detects.name} detects {t2:dc.detects.name} spec version {t.spec_version[_='2.1']} t.platform_0 :{t.x_mitre_platforms[0]}  any t: {t.x_mitre_platforms[?='Windows']} all t2:{t2.x_mitre_platforms[*='Linux']}" ,
     "count_limit": 100
     },
     
@@ -54,7 +54,7 @@
     "comment": "Filter for non-list property, #2",
     "tags": ["filter"],
     "text-long": "TODO: Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion:  \nAnswer: Mitigation {coa:t.mitigates<.name} mitigates technique {t.name}.",
-    "text": "Tool {tl:tool.name} uses technique {t1:tl.uses.name} (on Windows: platforms={t1.x_mitre_platforms[?='Windows']}) and technique {t2:tl.uses.name} (on Linux: platforms={t2.x_mitre_platforms[?='Linux']}), both mitigated by mitigations {coa1:t1.mitigates<.name} / {coa2:t2.mitigates<.name}." ,
+    "text": "Instruction: ... Question: .... Answer: Tool {tl:tool.name} uses technique {t1:tl.uses.name} (on Windows: platforms={t1.x_mitre_platforms[?='Windows']}) and technique {t2:tl.uses.name} (on Linux: platforms={t2.x_mitre_platforms[?='Linux']}), both mitigated by mitigations {coa1:t1.mitigates<.name} / {coa2:t2.mitigates<.name}." ,
     "count_limit": 100
     },
     
@@ -63,7 +63,7 @@
     "comment": "Invisible Section: Filter for non-list property, #2",
     "tags": ["invisible", "filter"],
     "text-long": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion:  \nAnswer: Mitigation {coa:t.mitigates<.name} mitigates technique {t.name}.",
-    "text": "Tool {tl:tool.name} uses technique {t1:tl.uses.name} <*(on Windows: platforms={t1.x_mitre_platforms[?='Windows']})*> and technique {t2:tl.uses.name} <*(on Linux: platforms={t2.x_mitre_platforms[?='Linux']})*>, both mitigated by mitigations {coa1:t1.mitigates<.name} / {coa2:t2.mitigates<.name}." ,
+    "text": "Instruction: ... Question: .... Answer: Tool {tl:tool.name} uses technique {t1:tl.uses.name} <*(on Windows: platforms={t1.x_mitre_platforms[?='Windows']})*> and technique {t2:tl.uses.name} <*(on Linux: platforms={t2.x_mitre_platforms[?='Linux']})*>, both mitigated by mitigations {coa1:t1.mitigates<.name} / {coa2:t2.mitigates<.name}." ,
     "count_limit": 100
     },
     
@@ -104,8 +104,8 @@
     "order_by": "t.name, ta.name",
     "order_by_ALT": "t.modified",
     "order_by_ALT": "other options: var.prop, var.prop, ..., random, none",
-    "text": "{t:attack-pattern.name} {t.modified} {ta:t.achieves.name} {ta.modified} {tl:t.used-by>tool.name} {tl.modified}",
-    "text_OK": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: How could course of action {coa1:course-of-action.name} (id {coa1.id}) prevent achieving tactic {ta1.name} (id {ta1.id})?\nAnswer: mitigation or tactic {coa1.name} mitigates attack pattern {ap1:coa1.mitigates.name}, which achieves tactic {ta1:ap1.achieves.name} (id {ta1.id}).\nModification times: \ncoa1: {coa1.modified}\nap1: {ap1.modified}\nta1: {ta1.modified}.",
+    "text-short2": "{t:attack-pattern.name} {t.modified} {ta:t.achieves.name} {ta.modified} {tl:t.used-by>tool.name} {tl.modified}",
+    "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: How could course of action {coa1:course-of-action.name} (id {coa1.id}) prevent achieving tactic {ta1.name} (id {ta1.id})?\nAnswer: mitigation or tactic {coa1.name} mitigates attack pattern {ap1:coa1.mitigates.name}, which achieves tactic {ta1:ap1.achieves.name} (id {ta1.id}).\nModification times: \ncoa1: {coa1.modified}\nap1: {ap1.modified}\nta1: {ta1.modified}.",
     "text-OLD": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: How could course of action {coa1:course-of-action.name} (id {coa1.id}) prevent achieving tactic {ta1.name} (id {ta1.id})?\nAnswer: mitigation or tactic {coa1.name} mitigates attack pattern {ap1:coa1.mitigates.name}, which achieves tactic {ta1:ap1.achieves.name} (id {ta1.id}).\nModification times: \ncoa1: {coa1.modified}\nap1: {ap1.modified}\nta1: {ta1.modified}. <*{coa1.modified[_>=2025-01-01T00:00:00Z]}  {ap1.modified[_>=2025-01-01T00:00:00Z]} {ta1.modified[_>=2025-01-01T00:00:00Z]} *>",
     "text-short": "Tool {tl:tool.name} uses technique {t1:tl.uses.name} and technique {t2:tl.uses.name}, both mitigated by mitigations (same!) {coa1:t1.mitigates<.name} / {coa2:t2.mitigates<.name}." ,
     "count_limit": 100

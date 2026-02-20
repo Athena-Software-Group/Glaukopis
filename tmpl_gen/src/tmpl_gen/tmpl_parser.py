@@ -4,11 +4,23 @@
 Created on Fri Sep 26 12:39:18 2025
 
 @author: icardei
+
+
+TODO:
+    - add edge relationships to grammar and text generation
+    - explain how new var name binds to second node in var:n1.rel.n2
+    - check if constraint {cname.prop[_=value]} works for non-list properties, RE: template 2.6
+    - check if constraint {cname.prop[_=value]} works for bool, RE: template 2.6
+    - implement code for list comprehensions, RE: template 2.8
+    - add support for substring check in {cname.prop[_^value]} in make_subscript_term(), RE template 3.2
+    - add support for scope, e.g. cwe#Weakness
+    - MAYBE add support for JSON objects
 """
 
 from __future__ import annotations
 import os
 import os.path
+import sys
 import json
 import time
 import datetime
@@ -30,6 +42,7 @@ from .neo4j_utils import Neo4jDriver, DebugNeo4jDriver, neo4j_safe_identif
 # public identifiers:
 __all__ = ["TmplParser", "tool_tmplgen"]
 
+## These were used for testing. 
 # Read neo4j connecion configuration from JSON file.
 neo4j_asg_config_filename = "neo4j-asg-config.json"
 neo4j_TEST_config_filename = "neo4j-TEST-config.json"
@@ -61,7 +74,7 @@ listsection: "[" (TEXTSECTION | qfield)* "]"
 
 svalue:       QSTRING | BOOL | NUMBER | OTHERVALUE
 
-RELOP:        "=" | "!=" | "<" | "<=" | ">=" | ">" 
+RELOP:        "=" | "!=" | "<" | "<=" | ">=" | ">"
  
 INVCONTENT:   /(?:[^*{]|\*(?!>))+/
 QFTEXT:       /(?:[^}])+/
@@ -76,7 +89,7 @@ CNAMECHAR:    CNAMELETTER | "-"
 // add support for inverse relationship notation using a "<" at their end:
 // CNAME:        CNAMELETTER (CNAMECHAR | DIGIT)* ("<")?
 // '<' is used for inverse relationships using original name, tool.revoked-by<malware...
-// '>' is used for inverse relationships with an alias, e.g. tool.revokes>malware...
+// '>' is used to disambiguate multiple relationships with the same e.g. campaign.uses>malware vs. campaign.uses>tool
 CNAME:        CNAMELETTER (CNAMECHAR | DIGIT | ("<")| (">"))*
 
 // variable names should not use '-'
@@ -276,7 +289,7 @@ class Subscript(ParseElement):
         a.p[0] select a.p value with index 0
         a.p[?] select one of a.p values at random
         a.p[*] select all of a.p values at random, equivalent to just a.p
-        a.p[?=Value] or a.p[?!=Value]  select only entries for which one of
+        a.p[?=Value] or a.p[?!=Value]  select only entries for which min. one of
             a.p[i] == Value or a.p[i] != Value, respectively
         a.p[*='Value'] or a.p[?=Value] select only entries for which all of
             a.p[i] == Value or a.p[i] != Value, respectively
@@ -421,7 +434,10 @@ class TmplParseTransf(lark.Transformer):
     
     def is_node_type(self, ntype:str) -> bool:  
         nt_real = self.map_nodetype(ntype)
-        return nt_real in self.sch_dct['adj_lst'] 
+        # the following does not work for nodes with no originating relationships:
+        # return nt_real in self.sch_dct['adj_lst'] 
+        # return nt_real in (nd["type"] for nd in self.sch_dct['nodes'])
+        return seq_in(self.sch_dct['nodes'], lambda d: nt_real == d["type"])
     
     def is_property(self, ntype:str, propname:str) -> bool:
         return seq_in(self.sch_dct['nodes'], lambda d: ntype == d["type"] and propname in d["properties"])
@@ -516,6 +532,24 @@ class TmplParseTransf(lark.Transformer):
             sep = ""
             othertype = ""
         return (rel, sep, othertype)
+
+
+    def map_rel_TODELETE(self, ntype:str, relstr:str) -> tuple[bool, str, str]:
+        is_inverse = False
+        inv_dct = self.conf.get("inverse_relationships", dict())
+        (relname, sep, othertype) = self.parse_relstr(relstr)
+        
+        # sep is "" if unspecified; othertype is "" if implicit
+        
+        # map type aliases:
+        ntype = self.conf.get("nodetype_mappings", {}).get(ntype, ntype)
+        othertype = self.conf.get("nodetype_mappings", {}).get(othertype, othertype)
+
+        # is there a direct rel. 
+        print(ntype, relname, sep, othertype)
+        
+        # 4 cases:
+        sys.exit(1)        
 
     
     def map_rel(self, ntype:str, relstr:str) -> tuple[bool, str, str]:
@@ -727,7 +761,7 @@ class TmplParseTransf(lark.Transformer):
                     lst_result.append(spec)
                 case x:
                     err = f"TmplParseTransf.template ERROR: unexpected list element '{x}'"
-                    print("\n", err)
+                    # print("\n", err)
                     raise ValueError(err)
         
         max_retries = 5
@@ -800,8 +834,8 @@ class TmplParseTransf(lark.Transformer):
         if isinstance(args[qf_index], Vardef):
             vardef = args[qf_index] 
             if self.get_nodespec(vardef.varname) != None:
-                err = f"TmplParseTransf.qfield_process ERROR: cannot not redefine variable {vardef.varname}"
-                print(err)
+                err = f"TmplParseTransf.qfield_process ERROR: cannot redefine variable {vardef.varname}"
+                # print(err)
                 raise ValueError(err)
             qf_index += 1
             lst = args[qf_index]               
@@ -955,7 +989,7 @@ class TmplParseTransf(lark.Transformer):
         return val
     
     def scope(self, args):
-        # TOOO: NOT IMPLEMENTED YET
+        # TODO: NOT IMPLEMENTED YET
         # print("vardef:", args)
         raise RuntimeError("Scope terminal NOT IMPLEMENTED YET")
         # return Scope(args)
@@ -1036,6 +1070,13 @@ class TmplGenNeo4j:
         """
         schema_dict = self.neo4j_driver.get_db_schema()
         schemagraph = SchemaGraph(schema_dict["adj_lst"])
+                
+        # print("\n\n***********\n")
+        # print(schema_dict)
+        
+        with open("_db_schema.json", "w") as fout:
+            fout.write(json.dumps(schema_dict, indent=4))
+        
         return (schema_dict, schemagraph)
         
     def format_prop_val(self, return_spec:str, nodespec:Nodespec, 
@@ -1115,6 +1156,11 @@ class TmplGenNeo4j:
         limit = self.gencfg.get("override_count_limit", tmplobj.get("count_limit", 
                                     self.gencfg.get("default_count_limit", 10)))
         
+        # check if command line option override for count_limit:
+        if self.options.get("count_max", -1) >= 0:
+            limit = self.options["count_max"]
+            # print("OVERRIDE COUNT_MAX", limit)
+            
         lst_match = list()
         lst_return = list()             # used to build the RETURN params       
         lst_text_struct = list()        # it has its structure of the template; fill it with record fields
