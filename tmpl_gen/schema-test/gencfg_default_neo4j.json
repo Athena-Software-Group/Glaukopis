@@ -1,0 +1,55 @@
+{
+    "version": "0.0",
+    "default_propname": "name",
+    "default_count_limit": 10,
+    "override_count_limit": 10,
+    "default_order_by": "none",
+    "override_order_by": "random",    
+    "list_property_separator": ", ",
+    "inverse_relationships": {
+        "used-by": "uses",
+        "used_by": "uses",
+        "attributed_by": "attributed-to",
+        "revokes": "revoked-by",
+        "has_subtechnique": "subtechnique-of",
+        "achieved_by": "achieves"
+    },
+    "property_mappings": [
+        {
+            "id": [
+                "mitre_id",
+                [
+                    "attack-pattern",
+                    "campaign",
+                    "course-of-action",
+                    "intrusion-set",
+                    "malware",
+                    "tool",
+                    "x-mitre-data-component",
+                    "x-mitre-data-source",
+                    "x-mitre-tactic"
+                ]
+            ],
+	    "aliases": [
+		"x_mitre_aliases",
+		[
+		    "malware",
+		    "tool"
+		]
+	    ]
+        }
+    ],
+    "nodetype_mappings": {
+        "technique": "attack-pattern",
+        "NOTUSED_mitigation": "course-of-action",
+        "tactic": "x-mitre-tactic"
+    },
+    "modified_constraints": {
+        "after": "2025-04-16T00:00:00.000Z",
+        "before": "2025-04-16T23:59:59.000Z",
+        "before_ALT": "2025-04-02T17:29:15.914Z",
+        "apply_to": "any",
+        "apply_to_ALT": "target",
+        "enabled": 0
+    }
+}

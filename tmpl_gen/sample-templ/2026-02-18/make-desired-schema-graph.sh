@@ -4,7 +4,9 @@
 #
 # Must have Graphiz program dot installed. 
 
-XLS_IN="template-stats.xls"
+# XLS_IN="template-stats.xls"
+XLS_IN="../../docs/cti-schema-target-2026-02.xlsx"
+
 GV_OUT="CTI-schema-target-2026-02.gv"
 PDF_OUT="${GV_OUT%.gv}.pdf"
 PNG_OUT="${GV_OUT%.gv}.png"

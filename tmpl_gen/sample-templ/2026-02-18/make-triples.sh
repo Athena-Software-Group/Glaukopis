@@ -15,6 +15,9 @@ TMPL_JSON="templates-aligned-2026-02.json"
 # output + results directory name:
 RESULTS_DIR="results-dir"
 
+echo "CAUTION: RESULTS DIRECTORY ${RESULTS_DIR} IS RECREATED WITH NEW FILES"
+echo
+
 # override max. number of triples generated from one template
 #   (specified in the $GENCONF file):
 COUNT_MAX=2000

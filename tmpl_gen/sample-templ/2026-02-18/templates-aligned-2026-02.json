@@ -22,12 +22,12 @@
     {
         "shortname": "1.3",
         "comment": "1.3",
-        "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: Which data component is used to detect the attack pattern {ap:dc.detects.name} and what is the detection logic? \n\nAnswer: The attack pattern {ap.name} ({ap.id}) can be detected using the data component {dc:x-mitre-data-component.name}. Its description is: {dc.description}.",
+        "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: Which data component is used to detect the attack pattern {ap.name} and what is the detection logic? \n\nAnswer: The attack pattern {ap:attack-pattern.name} (ID {ap.id}) can be detected with detection strategy {det:ap.detects<detection-strategy.name} ({det.id}) and a corresonding analytic {an:det.implemented_by.name} (an.id) on platforms: {an.platforms}. This analytic which uses data component {dc:an.requires_data.name}, described by: {dc.description}. The detection logic is the following: {an.description}",
         "source_file": "templates-aligned-2026-02.docx",
         "source_line": 14,
         "count_limit": 10,
         "summary": "{dc.detects|description}",
-        "schema": "x-mitre-data-component - detects - attack-pattern"
+        "schema": "x-mitre-detection-strategy - detects - attack-pattern, x-mitre-analytic - requires_data - x-mitre-data-component, x-mitre-detection-strategy -  implemented_by - x-mitre-analytic"
     },
     {
         "shortname": "1.4",
@@ -95,12 +95,11 @@
     {
         "shortname": "2.2",
         "comment": "2.2",
-        "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: How can a CTI analyst detect the technique {ap:dc.detects.name} (ID {ap.id}) using {dc:x-mitre-data-component.name}?\n\nAnswer: To detect technique {ap:dc.detects.name}, monitor {dc.name}. Detection logic: {dc.description}",
+        "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: How can a CTI analyst detect the technique {ap:attack-pattern.name} (ID {ap.id}) using data component {dc.name}?\n\nAnswer: To detect technique {ap.name}, monitor {dc.name}. Apply detection strategy {det:ap.detects<.name} ({det.id}), more specifically, analytic {an:det.implemented_by.name} ({an.id}), which requires data component (log source) {dc:an.requires.name}.  Analytic description: {an.description}",
         "source_file": "templates-aligned-2026-02.docx",
         "source_line": 38,
         "count_limit": 10,
-        "summary": "{dc.detects|description}",
-        "schema": "x-mitre-data-component - detects - attack-pattern"
+        "schema": "x-mitre-detection-strategy - detects - attack-pattern, x-mitre-analytic - requires_data - x-mitre-data-component, x-mitre-detection-strategy -  implemented_by - x-mitre-analytic"
     },
     {
         "shortname": "2.3",
@@ -170,7 +169,7 @@
     {
         "shortname": "3.2",
         "comment": "3.2",
-        "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: What is the most effective mitigation for the technique {ap:attack-pattern.name} (id {ap.id}) to reduce organizational risk?\n\nAnswer: To mitigate {ap.name}, organizations should implement course of action {coa:ap.mitigated_by.name} (id{coa.id}). Description of mitigation: {coa.description} <* {coa.description[_^\"organizational risk\"]} *>",
+        "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: What is the most effective mitigation for the technique {ap:attack-pattern.name} (id {ap.id}) to reduce organizational risk?\n\nAnswer: To mitigate {ap.name}, organizations should implement course of action {coa:ap.mitigated_by.name} (id{coa.id}). Description of mitigation: {coa.description[_~\"organizational risk\"]}.",
         "source_file": "templates-aligned-2026-02.docx",
         "source_line": 65,
         "count_limit": 10,
@@ -180,19 +179,18 @@
     {
         "shortname": "3.3",
         "comment": "3.3",
-        "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: In the context of {ap:dc.detects.name} (ID {ap.id}), which data component should be monitored for specialized system call or API usage?\n\nAnswer: To detect this technique, you should monitor data component {dc:x-mitre-data-component.name}.  Its description is: {dc.description[_^\"system call\"]}.",
+        "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: In the context of {ap:attack-pattern.name} (ID {ap.id}), which data component should be monitored for specialized system call or API usage?\n\nAnswer: To detect this technique, you should monitor data component {dc.name}. Its description is: {dc.description[_~\"system call\"]}. This is because technique {ap.name} is detected with detection strategy {det:ap.detects<name} (det.id), specifically, with analytic {an:det.implemented_by.name}, which requires data component (log source) {dc:an.requires_data.name}.",
         "source_file": "templates-aligned-2026-02.docx",
         "source_line": 69,
         "count_limit": 10,
-        "summary": "{dc.detects|description}",
-        "schema": "x-mitre-data-component - detects - attack-pattern"
+        "schema": "x-mitre-detection-strategy - detects - attack-pattern, x-mitre-analytic - requires_data - x-mitre-data-component, x-mitre-detection-strategy -  implemented_by - x-mitre-analytic"
     },
     {
         "shortname": "3.4",
         "comment": "3.4",
         "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: How does the malware {m:malware.name} (ID {m.id}) implement the technique {ap:m.uses.name} during its operations?\n\nAnswer: {m.name} utilizes technique {ap.name} as follows: {ap.description} This is often seen on {m.x_mitre_platforms} platforms.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 73,
+        "source_line": 72,
         "count_limit": 10,
         "summary": "{m.uses|description}",
         "schema": "malware - uses - attack-pattern"
@@ -202,7 +200,7 @@
         "comment": "3.6",
         "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: Explain the characteristics of {ap:attack-pattern.name} (id {ap.id}) specifically regarding how it handles data encryption or protocol blending.\n\nAnswer: {ap.name} involves  these steps: {ap.description} Detection often relies on this method: {ap.x_mitre_detection}.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 77,
+        "source_line": 76,
         "count_limit": 10
     },
     {
@@ -210,7 +208,7 @@
         "comment": "3.6",
         "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: Explain the characteristics of {ap:attack-pattern.name} (id {ap.id}.\n\nAnswer: {ap.name} involves {ap.description} Detection often relies on {ap.x_mitre_detection}",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 79,
+        "source_line": 78,
         "count_limit": 10
     },
     {
@@ -218,7 +216,7 @@
         "comment": "3.7",
         "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: To which MITRE ATT&CK tactic does the technique {ap:attack-pattern.name} (ID {ap.id}) belong, and what is the adversary's primary goal in this phase?\n\nAnswer: {ap.name} maps to the {tac:ap.achieves.name} tactic. Its goal and description is {ap.description}",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 81,
+        "source_line": 80,
         "count_limit": 10,
         "schema": "attack-pattern - achieves - x-mitre-tactic"
     },
@@ -227,7 +225,7 @@
         "comment": "3.8",
         "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: Which mechanisms are leveraged by {tl:tool.name} (ID {tl.id}) whan used for technique {ap:tl.uses.name}?\n\nAnswer: The tool {tl.name} is used to execute attack pattern {ap.name} (ID {ap.id}), that generally targets these platforms: {ap.x_mitre_platforms}. The technique proceeds as follows: {ap.description}.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 84,
+        "source_line": 83,
         "count_limit": 10,
         "summary": "{tl.uses|description}",
         "schema": "tool - uses - attack-pattern"
@@ -235,17 +233,17 @@
     {
         "shortname": "3.9",
         "comment": "3.9",
-        "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: Give a technique that uses methods to evade detection.\n\nAnswer: Attack pattern {ap:attack-pattern.name} (id {ap.id}) uses methods to evade detection, as described below: {ap.description[_^\"evade detection\"]}. Analysts should look for {ap.x_mitre_detection}.",
+        "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: Give a technique that uses methods to evade detection.\n\nAnswer: Attack pattern {ap:attack-pattern.name} (id {ap.id}) uses methods to evade detection, as described below: {ap.description[_~\"evade detection\"]}. Analysts should look for {ap.x_mitre_detection}.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 88,
+        "source_line": 87,
         "count_limit": 10
     },
     {
         "shortname": "3.9a",
         "comment": "3.9a",
-        "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: Give a technique that uses methods to bypass security controls.\n\nAnswer: Attack pattern {ap:attack-pattern.name} (id {ap.id}) uses methods to evade detection, as described below: {ap.description[_^\"evade detection\"]}. Analysts should look for {ap.x_mitre_detection}.",
+        "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: Give a technique that uses methods to bypass security controls.\n\nAnswer: Attack pattern {ap:attack-pattern.name} (id {ap.id}) uses methods to bypass security controls, as described below: {ap.description[_~\"bypass security controls\"]}. Analysts should look for {ap.x_mitre_detection}.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 90,
+        "source_line": 89,
         "count_limit": 10
     },
     {
@@ -253,7 +251,7 @@
         "comment": "3.10",
         "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: Describe the artifacts left behind when technique {ap.name} ({ap.id}) is executed on {ap.x_mitre_platforms}.\n\nAnswer: On {ap.x_mitre_platforms}, the execution of {ap.name} involves the following: {ap.description} Consider the following for detection: {ap:attack-pattern.x_mitre_detection}",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 92,
+        "source_line": 91,
         "count_limit": 10
     },
     {
@@ -261,24 +259,24 @@
         "comment": "4.1",
         "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: Which MITRE ATT&CK technique is most directly associated with the attack pattern {cap:CAPEC.name}?\n\nAnswer: Based on the structural relationship between frameworks, {cap.name} is mapped to the ATT&CK technique {ap:cap.map_ap.name} ({ap.id}). This technique involves the following: {ap.description}",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 94,
+        "source_line": 93,
         "count_limit": 10,
         "schema": "capec:CAPEC - map_ap - attack-pattern"
     },
     {
         "shortname": "4.3",
         "comment": "4.3",
-        "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: How does an adversary use {ap:attack-pattern.name} (ID {ap.id}) to achieve persistence on {ap.x_mitre_platforms} systems?\n\nAnswer: Adversaries implement {ap.name} by doing the following: {ap.description[_^\"achieve persistence\"}. In corporate environments, this often involves manipulating {ap.x_mitre_platforms} components to force the loading of malicious binaries.",
+        "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: How does an adversary use {ap:attack-pattern.name} (ID {ap.id}) to achieve persistence on {ap.x_mitre_platforms} systems?\n\nAnswer: Adversaries implement {ap.name} by doing the following: {ap.description[_~\"achieve persistence\"]}. In corporate environments, this often involves manipulating {ap.x_mitre_platforms} components to force the loading of malicious binaries.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 97,
+        "source_line": 96,
         "count_limit": 10
     },
     {
         "shortname": "4.3a",
         "comment": "4.3a",
-        "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: How does an adversary use {ap:attack-pattern.name} (ID {ap.id}) to achieve elevated execution  on {ap.x_mitre_platforms} systems?\n\nAnswer: Adversaries implement {ap.name} by doing the following: {ap.description[_^\"elevated execution\"}. In corporate environments, this often involves manipulating {ap.x_mitre_platforms} components to force the loading of malicious binaries.",
+        "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: How does an adversary use {ap:attack-pattern.name} (ID {ap.id}) to achieve elevated execution  on {ap.x_mitre_platforms} systems?\n\nAnswer: Adversaries implement {ap.name} by doing the following: {ap.description[_~\"elevated execution\"]}. In corporate environments, this often involves manipulating {ap.x_mitre_platforms} components to force the loading of malicious binaries.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 99,
+        "source_line": 98,
         "count_limit": 10
     },
     {
@@ -286,34 +284,34 @@
         "comment": "4.4",
         "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: What mitigation (course of action) should be prioritized to address the CWE vulnerability {w:Weakness.name} (ID {w.id})?\n\nAnswer: To effectively mitigate {w.name}, organizations should implement this: {m:w.mitigated_by.description}. This addresses the root cause: {w.description}.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 101,
+        "source_line": 100,
         "count_limit": 10,
         "schema": "cwe:Weakness - mitigated_by - cwe:Mitigation"
     },
     {
         "shortname": "4.6",
         "comment": "4.6",
-        "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: Which specific data component and monitoring approach are effective for detecting {ap:attack-pattern.name}?\n\nAnswer: Detection of {ap.name} (ID {ap.id}) is achieved by monitoring data sources {ap.x_mitre_data_sources}. In particular, data component {dc:ap.detects<.name} belongs to data source {dc.belongs_to.name} and it is described by {dc.description}. Detection logic for technique {ap.name} should focus on: {ap.x_mitre_detection}",
+        "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: Which specific data component and monitoring approach are effective for detecting {ap:attack-pattern.name}?\n\nAnswer: To detect this technique, you should monitor data component {dc.name}. This is because technique {ap.name} is detected with detection strategy {det:ap.detects<name} (det.id), specifically, with analytic {an:det.implemented_by.name} on platforms {an.platforms}, which requires data component (log source) {dc:an.requires_data.name}.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 103,
+        "source_line": 102,
         "count_limit": 10,
-        "schema": "x-mitre-data-component - detects - attack-pattern, x-mitre-data-component - belongs_to - x-mitre-data-source"
+        "schema": "x-mitre-detection-strategy - detects - attack-pattern, x-mitre-analytic - requires_data - x-mitre-data-component, x-mitre-detection-strategy -  implemented_by - x-mitre-analytic"
     },
     {
         "shortname": "4.7",
         "comment": "4.7",
         "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: Within the {ta:ap.achieves.name} tactic, which technique does the following actions: <desc>: {ap:attack-pattern.description}</desc>?\n\nAnswer: Technique {ap.name} (ID {ap.id}) is used during the {ta.name} phase, on {ap.x_mitre_platforms} platform(s).",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 106,
+        "source_line": 107,
         "count_limit": 10,
         "schema": "attack-pattern - achieves - x-mitre-tactic"
     },
     {
         "shortname": "4.8",
         "comment": "4.8",
-        "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: How does the ATT&CK technique {ap:attack-pattern.name} relate to hardware security ?\n\nAnswer: Technique {ap.name} (ID {ap.id}) involves the following: {ap.description[_^\"hardware security\"}. This is mitigated by course of action {coa:ap.mitigates<.name} (ID {coa:id}) by doing the following: {coa.description}",
+        "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: How does the ATT&CK technique {ap:attack-pattern.name} relate to hardware security ?\n\nAnswer: Technique {ap.name} (ID {ap.id}) involves the following: {ap.description[_~\"hardware security\"]}. This is mitigated by course of action {coa:ap.mitigates<.name} (ID {coa:id}) by doing the following: {coa.description}",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 109,
+        "source_line": 110,
         "count_limit": 10,
         "summary": "{coa:ap.mitigates<.description}",
         "schema": "course-of-action mitigates attack-pattern"
@@ -321,9 +319,9 @@
     {
         "shortname": "4.8a",
         "comment": "4.8a",
-        "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: How does the ATT&CK technique {ap:attack-pattern.name} relate to supply chain compromise?\n\nAnswer: Technique {ap.name} (ID {ap.id}) involves the following: {ap.description[_^\"supply chain compromise\"}. This is mitigated by course of action {coa:ap.mitigates<.name} (ID {coa:id})  by doing the following: {coa.description}",
+        "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: How does the ATT&CK technique {ap:attack-pattern.name} relate to supply chain compromise?\n\nAnswer: Technique {ap.name} (ID {ap.id}) involves the following: {ap.description[_~\"supply chain compromise\"]}. This is mitigated by course of action {coa:ap.mitigates<.name} (ID {coa:id})  by doing the following: {coa.description}",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 113,
+        "source_line": 114,
         "count_limit": 10,
         "summary": "{coa:ap.mitigates<.description}",
         "schema": "course-of-action mitigates attack-pattern"
@@ -333,7 +331,7 @@
         "comment": "1.8",
         "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: Which threat actor or group is the campaign {c:campaign.name} attributed to, and what tools did they use?\n\nAnswer: The campaign {c.name} is attributed to the intrusion set {is:c.attributed-to.name} (ID {c.id}), aliases: {is.aliases}. During this campaign, they used the tool {c.uses>tool.name} and the malware {c.uses>malware.name}.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 119,
+        "source_line": 120,
         "count_limit": 10,
         "summary": "{c.attributed-to|desription}, {c.uses>tool|description}, {c.uses>malware|description},",
         "schema": "campaign - attributed-to - intrusion-set, campaign - uses - malware, campaign - uses - tool"
@@ -343,7 +341,7 @@
         "comment": "2.5",
         "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: What attack pattern is commonly associated with the threat group {is:intrusion-set.name} (ID {is.id})?\n\nAnswer: The group {is.name} is known to use attack pattern {ap:is.uses>attack-pattern.name} (ID {ap.id}). Procedure detail: {ap.description}",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 123,
+        "source_line": 124,
         "count_limit": 10,
         "summary": "{is.uses>attack-pattern|description}",
         "schema": "campaign - uses - attack-pattern"
@@ -353,7 +351,7 @@
         "comment": "2.10",
         "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: During the {c:campaign.name} campaign, what malware and techniques were observed?\n\nAnswer: The campaign {c.name} involved the use of {c.uses>malware.name} and technique {c.uses>attack-pattern.name}.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 127,
+        "source_line": 128,
         "count_limit": 10,
         "summary": "{c.uses>malware|description}, c.uses>attack-pattern.description}",
         "schema": "campaign - uses - malware, campaign - uses - attack-pattern"
@@ -361,21 +359,21 @@
     {
         "shortname": "3.5",
         "comment": "3.5",
-        "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: Which technique is used by the threat group {is:intrusion-set.name} (ID {is.id}), known for using it during its campaigns, such as its method for initial access?\n\nAnswer: Intrusion set {is.name} is known to use attack pattern {ap:is.uses<attack-pattern.name} (ID {ap.id}). According to CTI reports: {ap.description[_^\"initial access\"]}.",
+        "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: Which technique is used by the threat group {is:intrusion-set.name} (ID {is.id}), known for using it during its campaigns, such as its method for initial access?\n\nAnswer: Intrusion set {is.name} is known to use attack pattern {ap:is.uses>attack-pattern.name} (ID {ap.id}). According to CTI reports: {ap.description[_~\"initial access\"]}.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 131,
+        "source_line": 132,
         "count_limit": 10,
-        "summary": "{ap:is.uses<attack-pattern|description}",
+        "summary": "{ap:is.uses>attack-pattern|description}",
         "schema": "intrusion-set - uses - attack-pattern"
     },
     {
         "shortname": "3.5a",
         "comment": "3.5a",
-        "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: Which technique is used by the threat group {is:intrusion-set.name} (ID {is.id}), known for using it during its campaigns, such as its method for infrastructure acquisition?\n\nAnswer: Intrusion set {is.name} is known to use attack pattern {ap:is.uses<attack-pattern.name} (ID {ap.id}). According to CTI reports: {ap.description[_^\"infrastructure acquisition\"]}.",
+        "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: Which technique is used by the threat group {is:intrusion-set.name} (ID {is.id}), known for using it during its campaigns, such as its method for infrastructure acquisition?\n\nAnswer: Intrusion set {is.name} is known to use attack pattern {ap:is.uses>attack-pattern.name} (ID {ap.id}). According to CTI reports: {ap.description[_~\"infrastructure acquisition\"]}.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 135,
+        "source_line": 136,
         "count_limit": 10,
-        "summary": "{ap:is.uses<attack-pattern|description}",
+        "summary": "{ap:is.uses>attack-pattern|description}",
         "schema": "intrusion-set - uses - attack-pattern"
     },
     {
@@ -383,7 +381,7 @@
         "comment": "4.2",
         "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: Analyze CVE {cve:CVE.id}. Based on its CVSS vector, what are the primary requirements for exploitation?\n\nAnswer: The CVE description is: {cve.descriptions[0]}. The CVSS vector for this vulnerability indicates an Attack Vector (AV) of {cve:vulnerability.attack_vector} and User Interaction (UI) requirement of {cve:vulnerability.user_interaction}, meaning it is {cve:vulnerability.exploitability_summary}.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 142,
+        "source_line": 143,
         "count_limit": 10
     },
     {
@@ -391,7 +389,7 @@
         "comment": "4.9",
         "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: In a CTI graph database, how does an 'elastic' sub-graph relationship affect the matching of adversary activity threads?\n\nAnswer: An elastic sub-graph allows for matching events in general phase order even when there are intervening events or time gaps. This is reflected in the {ack:attack-pattern.subtechnique-of} and {ack:campaign.uses} relationships, where a campaign may use multiple techniques over an extended period.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 147,
+        "source_line": 148,
         "count_limit": 10
     },
     {
@@ -399,7 +397,7 @@
         "comment": "A.1",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Describe the CAPEC attack pattern {cap:CAPEC.name} (CAPEC-{cap.id}).\n\nAnswer: {cap.name} (CAPEC-{cap.id}) is about:{cap.description}. It is a {cap.Abstraction}-level pattern (status: {cap.status}) with {cap.severity} severity and a {cap.likelihood_of_attack} likelihood.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 154,
+        "source_line": 155,
         "count_limit": 10
     },
     {
@@ -407,7 +405,7 @@
         "comment": "A.2",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Summarize how {cap:CAPEC.name} (CAPEC-{cap.id}) is executed and what conditions enable it.\n\nAnswer: Execution flow: {cap.description}. Key prerequisites: {cap.prerequisites}. Attacker requirements: {cap.skills_required}.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 156,
+        "source_line": 157,
         "count_limit": 10
     },
     {
@@ -415,7 +413,7 @@
         "comment": "A.3",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: What signs indicate {cap:CAPEC.name} (CAPEC-{cap.id}) and what are its typical impacts?\n\nAnswer: Indicators include {cap.indicators}. Consequences: {cap.consequences}, typically causing {cap.severity} impact on system confidentiality, integrity, or availability.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 158,
+        "source_line": 159,
         "count_limit": 10
     },
     {
@@ -423,7 +421,7 @@
         "comment": "A.4",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Explain how to detect and mitigate {cap:CAPEC.name} (CAPEC-{cap.id}).\n\nAnswer: Detect via {cap.indicators} and execution behaviors: ({cap.description}). Mitigate through the following: {cap.mitigations}. Also, control these enabling prerequisite conditions: {cap.prerequisites}.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 160,
+        "source_line": 161,
         "count_limit": 10
     },
     {
@@ -431,7 +429,7 @@
         "comment": "A.5",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Provide real-world examples of {cap:CAPEC.name} (CAPEC-{cap.id}) in action.\n\nAnswer: Examples: {cap.example_instances}. These cases align with the execution flow  <desc>{cap.execution_flow}</desc>. This pattern exploits CWE {cwe:cap.weakness.name} (ID {cwe:id}). The pattern description is the following: ${cap.description}.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 162,
+        "source_line": 163,
         "count_limit": 10,
         "schema": "CAPEC - Weakness - cwe:CWE"
     },
@@ -440,7 +438,7 @@
         "comment": "A.6",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: How is {cap:CAPEC.name} (CAPEC-{cap.id}) related to other weaknesses or taxonomies?\n\nAnswer: {cap.name} connects to weakness {cap.weakness.name} (ID {cwe:id}) and has a taxonomy mapping to ATT&CK technique {ap:cap.map_ap.name} (ID {ap.id}), reflecting the shared principles in the attack pattern description {cap.description}.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 166,
+        "source_line": 167,
         "count_limit": 10,
         "schema": " capec:CAPEC - weakness - cwe:Weakness"
     },
@@ -449,7 +447,7 @@
         "comment": "A.7",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Write a short analyst note for responding to {cap:CAPEC.name} (CAPEC-{cap.id}).\n\nAnswer: 1. Detect via indicators: {cap.indicators}; 2. Contain affected systems; 3. Apply mitigations: {cap.mitigations}; 4. Triage using {cap.example_instances} and weakness ID {cap.weakness.id} for contextual linking.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 169,
+        "source_line": 170,
         "count_limit": 10,
         "schema": " capec:CAPEC - weakness - cwe:Weakness"
     },
@@ -458,7 +456,7 @@
         "comment": "S.1",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Assess remediation urgency for KEV {kev:KEV.vulnerabilityName} in {kev.product}.\n\nAnswer: KEV {kev.vulnerabilityName}) maps to CVE {kev.cveID} and it is actively exploited in {kev.product} (vendor project {kev.vendorProject}). Recommended action: {kev.requiredAction}.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 173,
+        "source_line": 174,
         "count_limit": 10
     },
     {
@@ -466,15 +464,15 @@
         "comment": "S.2",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Explain the significance of the due date for KEV {kev:KEV.cveID}, {kev.vulnerabilityName}.\n\nAnswer: Patching for {kev.cveID} ({kev.vulnerabilityName}) is due by {kev.dueDate}. Meeting this deadline ensures compliance with BOD 22-01 and reduces exposure to active exploitation.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 175,
+        "source_line": 176,
         "count_limit": 10
     },
     {
         "shortname": "S.3",
         "comment": "S.3",
-        "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Identify if KEV{kev:KVE.vulnerabilityName} in {kev.product} is associated with ransomware activity.\n\nAnswer: KEV {kev.vulnerabilityName} maps to CVE {kev.cveID} in product {kev.product} and it has {kev.knownRansomwareCampaignUse} ransomware association. Immediate patching is recommended for higher risk.",
+        "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Identify if KEV{kev:KEV.vulnerabilityName} in {kev.product} is associated with ransomware activity.\n\nAnswer: KEV {kev.vulnerabilityName} maps to CVE {kev.cveID} in product {kev.product} and it has {kev.knownRansomwareCampaignUse} ransomware association. Immediate patching is recommended for higher risk.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 177,
+        "source_line": 178,
         "count_limit": 10
     },
     {
@@ -482,7 +480,7 @@
         "comment": "S.4",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Summarize the technical impact and mitigation for KEV {kev:KEV.vulnerabilityName} in product {kev.product}.\n\nAnswer: KEV {kev.vulnerabilityName} maps to CVE {kev.cveID} and it causes: {kev.shortDescription}. Mitigation: {kev.requiredAction}. Listed in KEV - patch immediately.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 179,
+        "source_line": 180,
         "count_limit": 10
     },
     {
@@ -490,15 +488,15 @@
         "comment": "S.5",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Generate a detailed patching advisory for KEV {kev:KEV.vulnerabilityName} in product {kev.product} from {kev.vendorProject}.\n\nAnswer: Vulnerability {kev.vulnerabilityName} maps to CVE  {kev.cveID} and it is explied in {kev.product} (vendor {kev.vendorProject}) is actively exploited. Detailed advisory: {kev.shortDescription}. Recommended action: {kev.requiredAction} before {kev.dueDate}.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 181,
+        "source_line": 182,
         "count_limit": 10
     },
     {
         "shortname": "S.6",
         "comment": "S.6",
-        "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Provide a technical summary for KEV {kev:KEV.vulnerabilityName} (CVE {kev.cveID}) in {kve:KVE.product} from {kev.vendorProject}, including its weakness type.\n\nAnswer: KEV {kve:KVE.vulnerabilityName} with CVE ID {kev.cveID} affects {kev.product} (from {kev.vendorProject}). Description: {kev.shortDescription}. Mitigation: {kev.requiredAction}. Weakness(es) involved: {kev:cwes}.",
+        "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Provide a technical summary for KEV {kev:KEV.vulnerabilityName} (CVE {kev.cveID}) in {kev..product} from {kev.vendorProject}, including its weakness type.\n\nAnswer: KEV {kev.vulnerabilityName} with CVE ID {kev.cveID} affects {kev.product} (from {kev.vendorProject}). Description: {kev.shortDescription}. Mitigation: {kev.requiredAction}. Weakness(es) involved: {kev:cwes}.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 183,
+        "source_line": 184,
         "count_limit": 10
     },
     {
@@ -506,7 +504,7 @@
         "comment": "S.7",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: For an organization running {kev:KEV.product}, what is the recommended immediate action to mitigate the risk of exploitation for KEV {kev.cveID}?\n\nAnswer: For systems running {kev.product} from {kev.vendorProject} affected by KEV {kev.cveID} ({kev.vulnerabilityName}), the recommended immediate action is: {kev.requiredAction}.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 185,
+        "source_line": 186,
         "count_limit": 10
     },
     {
@@ -514,7 +512,7 @@
         "comment": "S.8",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: What is a weakness that lead up to known exploited vulnerability {kev:KEV.vulnerabilityName} associated with CVE {kev.cveID}?\n\nAnswer: known exploited vulnerability {kev:KEV.vulnerabilityName} originated with weakness CWE {cwe:kev.known_exploit<Weakness.name} with CWE ID {cwe.id}, described as follows: {cwe.description}",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 187,
+        "source_line": 188,
         "count_limit": 10,
         "schema": "Weakness - known_exploit - KEV"
     },
@@ -523,7 +521,7 @@
         "comment": "V.1",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: What is CVE {cve:CVE.id}, describe the vulnerability and the potential impact.\n\nAnswer: CVE {cve.id}, titled {cve.title}, describes a vulnerability like this: {cve.descriptions}. The potential impact is {cve.cvss3_1_vector}.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 192,
+        "source_line": 193,
         "count_limit": 10
     },
     {
@@ -531,7 +529,7 @@
         "comment": "V.2",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Consider the description of a CVE record:{cve:CVE.descriptions}. Predict its CVE ID and title.\n\nAnswer: The CVE ID for the vulnerability described above is {cve.id} and its title is {cve.title}.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 194,
+        "source_line": 195,
         "count_limit": 10
     },
     {
@@ -539,7 +537,7 @@
         "comment": "V.3",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Given the {cve:CVE.id}, predict its CVSS severity score.\n\nAnswer: The severity score for the vulnerability described in {cve.id} is {cve.cvss3_1_baseScore}.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 196,
+        "source_line": 197,
         "count_limit": 10
     },
     {
@@ -547,7 +545,7 @@
         "comment": "V.4",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Consider the CVE described as follows: {cve:CVE.descriptions} Predict the CVE\u2019s severity score.\n\nAnswer: The severity score for the vulnerability described above is {cve.cvss3_1_baseScore}.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 198,
+        "source_line": 199,
         "count_limit": 10
     },
     {
@@ -555,7 +553,7 @@
         "comment": "V.5",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Identify the CVSS v3.1 Attack Vector (AV) for the vulnerability described as follows: {cve:CVE.descriptions}\n\nAnswer: Attack Vector: {cve.cvss3_1_attack_vector}",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 200,
+        "source_line": 201,
         "count_limit": 10
     },
     {
@@ -563,7 +561,7 @@
         "comment": "W.1",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Explain the weakness {cwe:Weakness.name} (CWE-{cwe.id}).\n\nAnswer: {cwe.name} (CWE-{cwe.id}) occurs when {cwe.description}. In detail: {cwe.extended_description}",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 203,
+        "source_line": 204,
         "count_limit": 10
     },
     {
@@ -571,7 +569,7 @@
         "comment": "W.2",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: What is the root cause of {cwe:Weakness.name} (CWE-{cwe.id})?\n\nAnswer: The root cause of {cwe.name} is often found in functional areas like {cwe.functional_area}. In essence, {cwe.description}.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 205,
+        "source_line": 206,
         "count_limit": 10
     },
     {
@@ -579,7 +577,7 @@
         "comment": "W.3",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Describe how attackers could exploit {cwe:Weakness.name} (CWE-{cwe.id}) and what the consequences are.\n\nAnswer: Attackers exploit {cwe.name} with a likelihood of exploit of {cwe.Likelihood_Of_Exploit}, which can lead to observed examples such as CVE-{cve.id}, described as {cve:cwe.observed_as.description}",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 207,
+        "source_line": 208,
         "count_limit": 10,
         "schema": "Weakness - observed_as - CVE"
     },
@@ -588,7 +586,7 @@
         "comment": "W.4",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: How can {cwe:Weakness.name} (CWE-{cwe.id}) be detected and prevented?\n\nAnswer: {cwe.name} can be detected with this detection method: {cwe.detected_by.method} To prevent it, apply this mitigation during the {mit.phase} mitigation phase as follows: {mit:cwe.mitigated_by.description}",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 210,
+        "source_line": 211,
         "count_limit": 10,
         "schema": "cwe:Weakness - mitigated_by - cwe:Mitigation, cwe:Weakness - mitigated_by - cwe:Mitigation"
     },
@@ -597,7 +595,7 @@
         "comment": "W.5",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: At what stage is {cwe:Weakness.name} (CWE-{cwe.id}) usually introduced, and why?\n\nAnswer: {cwe.name} is commonly introduced during the {cwe.modes_of_introduction} specific lifecycle phases, as detailed in its description: {cwe.description}",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 213,
+        "source_line": 214,
         "count_limit": 10
     },
     {
@@ -605,7 +603,7 @@
         "comment": "W.6",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: List related weaknesses or attack patterns associated with {cwe:Weakness.name} (CWE-{cwe.id}).\n\nAnswer: {cwe.name} is the child of related weaknesses like CWE-{cwe.ChildOf.id} and CAPEC attack pattern {capec:cwe.related_attack_pattern.name} (CAPEC-{capec.id}.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 215,
+        "source_line": 216,
         "count_limit": 10,
         "schema": "cwe:Weakness - related_attack_pattern - capec:CAPEC"
     },
@@ -614,7 +612,7 @@
         "comment": "W.7",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Give an example CVE related to {cwe:Weakness.name} (CWE-{cwe.id}) and explain its cause.\n\nAnswer: Examples include CVE {cve:cwe.observed_as.id}. It demonstrates weakness CWE-{cwe.id} by doing the following: {cve.description}.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 218,
+        "source_line": 219,
         "count_limit": 10
     },
     {
@@ -622,7 +620,7 @@
         "comment": "P.1",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Assess the exploitability likelihood for {epss:EPSS.id} with EPSS {epss:EPSS.epss} and percentile {epss:EPSS.percentile}.\n\nAnswer: {epss:EPSS.id} has an EPSS of {epss:EPSS.epss} ({epss:EPSS.percentile} percentile). Higher percentiles indicate greater exploit likelihood; prioritize remediation accordingly.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 221,
+        "source_line": 222,
         "count_limit": 10
     },
     {
@@ -630,7 +628,7 @@
         "comment": "P.2",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Compare EPSS {epss:EPSS.epss} and CVSS {cve:CVE.cvss3_1} for {cve.id} and explain prioritization.\n\nAnswer: {cve:CVE.id}: EPSS {epss:EPSS.epss} reflects exploitation likelihood; CVSS {cve:CVE.cvss3_1} indicates technical severity. High EPSS + high CVSS \u2192 urgent remediation; low EPSS + high CVSS \u2192 moderate priority.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 223,
+        "source_line": 224,
         "count_limit": 10
     },
     {
@@ -638,7 +636,7 @@
         "comment": "P.3",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Explain how EPSS {epss:EPSS.epss} for {cve:CVE.id} on {epss:EPSS.date} informs short-term patching.\n\nAnswer: On {epss:EPSS.date}, {cve:CVE.id} had EPSS {epss:EPSS.epss}, indicating probability of near-term exploitation. Rising scores suggest prioritizing immediate remediation.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 225,
+        "source_line": 226,
         "count_limit": 10
     },
     {
@@ -646,7 +644,7 @@
         "comment": "P.4",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Given {cve:CVE.id} with EPSS {epss:EPSS.epss} and another CVE with lower EPSS, which to prioritize?\n\nAnswer: {cve:CVE.id} with higher EPSS {epss:EPSS.epss} should be prioritized due to greater real-world exploit likelihood.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 227,
+        "source_line": 228,
         "count_limit": 10
     },
     {
@@ -654,7 +652,7 @@
         "comment": "P.5",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Correlate EPSS {epss:EPSS.epss} for {cve:CVE.id} with external threat intelligence.\n\nAnswer: EPSS {epss:EPSS.epss} for {cve:CVE.id} suggests exploit likelihood; combine with KEV, exploit DB, or campaign data to confirm real-world risk.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 229,
+        "source_line": 230,
         "count_limit": 10
     },
     {
@@ -662,7 +660,7 @@
         "comment": "P.6",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Provide an EPSS-based risk assessment for {cve:CVE.id}, with CVSS {cve:CVE.cvss3_1}.\n\nAnswer: {cve:CVE.id}: EPSS {epss:EPSS.epss} ({epss:EPSS.epss} chance of near-term exploitation), CVSS {cve:CVE.cvss3_1} indicates severity. Use both plus context to prioritize remediation.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 231,
+        "source_line": 232,
         "count_limit": 10
     },
     {
@@ -670,7 +668,7 @@
         "comment": "E.1",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Describe how defenders can detect or disrupt the technique {ap:attack-pattern.name} ({ap.id}).\n\nAnswer: Technique {ap.name} ({ap.id}) can be detected using this method: {ap.x_mitre_detection}. It can be disrupted through mitigations, such as {coa:ap.mitigates<.name}.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 234,
+        "source_line": 235,
         "count_limit": 10,
         "summary": "{coa:ap.mitigates<|description}",
         "schema": "course-of-action - mitigates - attack-pattern"
@@ -680,7 +678,7 @@
         "comment": "E.2",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Explain how deception can be applied against the technique {ap:attack-pattern.name} ({ap.id}).\n\nAnswer: Deception can be applied against {ap.name} by deploying decoy systems or false targets that attract and expose adversary actions as defined in {ap.x_mitre_detection[_!=\"\"]}.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 239,
+        "source_line": 240,
         "count_limit": 10
     },
     {
@@ -688,7 +686,7 @@
         "comment": "E.3",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Which ATT&CK tactic does the technique {ap:attack-pattern.name} ({ap.id}) belong to, and how does it aid active defense?\n\nAnswer: {ap.name} is part of the {ap.achieves.name} tactic. Understanding this helps defenders anticipate adversary goals and plan proactive defenses.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 241,
+        "source_line": 242,
         "count_limit": 10,
         "schema": "attack-pattern - achieves - x-mitre-tactic"
     },
@@ -697,7 +695,7 @@
         "comment": "E.4",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: How can SOC teams use these data source: {ap:attack-pattern.x_mitre_data_sources}, to detect and engage adversaries performing {ap.name} ({ap.id})?\n\nAnswer: SOC teams can monitor {ap.x_mitre_data_sources} for behaviors linked to {ap.name} to engage or study attackers, using these detections methods: {ap.x_mitre_detection}",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 244,
+        "source_line": 245,
         "count_limit": 10
     },
     {
@@ -705,7 +703,7 @@
         "comment": "E.5",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Describe how defenders can mislead adversaries using {ap:attack-pattern.name} ({ap.id}).\n\nAnswer: Defenders can mislead adversaries by introducing deceptive configurations or honeypots that mimic assets targeted by {ap.name}, supported by detections methods as follows: {ap.x_mitre_detection}",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 246,
+        "source_line": 247,
         "count_limit": 10
     },
     {
@@ -713,7 +711,7 @@
         "comment": "E.6",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Explain how the group {is:intrusion-set.name} (ID {is.id}) uses {ap:is.uses>attack-pattern.name} (ID {ap.id}) and how defenders can counter it.\n\nAnswer: The group {is.name} employs {ap.name} to achieve its objectives. Defenders can counter it through targeted deception and course of action {coa:ap.mitigates<.name}, as follows: {coa.description}",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 248,
+        "source_line": 249,
         "count_limit": 10,
         "summary": "{is.uses>attack-pattern|description} {ap.mitigates<|description}",
         "schema": "intrusion-set - uses - attack-pattern, course-of-action - mitigates - attack-pattern"
@@ -723,7 +721,7 @@
         "comment": "M.1",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Explain the Technique {ap:attack-pattern.name} ID ({ap.id}) and how it works.\n\nAnswer: This the description of the {ap.name} (ID {ap.id}): {ap.description}",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 252,
+        "source_line": 253,
         "count_limit": 10
     },
     {
@@ -731,7 +729,7 @@
         "comment": "M.2",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: What are the defensive measures against teachnique with ID {ap:attack-pattern.id}?\n\nAnswer: One set of defensive measures against attack pattern {ap.name} (ID {ap.id}) is the following: {coa:ap.mitigatates<.description}.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 254,
+        "source_line": 255,
         "count_limit": 10,
         "summary": "{coa.mitigates|description}",
         "schema": "course-of-action - mitigates - attack-pattern"
@@ -741,7 +739,7 @@
         "comment": "M.3",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Which threat actors commonly use technique (attack-pattern) {ap:is.uses>attack-pattern.name} (ID {ap.id})?\n\nAnswer: Threat actor {is:intrusion-set.name} is known to use technique {ap.name} (ID {ap.id}) in its campaigns.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 258,
+        "source_line": 259,
         "count_limit": 10,
         "summary": "{is.uses>attack-pattern|description}",
         "schema": "malware - uses - attack-pattern"
@@ -751,16 +749,16 @@
         "comment": "M.4",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: What subtechniques fall under attack pattern  {ap:sub.subtechnique-of.id}?\n\nAnswer: Subtechniques of {ap.name} (ID {ap.id}) include {sub:attack-pattern.name}.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 262,
+        "source_line": 263,
         "count_limit": 10,
         "schema": "attack-pattern - subtechnique-of - attack-pattern"
     },
     {
         "shortname": "M.5",
         "comment": "M.5",
-        "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: How can attack pattern {ap:attack-pattern.id} be detected in network traffic?\n\nAnswer: {ap.name} (ID {ap.id}) can be detected in network traffic by monitoring {ap.x_mitre_data_sources[?^\"Network Traffic\"} in the following way: {ap.x_mitre_detection}",
+        "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: How can attack pattern {ap:attack-pattern.id} be detected in network traffic?\n\nAnswer: {ap.name} (ID {ap.id}) can be detected in network traffic by monitoring {ap.x_mitre_data_sources[?~\"Network Traffic\"} in the following way: {ap.x_mitre_detection}",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 265,
+        "source_line": 266,
         "count_limit": 10
     },
     {
@@ -768,7 +766,7 @@
         "comment": "M.6",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Which platforms are affected by attack pattern {ap:attack-pattern.id}, {ap.name}?\n\nAnswer: {ap.name} (ID {ap.id}) is applicable to {ap.x_mitre_platforms} environments.",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 267,
+        "source_line": 268,
         "count_limit": 10
     },
     {
@@ -776,8 +774,17 @@
         "comment": "M.7",
         "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Which tactic does technique {ap:attack-pattern.id} support?\n\nAnswer: {ap.name} (ID {ap.id}) supports tactic {ap.achieves.name} tactic, which focuses on {tac:ap.achieves.description}",
         "source_file": "templates-aligned-2026-02.docx",
-        "source_line": 269,
+        "source_line": 270,
         "count_limit": 10,
         "schema": "attack-pattern - achieves - x-mitre-tactic"
+    },
+    {
+        "shortname": "longpath.1",
+        "comment": "longpath.1",
+        "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Which technique and malware are used by both intrusion sets {is1:intrusion-set.name} (ID {is1.id}) and {is2:intrusion-set.name} (ID {is2.id})? Recommend a course of action for that technique.\n\nAnswer: An attack pattern used by both intrusion sets {is1.name} and {is2.name} is {ap1:is1.uses>attack-pattern.name} (ID {ap1.id}). Both intrusion sets rely on malware {m1:is1.uses>malware.name} (ID {m1.id}). A course of action recommended for that technique is {coa1:ap1.mitigates<.name}.  <* this is an 'invisible' constraint: {ap2:is2.uses>attack-pattern.id} {force  ap1.id=ap2.id}  {m2:is2.uses>malware.id} {force m1.id=m2.id} {force m1.uses.id=ap1.id} {ap1.id[_=\"T1027.013\"]} *>",
+        "source_file": "templates-aligned-2026-02.docx",
+        "source_line": 277,
+        "count_limit": 10,
+        "schema": "course-of-action - mitigates - attack-pattern, intrusion-set - uses - malware, malware - uses - attack-pattern"
     }
 ]

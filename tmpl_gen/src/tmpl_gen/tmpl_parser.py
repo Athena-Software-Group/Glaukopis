@@ -74,7 +74,7 @@ listsection: "[" (TEXTSECTION | qfield)* "]"
 
 svalue:       QSTRING | BOOL | NUMBER | OTHERVALUE
 
-RELOP:        "=" | "!=" | "<" | "<=" | ">=" | ">"
+RELOP:        "=" | "!=" | "<" | "<=" | ">=" | ">" | "~"
  
 INVCONTENT:   /(?:[^*{]|\*(?!>))+/
 QFTEXT:       /(?:[^}])+/
@@ -169,35 +169,21 @@ QSTRING_SQ:   /(?:[^'\\]|\\.)*/
     return grammar
 
 
-
-def test_parsing():
-    tmpl_parser = Lark(make_templ_grammar2, start='template')
     
-    templates = [
-    #     "abcd efgh {qf1} ijk {qf2} lmn",
-    #     "ab<*inv section1 *> cd<*inv section1*>de",
-    #     "<* inv section {qf1} inv text*>",
-    #     "abcd <* inv1 {qf1} inv2 ijk {qf2} *> efg {qf3} hij {qf4} jk",
-    #     "ab [ cde {qf1}{qf2} fgh] <*{qf3}ij*>",
-    #     "ab[cde{qf1}fgh{qf2}ij]kl",
-        # r"ab {var1:scope#cd.ef.gh[?]} {var1:scope#cd.ef.gh[*='abcd']} ",
-        r"{var1:scope#cd.ef.gh[*='abcd']}", 
-        r'{var1:scope#cd.ef.gh[*="abcd"]}', 
-        # "ab {v1:cd.ef.gh}",
-    ]    
+def tool_tmplgen(options:dict):
+    """
+    Called from other scripts.
+    Runs a generation session from template JSON file.
+    """
+    tmplgen = TmplGenNeo4j(options)
 
+    lst_tmplobjs = tmplgen.load_templates(options["templates_file"])
+    (count_gen, count_fail) = tmplgen.generate(lst_tmplobjs, do_print=False)
     
-    for i, tmpltxt in enumerate(templates):
-        print(f"\n{i+1:02} {tmpltxt}")
-        tree = tmpl_parser.parse(tmpltxt)
-        
-        print("======================")
-        # print(tree)
-        print(tree2str(tree))
-        print("\n======================")
-        print(tree.pretty())
-        # print(tree)
-        
+    print(f"Generated: {count_gen}  failed: {count_fail}")
+    print(f"Results saved in directory {options['results_dir']}")
+
+
 
 def tree2str(tree:Tree, indent=2, previndent=0):
     crtindent = previndent + indent
@@ -659,7 +645,7 @@ class TmplParseTransf(lark.Transformer):
                 if othertype == "":
                     et_lst = [et for (r, et) in self.sch_adj_dct[ntype] if dir_rel == r]
                     if len(et_lst) == 0:
-                        raise ValueError(f"TmplParseTransf.map_rel ERROR: no relationship found: {ntype}-[:{dir_rel}]->*")
+                        raise ValueError(f"TmplParseTransf.map_rel ERROR: no property or relationship found: {ntype}-[:{dir_rel}]->*")
                     elif len(et_lst) > 1:
                         raise ValueError(f"TmplParseTransf.map_rel ERROR: {ntype}-[:{dir_rel}]->* defined for types \
                                          {','.join(et_lst)}; ambiguous")
@@ -673,7 +659,7 @@ class TmplParseTransf(lark.Transformer):
                         raise ValueError(f"TmplParseTransf.map_rel ERROR: {ntype}-[:{dir_rel}]->{othertype} is undefined")                        
                                          
         except Exception as exc:
-            err = f"TmplParseTransf.map_rel ERROR: got exception:\n\n{exc}\nfor type {ntype}, relstr: {relstr}"
+            err = f"TmplParseTransf.map_rel ERROR: got exception: {exc}  for type {ntype}, relstr: {relstr}"
             # print(err)
             raise ValueError(err)
 
@@ -782,7 +768,7 @@ class TmplParseTransf(lark.Transformer):
             len1 = len(dct_unbound)
 
             if len0 == len1:
-                err = "TmplParseTransf.template ERROR: unbound variables: " + ", ".join(sorted(still_unbound_vars))
+                err = "TmplParseTransf.template ERROR: unbound variables (possible: from undefined node type): " + ", ".join(sorted(still_unbound_vars))
                 # print("\n", err)
                 raise ValueError(err)
                     
@@ -1148,8 +1134,8 @@ class TmplGenNeo4j:
 
         # lst_prs_results  is a list of TextSection alternating with Pathspec objects
         # a Pathspec objects embeds a list of [Nodespec, [Relspec, Nodespec]*, Propspec(prop)]
-        # Each Pathspec will be replaced by nd.prop where nd is the last node on the
-        # Pathspec list and prop is the last (and only) property.
+        # Each Pathspec will be replaced by nd.prop where nd is the target node on the
+        # Pathspec chain and prop is the last (and only) property.
         
         # specific config param overrides global specific limits:
         # max. number of strings generated per template
@@ -1159,7 +1145,7 @@ class TmplGenNeo4j:
         # check if command line option override for count_limit:
         if self.options.get("count_max", -1) >= 0:
             limit = self.options["count_max"]
-            # print("OVERRIDE COUNT_MAX", limit)
+            # print("process_template: OVERRIDE COUNT_MAX", limit)
             
         lst_match = list()
         lst_return = list()             # used to build the RETURN params       
@@ -1208,7 +1194,7 @@ class TmplGenNeo4j:
                     lst_text_struct.append(pr)
                     
                 case InvsecStart():
-                    # must copy star/stop elements since they will control emission of text for result
+                    # must copy start/stop elements since they will control emission of text for result
                     lst_text_struct.append(pr)
                     is_invisible_counter += 1
                     
@@ -1249,7 +1235,7 @@ class TmplGenNeo4j:
         
         str_order = self.qry_make_order(tmplobj)
         
-        match_query = f"MATCH {str_match}\n{str_where}{str_with}\nLIMIT {limit}\nRETURN DISTINCT {str_return}\n{str_order}"
+        match_query = f"MATCH {str_match}     {str_where}{str_with}     LIMIT {limit}     RETURN DISTINCT {str_return}     {str_order}"
 
         if self.gencfg.get("verbose", 0) > 0:
             print(f"\nMatch query:\n{match_query}\n")
@@ -1292,6 +1278,7 @@ class TmplGenNeo4j:
             gentext = "".join(lst_vals)
             lst_gentext.append(gentext)
         return [lst_gentext, match_query]
+
         
     def gen_edge_info(self, ps:Pathspec) -> str:
         """
@@ -1369,7 +1356,10 @@ class TmplGenNeo4j:
         
         if s.quantif == "_":
             # for non-list property. E.g. t.version[_='2.1']
-            term = f"({vn}.{propspec.propname}{op}{val})" 
+            if s.op == "~":   # case-insensitive substring check:
+                term = f"(toLower({vn}.{propspec.propname}) CONTAINS toLower({val}))" 
+            else:
+                term = f"({vn}.{propspec.propname}{op}{val})" 
         elif s.quantif == "index":
             # case t.x_mitre_platforms[0]; nothing to do here
             term = def_ret
@@ -1379,14 +1369,21 @@ class TmplGenNeo4j:
                 term = f"({val} IN {vn}.{propspec.propname})" 
             elif s.op == "!=": # value not in list
                 term = f"(NOT {val} IN {vn}.{propspec.propname})" 
+            elif s.op == "~": # case inseneitive subbstring check
+                propvar = f"_{propspec.propname}"
+                term = f"ANY({propvar} IN {vn}.{propspec.propname} WHERE \
+                    toLower({propvar}) CONTAINS toLower({val}))"                
             else:
                 raise ValueError(f"TmplGenNeo4j.make_subscript_term ERROR: invalid subscript operator in {propspec}")
         elif s.quantif == "*":
-            # for non-list property. E.g. t.version[?='2.1'] or t.version[?!='2.1'] 
             if s.op == "=":
                 term = f"ALL(x IN {vn}.{propspec.propname} WHERE x={val})" 
             elif s.op == "!=":
                 term = f"NONE(x IN {vn}.{propspec.propname} WHERE x={val})" 
+            elif s.op == "~": # case inseneitive subbstring check
+                propvar = f"_{propspec.propname}"
+                term = f"ALL({propvar} IN {vn}.{propspec.propname} WHERE \
+                    toLower({propvar}) CONTAINS toLower({val}))"                
             else:
                 raise ValueError(f"TmplGenNeo4j.make_subscript_term ERROR: invalid subscript operator in {propspec}")
         else:
@@ -1443,7 +1440,7 @@ class TmplGenNeo4j:
 
     def qry_make_modif_constraints(self, lst_prs_results:list) -> str:
         """
-        Creates WHERE conjunctive terms for modified constraints if present in the
+        Creates WHERE conjunctive terms for 'modified' date constraints if present in the
         generation configuration dictionary.
         
         CAUTION: These contraints are not checked agaist other datetime constraints in subscript operations.
@@ -1847,6 +1844,36 @@ def make_graph_test():
     return g
 
 
+def test_parsing():
+    tmpl_parser = Lark(make_templ_grammar2, start='template')
+    
+    templates = [
+    #     "abcd efgh {qf1} ijk {qf2} lmn",
+    #     "ab<*inv section1 *> cd<*inv section1*>de",
+    #     "<* inv section {qf1} inv text*>",
+    #     "abcd <* inv1 {qf1} inv2 ijk {qf2} *> efg {qf3} hij {qf4} jk",
+    #     "ab [ cde {qf1}{qf2} fgh] <*{qf3}ij*>",
+    #     "ab[cde{qf1}fgh{qf2}ij]kl",
+        # r"ab {var1:scope#cd.ef.gh[?]} {var1:scope#cd.ef.gh[*='abcd']} ",
+        r"{var1:scope#cd.ef.gh[*='abcd']}", 
+        r'{var1:scope#cd.ef.gh[*="abcd"]}', 
+        # "ab {v1:cd.ef.gh}",
+    ]    
+
+    
+    for i, tmpltxt in enumerate(templates):
+        print(f"\n{i+1:02} {tmpltxt}")
+        tree = tmpl_parser.parse(tmpltxt)
+        
+        print("======================")
+        # print(tree)
+        print(tree2str(tree))
+        print("\n======================")
+        print(tree.pretty())
+        # print(tree)
+        
+
+
 def test_parsing_neo4j():
     templates = make_templates_dummy()
     
@@ -2063,20 +2090,6 @@ def test_tmplgen():
     
     print(f"Generated: {count_gen}  Failed {count_fail}")
         
-    
-def tool_tmplgen(options:dict):
-    """
-    Called from other scripts.
-    Runs a generation session from template JSON file.
-    """
-    tmplgen = TmplGenNeo4j(options)
-
-    lst_tmplobjs = tmplgen.load_templates(options["templates_file"])
-    (count_gen, count_fail) = tmplgen.generate(lst_tmplobjs, do_print=False)
-    
-    print(f"Generated: {count_gen}  Failed {count_fail}")
-
-
 # test_parsing()
 # test_tree_traversals()
 # test_parsing_dummy()

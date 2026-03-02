@@ -1,0 +1,19 @@
+{
+    "gen_conf_file": "gencfg_default_neo4j.json",
+    "templates_file": "templates-aligned-2026-02.json",
+    "results_dir": "results-dir",
+    "template_object": {
+        "shortname": "4.3a",
+        "comment": "4.3a",
+        "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: How does an adversary use {ap:attack-pattern.name} (ID {ap.id}) to achieve elevated execution  on {ap.x_mitre_platforms} systems?\n\nAnswer: Adversaries implement {ap.name} by doing the following: {ap.description[_~\"elevated execution\"]}. In corporate environments, this often involves manipulating {ap.x_mitre_platforms} components to force the loading of malicious binaries.",
+        "source_file": "templates-aligned-2026-02.docx",
+        "source_line": 98,
+        "count_limit": 10
+    },
+    "timestamp": "2026-03-02T14:05:53.271Z",
+    "template_index": 30,
+    "generation_time": 0.0181119441986084,
+    "generated_count": 0,
+    "query": "MATCH (ap:`attack-pattern`)     WHERE (toLower(ap.description) CONTAINS toLower(\"elevated execution\"))     LIMIT 2000     RETURN DISTINCT ap.name, ap.mitre_id, ap.x_mitre_platforms, ap.description     ORDER BY rand()",
+    "generated_strings": []
+}

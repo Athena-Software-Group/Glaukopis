@@ -11,6 +11,7 @@ SOURCE_DIR="results-dir"
 # output alpaca formatted json file: USE THIS FILE FOR FINE TUNING
 ALPACA_JSON="ift_data_alpaca.json"
 
+# IMPORTANT:
 # Uncomment next line to override triple instruction field with new one:
 # OVERRIDE_INSTRUCTIONS="You are a CTI expert who gives precise and concise answers."
 # Comment previous line to keep the existing instruction field.
