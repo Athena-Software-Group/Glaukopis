@@ -6,26 +6,46 @@ how to test the CTI DB schema by generating triples from a template files.
 
 ## Installation:
 
-Run this command from directory tmpl_gen/ to install the Sophia/tmpl_gen repository + dependencies, if not done yet:
-```python
+Run this command from directory [`tmpl_gen/`](../)` to install the **Sophia** repository + dependencies, if not done yet:
+```bash
 pip install -e .
 ```
 
 ## Prerequisites:
 
 ### Neo4j Database Connection Parameters
-Edit file tmpl_gen/schema-test/neo4j-local-config.json with your neo4j DB parameters.
+Edit file [`tmpl_gen/schema-test/neo4j-local-config.json`](neo4j-local-config.json) with your neo4j DB connection parameters.
 
 ### Triple Generation Configuration
-Edit file tmpl_gen/schema-test/gencfg_default_neo4j.json as needed, but with caution.
+Edit file [`tmpl_gen/schema-test/gencfg_default_neo4j.json`](gencfg_default_neo4j.json) if needed, but with caution. This file is maintained by the peple writing the templates and it should not be a concern for the team developing the CTI DB. It may be updated when the actual DB schema changes to add aliases, for instance.
+
 
 ## CTI DB Schema Test Workflow
 
+1. Run this script to create test templates from a target schema XLSX file:
+
+```bash
+./make-test-templates.sh
+```
+
+2. Run this script to create triples from the generated templates (from step 1):
+
+```bash
+./test-CTI-schema.sh
+```
+
+
+
 ### Input
-File docs/cti-schema-table-2026-02.xlsx : summarizes the TARGET (desired) schema info in table format from docs/CTI-DB-Schema-details.docx. This file is edited by hand.
+
+File [`docs/cti-schema-table-2026-02.xlsx`](../docs/cti-schema-table-2026-02.xlsx) : summarizes the TARGET (desired) schema info in table format from [`docs/CTI-DB-Schema-details.docx`(../docs/CTI-DB-Schema-details.docx). This spreadsheet  file is edited by hand.
+
 
 ### Output
-File results_test_triples/_results-report.json : triple generation results from template file. For each template (each node/property and each relationship it lists the number of generated triples:
+
+New directory [`results_test_triples`](results_test_triples) holds results json file and one json file per successful template.
+
+File [`results_test_triples/_results-report.json`](results_test_triples/_results-report.json) has  triple generation results from the test template file. For each template (each node/property and each relationship it lists the number of generated triples:
 
 - a positive number in case of success: e.g. "generated_count": 10
 
@@ -35,7 +55,9 @@ File results_test_triples/_results-report.json : triple generation results from 
 
 - files results_test_triples/t_nnnn_startnode.relationship.endnode.json for triples with successful relationships.
 
-*** USE THE **results_test_triples/_results-report.json** FILE TO DEBUG THE CTI DB populate_neo4j CODE.  ***
+
+> [!IMPORTANT]
+> USE THE **results_test_triples/_results-report.json** FILE TO DEBUG THE CTI DB populate_neo4j CODE.  
 
 The "results" list contains one report object for each test template.
 
@@ -79,6 +101,7 @@ ck_spec_version}",
 
 
 ### Generate Templates from Target Schema 
+
 Script tmpl_gen/schema-test/make-test-templates.sh extracts the target schema information and generates two JSON files with templates:
 
 ```bash

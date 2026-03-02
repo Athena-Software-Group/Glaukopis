@@ -15,12 +15,13 @@ The library includes:
 - Functions for traversing graph structures.  
 - Neo4j access helpers.  
 - General-purpose helper functions for template-based text generation
+- CTI DB schema test tools in the [`schema-test/`](schema-test) directory. Read the [doc](schema-test/README.md).
 
 The command-line tool `iftgen.py` demonstrates end-to-end text generation against a Neo4j ATT&CK demo graph.
 
 ---
 
-## Directory Structure
+## Directory Structure (OUTDATED now)
 
 ```
 tmpl_gen/
@@ -66,6 +67,7 @@ A running neo4j server with the proper ASG CTI database is necessary for text ge
 ---
 
 ## Using the Text Generation Tool `iftgen.py`
+
 The script `iftgen.py` provides a demonstration of template-based generation using a Neo4j ATT&CK dataset.
 
 Show help:
