@@ -6,7 +6,7 @@ how to test the CTI DB schema by generating triples from a template files.
 
 ## Installation:
 
-Run this command from directory [`tmpl_gen/`](../)` to install the **Sophia** repository + dependencies, if not done yet:
+Run this command from directory [`tmpl_gen/`](../) to install the **Sophia** repository + dependencies, if not done yet:
 ```bash
 pip install -e .
 ```
@@ -43,9 +43,9 @@ File [`docs/cti-schema-table-2026-02.xlsx`](../docs/cti-schema-table-2026-02.xls
 
 ### Output
 
-New directory [`results_test_triples`](results_test_triples) holds results json file and one json file per successful template.
+New directory `results_test_triples` holds results json file and one json file per successful template.
 
-File [`results_test_triples/_results-report.json`](results_test_triples/_results-report.json) has  triple generation results from the test template file. For each template (each node/property and each relationship it lists the number of generated triples:
+File `results_test_triples/_results-report.json has reports for triple generations using templates from the test template file in a **result** object. For each template (each node/property and each relationship it lists the number of generated triples:
 
 - a positive number in case of success: e.g. "generated_count": 10
 
@@ -102,7 +102,7 @@ ck_spec_version}",
 
 ### Generate Templates from Target Schema 
 
-Script tmpl_gen/schema-test/make-test-templates.sh extracts the target schema information and generates two JSON files with templates:
+Script [`tmpl_gen/schema-test/make-test-templates.sh`](make-test-templates.sh) extracts the target schema information and generates two JSON files with templates:
 
 ```bash
 ./make-test-templates.sh
@@ -122,13 +122,14 @@ Saved 290 test templates to file test-templates+props.json
 
 The program creates these two files:
 
-1.  test-templates.json : templates files with one template per node and one per relationship. This file has about 76 templates for the 02/2026 target schema. It is useful to check if all nodes and relationships from the target schema exist in the CTI BD schema. This is a smaller file and it is recommended for high level schema check for nodes and relationships only.
+1.  **test-templates.json** : templates files with one template per node and one per relationship. This file has about 76 templates for the 02/2026 target schema. It is useful to check if all nodes and relationships from the target schema exist in the CTI BD schema. This is a smaller file and it is recommended for high level schema check for nodes and relationships only.
 
-2.  test-templates+props.json : templates files with one template per *node property* and one per relationship. This file has about 290 templates for the 02/2026 target schema. It is useful to check if all nodes *AND properties*, and relationships from the target schema exist in the CTI BD schema. In case a node is missing from the neo4j DB, all templates referring its properties/relationships will cause errors. 
+2.  **test-templates+props.json** : templates files with one template per *node property* and one per relationship. This file has about 290 templates for the 02/2026 target schema. It is useful to check if all nodes *AND properties*, and relationships from the target schema exist in the CTI BD schema. In case a node is missing from the neo4j DB, all templates referring its properties/relationships will cause errors. 
 
 
 ### Test CTI DB Schema: Generate Triples from Templates
-Script tmpl_gen/schema-test/test-CTI-schema.sh uses program tmpl_gen/scripts/iftgen.py to generate IFT triples from one of the template test files: test-templates.json or test-templates+props.json, depending if you want to check the schema just for nodes and relationships or you want to check also for all node properties.
+
+Script [`tmpl_gen/schema-test/test-CTI-schema.sh`](test-CTI-schema.sh) uses program tmpl_gen/scripts/iftgen.py to generate IFT triples from one of the template test files: test-templates.json or test-templates+props.json, depending if you want to check the schema just for nodes and relationships or you want to check also for all node properties.
 
 
 ```bash
