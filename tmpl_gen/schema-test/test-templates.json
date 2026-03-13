@@ -1,0 +1,458 @@
+[
+    {
+        "shortname": "attack-pattern.created",
+        "comment": "Node property test for attack-pattern.created",
+        "text": "Node property test for attack-pattern.created: {attack-pattern.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "campaign.aliases",
+        "comment": "Node property test for campaign.aliases",
+        "text": "Node property test for campaign.aliases: {campaign.aliases}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CAPEC.consequences",
+        "comment": "Node property test for CAPEC.consequences",
+        "text": "Node property test for CAPEC.consequences: {CAPEC.consequences}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "course-of-action.created",
+        "comment": "Node property test for course-of-action.created",
+        "text": "Node property test for course-of-action.created: {course-of-action.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CVE.affected",
+        "comment": "Node property test for CVE.affected",
+        "text": "Node property test for CVE.affected: {CVE.affected}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Detection_Method.description",
+        "comment": "Node property test for Detection_Method.description",
+        "text": "Node property test for Detection_Method.description: {Detection_Method.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Mitigation.description",
+        "comment": "Node property test for Mitigation.description",
+        "text": "Node property test for Mitigation.description: {Mitigation.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Observed_Example.description",
+        "comment": "Node property test for Observed_Example.description ; Comment: needed?? ",
+        "text": "Node property test for Observed_Example.description ; Comment: needed?? : {Observed_Example.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Weakness.abstraction",
+        "comment": "Node property test for Weakness.abstraction",
+        "text": "Node property test for Weakness.abstraction: {Weakness.abstraction}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "activity.description",
+        "comment": "Node property test for activity.description",
+        "text": "Node property test for activity.description: {activity.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "approach.description",
+        "comment": "Node property test for approach.description",
+        "text": "Node property test for approach.description: {approach.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack_tactic.id",
+        "comment": "Node property test for attack_tactic.id",
+        "text": "Node property test for attack_tactic.id: {attack_tactic.id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack_technique.id",
+        "comment": "Node property test for attack_technique.id",
+        "text": "Node property test for attack_technique.id: {attack_technique.id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "goal.description",
+        "comment": "Node property test for goal.description",
+        "text": "Node property test for goal.description: {goal.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "reference.id",
+        "comment": "Node property test for reference.id",
+        "text": "Node property test for reference.id: {reference.id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "vulnerability.eav",
+        "comment": "Node property test for vulnerability.eav",
+        "text": "Node property test for vulnerability.eav: {vulnerability.eav}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "intrusion-set.aliases",
+        "comment": "Node property test for intrusion-set.aliases",
+        "text": "Node property test for intrusion-set.aliases: {intrusion-set.aliases}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "KEV.cveID",
+        "comment": "Node property test for KEV.cveID",
+        "text": "Node property test for KEV.cveID: {KEV.cveID}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "malware.created",
+        "comment": "Node property test for malware.created",
+        "text": "Node property test for malware.created: {malware.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "tool.created",
+        "comment": "Node property test for tool.created",
+        "text": "Node property test for tool.created: {tool.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-analytic.created",
+        "comment": "Node property test for x-mitre-analytic.created",
+        "text": "Node property test for x-mitre-analytic.created: {x-mitre-analytic.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-data-component.created",
+        "comment": "Node property test for x-mitre-data-component.created",
+        "text": "Node property test for x-mitre-data-component.created: {x-mitre-data-component.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-data-source.created",
+        "comment": "Node property test for x-mitre-data-source.created",
+        "text": "Node property test for x-mitre-data-source.created: {x-mitre-data-source.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-detection-strategy.created",
+        "comment": "Node property test for x-mitre-detection-strategy.created",
+        "text": "Node property test for x-mitre-detection-strategy.created: {x-mitre-detection-strategy.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-tactic.created",
+        "comment": "Node property test for x-mitre-tactic.created",
+        "text": "Node property test for x-mitre-tactic.created: {x-mitre-tactic.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack-pattern.achieves>x-mitre-tactic",
+        "comment": "Relationship test for attack-pattern.achieves>x-mitre-tactic",
+        "text": "Relationship test for attack-pattern.achieves>x-mitre-tactic: {attack-pattern.achieves>x-mitre-tactic.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack-pattern.revoked-by>attack-pattern",
+        "comment": "Relationship test for attack-pattern.revoked-by>attack-pattern",
+        "text": "Relationship test for attack-pattern.revoked-by>attack-pattern: {attack-pattern.revoked-by>attack-pattern.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack-pattern.subtechnique-of>attack-pattern",
+        "comment": "Relationship test for attack-pattern.subtechnique-of>attack-pattern",
+        "text": "Relationship test for attack-pattern.subtechnique-of>attack-pattern: {attack-pattern.subtechnique-of>attack-pattern.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "campaign.attributed-to>intrusion-set",
+        "comment": "Relationship test for campaign.attributed-to>intrusion-set",
+        "text": "Relationship test for campaign.attributed-to>intrusion-set: {campaign.attributed-to>intrusion-set.aliases}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "campaign.uses>attack-pattern",
+        "comment": "Relationship test for campaign.uses>attack-pattern",
+        "text": "Relationship test for campaign.uses>attack-pattern: {campaign.uses>attack-pattern.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "campaign.uses>malware",
+        "comment": "Relationship test for campaign.uses>malware",
+        "text": "Relationship test for campaign.uses>malware: {campaign.uses>malware.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "campaign.uses>tool",
+        "comment": "Relationship test for campaign.uses>tool",
+        "text": "Relationship test for campaign.uses>tool: {campaign.uses>tool.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CAPEC.CanPrecede>CAPEC",
+        "comment": "Relationship test for CAPEC.CanPrecede>CAPEC",
+        "text": "Relationship test for CAPEC.CanPrecede>CAPEC: {CAPEC.CanPrecede>CAPEC.consequences}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CAPEC.ChildOf>CAPEC",
+        "comment": "Relationship test for CAPEC.ChildOf>CAPEC",
+        "text": "Relationship test for CAPEC.ChildOf>CAPEC: {CAPEC.ChildOf>CAPEC.consequences}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CAPEC.PeerOf>CAPEC",
+        "comment": "Relationship test for CAPEC.PeerOf>CAPEC",
+        "text": "Relationship test for CAPEC.PeerOf>CAPEC: {CAPEC.PeerOf>CAPEC.consequences}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CAPEC.exploits>Weakness",
+        "comment": "Relationship test for CAPEC.exploits>Weakness",
+        "text": "Relationship test for CAPEC.exploits>Weakness: {CAPEC.exploits>Weakness.abstraction}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CAPEC.map_ap>attack-pattern",
+        "comment": "Relationship test for CAPEC.map_ap>attack-pattern",
+        "text": "Relationship test for CAPEC.map_ap>attack-pattern: {CAPEC.map_ap>attack-pattern.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "course-of-action.mitigates>attack-pattern",
+        "comment": "Relationship test for course-of-action.mitigates>attack-pattern",
+        "text": "Relationship test for course-of-action.mitigates>attack-pattern: {course-of-action.mitigates>attack-pattern.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CVE.impacts>CAPEC",
+        "comment": "Relationship test for CVE.impacts>CAPEC",
+        "text": "Relationship test for CVE.impacts>CAPEC: {CVE.impacts>CAPEC.consequences}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CVE.known_exploit>KEV",
+        "comment": "Relationship test for CVE.known_exploit>KEV",
+        "text": "Relationship test for CVE.known_exploit>KEV: {CVE.known_exploit>KEV.cveID}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CVE.problemType>Weakness",
+        "comment": "Relationship test for CVE.problemType>Weakness",
+        "text": "Relationship test for CVE.problemType>Weakness: {CVE.problemType>Weakness.abstraction}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Weakness.CanPrecede>Weakness",
+        "comment": "Relationship test for Weakness.CanPrecede>Weakness",
+        "text": "Relationship test for Weakness.CanPrecede>Weakness: {Weakness.CanPrecede>Weakness.abstraction}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Weakness.ChildOf>Weakness",
+        "comment": "Relationship test for Weakness.ChildOf>Weakness",
+        "text": "Relationship test for Weakness.ChildOf>Weakness: {Weakness.ChildOf>Weakness.abstraction}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Weakness.PeerOf>Weakness",
+        "comment": "Relationship test for Weakness.PeerOf>Weakness",
+        "text": "Relationship test for Weakness.PeerOf>Weakness: {Weakness.PeerOf>Weakness.abstraction}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Weakness.detected_by>Detection_Method",
+        "comment": "Relationship test for Weakness.detected_by>Detection_Method",
+        "text": "Relationship test for Weakness.detected_by>Detection_Method: {Weakness.detected_by>Detection_Method.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Weakness.known_exploit>KEV",
+        "comment": "Relationship test for Weakness.known_exploit>KEV",
+        "text": "Relationship test for Weakness.known_exploit>KEV: {Weakness.known_exploit>KEV.cveID}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Weakness.mitigated_by>Mitigation",
+        "comment": "Relationship test for Weakness.mitigated_by>Mitigation",
+        "text": "Relationship test for Weakness.mitigated_by>Mitigation: {Weakness.mitigated_by>Mitigation.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Weakness.observed_as>CVE",
+        "comment": "Relationship test for Weakness.observed_as>CVE",
+        "text": "Relationship test for Weakness.observed_as>CVE: {Weakness.observed_as>CVE.affected}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Weakness.related_attack_pattern>CAPEC",
+        "comment": "Relationship test for Weakness.related_attack_pattern>CAPEC",
+        "text": "Relationship test for Weakness.related_attack_pattern>CAPEC: {Weakness.related_attack_pattern>CAPEC.consequences}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "activity.for_vulnerability>vulnerability",
+        "comment": "Relationship test for activity.for_vulnerability>vulnerability",
+        "text": "Relationship test for activity.for_vulnerability>vulnerability: {activity.for_vulnerability>vulnerability.eav}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "activity.has_approach>approach",
+        "comment": "Relationship test for activity.has_approach>approach",
+        "text": "Relationship test for activity.has_approach>approach: {activity.has_approach>approach.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "activity.has_goal>goal",
+        "comment": "Relationship test for activity.has_goal>goal",
+        "text": "Relationship test for activity.has_goal>goal: {activity.has_goal>goal.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "activity.uses_technique>attack_technique",
+        "comment": "Relationship test for activity.uses_technique>attack_technique",
+        "text": "Relationship test for activity.uses_technique>attack_technique: {activity.uses_technique>attack_technique.id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "activity.with_tactic>attack_tactic",
+        "comment": "Relationship test for activity.with_tactic>attack_tactic",
+        "text": "Relationship test for activity.with_tactic>attack_tactic: {activity.with_tactic>attack_tactic.id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "approach.for_activity>activity",
+        "comment": "Relationship test for approach.for_activity>activity",
+        "text": "Relationship test for approach.for_activity>activity: {approach.for_activity>activity.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "approach.with_goal>goal",
+        "comment": "Relationship test for approach.with_goal>goal",
+        "text": "Relationship test for approach.with_goal>goal: {approach.with_goal>goal.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack_tactic.maps_ack>x-mitre-tactic",
+        "comment": "Relationship test for attack_tactic.maps_ack>x-mitre-tactic",
+        "text": "Relationship test for attack_tactic.maps_ack>x-mitre-tactic: {attack_tactic.maps_ack>x-mitre-tactic.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack_technique.achieves>x-mitre-tactic",
+        "comment": "Relationship test for attack_technique.achieves>x-mitre-tactic",
+        "text": "Relationship test for attack_technique.achieves>x-mitre-tactic: {attack_technique.achieves>x-mitre-tactic.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack_technique.for_activity>activity",
+        "comment": "Relationship test for attack_technique.for_activity>activity",
+        "text": "Relationship test for attack_technique.for_activity>activity: {attack_technique.for_activity>activity.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack_technique.for_vulnerability>vulnerability",
+        "comment": "Relationship test for attack_technique.for_vulnerability>vulnerability",
+        "text": "Relationship test for attack_technique.for_vulnerability>vulnerability: {attack_technique.for_vulnerability>vulnerability.eav}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack_technique.maps_ap>attack-pattern",
+        "comment": "Relationship test for attack_technique.maps_ap>attack-pattern",
+        "text": "Relationship test for attack_technique.maps_ap>attack-pattern: {attack_technique.maps_ap>attack-pattern.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "goal.for_approach>approach",
+        "comment": "Relationship test for goal.for_approach>approach",
+        "text": "Relationship test for goal.for_approach>approach: {goal.for_approach>approach.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "vulnerability.with_tactic>attack_tactic",
+        "comment": "Relationship test for vulnerability.with_tactic>attack_tactic",
+        "text": "Relationship test for vulnerability.with_tactic>attack_tactic: {vulnerability.with_tactic>attack_tactic.id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "intrusion-set.revoked-by>intrusion-set",
+        "comment": "Relationship test for intrusion-set.revoked-by>intrusion-set",
+        "text": "Relationship test for intrusion-set.revoked-by>intrusion-set: {intrusion-set.revoked-by>intrusion-set.aliases}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "intrusion-set.uses>attack-pattern",
+        "comment": "Relationship test for intrusion-set.uses>attack-pattern",
+        "text": "Relationship test for intrusion-set.uses>attack-pattern: {intrusion-set.uses>attack-pattern.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "intrusion-set.uses>malware",
+        "comment": "Relationship test for intrusion-set.uses>malware",
+        "text": "Relationship test for intrusion-set.uses>malware: {intrusion-set.uses>malware.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "intrusion-set.uses>tool",
+        "comment": "Relationship test for intrusion-set.uses>tool",
+        "text": "Relationship test for intrusion-set.uses>tool: {intrusion-set.uses>tool.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "malware.revoked-by>malware",
+        "comment": "Relationship test for malware.revoked-by>malware",
+        "text": "Relationship test for malware.revoked-by>malware: {malware.revoked-by>malware.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "malware.revoked-by>tool",
+        "comment": "Relationship test for malware.revoked-by>tool",
+        "text": "Relationship test for malware.revoked-by>tool: {malware.revoked-by>tool.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "malware.uses>attack-pattern",
+        "comment": "Relationship test for malware.uses>attack-pattern",
+        "text": "Relationship test for malware.uses>attack-pattern: {malware.uses>attack-pattern.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "tool.uses>attack-pattern",
+        "comment": "Relationship test for tool.uses>attack-pattern",
+        "text": "Relationship test for tool.uses>attack-pattern: {tool.uses>attack-pattern.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-analytic.requires_data>x-mitre-data-component",
+        "comment": "Relationship test for x-mitre-analytic.requires_data>x-mitre-data-component",
+        "text": "Relationship test for x-mitre-analytic.requires_data>x-mitre-data-component: {x-mitre-analytic.requires_data>x-mitre-data-component.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-data-component.belongs_to>x-mitre-data-source",
+        "comment": "Relationship test for x-mitre-data-component.belongs_to>x-mitre-data-source; Comment: deprecated",
+        "text": "Relationship test for x-mitre-data-component.belongs_to>x-mitre-data-source; Comment: deprecated: {x-mitre-data-component.belongs_to>x-mitre-data-source.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-data-component.detects>attack-pattern",
+        "comment": "Relationship test for x-mitre-data-component.detects>attack-pattern; Comment: deprecated",
+        "text": "Relationship test for x-mitre-data-component.detects>attack-pattern; Comment: deprecated: {x-mitre-data-component.detects>attack-pattern.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-detection-strategy.detects>attack-pattern",
+        "comment": "Relationship test for x-mitre-detection-strategy.detects>attack-pattern",
+        "text": "Relationship test for x-mitre-detection-strategy.detects>attack-pattern: {x-mitre-detection-strategy.detects>attack-pattern.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-detection-strategy.implemented_by>x-mitre-analytic",
+        "comment": "Relationship test for x-mitre-detection-strategy.implemented_by>x-mitre-analytic",
+        "text": "Relationship test for x-mitre-detection-strategy.implemented_by>x-mitre-analytic: {x-mitre-detection-strategy.implemented_by>x-mitre-analytic.created}",
+        "count_limit": 10
+    }
+]

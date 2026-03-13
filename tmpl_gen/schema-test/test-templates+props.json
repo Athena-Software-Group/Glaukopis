@@ -1,0 +1,1748 @@
+[
+    {
+        "shortname": "attack-pattern.created",
+        "comment": "Node property test for attack-pattern.created",
+        "text": "Node property test for attack-pattern.created: {attack-pattern.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack-pattern.description",
+        "comment": "Node property test for attack-pattern.description",
+        "text": "Node property test for attack-pattern.description: {attack-pattern.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack-pattern.external_references",
+        "comment": "Node property test for attack-pattern.external_references",
+        "text": "Node property test for attack-pattern.external_references: {attack-pattern.external_references}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack-pattern.id",
+        "comment": "Node property test for attack-pattern.id",
+        "text": "Node property test for attack-pattern.id: {attack-pattern.id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack-pattern.kill_chain_phases",
+        "comment": "Node property test for attack-pattern.kill_chain_phases",
+        "text": "Node property test for attack-pattern.kill_chain_phases: {attack-pattern.kill_chain_phases}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack-pattern.mitre_id",
+        "comment": "Node property test for attack-pattern.mitre_id",
+        "text": "Node property test for attack-pattern.mitre_id: {attack-pattern.mitre_id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack-pattern.modified",
+        "comment": "Node property test for attack-pattern.modified",
+        "text": "Node property test for attack-pattern.modified: {attack-pattern.modified}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack-pattern.name",
+        "comment": "Node property test for attack-pattern.name",
+        "text": "Node property test for attack-pattern.name: {attack-pattern.name}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack-pattern.type",
+        "comment": "Node property test for attack-pattern.type",
+        "text": "Node property test for attack-pattern.type: {attack-pattern.type}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack-pattern.x_mitre_attack_spec_version",
+        "comment": "Node property test for attack-pattern.x_mitre_attack_spec_version",
+        "text": "Node property test for attack-pattern.x_mitre_attack_spec_version: {attack-pattern.x_mitre_attack_spec_version}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack-pattern.x_mitre_data_sources",
+        "comment": "Node property test for attack-pattern.x_mitre_data_sources",
+        "text": "Node property test for attack-pattern.x_mitre_data_sources: {attack-pattern.x_mitre_data_sources}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack-pattern.x_mitre_deprecated",
+        "comment": "Node property test for attack-pattern.x_mitre_deprecated",
+        "text": "Node property test for attack-pattern.x_mitre_deprecated: {attack-pattern.x_mitre_deprecated}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack-pattern.x_mitre_detection",
+        "comment": "Node property test for attack-pattern.x_mitre_detection",
+        "text": "Node property test for attack-pattern.x_mitre_detection: {attack-pattern.x_mitre_detection}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack-pattern.x_mitre_domains",
+        "comment": "Node property test for attack-pattern.x_mitre_domains",
+        "text": "Node property test for attack-pattern.x_mitre_domains: {attack-pattern.x_mitre_domains}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack-pattern.x_mitre_is_subtechnique",
+        "comment": "Node property test for attack-pattern.x_mitre_is_subtechnique",
+        "text": "Node property test for attack-pattern.x_mitre_is_subtechnique: {attack-pattern.x_mitre_is_subtechnique}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack-pattern.x_mitre_platforms",
+        "comment": "Node property test for attack-pattern.x_mitre_platforms",
+        "text": "Node property test for attack-pattern.x_mitre_platforms: {attack-pattern.x_mitre_platforms}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack-pattern.x_mitre_version",
+        "comment": "Node property test for attack-pattern.x_mitre_version",
+        "text": "Node property test for attack-pattern.x_mitre_version: {attack-pattern.x_mitre_version}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "campaign.aliases",
+        "comment": "Node property test for campaign.aliases",
+        "text": "Node property test for campaign.aliases: {campaign.aliases}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "campaign.created",
+        "comment": "Node property test for campaign.created",
+        "text": "Node property test for campaign.created: {campaign.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "campaign.description",
+        "comment": "Node property test for campaign.description",
+        "text": "Node property test for campaign.description: {campaign.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "campaign.external_references",
+        "comment": "Node property test for campaign.external_references",
+        "text": "Node property test for campaign.external_references: {campaign.external_references}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "campaign.first_seen",
+        "comment": "Node property test for campaign.first_seen",
+        "text": "Node property test for campaign.first_seen: {campaign.first_seen}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "campaign.id",
+        "comment": "Node property test for campaign.id",
+        "text": "Node property test for campaign.id: {campaign.id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "campaign.last_seen",
+        "comment": "Node property test for campaign.last_seen",
+        "text": "Node property test for campaign.last_seen: {campaign.last_seen}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "campaign.mitre_id",
+        "comment": "Node property test for campaign.mitre_id",
+        "text": "Node property test for campaign.mitre_id: {campaign.mitre_id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "campaign.modified",
+        "comment": "Node property test for campaign.modified",
+        "text": "Node property test for campaign.modified: {campaign.modified}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "campaign.name",
+        "comment": "Node property test for campaign.name",
+        "text": "Node property test for campaign.name: {campaign.name}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "campaign.revoked",
+        "comment": "Node property test for campaign.revoked",
+        "text": "Node property test for campaign.revoked: {campaign.revoked}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "campaign.type",
+        "comment": "Node property test for campaign.type",
+        "text": "Node property test for campaign.type: {campaign.type}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "campaign.x_mitre_attack_spec_version",
+        "comment": "Node property test for campaign.x_mitre_attack_spec_version",
+        "text": "Node property test for campaign.x_mitre_attack_spec_version: {campaign.x_mitre_attack_spec_version}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "campaign.x_mitre_deprecated",
+        "comment": "Node property test for campaign.x_mitre_deprecated",
+        "text": "Node property test for campaign.x_mitre_deprecated: {campaign.x_mitre_deprecated}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "campaign.x_mitre_domains",
+        "comment": "Node property test for campaign.x_mitre_domains",
+        "text": "Node property test for campaign.x_mitre_domains: {campaign.x_mitre_domains}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "campaign.x_mitre_version",
+        "comment": "Node property test for campaign.x_mitre_version",
+        "text": "Node property test for campaign.x_mitre_version: {campaign.x_mitre_version}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CAPEC.consequences",
+        "comment": "Node property test for CAPEC.consequences",
+        "text": "Node property test for CAPEC.consequences: {CAPEC.consequences}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CAPEC.created",
+        "comment": "Node property test for CAPEC.created",
+        "text": "Node property test for CAPEC.created: {CAPEC.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CAPEC.description",
+        "comment": "Node property test for CAPEC.description",
+        "text": "Node property test for CAPEC.description: {CAPEC.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CAPEC.example_instances",
+        "comment": "Node property test for CAPEC.example_instances",
+        "text": "Node property test for CAPEC.example_instances: {CAPEC.example_instances}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CAPEC.execution_flow",
+        "comment": "Node property test for CAPEC.execution_flow",
+        "text": "Node property test for CAPEC.execution_flow: {CAPEC.execution_flow}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CAPEC.id",
+        "comment": "Node property test for CAPEC.id",
+        "text": "Node property test for CAPEC.id: {CAPEC.id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CAPEC.likelihood_of_attack",
+        "comment": "Node property test for CAPEC.likelihood_of_attack",
+        "text": "Node property test for CAPEC.likelihood_of_attack: {CAPEC.likelihood_of_attack}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CAPEC.mitigations",
+        "comment": "Node property test for CAPEC.mitigations",
+        "text": "Node property test for CAPEC.mitigations: {CAPEC.mitigations}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CAPEC.modified",
+        "comment": "Node property test for CAPEC.modified",
+        "text": "Node property test for CAPEC.modified: {CAPEC.modified}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CAPEC.name",
+        "comment": "Node property test for CAPEC.name",
+        "text": "Node property test for CAPEC.name: {CAPEC.name}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CAPEC.prerequisites",
+        "comment": "Node property test for CAPEC.prerequisites",
+        "text": "Node property test for CAPEC.prerequisites: {CAPEC.prerequisites}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CAPEC.severity",
+        "comment": "Node property test for CAPEC.severity",
+        "text": "Node property test for CAPEC.severity: {CAPEC.severity}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CAPEC.skills_required",
+        "comment": "Node property test for CAPEC.skills_required",
+        "text": "Node property test for CAPEC.skills_required: {CAPEC.skills_required}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CAPEC.status",
+        "comment": "Node property test for CAPEC.status",
+        "text": "Node property test for CAPEC.status: {CAPEC.status}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "course-of-action.created",
+        "comment": "Node property test for course-of-action.created",
+        "text": "Node property test for course-of-action.created: {course-of-action.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "course-of-action.description",
+        "comment": "Node property test for course-of-action.description",
+        "text": "Node property test for course-of-action.description: {course-of-action.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "course-of-action.external_references",
+        "comment": "Node property test for course-of-action.external_references",
+        "text": "Node property test for course-of-action.external_references: {course-of-action.external_references}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "course-of-action.id",
+        "comment": "Node property test for course-of-action.id",
+        "text": "Node property test for course-of-action.id: {course-of-action.id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "course-of-action.mitre_id",
+        "comment": "Node property test for course-of-action.mitre_id",
+        "text": "Node property test for course-of-action.mitre_id: {course-of-action.mitre_id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "course-of-action.modified",
+        "comment": "Node property test for course-of-action.modified",
+        "text": "Node property test for course-of-action.modified: {course-of-action.modified}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "course-of-action.name",
+        "comment": "Node property test for course-of-action.name",
+        "text": "Node property test for course-of-action.name: {course-of-action.name}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "course-of-action.spec_version",
+        "comment": "Node property test for course-of-action.spec_version",
+        "text": "Node property test for course-of-action.spec_version: {course-of-action.spec_version}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "course-of-action.type",
+        "comment": "Node property test for course-of-action.type",
+        "text": "Node property test for course-of-action.type: {course-of-action.type}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "course-of-action.x_mitre_attack_spec_version",
+        "comment": "Node property test for course-of-action.x_mitre_attack_spec_version",
+        "text": "Node property test for course-of-action.x_mitre_attack_spec_version: {course-of-action.x_mitre_attack_spec_version}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "course-of-action.x_mitre_attack_spec_version",
+        "comment": "Node property test for course-of-action.x_mitre_attack_spec_version",
+        "text": "Node property test for course-of-action.x_mitre_attack_spec_version: {course-of-action.x_mitre_attack_spec_version}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "course-of-action.x_mitre_deprecated",
+        "comment": "Node property test for course-of-action.x_mitre_deprecated",
+        "text": "Node property test for course-of-action.x_mitre_deprecated: {course-of-action.x_mitre_deprecated}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "course-of-action.x_mitre_domains",
+        "comment": "Node property test for course-of-action.x_mitre_domains",
+        "text": "Node property test for course-of-action.x_mitre_domains: {course-of-action.x_mitre_domains}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "course-of-action.x_mitre_modified_by_ref",
+        "comment": "Node property test for course-of-action.x_mitre_modified_by_ref",
+        "text": "Node property test for course-of-action.x_mitre_modified_by_ref: {course-of-action.x_mitre_modified_by_ref}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "course-of-action.x_mitre_version",
+        "comment": "Node property test for course-of-action.x_mitre_version",
+        "text": "Node property test for course-of-action.x_mitre_version: {course-of-action.x_mitre_version}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CVE.affected",
+        "comment": "Node property test for CVE.affected",
+        "text": "Node property test for CVE.affected: {CVE.affected}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CVE.affected_products",
+        "comment": "Node property test for CVE.affected_products",
+        "text": "Node property test for CVE.affected_products: {CVE.affected_products}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CVE.created",
+        "comment": "Node property test for CVE.created",
+        "text": "Node property test for CVE.created: {CVE.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CVE.cvss3_1_attackVector",
+        "comment": "Node property test for CVE.cvss3_1_attackVector",
+        "text": "Node property test for CVE.cvss3_1_attackVector: {CVE.cvss3_1_attackVector}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CVE.cvss3_1_baseScore",
+        "comment": "Node property test for CVE.cvss3_1_baseScore",
+        "text": "Node property test for CVE.cvss3_1_baseScore: {CVE.cvss3_1_baseScore}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CVE.cvss3_1_vectorString",
+        "comment": "Node property test for CVE.cvss3_1_vectorString",
+        "text": "Node property test for CVE.cvss3_1_vectorString: {CVE.cvss3_1_vectorString}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CVE.descriptions",
+        "comment": "Node property test for CVE.descriptions",
+        "text": "Node property test for CVE.descriptions: {CVE.descriptions}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CVE.exploits",
+        "comment": "Node property test for CVE.exploits",
+        "text": "Node property test for CVE.exploits: {CVE.exploits}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CVE.id",
+        "comment": "Node property test for CVE.id",
+        "text": "Node property test for CVE.id: {CVE.id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CVE.metrics",
+        "comment": "Node property test for CVE.metrics",
+        "text": "Node property test for CVE.metrics: {CVE.metrics}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CVE.modified",
+        "comment": "Node property test for CVE.modified",
+        "text": "Node property test for CVE.modified: {CVE.modified}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CVE.title",
+        "comment": "Node property test for CVE.title",
+        "text": "Node property test for CVE.title: {CVE.title}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CVE.workarounds",
+        "comment": "Node property test for CVE.workarounds",
+        "text": "Node property test for CVE.workarounds: {CVE.workarounds}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Detection_Method.description",
+        "comment": "Node property test for Detection_Method.description",
+        "text": "Node property test for Detection_Method.description: {Detection_Method.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Detection_Method.effectiveness",
+        "comment": "Node property test for Detection_Method.effectiveness",
+        "text": "Node property test for Detection_Method.effectiveness: {Detection_Method.effectiveness}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Detection_Method.id",
+        "comment": "Node property test for Detection_Method.id",
+        "text": "Node property test for Detection_Method.id: {Detection_Method.id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Detection_Method.method",
+        "comment": "Node property test for Detection_Method.method",
+        "text": "Node property test for Detection_Method.method: {Detection_Method.method}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Mitigation.description",
+        "comment": "Node property test for Mitigation.description",
+        "text": "Node property test for Mitigation.description: {Mitigation.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Mitigation.effectiveness",
+        "comment": "Node property test for Mitigation.effectiveness",
+        "text": "Node property test for Mitigation.effectiveness: {Mitigation.effectiveness}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Mitigation.id",
+        "comment": "Node property test for Mitigation.id",
+        "text": "Node property test for Mitigation.id: {Mitigation.id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Mitigation.phase",
+        "comment": "Node property test for Mitigation.phase",
+        "text": "Node property test for Mitigation.phase: {Mitigation.phase}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Mitigation.strategy",
+        "comment": "Node property test for Mitigation.strategy",
+        "text": "Node property test for Mitigation.strategy: {Mitigation.strategy}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Observed_Example.description",
+        "comment": "Node property test for Observed_Example.description ; Comment: needed?? ",
+        "text": "Node property test for Observed_Example.description ; Comment: needed?? : {Observed_Example.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Observed_Example.link",
+        "comment": "Node property test for Observed_Example.link ; Comment: needed?? ",
+        "text": "Node property test for Observed_Example.link ; Comment: needed?? : {Observed_Example.link}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Observed_Example.reference",
+        "comment": "Node property test for Observed_Example.reference ; Comment: needed?? ",
+        "text": "Node property test for Observed_Example.reference ; Comment: needed?? : {Observed_Example.reference}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Weakness.abstraction",
+        "comment": "Node property test for Weakness.abstraction",
+        "text": "Node property test for Weakness.abstraction: {Weakness.abstraction}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Weakness.diagram",
+        "comment": "Node property test for Weakness.diagram",
+        "text": "Node property test for Weakness.diagram: {Weakness.diagram}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Weakness.extended_description",
+        "comment": "Node property test for Weakness.extended_description",
+        "text": "Node property test for Weakness.extended_description: {Weakness.extended_description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Weakness.functional_areas",
+        "comment": "Node property test for Weakness.functional_areas",
+        "text": "Node property test for Weakness.functional_areas: {Weakness.functional_areas}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Weakness.id",
+        "comment": "Node property test for Weakness.id",
+        "text": "Node property test for Weakness.id: {Weakness.id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Weakness.likelihood_of_exploit",
+        "comment": "Node property test for Weakness.likelihood_of_exploit",
+        "text": "Node property test for Weakness.likelihood_of_exploit: {Weakness.likelihood_of_exploit}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Weakness.modes_of_introduction",
+        "comment": "Node property test for Weakness.modes_of_introduction",
+        "text": "Node property test for Weakness.modes_of_introduction: {Weakness.modes_of_introduction}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Weakness.modified",
+        "comment": "Node property test for Weakness.modified",
+        "text": "Node property test for Weakness.modified: {Weakness.modified}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Weakness.name",
+        "comment": "Node property test for Weakness.name",
+        "text": "Node property test for Weakness.name: {Weakness.name}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Weakness.phases",
+        "comment": "Node property test for Weakness.phases",
+        "text": "Node property test for Weakness.phases: {Weakness.phases}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "activity.description",
+        "comment": "Node property test for activity.description",
+        "text": "Node property test for activity.description: {activity.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "activity.id",
+        "comment": "Node property test for activity.id",
+        "text": "Node property test for activity.id: {activity.id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "activity.long_description",
+        "comment": "Node property test for activity.long_description",
+        "text": "Node property test for activity.long_description: {activity.long_description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "activity.name",
+        "comment": "Node property test for activity.name",
+        "text": "Node property test for activity.name: {activity.name}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "activity.type",
+        "comment": "Node property test for activity.type",
+        "text": "Node property test for activity.type: {activity.type}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "approach.description",
+        "comment": "Node property test for approach.description",
+        "text": "Node property test for approach.description: {approach.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "approach.id",
+        "comment": "Node property test for approach.id",
+        "text": "Node property test for approach.id: {approach.id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "approach.long_description",
+        "comment": "Node property test for approach.long_description",
+        "text": "Node property test for approach.long_description: {approach.long_description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "approach.name",
+        "comment": "Node property test for approach.name",
+        "text": "Node property test for approach.name: {approach.name}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "approach.type",
+        "comment": "Node property test for approach.type",
+        "text": "Node property test for approach.type: {approach.type}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack_tactic.id",
+        "comment": "Node property test for attack_tactic.id",
+        "text": "Node property test for attack_tactic.id: {attack_tactic.id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack_tactic.name",
+        "comment": "Node property test for attack_tactic.name",
+        "text": "Node property test for attack_tactic.name: {attack_tactic.name}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack_technique.id",
+        "comment": "Node property test for attack_technique.id",
+        "text": "Node property test for attack_technique.id: {attack_technique.id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack_technique.name",
+        "comment": "Node property test for attack_technique.name",
+        "text": "Node property test for attack_technique.name: {attack_technique.name}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "goal.description",
+        "comment": "Node property test for goal.description",
+        "text": "Node property test for goal.description: {goal.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "goal.id",
+        "comment": "Node property test for goal.id",
+        "text": "Node property test for goal.id: {goal.id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "goal.long_description",
+        "comment": "Node property test for goal.long_description",
+        "text": "Node property test for goal.long_description: {goal.long_description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "goal.name",
+        "comment": "Node property test for goal.name",
+        "text": "Node property test for goal.name: {goal.name}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "goal.type",
+        "comment": "Node property test for goal.type",
+        "text": "Node property test for goal.type: {goal.type}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "reference.id",
+        "comment": "Node property test for reference.id",
+        "text": "Node property test for reference.id: {reference.id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "reference.title",
+        "comment": "Node property test for reference.title",
+        "text": "Node property test for reference.title: {reference.title}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "reference.url",
+        "comment": "Node property test for reference.url",
+        "text": "Node property test for reference.url: {reference.url}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "vulnerability.eav",
+        "comment": "Node property test for vulnerability.eav",
+        "text": "Node property test for vulnerability.eav: {vulnerability.eav}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "vulnerability.id",
+        "comment": "Node property test for vulnerability.id",
+        "text": "Node property test for vulnerability.id: {vulnerability.id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "intrusion-set.aliases",
+        "comment": "Node property test for intrusion-set.aliases",
+        "text": "Node property test for intrusion-set.aliases: {intrusion-set.aliases}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "intrusion-set.created",
+        "comment": "Node property test for intrusion-set.created",
+        "text": "Node property test for intrusion-set.created: {intrusion-set.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "intrusion-set.description",
+        "comment": "Node property test for intrusion-set.description",
+        "text": "Node property test for intrusion-set.description: {intrusion-set.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "intrusion-set.external_references",
+        "comment": "Node property test for intrusion-set.external_references",
+        "text": "Node property test for intrusion-set.external_references: {intrusion-set.external_references}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "intrusion-set.id",
+        "comment": "Node property test for intrusion-set.id",
+        "text": "Node property test for intrusion-set.id: {intrusion-set.id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "intrusion-set.mitre_id",
+        "comment": "Node property test for intrusion-set.mitre_id",
+        "text": "Node property test for intrusion-set.mitre_id: {intrusion-set.mitre_id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "intrusion-set.modified",
+        "comment": "Node property test for intrusion-set.modified",
+        "text": "Node property test for intrusion-set.modified: {intrusion-set.modified}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "intrusion-set.name",
+        "comment": "Node property test for intrusion-set.name",
+        "text": "Node property test for intrusion-set.name: {intrusion-set.name}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "intrusion-set.revoked",
+        "comment": "Node property test for intrusion-set.revoked",
+        "text": "Node property test for intrusion-set.revoked: {intrusion-set.revoked}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "intrusion-set.type",
+        "comment": "Node property test for intrusion-set.type",
+        "text": "Node property test for intrusion-set.type: {intrusion-set.type}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "intrusion-set.x_mitre_attack_spec_version",
+        "comment": "Node property test for intrusion-set.x_mitre_attack_spec_version",
+        "text": "Node property test for intrusion-set.x_mitre_attack_spec_version: {intrusion-set.x_mitre_attack_spec_version}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "intrusion-set.x_mitre_deprecated",
+        "comment": "Node property test for intrusion-set.x_mitre_deprecated",
+        "text": "Node property test for intrusion-set.x_mitre_deprecated: {intrusion-set.x_mitre_deprecated}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "intrusion-set.x_mitre_domains",
+        "comment": "Node property test for intrusion-set.x_mitre_domains",
+        "text": "Node property test for intrusion-set.x_mitre_domains: {intrusion-set.x_mitre_domains}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "intrusion-set.x_mitre_version",
+        "comment": "Node property test for intrusion-set.x_mitre_version",
+        "text": "Node property test for intrusion-set.x_mitre_version: {intrusion-set.x_mitre_version}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "KEV.cveID",
+        "comment": "Node property test for KEV.cveID",
+        "text": "Node property test for KEV.cveID: {KEV.cveID}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "KEV.cwes",
+        "comment": "Node property test for KEV.cwes",
+        "text": "Node property test for KEV.cwes: {KEV.cwes}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "KEV.dateAdded",
+        "comment": "Node property test for KEV.dateAdded",
+        "text": "Node property test for KEV.dateAdded: {KEV.dateAdded}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "KEV.dueDate",
+        "comment": "Node property test for KEV.dueDate",
+        "text": "Node property test for KEV.dueDate: {KEV.dueDate}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "KEV.knownRansomwareCampaignUse",
+        "comment": "Node property test for KEV.knownRansomwareCampaignUse",
+        "text": "Node property test for KEV.knownRansomwareCampaignUse: {KEV.knownRansomwareCampaignUse}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "KEV.notes",
+        "comment": "Node property test for KEV.notes",
+        "text": "Node property test for KEV.notes: {KEV.notes}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "KEV.product",
+        "comment": "Node property test for KEV.product",
+        "text": "Node property test for KEV.product: {KEV.product}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "KEV.requiredAction",
+        "comment": "Node property test for KEV.requiredAction",
+        "text": "Node property test for KEV.requiredAction: {KEV.requiredAction}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "KEV.shortDescription",
+        "comment": "Node property test for KEV.shortDescription",
+        "text": "Node property test for KEV.shortDescription: {KEV.shortDescription}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "KEV.vendorProject",
+        "comment": "Node property test for KEV.vendorProject",
+        "text": "Node property test for KEV.vendorProject: {KEV.vendorProject}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "KEV.vulnerabilityName",
+        "comment": "Node property test for KEV.vulnerabilityName",
+        "text": "Node property test for KEV.vulnerabilityName: {KEV.vulnerabilityName}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "malware.created",
+        "comment": "Node property test for malware.created",
+        "text": "Node property test for malware.created: {malware.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "malware.description",
+        "comment": "Node property test for malware.description",
+        "text": "Node property test for malware.description: {malware.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "malware.external_references",
+        "comment": "Node property test for malware.external_references",
+        "text": "Node property test for malware.external_references: {malware.external_references}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "malware.id",
+        "comment": "Node property test for malware.id",
+        "text": "Node property test for malware.id: {malware.id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "malware.is_family",
+        "comment": "Node property test for malware.is_family",
+        "text": "Node property test for malware.is_family: {malware.is_family}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "malware.mitre_id",
+        "comment": "Node property test for malware.mitre_id",
+        "text": "Node property test for malware.mitre_id: {malware.mitre_id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "malware.modified",
+        "comment": "Node property test for malware.modified",
+        "text": "Node property test for malware.modified: {malware.modified}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "malware.name",
+        "comment": "Node property test for malware.name",
+        "text": "Node property test for malware.name: {malware.name}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "malware.revoked",
+        "comment": "Node property test for malware.revoked",
+        "text": "Node property test for malware.revoked: {malware.revoked}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "malware.type",
+        "comment": "Node property test for malware.type",
+        "text": "Node property test for malware.type: {malware.type}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "malware.x_mitre_aliases",
+        "comment": "Node property test for malware.x_mitre_aliases",
+        "text": "Node property test for malware.x_mitre_aliases: {malware.x_mitre_aliases}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "malware.x_mitre_attack_spec_version",
+        "comment": "Node property test for malware.x_mitre_attack_spec_version",
+        "text": "Node property test for malware.x_mitre_attack_spec_version: {malware.x_mitre_attack_spec_version}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "malware.x_mitre_deprecated",
+        "comment": "Node property test for malware.x_mitre_deprecated",
+        "text": "Node property test for malware.x_mitre_deprecated: {malware.x_mitre_deprecated}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "malware.x_mitre_domains",
+        "comment": "Node property test for malware.x_mitre_domains",
+        "text": "Node property test for malware.x_mitre_domains: {malware.x_mitre_domains}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "malware.x_mitre_platforms",
+        "comment": "Node property test for malware.x_mitre_platforms",
+        "text": "Node property test for malware.x_mitre_platforms: {malware.x_mitre_platforms}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "malware.x_mitre_version",
+        "comment": "Node property test for malware.x_mitre_version",
+        "text": "Node property test for malware.x_mitre_version: {malware.x_mitre_version}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "tool.created",
+        "comment": "Node property test for tool.created",
+        "text": "Node property test for tool.created: {tool.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "tool.created_by_ref",
+        "comment": "Node property test for tool.created_by_ref",
+        "text": "Node property test for tool.created_by_ref: {tool.created_by_ref}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "tool.description",
+        "comment": "Node property test for tool.description",
+        "text": "Node property test for tool.description: {tool.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "tool.external_references",
+        "comment": "Node property test for tool.external_references",
+        "text": "Node property test for tool.external_references: {tool.external_references}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "tool.id",
+        "comment": "Node property test for tool.id",
+        "text": "Node property test for tool.id: {tool.id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "tool.mitre_id",
+        "comment": "Node property test for tool.mitre_id",
+        "text": "Node property test for tool.mitre_id: {tool.mitre_id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "tool.modified",
+        "comment": "Node property test for tool.modified",
+        "text": "Node property test for tool.modified: {tool.modified}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "tool.name",
+        "comment": "Node property test for tool.name",
+        "text": "Node property test for tool.name: {tool.name}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "tool.revoked",
+        "comment": "Node property test for tool.revoked",
+        "text": "Node property test for tool.revoked: {tool.revoked}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "tool.type",
+        "comment": "Node property test for tool.type",
+        "text": "Node property test for tool.type: {tool.type}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "tool.x_mitre_aliases",
+        "comment": "Node property test for tool.x_mitre_aliases",
+        "text": "Node property test for tool.x_mitre_aliases: {tool.x_mitre_aliases}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "tool.x_mitre_deprecated",
+        "comment": "Node property test for tool.x_mitre_deprecated",
+        "text": "Node property test for tool.x_mitre_deprecated: {tool.x_mitre_deprecated}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "tool.x_mitre_domains",
+        "comment": "Node property test for tool.x_mitre_domains",
+        "text": "Node property test for tool.x_mitre_domains: {tool.x_mitre_domains}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "tool.x_mitre_platforms",
+        "comment": "Node property test for tool.x_mitre_platforms",
+        "text": "Node property test for tool.x_mitre_platforms: {tool.x_mitre_platforms}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "tool.x_mitre_version",
+        "comment": "Node property test for tool.x_mitre_version",
+        "text": "Node property test for tool.x_mitre_version: {tool.x_mitre_version}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-analytic.created",
+        "comment": "Node property test for x-mitre-analytic.created",
+        "text": "Node property test for x-mitre-analytic.created: {x-mitre-analytic.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-analytic.created_by_ref",
+        "comment": "Node property test for x-mitre-analytic.created_by_ref",
+        "text": "Node property test for x-mitre-analytic.created_by_ref: {x-mitre-analytic.created_by_ref}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-analytic.description",
+        "comment": "Node property test for x-mitre-analytic.description",
+        "text": "Node property test for x-mitre-analytic.description: {x-mitre-analytic.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-analytic.external_references",
+        "comment": "Node property test for x-mitre-analytic.external_references",
+        "text": "Node property test for x-mitre-analytic.external_references: {x-mitre-analytic.external_references}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-analytic.id",
+        "comment": "Node property test for x-mitre-analytic.id",
+        "text": "Node property test for x-mitre-analytic.id: {x-mitre-analytic.id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-analytic.mitre_id",
+        "comment": "Node property test for x-mitre-analytic.mitre_id",
+        "text": "Node property test for x-mitre-analytic.mitre_id: {x-mitre-analytic.mitre_id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-analytic.modified",
+        "comment": "Node property test for x-mitre-analytic.modified",
+        "text": "Node property test for x-mitre-analytic.modified: {x-mitre-analytic.modified}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-analytic.name",
+        "comment": "Node property test for x-mitre-analytic.name",
+        "text": "Node property test for x-mitre-analytic.name: {x-mitre-analytic.name}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-analytic.type",
+        "comment": "Node property test for x-mitre-analytic.type",
+        "text": "Node property test for x-mitre-analytic.type: {x-mitre-analytic.type}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-analytic.x_mitre_attack_spec_version",
+        "comment": "Node property test for x-mitre-analytic.x_mitre_attack_spec_version",
+        "text": "Node property test for x-mitre-analytic.x_mitre_attack_spec_version: {x-mitre-analytic.x_mitre_attack_spec_version}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-analytic.x_mitre_deprecated",
+        "comment": "Node property test for x-mitre-analytic.x_mitre_deprecated",
+        "text": "Node property test for x-mitre-analytic.x_mitre_deprecated: {x-mitre-analytic.x_mitre_deprecated}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-analytic.x_mitre_domains",
+        "comment": "Node property test for x-mitre-analytic.x_mitre_domains",
+        "text": "Node property test for x-mitre-analytic.x_mitre_domains: {x-mitre-analytic.x_mitre_domains}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-analytic.x_mitre_log_source_references",
+        "comment": "Node property test for x-mitre-analytic.x_mitre_log_source_references",
+        "text": "Node property test for x-mitre-analytic.x_mitre_log_source_references: {x-mitre-analytic.x_mitre_log_source_references}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-analytic.x_mitre_mutable_elements",
+        "comment": "Node property test for x-mitre-analytic.x_mitre_mutable_elements",
+        "text": "Node property test for x-mitre-analytic.x_mitre_mutable_elements: {x-mitre-analytic.x_mitre_mutable_elements}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-analytic.x_mitre_platforms",
+        "comment": "Node property test for x-mitre-analytic.x_mitre_platforms",
+        "text": "Node property test for x-mitre-analytic.x_mitre_platforms: {x-mitre-analytic.x_mitre_platforms}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-analytic.x_mitre_version",
+        "comment": "Node property test for x-mitre-analytic.x_mitre_version",
+        "text": "Node property test for x-mitre-analytic.x_mitre_version: {x-mitre-analytic.x_mitre_version}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-data-component.created",
+        "comment": "Node property test for x-mitre-data-component.created",
+        "text": "Node property test for x-mitre-data-component.created: {x-mitre-data-component.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-data-component.description",
+        "comment": "Node property test for x-mitre-data-component.description",
+        "text": "Node property test for x-mitre-data-component.description: {x-mitre-data-component.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-data-component.id",
+        "comment": "Node property test for x-mitre-data-component.id",
+        "text": "Node property test for x-mitre-data-component.id: {x-mitre-data-component.id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-data-component.mitre_id",
+        "comment": "Node property test for x-mitre-data-component.mitre_id",
+        "text": "Node property test for x-mitre-data-component.mitre_id: {x-mitre-data-component.mitre_id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-data-component.modified",
+        "comment": "Node property test for x-mitre-data-component.modified",
+        "text": "Node property test for x-mitre-data-component.modified: {x-mitre-data-component.modified}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-data-component.name",
+        "comment": "Node property test for x-mitre-data-component.name",
+        "text": "Node property test for x-mitre-data-component.name: {x-mitre-data-component.name}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-data-component.revoked",
+        "comment": "Node property test for x-mitre-data-component.revoked",
+        "text": "Node property test for x-mitre-data-component.revoked: {x-mitre-data-component.revoked}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-data-component.type",
+        "comment": "Node property test for x-mitre-data-component.type",
+        "text": "Node property test for x-mitre-data-component.type: {x-mitre-data-component.type}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-data-component.x_mitre_deprecated",
+        "comment": "Node property test for x-mitre-data-component.x_mitre_deprecated",
+        "text": "Node property test for x-mitre-data-component.x_mitre_deprecated: {x-mitre-data-component.x_mitre_deprecated}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-data-component.x_mitre_domains",
+        "comment": "Node property test for x-mitre-data-component.x_mitre_domains",
+        "text": "Node property test for x-mitre-data-component.x_mitre_domains: {x-mitre-data-component.x_mitre_domains}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-data-component.x_mitre_version",
+        "comment": "Node property test for x-mitre-data-component.x_mitre_version",
+        "text": "Node property test for x-mitre-data-component.x_mitre_version: {x-mitre-data-component.x_mitre_version}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-data-source.created",
+        "comment": "Node property test for x-mitre-data-source.created",
+        "text": "Node property test for x-mitre-data-source.created: {x-mitre-data-source.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-data-source.description",
+        "comment": "Node property test for x-mitre-data-source.description",
+        "text": "Node property test for x-mitre-data-source.description: {x-mitre-data-source.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-data-source.id",
+        "comment": "Node property test for x-mitre-data-source.id",
+        "text": "Node property test for x-mitre-data-source.id: {x-mitre-data-source.id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-data-source.mitre_id",
+        "comment": "Node property test for x-mitre-data-source.mitre_id",
+        "text": "Node property test for x-mitre-data-source.mitre_id: {x-mitre-data-source.mitre_id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-data-source.modified",
+        "comment": "Node property test for x-mitre-data-source.modified",
+        "text": "Node property test for x-mitre-data-source.modified: {x-mitre-data-source.modified}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-data-source.name",
+        "comment": "Node property test for x-mitre-data-source.name",
+        "text": "Node property test for x-mitre-data-source.name: {x-mitre-data-source.name}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-data-source.revoked",
+        "comment": "Node property test for x-mitre-data-source.revoked",
+        "text": "Node property test for x-mitre-data-source.revoked: {x-mitre-data-source.revoked}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-data-source.type",
+        "comment": "Node property test for x-mitre-data-source.type",
+        "text": "Node property test for x-mitre-data-source.type: {x-mitre-data-source.type}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-data-source.x_mitre_attack_spec_version",
+        "comment": "Node property test for x-mitre-data-source.x_mitre_attack_spec_version",
+        "text": "Node property test for x-mitre-data-source.x_mitre_attack_spec_version: {x-mitre-data-source.x_mitre_attack_spec_version}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-data-source.x_mitre_deprecated",
+        "comment": "Node property test for x-mitre-data-source.x_mitre_deprecated",
+        "text": "Node property test for x-mitre-data-source.x_mitre_deprecated: {x-mitre-data-source.x_mitre_deprecated}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-data-source.x_mitre_domains",
+        "comment": "Node property test for x-mitre-data-source.x_mitre_domains",
+        "text": "Node property test for x-mitre-data-source.x_mitre_domains: {x-mitre-data-source.x_mitre_domains}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-data-source.x_mitre_version",
+        "comment": "Node property test for x-mitre-data-source.x_mitre_version",
+        "text": "Node property test for x-mitre-data-source.x_mitre_version: {x-mitre-data-source.x_mitre_version}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-detection-strategy.created",
+        "comment": "Node property test for x-mitre-detection-strategy.created",
+        "text": "Node property test for x-mitre-detection-strategy.created: {x-mitre-detection-strategy.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-detection-strategy.external_references",
+        "comment": "Node property test for x-mitre-detection-strategy.external_references",
+        "text": "Node property test for x-mitre-detection-strategy.external_references: {x-mitre-detection-strategy.external_references}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-detection-strategy.mitre_id",
+        "comment": "Node property test for x-mitre-detection-strategy.mitre_id",
+        "text": "Node property test for x-mitre-detection-strategy.mitre_id: {x-mitre-detection-strategy.mitre_id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-detection-strategy.modified",
+        "comment": "Node property test for x-mitre-detection-strategy.modified",
+        "text": "Node property test for x-mitre-detection-strategy.modified: {x-mitre-detection-strategy.modified}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-detection-strategy.name",
+        "comment": "Node property test for x-mitre-detection-strategy.name",
+        "text": "Node property test for x-mitre-detection-strategy.name: {x-mitre-detection-strategy.name}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-detection-strategy.type",
+        "comment": "Node property test for x-mitre-detection-strategy.type",
+        "text": "Node property test for x-mitre-detection-strategy.type: {x-mitre-detection-strategy.type}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-detection-strategy.x_mitre_analytic_refs",
+        "comment": "Node property test for x-mitre-detection-strategy.x_mitre_analytic_refs",
+        "text": "Node property test for x-mitre-detection-strategy.x_mitre_analytic_refs: {x-mitre-detection-strategy.x_mitre_analytic_refs}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-detection-strategy.x_mitre_attack_spec_version",
+        "comment": "Node property test for x-mitre-detection-strategy.x_mitre_attack_spec_version",
+        "text": "Node property test for x-mitre-detection-strategy.x_mitre_attack_spec_version: {x-mitre-detection-strategy.x_mitre_attack_spec_version}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-detection-strategy.x_mitre_deprecated",
+        "comment": "Node property test for x-mitre-detection-strategy.x_mitre_deprecated",
+        "text": "Node property test for x-mitre-detection-strategy.x_mitre_deprecated: {x-mitre-detection-strategy.x_mitre_deprecated}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-detection-strategy.x_mitre_domains",
+        "comment": "Node property test for x-mitre-detection-strategy.x_mitre_domains",
+        "text": "Node property test for x-mitre-detection-strategy.x_mitre_domains: {x-mitre-detection-strategy.x_mitre_domains}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-detection-strategy.x_mitre_version",
+        "comment": "Node property test for x-mitre-detection-strategy.x_mitre_version",
+        "text": "Node property test for x-mitre-detection-strategy.x_mitre_version: {x-mitre-detection-strategy.x_mitre_version}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-tactic.created",
+        "comment": "Node property test for x-mitre-tactic.created",
+        "text": "Node property test for x-mitre-tactic.created: {x-mitre-tactic.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-tactic.description",
+        "comment": "Node property test for x-mitre-tactic.description",
+        "text": "Node property test for x-mitre-tactic.description: {x-mitre-tactic.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-tactic.external_references",
+        "comment": "Node property test for x-mitre-tactic.external_references",
+        "text": "Node property test for x-mitre-tactic.external_references: {x-mitre-tactic.external_references}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-tactic.id",
+        "comment": "Node property test for x-mitre-tactic.id",
+        "text": "Node property test for x-mitre-tactic.id: {x-mitre-tactic.id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-tactic.mitre_id",
+        "comment": "Node property test for x-mitre-tactic.mitre_id",
+        "text": "Node property test for x-mitre-tactic.mitre_id: {x-mitre-tactic.mitre_id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-tactic.modified",
+        "comment": "Node property test for x-mitre-tactic.modified",
+        "text": "Node property test for x-mitre-tactic.modified: {x-mitre-tactic.modified}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-tactic.name",
+        "comment": "Node property test for x-mitre-tactic.name",
+        "text": "Node property test for x-mitre-tactic.name: {x-mitre-tactic.name}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-tactic.type",
+        "comment": "Node property test for x-mitre-tactic.type",
+        "text": "Node property test for x-mitre-tactic.type: {x-mitre-tactic.type}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-tactic.x_mitre_attack_spec_version",
+        "comment": "Node property test for x-mitre-tactic.x_mitre_attack_spec_version",
+        "text": "Node property test for x-mitre-tactic.x_mitre_attack_spec_version: {x-mitre-tactic.x_mitre_attack_spec_version}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-tactic.x_mitre_deprecated",
+        "comment": "Node property test for x-mitre-tactic.x_mitre_deprecated",
+        "text": "Node property test for x-mitre-tactic.x_mitre_deprecated: {x-mitre-tactic.x_mitre_deprecated}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-tactic.x_mitre_domains",
+        "comment": "Node property test for x-mitre-tactic.x_mitre_domains",
+        "text": "Node property test for x-mitre-tactic.x_mitre_domains: {x-mitre-tactic.x_mitre_domains}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-tactic.x_mitre_shortname",
+        "comment": "Node property test for x-mitre-tactic.x_mitre_shortname",
+        "text": "Node property test for x-mitre-tactic.x_mitre_shortname: {x-mitre-tactic.x_mitre_shortname}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-tactic.x_mitre_version",
+        "comment": "Node property test for x-mitre-tactic.x_mitre_version",
+        "text": "Node property test for x-mitre-tactic.x_mitre_version: {x-mitre-tactic.x_mitre_version}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack-pattern.achieves>x-mitre-tactic",
+        "comment": "Relationship test for attack-pattern.achieves>x-mitre-tactic",
+        "text": "Relationship test for attack-pattern.achieves>x-mitre-tactic: {attack-pattern.achieves>x-mitre-tactic.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack-pattern.revoked-by>attack-pattern",
+        "comment": "Relationship test for attack-pattern.revoked-by>attack-pattern",
+        "text": "Relationship test for attack-pattern.revoked-by>attack-pattern: {attack-pattern.revoked-by>attack-pattern.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack-pattern.subtechnique-of>attack-pattern",
+        "comment": "Relationship test for attack-pattern.subtechnique-of>attack-pattern",
+        "text": "Relationship test for attack-pattern.subtechnique-of>attack-pattern: {attack-pattern.subtechnique-of>attack-pattern.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "campaign.attributed-to>intrusion-set",
+        "comment": "Relationship test for campaign.attributed-to>intrusion-set",
+        "text": "Relationship test for campaign.attributed-to>intrusion-set: {campaign.attributed-to>intrusion-set.aliases}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "campaign.uses>attack-pattern",
+        "comment": "Relationship test for campaign.uses>attack-pattern",
+        "text": "Relationship test for campaign.uses>attack-pattern: {campaign.uses>attack-pattern.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "campaign.uses>malware",
+        "comment": "Relationship test for campaign.uses>malware",
+        "text": "Relationship test for campaign.uses>malware: {campaign.uses>malware.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "campaign.uses>tool",
+        "comment": "Relationship test for campaign.uses>tool",
+        "text": "Relationship test for campaign.uses>tool: {campaign.uses>tool.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CAPEC.CanPrecede>CAPEC",
+        "comment": "Relationship test for CAPEC.CanPrecede>CAPEC",
+        "text": "Relationship test for CAPEC.CanPrecede>CAPEC: {CAPEC.CanPrecede>CAPEC.consequences}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CAPEC.ChildOf>CAPEC",
+        "comment": "Relationship test for CAPEC.ChildOf>CAPEC",
+        "text": "Relationship test for CAPEC.ChildOf>CAPEC: {CAPEC.ChildOf>CAPEC.consequences}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CAPEC.PeerOf>CAPEC",
+        "comment": "Relationship test for CAPEC.PeerOf>CAPEC",
+        "text": "Relationship test for CAPEC.PeerOf>CAPEC: {CAPEC.PeerOf>CAPEC.consequences}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CAPEC.exploits>Weakness",
+        "comment": "Relationship test for CAPEC.exploits>Weakness",
+        "text": "Relationship test for CAPEC.exploits>Weakness: {CAPEC.exploits>Weakness.abstraction}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CAPEC.map_ap>attack-pattern",
+        "comment": "Relationship test for CAPEC.map_ap>attack-pattern",
+        "text": "Relationship test for CAPEC.map_ap>attack-pattern: {CAPEC.map_ap>attack-pattern.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "course-of-action.mitigates>attack-pattern",
+        "comment": "Relationship test for course-of-action.mitigates>attack-pattern",
+        "text": "Relationship test for course-of-action.mitigates>attack-pattern: {course-of-action.mitigates>attack-pattern.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CVE.impacts>CAPEC",
+        "comment": "Relationship test for CVE.impacts>CAPEC",
+        "text": "Relationship test for CVE.impacts>CAPEC: {CVE.impacts>CAPEC.consequences}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CVE.known_exploit>KEV",
+        "comment": "Relationship test for CVE.known_exploit>KEV",
+        "text": "Relationship test for CVE.known_exploit>KEV: {CVE.known_exploit>KEV.cveID}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "CVE.problemType>Weakness",
+        "comment": "Relationship test for CVE.problemType>Weakness",
+        "text": "Relationship test for CVE.problemType>Weakness: {CVE.problemType>Weakness.abstraction}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Weakness.CanPrecede>Weakness",
+        "comment": "Relationship test for Weakness.CanPrecede>Weakness",
+        "text": "Relationship test for Weakness.CanPrecede>Weakness: {Weakness.CanPrecede>Weakness.abstraction}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Weakness.ChildOf>Weakness",
+        "comment": "Relationship test for Weakness.ChildOf>Weakness",
+        "text": "Relationship test for Weakness.ChildOf>Weakness: {Weakness.ChildOf>Weakness.abstraction}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Weakness.PeerOf>Weakness",
+        "comment": "Relationship test for Weakness.PeerOf>Weakness",
+        "text": "Relationship test for Weakness.PeerOf>Weakness: {Weakness.PeerOf>Weakness.abstraction}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Weakness.detected_by>Detection_Method",
+        "comment": "Relationship test for Weakness.detected_by>Detection_Method",
+        "text": "Relationship test for Weakness.detected_by>Detection_Method: {Weakness.detected_by>Detection_Method.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Weakness.known_exploit>KEV",
+        "comment": "Relationship test for Weakness.known_exploit>KEV",
+        "text": "Relationship test for Weakness.known_exploit>KEV: {Weakness.known_exploit>KEV.cveID}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Weakness.mitigated_by>Mitigation",
+        "comment": "Relationship test for Weakness.mitigated_by>Mitigation",
+        "text": "Relationship test for Weakness.mitigated_by>Mitigation: {Weakness.mitigated_by>Mitigation.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Weakness.observed_as>CVE",
+        "comment": "Relationship test for Weakness.observed_as>CVE",
+        "text": "Relationship test for Weakness.observed_as>CVE: {Weakness.observed_as>CVE.affected}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "Weakness.related_attack_pattern>CAPEC",
+        "comment": "Relationship test for Weakness.related_attack_pattern>CAPEC",
+        "text": "Relationship test for Weakness.related_attack_pattern>CAPEC: {Weakness.related_attack_pattern>CAPEC.consequences}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "activity.for_vulnerability>vulnerability",
+        "comment": "Relationship test for activity.for_vulnerability>vulnerability",
+        "text": "Relationship test for activity.for_vulnerability>vulnerability: {activity.for_vulnerability>vulnerability.eav}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "activity.has_approach>approach",
+        "comment": "Relationship test for activity.has_approach>approach",
+        "text": "Relationship test for activity.has_approach>approach: {activity.has_approach>approach.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "activity.has_goal>goal",
+        "comment": "Relationship test for activity.has_goal>goal",
+        "text": "Relationship test for activity.has_goal>goal: {activity.has_goal>goal.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "activity.uses_technique>attack_technique",
+        "comment": "Relationship test for activity.uses_technique>attack_technique",
+        "text": "Relationship test for activity.uses_technique>attack_technique: {activity.uses_technique>attack_technique.id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "activity.with_tactic>attack_tactic",
+        "comment": "Relationship test for activity.with_tactic>attack_tactic",
+        "text": "Relationship test for activity.with_tactic>attack_tactic: {activity.with_tactic>attack_tactic.id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "approach.for_activity>activity",
+        "comment": "Relationship test for approach.for_activity>activity",
+        "text": "Relationship test for approach.for_activity>activity: {approach.for_activity>activity.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "approach.with_goal>goal",
+        "comment": "Relationship test for approach.with_goal>goal",
+        "text": "Relationship test for approach.with_goal>goal: {approach.with_goal>goal.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack_tactic.maps_ack>x-mitre-tactic",
+        "comment": "Relationship test for attack_tactic.maps_ack>x-mitre-tactic",
+        "text": "Relationship test for attack_tactic.maps_ack>x-mitre-tactic: {attack_tactic.maps_ack>x-mitre-tactic.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack_technique.achieves>x-mitre-tactic",
+        "comment": "Relationship test for attack_technique.achieves>x-mitre-tactic",
+        "text": "Relationship test for attack_technique.achieves>x-mitre-tactic: {attack_technique.achieves>x-mitre-tactic.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack_technique.for_activity>activity",
+        "comment": "Relationship test for attack_technique.for_activity>activity",
+        "text": "Relationship test for attack_technique.for_activity>activity: {attack_technique.for_activity>activity.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack_technique.for_vulnerability>vulnerability",
+        "comment": "Relationship test for attack_technique.for_vulnerability>vulnerability",
+        "text": "Relationship test for attack_technique.for_vulnerability>vulnerability: {attack_technique.for_vulnerability>vulnerability.eav}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "attack_technique.maps_ap>attack-pattern",
+        "comment": "Relationship test for attack_technique.maps_ap>attack-pattern",
+        "text": "Relationship test for attack_technique.maps_ap>attack-pattern: {attack_technique.maps_ap>attack-pattern.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "goal.for_approach>approach",
+        "comment": "Relationship test for goal.for_approach>approach",
+        "text": "Relationship test for goal.for_approach>approach: {goal.for_approach>approach.description}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "vulnerability.with_tactic>attack_tactic",
+        "comment": "Relationship test for vulnerability.with_tactic>attack_tactic",
+        "text": "Relationship test for vulnerability.with_tactic>attack_tactic: {vulnerability.with_tactic>attack_tactic.id}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "intrusion-set.revoked-by>intrusion-set",
+        "comment": "Relationship test for intrusion-set.revoked-by>intrusion-set",
+        "text": "Relationship test for intrusion-set.revoked-by>intrusion-set: {intrusion-set.revoked-by>intrusion-set.aliases}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "intrusion-set.uses>attack-pattern",
+        "comment": "Relationship test for intrusion-set.uses>attack-pattern",
+        "text": "Relationship test for intrusion-set.uses>attack-pattern: {intrusion-set.uses>attack-pattern.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "intrusion-set.uses>malware",
+        "comment": "Relationship test for intrusion-set.uses>malware",
+        "text": "Relationship test for intrusion-set.uses>malware: {intrusion-set.uses>malware.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "intrusion-set.uses>tool",
+        "comment": "Relationship test for intrusion-set.uses>tool",
+        "text": "Relationship test for intrusion-set.uses>tool: {intrusion-set.uses>tool.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "malware.revoked-by>malware",
+        "comment": "Relationship test for malware.revoked-by>malware",
+        "text": "Relationship test for malware.revoked-by>malware: {malware.revoked-by>malware.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "malware.revoked-by>tool",
+        "comment": "Relationship test for malware.revoked-by>tool",
+        "text": "Relationship test for malware.revoked-by>tool: {malware.revoked-by>tool.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "malware.uses>attack-pattern",
+        "comment": "Relationship test for malware.uses>attack-pattern",
+        "text": "Relationship test for malware.uses>attack-pattern: {malware.uses>attack-pattern.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "tool.uses>attack-pattern",
+        "comment": "Relationship test for tool.uses>attack-pattern",
+        "text": "Relationship test for tool.uses>attack-pattern: {tool.uses>attack-pattern.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-analytic.requires_data>x-mitre-data-component",
+        "comment": "Relationship test for x-mitre-analytic.requires_data>x-mitre-data-component",
+        "text": "Relationship test for x-mitre-analytic.requires_data>x-mitre-data-component: {x-mitre-analytic.requires_data>x-mitre-data-component.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-data-component.belongs_to>x-mitre-data-source",
+        "comment": "Relationship test for x-mitre-data-component.belongs_to>x-mitre-data-source; Comment: deprecated",
+        "text": "Relationship test for x-mitre-data-component.belongs_to>x-mitre-data-source; Comment: deprecated: {x-mitre-data-component.belongs_to>x-mitre-data-source.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-data-component.detects>attack-pattern",
+        "comment": "Relationship test for x-mitre-data-component.detects>attack-pattern; Comment: deprecated",
+        "text": "Relationship test for x-mitre-data-component.detects>attack-pattern; Comment: deprecated: {x-mitre-data-component.detects>attack-pattern.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-detection-strategy.detects>attack-pattern",
+        "comment": "Relationship test for x-mitre-detection-strategy.detects>attack-pattern",
+        "text": "Relationship test for x-mitre-detection-strategy.detects>attack-pattern: {x-mitre-detection-strategy.detects>attack-pattern.created}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "x-mitre-detection-strategy.implemented_by>x-mitre-analytic",
+        "comment": "Relationship test for x-mitre-detection-strategy.implemented_by>x-mitre-analytic",
+        "text": "Relationship test for x-mitre-detection-strategy.implemented_by>x-mitre-analytic: {x-mitre-detection-strategy.implemented_by>x-mitre-analytic.created}",
+        "count_limit": 10
+    }
+]
