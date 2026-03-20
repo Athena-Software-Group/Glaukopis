@@ -12,9 +12,9 @@
         "count_limit": 10
     },
     {
-        "shortname": "CAPEC.consequences",
-        "comment": "Node property test for CAPEC.consequences",
-        "text": "Node property test for CAPEC.consequences: {CAPEC.consequences}",
+        "shortname": "CAPEC.abstraction",
+        "comment": "Node property test for CAPEC.abstraction",
+        "text": "Node property test for CAPEC.abstraction: {CAPEC.abstraction}",
         "count_limit": 10
     },
     {
@@ -93,6 +93,12 @@
         "shortname": "vulnerability.eav",
         "comment": "Node property test for vulnerability.eav",
         "text": "Node property test for vulnerability.eav: {vulnerability.eav}",
+        "count_limit": 10
+    },
+    {
+        "shortname": "EPSS.cve",
+        "comment": "Node property test for EPSS.cve",
+        "text": "Node property test for EPSS.cve: {EPSS.cve}",
         "count_limit": 10
     },
     {
@@ -194,19 +200,19 @@
     {
         "shortname": "CAPEC.CanPrecede>CAPEC",
         "comment": "Relationship test for CAPEC.CanPrecede>CAPEC",
-        "text": "Relationship test for CAPEC.CanPrecede>CAPEC: {CAPEC.CanPrecede>CAPEC.consequences}",
+        "text": "Relationship test for CAPEC.CanPrecede>CAPEC: {CAPEC.CanPrecede>CAPEC.abstraction}",
         "count_limit": 10
     },
     {
         "shortname": "CAPEC.ChildOf>CAPEC",
         "comment": "Relationship test for CAPEC.ChildOf>CAPEC",
-        "text": "Relationship test for CAPEC.ChildOf>CAPEC: {CAPEC.ChildOf>CAPEC.consequences}",
+        "text": "Relationship test for CAPEC.ChildOf>CAPEC: {CAPEC.ChildOf>CAPEC.abstraction}",
         "count_limit": 10
     },
     {
         "shortname": "CAPEC.PeerOf>CAPEC",
         "comment": "Relationship test for CAPEC.PeerOf>CAPEC",
-        "text": "Relationship test for CAPEC.PeerOf>CAPEC: {CAPEC.PeerOf>CAPEC.consequences}",
+        "text": "Relationship test for CAPEC.PeerOf>CAPEC: {CAPEC.PeerOf>CAPEC.abstraction}",
         "count_limit": 10
     },
     {
@@ -230,7 +236,7 @@
     {
         "shortname": "CVE.impacts>CAPEC",
         "comment": "Relationship test for CVE.impacts>CAPEC",
-        "text": "Relationship test for CVE.impacts>CAPEC: {CVE.impacts>CAPEC.consequences}",
+        "text": "Relationship test for CVE.impacts>CAPEC: {CVE.impacts>CAPEC.abstraction}",
         "count_limit": 10
     },
     {
@@ -290,7 +296,7 @@
     {
         "shortname": "Weakness.related_attack_pattern>CAPEC",
         "comment": "Relationship test for Weakness.related_attack_pattern>CAPEC",
-        "text": "Relationship test for Weakness.related_attack_pattern>CAPEC: {Weakness.related_attack_pattern>CAPEC.consequences}",
+        "text": "Relationship test for Weakness.related_attack_pattern>CAPEC: {Weakness.related_attack_pattern>CAPEC.abstraction}",
         "count_limit": 10
     },
     {
@@ -378,6 +384,12 @@
         "count_limit": 10
     },
     {
+        "shortname": "EPSS.scores>CVE",
+        "comment": "Relationship test for EPSS.scores>CVE",
+        "text": "Relationship test for EPSS.scores>CVE: {EPSS.scores>CVE.affected}",
+        "count_limit": 10
+    },
+    {
         "shortname": "intrusion-set.revoked-by>intrusion-set",
         "comment": "Relationship test for intrusion-set.revoked-by>intrusion-set",
         "text": "Relationship test for intrusion-set.revoked-by>intrusion-set: {intrusion-set.revoked-by>intrusion-set.aliases}",
@@ -429,18 +441,6 @@
         "shortname": "x-mitre-analytic.requires_data>x-mitre-data-component",
         "comment": "Relationship test for x-mitre-analytic.requires_data>x-mitre-data-component",
         "text": "Relationship test for x-mitre-analytic.requires_data>x-mitre-data-component: {x-mitre-analytic.requires_data>x-mitre-data-component.created}",
-        "count_limit": 10
-    },
-    {
-        "shortname": "x-mitre-data-component.belongs_to>x-mitre-data-source",
-        "comment": "Relationship test for x-mitre-data-component.belongs_to>x-mitre-data-source; Comment: deprecated",
-        "text": "Relationship test for x-mitre-data-component.belongs_to>x-mitre-data-source; Comment: deprecated: {x-mitre-data-component.belongs_to>x-mitre-data-source.created}",
-        "count_limit": 10
-    },
-    {
-        "shortname": "x-mitre-data-component.detects>attack-pattern",
-        "comment": "Relationship test for x-mitre-data-component.detects>attack-pattern; Comment: deprecated",
-        "text": "Relationship test for x-mitre-data-component.detects>attack-pattern; Comment: deprecated: {x-mitre-data-component.detects>attack-pattern.created}",
         "count_limit": 10
     },
     {

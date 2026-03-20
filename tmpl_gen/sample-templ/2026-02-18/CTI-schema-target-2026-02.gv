@@ -1,6 +1,32 @@
 digraph schema_athena_cti {
 //    rankdir LR;
     node [shape=box, style=filled];
+"attack-pattern" [color=navy, fontcolor=indigo, fillcolor=khaki1];
+"campaign" [color=navy, fontcolor=indigo, fillcolor=khaki1];
+"course-of-action" [color=navy, fontcolor=indigo, fillcolor=khaki1];
+"intrusion-set" [color=navy, fontcolor=indigo, fillcolor=khaki1];
+"malware" [color=navy, fontcolor=indigo, fillcolor=khaki1];
+"tool" [color=navy, fontcolor=indigo, fillcolor=khaki1];
+"x-mitre-data-component" [color=navy, fontcolor=indigo, fillcolor=khaki1];
+"x-mitre-tactic" [color=navy, fontcolor=indigo, fillcolor=khaki1];
+"x-mitre-data-source" [color=navy, fontcolor=indigo, fillcolor=khaki1];
+"x-mitre-analytic" [color=navy, fontcolor=indigo, fillcolor=khaki1];
+"x-mitre-detection-strategy" [color=navy, fontcolor=indigo, fillcolor=khaki1];
+"cwe:Weakness" [color=navy, fontcolor=indigo, fillcolor=wheat1];
+"cwe:Detection_Method" [color=navy, fontcolor=indigo, fillcolor=wheat1];
+"cwe:Observed_Example" [color=navy, fontcolor=indigo, fillcolor=wheat1];
+"cwe:Mitigation" [color=navy, fontcolor=indigo, fillcolor=wheat1];
+"cve:CVE" [color=navy, fontcolor=indigo, fillcolor=tan1];
+"capec:CAPEC" [color=navy, fontcolor=indigo, fillcolor=palegreen];
+"en:goal" [color=navy, fontcolor=indigo, fillcolor=lightblue];
+"en:approach" [color=navy, fontcolor=indigo, fillcolor=lightblue];
+"en:activity" [color=navy, fontcolor=indigo, fillcolor=lightblue];
+"en:vulnerability" [color=navy, fontcolor=indigo, fillcolor=lightblue];
+"en:attack_technique" [color=navy, fontcolor=indigo, fillcolor=lightblue];
+"en:attack_tactic" [color=navy, fontcolor=indigo, fillcolor=lightblue];
+"en:reference" [color=navy, fontcolor=indigo, fillcolor=lightblue];
+"kev:KEV" [color=navy, fontcolor=indigo, fillcolor=lightpink];
+"epss:EPSS" [color=navy, fontcolor=indigo, fillcolor=turquoise];
 "attack-pattern" -> "attack-pattern" [label="revoked-by"];
 "attack-pattern" -> "attack-pattern" [label="subtechnique-of"];
 "attack-pattern" -> "x-mitre-tactic" [label="achieves"];
@@ -17,8 +43,6 @@ digraph schema_athena_cti {
 "malware" -> "tool" [label="revoked-by"];
 "malware" -> "attack-pattern" [label="uses"];
 "tool" -> "attack-pattern" [label="uses"];
-"x-mitre-data-component" -> "attack-pattern" [label="detects"];
-"x-mitre-data-component" -> "x-mitre-data-source" [label="belongs_to"];
 "x-mitre-detection-strategy" -> "attack-pattern" [label="detects"];
 "x-mitre-analytic" -> "x-mitre-data-component" [label="requires_data"];
 "x-mitre-detection-strategy" -> "x-mitre-analytic" [label="implemented_by"];
@@ -52,4 +76,5 @@ digraph schema_athena_cti {
 "en:attack_technique" -> "x-mitre-tactic" [label="achieves"];
 "en:attack_tactic" -> "x-mitre-tactic" [label="maps_ack"];
 "en:vulnerability" -> "en:attack_tactic" [label="with_tactic"];
+"epss:EPSS" -> "cve:CVE" [label="scores"];
 }
