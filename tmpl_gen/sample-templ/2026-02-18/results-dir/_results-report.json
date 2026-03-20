@@ -3,7 +3,7 @@
     "results_dir": "results-dir",
     "neo4j_conf_file": "neo4j-local-config.json",
     "templates_file": "templates-aligned-2026-02.json",
-    "timestamp": "2026-03-02T14:05:50.851Z",
+    "timestamp": "2026-03-20T12:36:12.672Z",
     "gencfg": [
         {
             "version": "0.0",
@@ -62,9 +62,9 @@
             "verbose": 0
         }
     ],
-    "all_generated_count": 45405,
-    "generation_time": 3.5874972343444824,
-    "failed_count": 43,
+    "all_generated_count": 87394,
+    "generation_time": 5.8583807945251465,
+    "failed_count": 9,
     "results": [
         {
             "template_index": 0,
@@ -79,7 +79,7 @@
                 "schema": "course-of-action - mitigates - attack-pattern"
             },
             "generated_count": 1445,
-            "generation_time": 0.14463472366333008,
+            "generation_time": 0.07741403579711914,
             "query": "MATCH (ap:`attack-pattern`), (ap:`attack-pattern`)<-[:mitigates]-(coa:`course-of-action`), (coa:`course-of-action`)          LIMIT 2000     RETURN DISTINCT ap.name, ap.mitre_id, coa.name, coa.description     ORDER BY rand()"
         },
         {
@@ -95,7 +95,7 @@
                 "schema": "malware - uses - attack-pattern"
             },
             "generated_count": 2000,
-            "generation_time": 0.16792559623718262,
+            "generation_time": 0.11334371566772461,
             "query": "MATCH (m:malware), (m:malware)-[:uses]->(t:`attack-pattern`), (t:`attack-pattern`)          LIMIT 2000     RETURN DISTINCT m.name, m.mitre_id, t.name, t.mitre_id, t.description     ORDER BY rand()"
         },
         {
@@ -103,15 +103,16 @@
             "template_object": {
                 "shortname": "1.3",
                 "comment": "1.3",
-                "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: Which data component is used to detect the attack pattern {ap.name} and what is the detection logic? \n\nAnswer: The attack pattern {ap:attack-pattern.name} (ID {ap.id}) can be detected with detection strategy {det:ap.detects<detection-strategy.name} ({det.id}) and a corresonding analytic {an:det.implemented_by.name} (an.id) on platforms: {an.platforms}. This analytic which uses data component {dc:an.requires_data.name}, described by: {dc.description}. The detection logic is the following: {an.description}",
+                "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: Which data component is used to detect the attack pattern {ap.name} and what is the detection logic? \n\nAnswer: The attack pattern {ap:attack-pattern.name} (ID {ap.id}) can be detected with detection strategy {det:ap.detects<x-mitre-detection-strategy.name} ({det.id}) and a corresonding analytic {an:det.implemented_by.name} (an.id) on platforms: {an.x_mitre_platforms}. This analytic which uses data component {dc:an.requires_data.name}, described by: {dc.description}. The detection logic is the following: {an.description}",
                 "source_file": "templates-aligned-2026-02.docx",
                 "source_line": 14,
                 "count_limit": 10,
                 "summary": "{dc.detects|description}",
                 "schema": "x-mitre-detection-strategy - detects - attack-pattern, x-mitre-analytic - requires_data - x-mitre-data-component, x-mitre-detection-strategy -  implemented_by - x-mitre-analytic"
             },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.map_rel ERROR: got exception: TmplParseTransf.map_rel ERROR: inverse case: node type detection-strategy is undefined  for type attack-pattern, relstr: detects<detection-strategy",
-            "generated_count": 0
+            "generated_count": 2000,
+            "generation_time": 0.44999122619628906,
+            "query": "MATCH (ap:`attack-pattern`), (ap:`attack-pattern`)<-[:detects]-(det:`x-mitre-detection-strategy`), (det:`x-mitre-detection-strategy`), (det:`x-mitre-detection-strategy`)-[:implemented_by]->(an:`x-mitre-analytic`), (an:`x-mitre-analytic`), (an:`x-mitre-analytic`)-[:requires_data]->(dc:`x-mitre-data-component`), (dc:`x-mitre-data-component`)          LIMIT 2000     RETURN DISTINCT ap.name, ap.mitre_id, det.name, det.id, an.name, an.x_mitre_platforms, dc.name, dc.description, an.description     ORDER BY rand()"
         },
         {
             "template_index": 3,
@@ -125,7 +126,7 @@
                 "schema": "attack-pattern - subtechnique-of - attack-pattern"
             },
             "generated_count": 477,
-            "generation_time": 0.0604550838470459,
+            "generation_time": 0.03906965255737305,
             "query": "MATCH (ap:`attack-pattern`), (ap:`attack-pattern`)-[:`subtechnique-of`]->(pap:`attack-pattern`), (pap:`attack-pattern`)     WHERE elementId(ap) <> elementId(pap)     LIMIT 2000     RETURN DISTINCT ap.name, ap.mitre_id, pap.name, pap.mitre_id, ap.description     ORDER BY rand()"
         },
         {
@@ -139,7 +140,7 @@
                 "count_limit": 10
             },
             "generated_count": 835,
-            "generation_time": 0.06362223625183105,
+            "generation_time": 0.056699275970458984,
             "query": "MATCH (ap:`attack-pattern`)          LIMIT 2000     RETURN DISTINCT ap.name, ap.x_mitre_platforms, ap.mitre_id, ap.description     ORDER BY rand()"
         },
         {
@@ -155,7 +156,7 @@
                 "schema": "tool - uses - attack-pattern"
             },
             "generated_count": 800,
-            "generation_time": 0.07235169410705566,
+            "generation_time": 0.04334521293640137,
             "query": "MATCH (tl:tool), (tl:tool)-[:uses]->(ap:`attack-pattern`), (ap:`attack-pattern`)          LIMIT 2000     RETURN DISTINCT tl.name, tl.mitre_id, ap.name, ap.mitre_id, tl.description     ORDER BY rand()"
         },
         {
@@ -171,7 +172,7 @@
                 "schema": "intrusion-set - uses - attack-pattern"
             },
             "generated_count": 2000,
-            "generation_time": 0.1548304557800293,
+            "generation_time": 0.1025400161743164,
             "query": "MATCH (is:`intrusion-set`), (is:`intrusion-set`)-[:uses]->(ap:`attack-pattern`), (ap:`attack-pattern`)          LIMIT 2000     RETURN DISTINCT is.name, is.aliases, ap.name, ap.mitre_id     ORDER BY rand()"
         },
         {
@@ -187,7 +188,7 @@
                 "schema": "attack-pattern - achieves - x-mitre-tactic"
             },
             "generated_count": 1089,
-            "generation_time": 0.08025908470153809,
+            "generation_time": 0.0553591251373291,
             "query": "MATCH (ap:`attack-pattern`), (ap:`attack-pattern`)-[:achieves]->(tac:`x-mitre-tactic`)          LIMIT 2000     RETURN DISTINCT ap.name, ap.mitre_id, tac.name, ap.description     ORDER BY rand()"
         },
         {
@@ -201,7 +202,7 @@
                 "count_limit": 10
             },
             "generated_count": 835,
-            "generation_time": 0.05802035331726074,
+            "generation_time": 0.04412078857421875,
             "query": "MATCH (ap:`attack-pattern`)          LIMIT 2000     RETURN DISTINCT ap.description, ap.name, ap.mitre_id, ap.x_mitre_domains     ORDER BY rand()"
         },
         {
@@ -215,7 +216,7 @@
                 "count_limit": 10
             },
             "generated_count": 835,
-            "generation_time": 0.04862189292907715,
+            "generation_time": 0.038675546646118164,
             "query": "MATCH (ap:`attack-pattern`)          LIMIT 2000     RETURN DISTINCT ap.description, ap.name, ap.mitre_id     ORDER BY rand()"
         },
         {
@@ -223,14 +224,15 @@
             "template_object": {
                 "shortname": "2.2",
                 "comment": "2.2",
-                "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: How can a CTI analyst detect the technique {ap:attack-pattern.name} (ID {ap.id}) using data component {dc.name}?\n\nAnswer: To detect technique {ap.name}, monitor {dc.name}. Apply detection strategy {det:ap.detects<.name} ({det.id}), more specifically, analytic {an:det.implemented_by.name} ({an.id}), which requires data component (log source) {dc:an.requires.name}.  Analytic description: {an.description}",
+                "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: How can a CTI analyst detect the technique {ap:attack-pattern.name} (ID {ap.id}) using data component {dc.name}?\n\nAnswer: To detect technique {ap.name}, monitor {dc.name}. Apply detection strategy {det:ap.detects<.name} ({det.id}), more specifically, analytic {an:det.implemented_by.name} ({an.id}), which requires data component (log source) {dc:an.requires_data.name}.  Analytic description: {an.description}",
                 "source_file": "templates-aligned-2026-02.docx",
                 "source_line": 38,
                 "count_limit": 10,
                 "schema": "x-mitre-detection-strategy - detects - attack-pattern, x-mitre-analytic - requires_data - x-mitre-data-component, x-mitre-detection-strategy -  implemented_by - x-mitre-analytic"
             },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.map_rel ERROR: got exception: TmplParseTransf.map_rel ERROR: inverse case: no relationship found: [:detects]->attack-pattern  for type attack-pattern, relstr: detects<",
-            "generated_count": 0
+            "generated_count": 2000,
+            "generation_time": 0.1335139274597168,
+            "query": "MATCH (ap:`attack-pattern`), (dc:`x-mitre-data-component`), (ap:`attack-pattern`)<-[:detects]-(det:`x-mitre-detection-strategy`), (det:`x-mitre-detection-strategy`), (det:`x-mitre-detection-strategy`)-[:implemented_by]->(an:`x-mitre-analytic`), (an:`x-mitre-analytic`), (an:`x-mitre-analytic`)-[:requires_data]->(dc:`x-mitre-data-component`)          LIMIT 2000     RETURN DISTINCT ap.name, ap.mitre_id, dc.name, det.name, det.id, an.name, an.id, an.description     ORDER BY rand()"
         },
         {
             "template_index": 11,
@@ -245,7 +247,7 @@
                 "schema": "malware - uses - attack-pattern"
             },
             "generated_count": 2000,
-            "generation_time": 0.14339494705200195,
+            "generation_time": 0.10794186592102051,
             "query": "MATCH (m:malware), (m:malware)-[:uses]->(ap:`attack-pattern`), (ap:`attack-pattern`)          LIMIT 2000     RETURN DISTINCT m.name, m.mitre_id, ap.name, ap.mitre_id, ap.description     ORDER BY rand()"
         },
         {
@@ -261,7 +263,7 @@
                 "schema": "course-of-action - mitigates - attack-pattern"
             },
             "generated_count": 1445,
-            "generation_time": 0.09308457374572754,
+            "generation_time": 0.06955289840698242,
             "query": "MATCH (ap:`attack-pattern`), (ap:`attack-pattern`)<-[:mitigates]-(coa:`course-of-action`), (coa:`course-of-action`)          LIMIT 2000     RETURN DISTINCT ap.name, ap.mitre_id, coa.name, coa.description     ORDER BY rand()"
         },
         {
@@ -276,7 +278,7 @@
                 "schema": "attack-pattern - subtechnique-of - attack-pattern"
             },
             "generated_count": 477,
-            "generation_time": 0.05438113212585449,
+            "generation_time": 0.03539896011352539,
             "query": "MATCH (ap:`attack-pattern`), (ap:`attack-pattern`)-[:`subtechnique-of`]->(pap:`attack-pattern`), (pap:`attack-pattern`)     WHERE elementId(ap) <> elementId(pap) AND (ap.x_mitre_is_subtechnique=True)     LIMIT 2000     RETURN DISTINCT ap.name, ap.mitre_id, pap.name, pap.mitre_id, pap.description, ap.x_mitre_is_subtechnique     ORDER BY rand()"
         },
         {
@@ -292,7 +294,7 @@
                 "schema": "tool - uses - attack-pattern"
             },
             "generated_count": 800,
-            "generation_time": 0.05358767509460449,
+            "generation_time": 0.04374527931213379,
             "query": "MATCH (tl:tool), (tl:tool)-[:uses]->(ap:`attack-pattern`), (ap:`attack-pattern`)          LIMIT 2000     RETURN DISTINCT tl.name, tl.mitre_id, tl.description, ap.name, ap.mitre_id     ORDER BY rand()"
         },
         {
@@ -307,7 +309,7 @@
                 "schema": "attack-pattern - achieves - x-mitre-tactic"
             },
             "generated_count": 1089,
-            "generation_time": 0.06968355178833008,
+            "generation_time": 0.057236433029174805,
             "query": "MATCH (ap:`attack-pattern`), (ap:`attack-pattern`)-[:achieves]->(_x_mitre_tactic1:`x-mitre-tactic`)          LIMIT 2000     RETURN DISTINCT ap.name, ap.mitre_id, _x_mitre_tactic1.name, ap.description     ORDER BY rand()"
         },
         {
@@ -321,7 +323,7 @@
                 "count_limit": 10
             },
             "generated_count": 835,
-            "generation_time": 0.053423404693603516,
+            "generation_time": 0.05588817596435547,
             "query": "MATCH (ap:`attack-pattern`)          LIMIT 2000     RETURN DISTINCT ap.name, ap.mitre_id, ap.x_mitre_platforms, ap.description     ORDER BY rand()"
         },
         {
@@ -336,7 +338,7 @@
                 "schema": "attack-pattern - subtechnique-of - attack-pattern"
             },
             "generated_count": 477,
-            "generation_time": 0.0449671745300293,
+            "generation_time": 0.03548169136047363,
             "query": "MATCH (ap:`attack-pattern`), (ap:`attack-pattern`)-[:`subtechnique-of`]->(app:`attack-pattern`), (app:`attack-pattern`)     WHERE elementId(ap) <> elementId(app) AND (ap.x_mitre_is_subtechnique=True)     LIMIT 2000     RETURN DISTINCT ap.description, ap.name, ap.mitre_id, app.name, app.mitre_id, ap.x_mitre_is_subtechnique     ORDER BY rand()"
         },
         {
@@ -344,29 +346,31 @@
             "template_object": {
                 "shortname": "3.2",
                 "comment": "3.2",
-                "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: What is the most effective mitigation for the technique {ap:attack-pattern.name} (id {ap.id}) to reduce organizational risk?\n\nAnswer: To mitigate {ap.name}, organizations should implement course of action {coa:ap.mitigated_by.name} (id{coa.id}). Description of mitigation: {coa.description[_~\"organizational risk\"]}.",
+                "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: What is the most effective mitigation for the technique {ap:attack-pattern.name} (id {ap.id}) to reduce organizational risk?\n\nAnswer: To mitigate {ap.name}, organizations should implement course of action {coa:ap.mitigates<.name} (id{coa.id}). Description of mitigation: {coa.description[_~\"organizational risk\"]}.",
                 "source_file": "templates-aligned-2026-02.docx",
                 "source_line": 65,
                 "count_limit": 10,
-                "summary": "{ap.mitigated_by|description}",
+                "summary": "{coa.mitigates|description}",
                 "schema": "course-of-action - mitigates - attack-pattern"
             },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.map_rel ERROR: got exception: TmplParseTransf.map_rel ERROR: no property or relationship found: attack-pattern-[:mitigated_by]->*  for type attack-pattern, relstr: mitigated_by",
-            "generated_count": 0
+            "generated_count": 0,
+            "generation_time": 0.009282350540161133,
+            "query": "MATCH (ap:`attack-pattern`), (ap:`attack-pattern`)<-[:mitigates]-(coa:`course-of-action`), (coa:`course-of-action`)     WHERE (toLower(coa.description) CONTAINS toLower(\"organizational risk\"))     LIMIT 2000     RETURN DISTINCT ap.name, ap.mitre_id, coa.name, coa.mitre_id, coa.description     ORDER BY rand()"
         },
         {
             "template_index": 19,
             "template_object": {
                 "shortname": "3.3",
                 "comment": "3.3",
-                "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: In the context of {ap:attack-pattern.name} (ID {ap.id}), which data component should be monitored for specialized system call or API usage?\n\nAnswer: To detect this technique, you should monitor data component {dc.name}. Its description is: {dc.description[_~\"system call\"]}. This is because technique {ap.name} is detected with detection strategy {det:ap.detects<name} (det.id), specifically, with analytic {an:det.implemented_by.name}, which requires data component (log source) {dc:an.requires_data.name}.",
+                "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: In the context of {ap:attack-pattern.name} (ID {ap.id}), which data component should be monitored for specialized system call or API usage?\n\nAnswer: To detect this technique, you should monitor data component {dc.name}. Its description is: {dc.description[_~\"system call\"]}. This is because technique {ap.name} is detected with detection strategy {det:ap.detects<.name} (det.id), specifically, with analytic {an:det.implemented_by.name}, which requires data component (log source) {dc:an.requires_data.name}.",
                 "source_file": "templates-aligned-2026-02.docx",
                 "source_line": 69,
                 "count_limit": 10,
                 "schema": "x-mitre-detection-strategy - detects - attack-pattern, x-mitre-analytic - requires_data - x-mitre-data-component, x-mitre-detection-strategy -  implemented_by - x-mitre-analytic"
             },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.map_rel ERROR: got exception: TmplParseTransf.map_rel ERROR: inverse case: node type name is undefined  for type attack-pattern, relstr: detects<name",
-            "generated_count": 0
+            "generated_count": 95,
+            "generation_time": 0.017530441284179688,
+            "query": "MATCH (ap:`attack-pattern`), (dc:`x-mitre-data-component`), (ap:`attack-pattern`)<-[:detects]-(det:`x-mitre-detection-strategy`), (det:`x-mitre-detection-strategy`)-[:implemented_by]->(an:`x-mitre-analytic`), (an:`x-mitre-analytic`)-[:requires_data]->(dc:`x-mitre-data-component`)     WHERE (toLower(dc.description) CONTAINS toLower(\"system call\"))     LIMIT 2000     RETURN DISTINCT ap.name, ap.mitre_id, dc.name, dc.description, det.name, an.name     ORDER BY rand()"
         },
         {
             "template_index": 20,
@@ -381,7 +385,7 @@
                 "schema": "malware - uses - attack-pattern"
             },
             "generated_count": 2000,
-            "generation_time": 0.19960474967956543,
+            "generation_time": 0.11315560340881348,
             "query": "MATCH (m:malware), (m:malware)-[:uses]->(ap:`attack-pattern`), (ap:`attack-pattern`)          LIMIT 2000     RETURN DISTINCT m.name, m.mitre_id, ap.name, ap.description, m.x_mitre_platforms     ORDER BY rand()"
         },
         {
@@ -395,7 +399,7 @@
                 "count_limit": 10
             },
             "generated_count": 835,
-            "generation_time": 0.06754636764526367,
+            "generation_time": 0.04570579528808594,
             "query": "MATCH (ap:`attack-pattern`)          LIMIT 2000     RETURN DISTINCT ap.name, ap.mitre_id, ap.description, ap.x_mitre_detection     ORDER BY rand()"
         },
         {
@@ -409,7 +413,7 @@
                 "count_limit": 10
             },
             "generated_count": 835,
-            "generation_time": 0.06266379356384277,
+            "generation_time": 0.04427337646484375,
             "query": "MATCH (ap:`attack-pattern`)          LIMIT 2000     RETURN DISTINCT ap.name, ap.mitre_id, ap.description, ap.x_mitre_detection     ORDER BY rand()"
         },
         {
@@ -424,7 +428,7 @@
                 "schema": "attack-pattern - achieves - x-mitre-tactic"
             },
             "generated_count": 1089,
-            "generation_time": 0.07001543045043945,
+            "generation_time": 0.05825090408325195,
             "query": "MATCH (ap:`attack-pattern`), (ap:`attack-pattern`)-[:achieves]->(tac:`x-mitre-tactic`)          LIMIT 2000     RETURN DISTINCT ap.name, ap.mitre_id, tac.name, ap.description     ORDER BY rand()"
         },
         {
@@ -440,7 +444,7 @@
                 "schema": "tool - uses - attack-pattern"
             },
             "generated_count": 800,
-            "generation_time": 0.09435200691223145,
+            "generation_time": 0.0562283992767334,
             "query": "MATCH (tl:tool), (tl:tool)-[:uses]->(ap:`attack-pattern`), (ap:`attack-pattern`)          LIMIT 2000     RETURN DISTINCT tl.name, tl.mitre_id, ap.name, ap.mitre_id, ap.x_mitre_platforms, ap.description     ORDER BY rand()"
         },
         {
@@ -454,7 +458,7 @@
                 "count_limit": 10
             },
             "generated_count": 41,
-            "generation_time": 0.12083935737609863,
+            "generation_time": 0.013926029205322266,
             "query": "MATCH (ap:`attack-pattern`)     WHERE (toLower(ap.description) CONTAINS toLower(\"evade detection\"))     LIMIT 2000     RETURN DISTINCT ap.name, ap.mitre_id, ap.description, ap.x_mitre_detection     ORDER BY rand()"
         },
         {
@@ -468,7 +472,7 @@
                 "count_limit": 10
             },
             "generated_count": 3,
-            "generation_time": 0.04641413688659668,
+            "generation_time": 0.013544321060180664,
             "query": "MATCH (ap:`attack-pattern`)     WHERE (toLower(ap.description) CONTAINS toLower(\"bypass security controls\"))     LIMIT 2000     RETURN DISTINCT ap.name, ap.mitre_id, ap.description, ap.x_mitre_detection     ORDER BY rand()"
         },
         {
@@ -482,7 +486,7 @@
                 "count_limit": 10
             },
             "generated_count": 835,
-            "generation_time": 0.07377338409423828,
+            "generation_time": 0.05793452262878418,
             "query": "MATCH (ap:`attack-pattern`)          LIMIT 2000     RETURN DISTINCT ap.name, ap.mitre_id, ap.x_mitre_platforms, ap.description, ap.x_mitre_detection     ORDER BY rand()"
         },
         {
@@ -496,8 +500,9 @@
                 "count_limit": 10,
                 "schema": "capec:CAPEC - map_ap - attack-pattern"
             },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.map_rel ERROR: got exception: TmplParseTransf.map_rel ERROR: no property or relationship found: CAPEC-[:name]->*  for type CAPEC, relstr: name",
-            "generated_count": 0
+            "generated_count": 270,
+            "generation_time": 0.020162582397460938,
+            "query": "MATCH (cap:CAPEC), (cap:CAPEC)-[:map_ap]->(ap:`attack-pattern`), (ap:`attack-pattern`)          LIMIT 2000     RETURN DISTINCT cap.name, ap.name, ap.mitre_id, ap.description     ORDER BY rand()"
         },
         {
             "template_index": 29,
@@ -510,7 +515,7 @@
                 "count_limit": 10
             },
             "generated_count": 11,
-            "generation_time": 0.029911041259765625,
+            "generation_time": 0.014199018478393555,
             "query": "MATCH (ap:`attack-pattern`)     WHERE (toLower(ap.description) CONTAINS toLower(\"achieve persistence\"))     LIMIT 2000     RETURN DISTINCT ap.name, ap.mitre_id, ap.x_mitre_platforms, ap.description     ORDER BY rand()"
         },
         {
@@ -524,7 +529,7 @@
                 "count_limit": 10
             },
             "generated_count": 0,
-            "generation_time": 0.0181119441986084,
+            "generation_time": 0.01354360580444336,
             "query": "MATCH (ap:`attack-pattern`)     WHERE (toLower(ap.description) CONTAINS toLower(\"elevated execution\"))     LIMIT 2000     RETURN DISTINCT ap.name, ap.mitre_id, ap.x_mitre_platforms, ap.description     ORDER BY rand()"
         },
         {
@@ -538,8 +543,8 @@
                 "count_limit": 10,
                 "schema": "cwe:Weakness - mitigated_by - cwe:Mitigation"
             },
-            "generated_count": 1245,
-            "generation_time": 0.10183453559875488,
+            "generated_count": 1400,
+            "generation_time": 0.07057952880859375,
             "query": "MATCH (w:Weakness), (w:Weakness)-[:mitigated_by]->(m:Mitigation)          LIMIT 2000     RETURN DISTINCT w.name, w.id, m.description, w.description     ORDER BY rand()"
         },
         {
@@ -547,14 +552,15 @@
             "template_object": {
                 "shortname": "4.6",
                 "comment": "4.6",
-                "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: Which specific data component and monitoring approach are effective for detecting {ap:attack-pattern.name}?\n\nAnswer: To detect this technique, you should monitor data component {dc.name}. This is because technique {ap.name} is detected with detection strategy {det:ap.detects<name} (det.id), specifically, with analytic {an:det.implemented_by.name} on platforms {an.platforms}, which requires data component (log source) {dc:an.requires_data.name}.",
+                "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: Which specific data component and monitoring approach are effective for detecting {ap:attack-pattern.name}?\n\nAnswer: To detect this technique, you should monitor data component {dc.name}. This is because technique {ap.name} is detected with detection strategy {det:ap.detects<.name} (det.id), specifically, with analytic {an:det.implemented_by.name} on platforms {an.x_mitre_platforms}, which requires data component (log source) {dc:an.requires_data.name}.",
                 "source_file": "templates-aligned-2026-02.docx",
                 "source_line": 102,
                 "count_limit": 10,
                 "schema": "x-mitre-detection-strategy - detects - attack-pattern, x-mitre-analytic - requires_data - x-mitre-data-component, x-mitre-detection-strategy -  implemented_by - x-mitre-analytic"
             },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.map_rel ERROR: got exception: TmplParseTransf.map_rel ERROR: inverse case: node type name is undefined  for type attack-pattern, relstr: detects<name",
-            "generated_count": 0
+            "generated_count": 2000,
+            "generation_time": 0.27085041999816895,
+            "query": "MATCH (ap:`attack-pattern`), (dc:`x-mitre-data-component`), (ap:`attack-pattern`)<-[:detects]-(det:`x-mitre-detection-strategy`), (det:`x-mitre-detection-strategy`)-[:implemented_by]->(an:`x-mitre-analytic`), (an:`x-mitre-analytic`), (an:`x-mitre-analytic`)-[:requires_data]->(dc:`x-mitre-data-component`)          LIMIT 2000     RETURN DISTINCT ap.name, dc.name, det.name, an.name, an.x_mitre_platforms     ORDER BY rand()"
         },
         {
             "template_index": 33,
@@ -568,7 +574,7 @@
                 "schema": "attack-pattern - achieves - x-mitre-tactic"
             },
             "generated_count": 1089,
-            "generation_time": 0.10424304008483887,
+            "generation_time": 0.09817814826965332,
             "query": "MATCH (ap:`attack-pattern`)-[:achieves]->(ta:`x-mitre-tactic`), (ap:`attack-pattern`), (ta:`x-mitre-tactic`)          LIMIT 2000     RETURN DISTINCT ta.name, ap.description, ap.name, ap.mitre_id, ap.x_mitre_platforms     ORDER BY rand()"
         },
         {
@@ -576,30 +582,32 @@
             "template_object": {
                 "shortname": "4.8",
                 "comment": "4.8",
-                "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: How does the ATT&CK technique {ap:attack-pattern.name} relate to hardware security ?\n\nAnswer: Technique {ap.name} (ID {ap.id}) involves the following: {ap.description[_~\"hardware security\"]}. This is mitigated by course of action {coa:ap.mitigates<.name} (ID {coa:id}) by doing the following: {coa.description}",
+                "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: How does the ATT&CK technique {ap:attack-pattern.name} relate to hardware security ?\n\nAnswer: Technique {ap.name} (ID {ap.id}) involves the following: {ap.description[_~\"hardware security\"]}. This is mitigated by course of action {coa:ap.mitigates<.name} (ID {coa.id}) by doing the following: {coa.description}",
                 "source_file": "templates-aligned-2026-02.docx",
                 "source_line": 110,
                 "count_limit": 10,
                 "summary": "{coa:ap.mitigates<.description}",
                 "schema": "course-of-action mitigates attack-pattern"
             },
-            "exception": "Error trying to process rule \"template\":\n\nTmplParseTransf.qfield_process ERROR: cannot redefine variable coa",
-            "generated_count": 0
+            "generated_count": 0,
+            "generation_time": 0.020638227462768555,
+            "query": "MATCH (ap:`attack-pattern`), (ap:`attack-pattern`)<-[:mitigates]-(coa:`course-of-action`), (coa:`course-of-action`)     WHERE (toLower(ap.description) CONTAINS toLower(\"hardware security\"))     LIMIT 2000     RETURN DISTINCT ap.name, ap.mitre_id, ap.description, coa.name, coa.mitre_id, coa.description     ORDER BY rand()"
         },
         {
             "template_index": 35,
             "template_object": {
                 "shortname": "4.8a",
                 "comment": "4.8a",
-                "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: How does the ATT&CK technique {ap:attack-pattern.name} relate to supply chain compromise?\n\nAnswer: Technique {ap.name} (ID {ap.id}) involves the following: {ap.description[_~\"supply chain compromise\"]}. This is mitigated by course of action {coa:ap.mitigates<.name} (ID {coa:id})  by doing the following: {coa.description}",
+                "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: How does the ATT&CK technique {ap:attack-pattern.name} relate to supply chain compromise?\n\nAnswer: Technique {ap.name} (ID {ap.id}) involves the following: {ap.description[_~\"supply chain compromise\"]}. This is mitigated by course of action {coa:ap.mitigates<.name} (ID {coa.id})  by doing the following: {coa.description}",
                 "source_file": "templates-aligned-2026-02.docx",
                 "source_line": 114,
                 "count_limit": 10,
                 "summary": "{coa:ap.mitigates<.description}",
                 "schema": "course-of-action mitigates attack-pattern"
             },
-            "exception": "Error trying to process rule \"template\":\n\nTmplParseTransf.qfield_process ERROR: cannot redefine variable coa",
-            "generated_count": 0
+            "generated_count": 22,
+            "generation_time": 0.017750024795532227,
+            "query": "MATCH (ap:`attack-pattern`), (ap:`attack-pattern`)<-[:mitigates]-(coa:`course-of-action`), (coa:`course-of-action`)     WHERE (toLower(ap.description) CONTAINS toLower(\"supply chain compromise\"))     LIMIT 2000     RETURN DISTINCT ap.name, ap.mitre_id, ap.description, coa.name, coa.mitre_id, coa.description     ORDER BY rand()"
         },
         {
             "template_index": 36,
@@ -614,7 +622,7 @@
                 "schema": "campaign - attributed-to - intrusion-set, campaign - uses - malware, campaign - uses - tool"
             },
             "generated_count": 48,
-            "generation_time": 0.02024102210998535,
+            "generation_time": 0.017045021057128906,
             "query": "MATCH (c:campaign), (c:campaign)-[:`attributed-to`]->(is:`intrusion-set`), (is:`intrusion-set`), (c:campaign)-[:uses]->(_tool1:tool), (c:campaign)-[:uses]->(_malware1:malware)          LIMIT 2000     RETURN DISTINCT c.name, is.name, c.mitre_id, is.aliases, _tool1.name, _malware1.name     ORDER BY rand()"
         },
         {
@@ -630,7 +638,7 @@
                 "schema": "campaign - uses - attack-pattern"
             },
             "generated_count": 2000,
-            "generation_time": 0.14364981651306152,
+            "generation_time": 0.1072852611541748,
             "query": "MATCH (is:`intrusion-set`), (is:`intrusion-set`)-[:uses]->(ap:`attack-pattern`), (ap:`attack-pattern`)          LIMIT 2000     RETURN DISTINCT is.name, is.mitre_id, ap.name, ap.mitre_id, ap.description     ORDER BY rand()"
         },
         {
@@ -646,7 +654,7 @@
                 "schema": "campaign - uses - malware, campaign - uses - attack-pattern"
             },
             "generated_count": 1976,
-            "generation_time": 0.09711790084838867,
+            "generation_time": 0.08508682250976562,
             "query": "MATCH (c:campaign), (c:campaign)-[:uses]->(_malware1:malware), (c:campaign)-[:uses]->(_attack_pattern1:`attack-pattern`)          LIMIT 2000     RETURN DISTINCT c.name, _malware1.name, _attack_pattern1.name     ORDER BY rand()"
         },
         {
@@ -662,7 +670,7 @@
                 "schema": "intrusion-set - uses - attack-pattern"
             },
             "generated_count": 389,
-            "generation_time": 0.03269648551940918,
+            "generation_time": 0.03387451171875,
             "query": "MATCH (is:`intrusion-set`), (is:`intrusion-set`)-[:uses]->(ap:`attack-pattern`), (ap:`attack-pattern`)     WHERE (toLower(ap.description) CONTAINS toLower(\"initial access\"))     LIMIT 2000     RETURN DISTINCT is.name, is.mitre_id, ap.name, ap.mitre_id, ap.description     ORDER BY rand()"
         },
         {
@@ -678,7 +686,7 @@
                 "schema": "intrusion-set - uses - attack-pattern"
             },
             "generated_count": 8,
-            "generation_time": 0.01426839828491211,
+            "generation_time": 0.014441251754760742,
             "query": "MATCH (is:`intrusion-set`), (is:`intrusion-set`)-[:uses]->(ap:`attack-pattern`), (ap:`attack-pattern`)     WHERE (toLower(ap.description) CONTAINS toLower(\"infrastructure acquisition\"))     LIMIT 2000     RETURN DISTINCT is.name, is.mitre_id, ap.name, ap.mitre_id, ap.description     ORDER BY rand()"
         },
         {
@@ -686,458 +694,483 @@
             "template_object": {
                 "shortname": "4.2",
                 "comment": "4.2",
-                "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: Analyze CVE {cve:CVE.id}. Based on its CVSS vector, what are the primary requirements for exploitation?\n\nAnswer: The CVE description is: {cve.descriptions[0]}. The CVSS vector for this vulnerability indicates an Attack Vector (AV) of {cve:vulnerability.attack_vector} and User Interaction (UI) requirement of {cve:vulnerability.user_interaction}, meaning it is {cve:vulnerability.exploitability_summary}.",
+                "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: Analyze CVE {cve:CVE.id}. Based on its CVSS vector, what are the primary requirements for exploitation?\n\nAnswer: The CVE description is: {cve.descriptions[0]}. The CVSS vector for this vulnerability indicates an Attack Vector (AV) of {cve.vulnerability.cvss3_1_attackVector} and User Interaction (UI) requirement of {cve:vulnerability.user_interaction}, meaning it is {cve.vulnerability.exploitability_summary}.",
                 "source_file": "templates-aligned-2026-02.docx",
                 "source_line": 143,
                 "count_limit": 10
             },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.map_rel ERROR: got exception: TmplParseTransf.map_rel ERROR: no property or relationship found: CVE-[:descriptions]->*  for type CVE, relstr: descriptions",
+            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.map_rel ERROR: got exception: TmplParseTransf.map_rel ERROR: no property or relationship found: CVE-[:vulnerability]->*  for type CVE, relstr: vulnerability",
             "generated_count": 0
         },
         {
             "template_index": 42,
             "template_object": {
-                "shortname": "4.9",
-                "comment": "4.9",
-                "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: In a CTI graph database, how does an 'elastic' sub-graph relationship affect the matching of adversary activity threads?\n\nAnswer: An elastic sub-graph allows for matching events in general phase order even when there are intervening events or time gaps. This is reflected in the {ack:attack-pattern.subtechnique-of} and {ack:campaign.uses} relationships, where a campaign may use multiple techniques over an extended period.",
+                "shortname": "4.2a",
+                "comment": "4.2a",
+                "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: Analyze CVE {cve:CVE.id}. Based on its CVSS vector, what are the primary requirements for exploitation?\n\nAnswer: The CVE description is: {cve.descriptions[0]}. The CVSS vector for this vulnerability indicates an Attack Vector (AV) of {cve.cvss3_1_attackVector}, a vector string of {cve.cvss3_1_vectorString}, with a base score of {cve.cvss3_1_baseScore}. Its exploits are: {cve.exploits}.",
                 "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 148,
+                "source_line": 145,
                 "count_limit": 10
             },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.qfield_process ERROR: cannot redefine variable ack",
+            "exception": "TmplGenNeo4j.format_prop_val ERROR: wrong index in Nodespec(varname='cve', ntype='CVE').Propspec(propname='descriptions', subscript=Subscript(quantif='index', op=None, val=0))",
             "generated_count": 0
         },
         {
             "template_index": 43,
             "template_object": {
-                "shortname": "A.1",
-                "comment": "A.1",
-                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Describe the CAPEC attack pattern {cap:CAPEC.name} (CAPEC-{cap.id}).\n\nAnswer: {cap.name} (CAPEC-{cap.id}) is about:{cap.description}. It is a {cap.Abstraction}-level pattern (status: {cap.status}) with {cap.severity} severity and a {cap.likelihood_of_attack} likelihood.",
+                "shortname": "4.9",
+                "comment": "4.9",
+                "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: In a CTI graph database, how does an 'elastic' sub-graph relationship affect the matching of adversary activity threads?\n\nAnswer: An elastic sub-graph allows for matching events in general phase order even when there are intervening events or time gaps. This is reflected in the {ack:attack-pattern.subtechnique-of_FAIL} and {ack:campaign.uses} relationships, where a campaign may use multiple techniques over an extended period.",
                 "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 155,
+                "source_line": 150,
                 "count_limit": 10
             },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.map_rel ERROR: got exception: TmplParseTransf.map_rel ERROR: no property or relationship found: CAPEC-[:name]->*  for type CAPEC, relstr: name",
+            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.map_rel ERROR: got exception: TmplParseTransf.map_rel ERROR: no property or relationship found: attack-pattern-[:subtechnique-of_FAIL]->*  for type attack-pattern, relstr: subtechnique-of_FAIL",
             "generated_count": 0
         },
         {
             "template_index": 44,
             "template_object": {
-                "shortname": "A.2",
-                "comment": "A.2",
-                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Summarize how {cap:CAPEC.name} (CAPEC-{cap.id}) is executed and what conditions enable it.\n\nAnswer: Execution flow: {cap.description}. Key prerequisites: {cap.prerequisites}. Attacker requirements: {cap.skills_required}.",
+                "shortname": "A.1",
+                "comment": "A.1",
+                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Describe the CAPEC attack pattern {cap:CAPEC.name} (CAPEC-{cap.id}).\n\nAnswer: {cap.name} (CAPEC-{cap.id}) is about:{cap.description}. It is a {cap.abstraction}-level pattern (status: {cap.status}) with {cap.severity} severity and a {cap.likelihood_of_attack} likelihood.",
                 "source_file": "templates-aligned-2026-02.docx",
                 "source_line": 157,
                 "count_limit": 10
             },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.map_rel ERROR: got exception: TmplParseTransf.map_rel ERROR: no property or relationship found: CAPEC-[:name]->*  for type CAPEC, relstr: name",
-            "generated_count": 0
+            "generated_count": 615,
+            "generation_time": 0.062155961990356445,
+            "query": "MATCH (cap:CAPEC)          LIMIT 2000     RETURN DISTINCT cap.name, cap.id, cap.description, cap.abstraction, cap.status, cap.severity, cap.likelihood_of_attack     ORDER BY rand()"
         },
         {
             "template_index": 45,
+            "template_object": {
+                "shortname": "A.2",
+                "comment": "A.2",
+                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Summarize how {cap:CAPEC.name} (CAPEC-{cap.id}) is executed and what conditions enable it.\n\nAnswer: Execution flow: {cap.description}. Key prerequisites: {cap.prerequisites}. Attacker requirements: {cap.skills_required}.",
+                "source_file": "templates-aligned-2026-02.docx",
+                "source_line": 159,
+                "count_limit": 10
+            },
+            "generated_count": 615,
+            "generation_time": 0.049898386001586914,
+            "query": "MATCH (cap:CAPEC)          LIMIT 2000     RETURN DISTINCT cap.name, cap.id, cap.description, cap.prerequisites, cap.skills_required     ORDER BY rand()"
+        },
+        {
+            "template_index": 46,
             "template_object": {
                 "shortname": "A.3",
                 "comment": "A.3",
                 "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: What signs indicate {cap:CAPEC.name} (CAPEC-{cap.id}) and what are its typical impacts?\n\nAnswer: Indicators include {cap.indicators}. Consequences: {cap.consequences}, typically causing {cap.severity} impact on system confidentiality, integrity, or availability.",
                 "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 159,
+                "source_line": 161,
                 "count_limit": 10
             },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.map_rel ERROR: got exception: TmplParseTransf.map_rel ERROR: no property or relationship found: CAPEC-[:name]->*  for type CAPEC, relstr: name",
-            "generated_count": 0
+            "generated_count": 615,
+            "generation_time": 0.04093217849731445,
+            "query": "MATCH (cap:CAPEC)          LIMIT 2000     RETURN DISTINCT cap.name, cap.id, cap.indicators, cap.consequences, cap.severity     ORDER BY rand()"
         },
         {
-            "template_index": 46,
+            "template_index": 47,
             "template_object": {
                 "shortname": "A.4",
                 "comment": "A.4",
                 "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Explain how to detect and mitigate {cap:CAPEC.name} (CAPEC-{cap.id}).\n\nAnswer: Detect via {cap.indicators} and execution behaviors: ({cap.description}). Mitigate through the following: {cap.mitigations}. Also, control these enabling prerequisite conditions: {cap.prerequisites}.",
                 "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 161,
+                "source_line": 163,
                 "count_limit": 10
             },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.map_rel ERROR: got exception: TmplParseTransf.map_rel ERROR: no property or relationship found: CAPEC-[:name]->*  for type CAPEC, relstr: name",
-            "generated_count": 0
-        },
-        {
-            "template_index": 47,
-            "template_object": {
-                "shortname": "A.5",
-                "comment": "A.5",
-                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Provide real-world examples of {cap:CAPEC.name} (CAPEC-{cap.id}) in action.\n\nAnswer: Examples: {cap.example_instances}. These cases align with the execution flow  <desc>{cap.execution_flow}</desc>. This pattern exploits CWE {cwe:cap.weakness.name} (ID {cwe:id}). The pattern description is the following: ${cap.description}.",
-                "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 163,
-                "count_limit": 10,
-                "schema": "CAPEC - Weakness - cwe:CWE"
-            },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.map_rel ERROR: got exception: TmplParseTransf.map_rel ERROR: no property or relationship found: CAPEC-[:name]->*  for type CAPEC, relstr: name",
-            "generated_count": 0
+            "generated_count": 615,
+            "generation_time": 0.049437522888183594,
+            "query": "MATCH (cap:CAPEC)          LIMIT 2000     RETURN DISTINCT cap.name, cap.id, cap.indicators, cap.description, cap.mitigations, cap.prerequisites     ORDER BY rand()"
         },
         {
             "template_index": 48,
             "template_object": {
-                "shortname": "A.6",
-                "comment": "A.6",
-                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: How is {cap:CAPEC.name} (CAPEC-{cap.id}) related to other weaknesses or taxonomies?\n\nAnswer: {cap.name} connects to weakness {cap.weakness.name} (ID {cwe:id}) and has a taxonomy mapping to ATT&CK technique {ap:cap.map_ap.name} (ID {ap.id}), reflecting the shared principles in the attack pattern description {cap.description}.",
+                "shortname": "A.5",
+                "comment": "A.5",
+                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Provide real-world examples of {cap:CAPEC.name} (CAPEC-{cap.id}) in action.\n\nAnswer: Examples: {cap.example_instances}. These cases align with this execution flow : {cap.execution_flow}. This pattern exploits CWE {cwe:cap.exploits.name} (ID {cwe.id}). The pattern description is the following: ${cap.description}.",
                 "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 167,
+                "source_line": 165,
                 "count_limit": 10,
-                "schema": " capec:CAPEC - weakness - cwe:Weakness"
+                "schema": "CAPEC - exploits - cwe:CWE"
             },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.map_rel ERROR: got exception: TmplParseTransf.map_rel ERROR: no property or relationship found: CAPEC-[:name]->*  for type CAPEC, relstr: name",
-            "generated_count": 0
+            "generated_count": 1212,
+            "generation_time": 0.07976603507995605,
+            "query": "MATCH (cap:CAPEC), (cap:CAPEC)-[:exploits]->(cwe:Weakness), (cwe:Weakness)          LIMIT 2000     RETURN DISTINCT cap.name, cap.id, cap.example_instances, cap.execution_flow, cwe.name, cwe.id, cap.description     ORDER BY rand()"
         },
         {
             "template_index": 49,
             "template_object": {
-                "shortname": "A.7",
-                "comment": "A.7",
-                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Write a short analyst note for responding to {cap:CAPEC.name} (CAPEC-{cap.id}).\n\nAnswer: 1. Detect via indicators: {cap.indicators}; 2. Contain affected systems; 3. Apply mitigations: {cap.mitigations}; 4. Triage using {cap.example_instances} and weakness ID {cap.weakness.id} for contextual linking.",
+                "shortname": "A.6",
+                "comment": "A.6",
+                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: How is {cap:CAPEC.name} (CAPEC-{cap.id}) related to other weaknesses or taxonomies?\n\nAnswer: {cap.name} connects to weakness {cwe:cap.exploits.name} (ID {cwe.id}) and has a taxonomy mapping to ATT&CK technique {ap:cap.map_ap.name} (ID {ap.id}), reflecting the shared principles in the attack pattern description {cap.description}.",
                 "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 170,
+                "source_line": 169,
                 "count_limit": 10,
-                "schema": " capec:CAPEC - weakness - cwe:Weakness"
+                "schema": " capec:CAPEC - exploits - cwe:Weakness"
             },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.map_rel ERROR: got exception: TmplParseTransf.map_rel ERROR: no property or relationship found: CAPEC-[:name]->*  for type CAPEC, relstr: name",
-            "generated_count": 0
+            "generated_count": 615,
+            "generation_time": 0.14557409286499023,
+            "query": "MATCH (cap:CAPEC), (cap:CAPEC)-[:exploits]->(cwe:Weakness), (cwe:Weakness), (cap:CAPEC)-[:map_ap]->(ap:`attack-pattern`), (ap:`attack-pattern`)          LIMIT 2000     RETURN DISTINCT cap.name, cap.id, cwe.name, cwe.id, ap.name, ap.mitre_id, cap.description     ORDER BY rand()"
         },
         {
             "template_index": 50,
+            "template_object": {
+                "shortname": "A.7",
+                "comment": "A.7",
+                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Write a short analyst note for responding to {cap:CAPEC.name} (CAPEC-{cap.id}).\n\nAnswer: 1. Detect via indicators: {cap.indicators}; 2. Contain affected systems; 3. Apply mitigations: {cap.mitigations}; 4. Triage using {cap.example_instances} and weakness ID {cap.exploits.id} for contextual linking.",
+                "source_file": "templates-aligned-2026-02.docx",
+                "source_line": 172,
+                "count_limit": 10,
+                "schema": " capec:CAPEC - exploits - cwe:Weakness"
+            },
+            "generated_count": 1212,
+            "generation_time": 0.08350729942321777,
+            "query": "MATCH (cap:CAPEC), (cap:CAPEC)-[:exploits]->(_Weakness1:Weakness)          LIMIT 2000     RETURN DISTINCT cap.name, cap.id, cap.indicators, cap.mitigations, cap.example_instances, _Weakness1.id     ORDER BY rand()"
+        },
+        {
+            "template_index": 51,
             "template_object": {
                 "shortname": "S.1",
                 "comment": "S.1",
                 "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Assess remediation urgency for KEV {kev:KEV.vulnerabilityName} in {kev.product}.\n\nAnswer: KEV {kev.vulnerabilityName}) maps to CVE {kev.cveID} and it is actively exploited in {kev.product} (vendor project {kev.vendorProject}). Recommended action: {kev.requiredAction}.",
                 "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 174,
+                "source_line": 176,
                 "count_limit": 10
             },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.map_rel ERROR: got exception: TmplParseTransf.map_rel ERROR: no property or relationship found: KEV-[:vulnerabilityName]->*  for type KEV, relstr: vulnerabilityName",
-            "generated_count": 0
+            "generated_count": 1542,
+            "generation_time": 0.07704949378967285,
+            "query": "MATCH (kev:KEV)          LIMIT 2000     RETURN DISTINCT kev.vulnerabilityName, kev.product, kev.cveID, kev.vendorProject, kev.requiredAction     ORDER BY rand()"
         },
         {
-            "template_index": 51,
+            "template_index": 52,
             "template_object": {
                 "shortname": "S.2",
                 "comment": "S.2",
                 "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Explain the significance of the due date for KEV {kev:KEV.cveID}, {kev.vulnerabilityName}.\n\nAnswer: Patching for {kev.cveID} ({kev.vulnerabilityName}) is due by {kev.dueDate}. Meeting this deadline ensures compliance with BOD 22-01 and reduces exposure to active exploitation.",
                 "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 176,
+                "source_line": 178,
                 "count_limit": 10
             },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.map_rel ERROR: got exception: TmplParseTransf.map_rel ERROR: no property or relationship found: KEV-[:cveID]->*  for type KEV, relstr: cveID",
-            "generated_count": 0
+            "generated_count": 1542,
+            "generation_time": 0.17120981216430664,
+            "query": "MATCH (kev:KEV)          LIMIT 2000     RETURN DISTINCT kev.cveID, kev.vulnerabilityName, kev.dueDate     ORDER BY rand()"
         },
         {
-            "template_index": 52,
+            "template_index": 53,
             "template_object": {
                 "shortname": "S.3",
                 "comment": "S.3",
                 "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Identify if KEV{kev:KEV.vulnerabilityName} in {kev.product} is associated with ransomware activity.\n\nAnswer: KEV {kev.vulnerabilityName} maps to CVE {kev.cveID} in product {kev.product} and it has {kev.knownRansomwareCampaignUse} ransomware association. Immediate patching is recommended for higher risk.",
                 "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 178,
+                "source_line": 180,
                 "count_limit": 10
             },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.map_rel ERROR: got exception: TmplParseTransf.map_rel ERROR: no property or relationship found: KEV-[:vulnerabilityName]->*  for type KEV, relstr: vulnerabilityName",
-            "generated_count": 0
+            "generated_count": 1542,
+            "generation_time": 0.06971955299377441,
+            "query": "MATCH (kev:KEV)          LIMIT 2000     RETURN DISTINCT kev.vulnerabilityName, kev.product, kev.cveID, kev.knownRansomwareCampaignUse     ORDER BY rand()"
         },
         {
-            "template_index": 53,
+            "template_index": 54,
             "template_object": {
                 "shortname": "S.4",
                 "comment": "S.4",
                 "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Summarize the technical impact and mitigation for KEV {kev:KEV.vulnerabilityName} in product {kev.product}.\n\nAnswer: KEV {kev.vulnerabilityName} maps to CVE {kev.cveID} and it causes: {kev.shortDescription}. Mitigation: {kev.requiredAction}. Listed in KEV - patch immediately.",
                 "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 180,
+                "source_line": 182,
                 "count_limit": 10
             },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.map_rel ERROR: got exception: TmplParseTransf.map_rel ERROR: no property or relationship found: KEV-[:vulnerabilityName]->*  for type KEV, relstr: vulnerabilityName",
-            "generated_count": 0
+            "generated_count": 1542,
+            "generation_time": 0.08750605583190918,
+            "query": "MATCH (kev:KEV)          LIMIT 2000     RETURN DISTINCT kev.vulnerabilityName, kev.product, kev.cveID, kev.shortDescription, kev.requiredAction     ORDER BY rand()"
         },
         {
-            "template_index": 54,
+            "template_index": 55,
             "template_object": {
                 "shortname": "S.5",
                 "comment": "S.5",
                 "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Generate a detailed patching advisory for KEV {kev:KEV.vulnerabilityName} in product {kev.product} from {kev.vendorProject}.\n\nAnswer: Vulnerability {kev.vulnerabilityName} maps to CVE  {kev.cveID} and it is explied in {kev.product} (vendor {kev.vendorProject}) is actively exploited. Detailed advisory: {kev.shortDescription}. Recommended action: {kev.requiredAction} before {kev.dueDate}.",
                 "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 182,
-                "count_limit": 10
-            },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.map_rel ERROR: got exception: TmplParseTransf.map_rel ERROR: no property or relationship found: KEV-[:vulnerabilityName]->*  for type KEV, relstr: vulnerabilityName",
-            "generated_count": 0
-        },
-        {
-            "template_index": 55,
-            "template_object": {
-                "shortname": "S.6",
-                "comment": "S.6",
-                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Provide a technical summary for KEV {kev:KEV.vulnerabilityName} (CVE {kev.cveID}) in {kev..product} from {kev.vendorProject}, including its weakness type.\n\nAnswer: KEV {kev.vulnerabilityName} with CVE ID {kev.cveID} affects {kev.product} (from {kev.vendorProject}). Description: {kev.shortDescription}. Mitigation: {kev.requiredAction}. Weakness(es) involved: {kev:cwes}.",
-                "source_file": "templates-aligned-2026-02.docx",
                 "source_line": 184,
                 "count_limit": 10
             },
-            "exception": "No terminal matches '.' in the current parser context, at line 3 col 101\n\nrabilityName} (CVE {kev.cveID}) in {kev..product} from {kev.vendorProject}, incl\n                                        ^\nExpected one of: \n\t* CNAME\n",
-            "generated_count": 0
+            "generated_count": 1542,
+            "generation_time": 0.21623516082763672,
+            "query": "MATCH (kev:KEV)          LIMIT 2000     RETURN DISTINCT kev.vulnerabilityName, kev.product, kev.vendorProject, kev.cveID, kev.shortDescription, kev.requiredAction, kev.dueDate     ORDER BY rand()"
         },
         {
             "template_index": 56,
+            "template_object": {
+                "shortname": "S.6",
+                "comment": "S.6",
+                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Provide a technical summary for KEV {kev:KEV.vulnerabilityName} (CVE {kev.cveID}) in {kev.product} from {kev.vendorProject}, including its weakness type.\n\nAnswer: KEV {kev.vulnerabilityName} with CVE ID {kev.cveID} affects {kev.product} (from {kev.vendorProject}). Description: {kev.shortDescription}. Mitigation: {kev.requiredAction}. Weakness(es) involved: {kev.cwes}.",
+                "source_file": "templates-aligned-2026-02.docx",
+                "source_line": 186,
+                "count_limit": 10
+            },
+            "generated_count": 1542,
+            "generation_time": 0.09999537467956543,
+            "query": "MATCH (kev:KEV)          LIMIT 2000     RETURN DISTINCT kev.vulnerabilityName, kev.cveID, kev.product, kev.vendorProject, kev.shortDescription, kev.requiredAction, kev.cwes     ORDER BY rand()"
+        },
+        {
+            "template_index": 57,
             "template_object": {
                 "shortname": "S.7",
                 "comment": "S.7",
                 "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: For an organization running {kev:KEV.product}, what is the recommended immediate action to mitigate the risk of exploitation for KEV {kev.cveID}?\n\nAnswer: For systems running {kev.product} from {kev.vendorProject} affected by KEV {kev.cveID} ({kev.vulnerabilityName}), the recommended immediate action is: {kev.requiredAction}.",
                 "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 186,
+                "source_line": 188,
                 "count_limit": 10
             },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.map_rel ERROR: got exception: TmplParseTransf.map_rel ERROR: no property or relationship found: KEV-[:product]->*  for type KEV, relstr: product",
-            "generated_count": 0
-        },
-        {
-            "template_index": 57,
-            "template_object": {
-                "shortname": "S.8",
-                "comment": "S.8",
-                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: What is a weakness that lead up to known exploited vulnerability {kev:KEV.vulnerabilityName} associated with CVE {kev.cveID}?\n\nAnswer: known exploited vulnerability {kev:KEV.vulnerabilityName} originated with weakness CWE {cwe:kev.known_exploit<Weakness.name} with CWE ID {cwe.id}, described as follows: {cwe.description}",
-                "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 188,
-                "count_limit": 10,
-                "schema": "Weakness - known_exploit - KEV"
-            },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.map_rel ERROR: got exception: TmplParseTransf.map_rel ERROR: no property or relationship found: KEV-[:vulnerabilityName]->*  for type KEV, relstr: vulnerabilityName",
-            "generated_count": 0
+            "generated_count": 1542,
+            "generation_time": 0.07773709297180176,
+            "query": "MATCH (kev:KEV)          LIMIT 2000     RETURN DISTINCT kev.product, kev.cveID, kev.vendorProject, kev.vulnerabilityName, kev.requiredAction     ORDER BY rand()"
         },
         {
             "template_index": 58,
             "template_object": {
-                "shortname": "V.1",
-                "comment": "V.1",
-                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: What is CVE {cve:CVE.id}, describe the vulnerability and the potential impact.\n\nAnswer: CVE {cve.id}, titled {cve.title}, describes a vulnerability like this: {cve.descriptions}. The potential impact is {cve.cvss3_1_vector}.",
+                "shortname": "S.8",
+                "comment": "S.8",
+                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: What is a weakness that lead up to known exploited vulnerability {kev:KEV.vulnerabilityName} associated with CVE {kev.cveID}?\n\nAnswer: known exploited vulnerability {kev.vulnerabilityName} originated with weakness CWE {cwe:kev.known_exploit<Weakness.name} with CWE ID {cwe.id}, described as follows: {cwe.description}",
                 "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 193,
-                "count_limit": 10
+                "source_line": 190,
+                "count_limit": 10,
+                "schema": "Weakness - known_exploit - KEV"
             },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.map_rel ERROR: got exception: TmplParseTransf.map_rel ERROR: no property or relationship found: CVE-[:descriptions]->*  for type CVE, relstr: descriptions",
-            "generated_count": 0
+            "generated_count": 1406,
+            "generation_time": 0.07331204414367676,
+            "query": "MATCH (kev:KEV), (kev:KEV)<-[:known_exploit]-(cwe:Weakness), (cwe:Weakness)          LIMIT 2000     RETURN DISTINCT kev.vulnerabilityName, kev.cveID, cwe.name, cwe.id, cwe.description     ORDER BY rand()"
         },
         {
             "template_index": 59,
+            "template_object": {
+                "shortname": "V.1",
+                "comment": "V.1",
+                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: What is CVE {cve:CVE.id}, describe the vulnerability and the potential impact.\n\nAnswer: CVE {cve.id}, titled {cve.title}, describes a vulnerability like this: {cve.descriptions}. The potential impact is {cve.cvss3_1_attackVector}.",
+                "source_file": "templates-aligned-2026-02.docx",
+                "source_line": 195,
+                "count_limit": 10
+            },
+            "generated_count": 2000,
+            "generation_time": 0.09511351585388184,
+            "query": "MATCH (cve:CVE)          LIMIT 2000     RETURN DISTINCT cve.id, cve.title, cve.descriptions, cve.cvss3_1_attackVector     ORDER BY rand()"
+        },
+        {
+            "template_index": 60,
             "template_object": {
                 "shortname": "V.2",
                 "comment": "V.2",
                 "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Consider the description of a CVE record:{cve:CVE.descriptions}. Predict its CVE ID and title.\n\nAnswer: The CVE ID for the vulnerability described above is {cve.id} and its title is {cve.title}.",
                 "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 195,
+                "source_line": 197,
                 "count_limit": 10
             },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.map_rel ERROR: got exception: TmplParseTransf.map_rel ERROR: no property or relationship found: CVE-[:descriptions]->*  for type CVE, relstr: descriptions",
-            "generated_count": 0
+            "generated_count": 2000,
+            "generation_time": 0.10749077796936035,
+            "query": "MATCH (cve:CVE)          LIMIT 2000     RETURN DISTINCT cve.descriptions, cve.id, cve.title     ORDER BY rand()"
         },
         {
-            "template_index": 60,
+            "template_index": 61,
             "template_object": {
                 "shortname": "V.3",
                 "comment": "V.3",
                 "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Given the {cve:CVE.id}, predict its CVSS severity score.\n\nAnswer: The severity score for the vulnerability described in {cve.id} is {cve.cvss3_1_baseScore}.",
                 "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 197,
+                "source_line": 199,
                 "count_limit": 10
             },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.map_rel ERROR: got exception: TmplParseTransf.map_rel ERROR: no property or relationship found: CVE-[:cvss3_1_baseScore]->*  for type CVE, relstr: cvss3_1_baseScore",
-            "generated_count": 0
+            "generated_count": 2000,
+            "generation_time": 0.06820297241210938,
+            "query": "MATCH (cve:CVE)          LIMIT 2000     RETURN DISTINCT cve.id, cve.cvss3_1_baseScore     ORDER BY rand()"
         },
         {
-            "template_index": 61,
+            "template_index": 62,
             "template_object": {
                 "shortname": "V.4",
                 "comment": "V.4",
                 "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Consider the CVE described as follows: {cve:CVE.descriptions} Predict the CVE\u2019s severity score.\n\nAnswer: The severity score for the vulnerability described above is {cve.cvss3_1_baseScore}.",
                 "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 199,
-                "count_limit": 10
-            },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.map_rel ERROR: got exception: TmplParseTransf.map_rel ERROR: no property or relationship found: CVE-[:descriptions]->*  for type CVE, relstr: descriptions",
-            "generated_count": 0
-        },
-        {
-            "template_index": 62,
-            "template_object": {
-                "shortname": "V.5",
-                "comment": "V.5",
-                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Identify the CVSS v3.1 Attack Vector (AV) for the vulnerability described as follows: {cve:CVE.descriptions}\n\nAnswer: Attack Vector: {cve.cvss3_1_attack_vector}",
-                "source_file": "templates-aligned-2026-02.docx",
                 "source_line": 201,
                 "count_limit": 10
             },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.map_rel ERROR: got exception: TmplParseTransf.map_rel ERROR: no property or relationship found: CVE-[:descriptions]->*  for type CVE, relstr: descriptions",
-            "generated_count": 0
+            "generated_count": 1848,
+            "generation_time": 0.06908345222473145,
+            "query": "MATCH (cve:CVE)          LIMIT 2000     RETURN DISTINCT cve.descriptions, cve.cvss3_1_baseScore     ORDER BY rand()"
         },
         {
             "template_index": 63,
+            "template_object": {
+                "shortname": "V.5",
+                "comment": "V.5",
+                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Identify the CVSS v3.1 Attack Vector (AV) for the vulnerability described as follows: {cve:CVE.descriptions}\n\nAnswer: Attack Vector: {cve.cvss3_1_attackVector}",
+                "source_file": "templates-aligned-2026-02.docx",
+                "source_line": 203,
+                "count_limit": 10
+            },
+            "generated_count": 1841,
+            "generation_time": 0.0700838565826416,
+            "query": "MATCH (cve:CVE)          LIMIT 2000     RETURN DISTINCT cve.descriptions, cve.cvss3_1_attackVector     ORDER BY rand()"
+        },
+        {
+            "template_index": 64,
             "template_object": {
                 "shortname": "W.1",
                 "comment": "W.1",
                 "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Explain the weakness {cwe:Weakness.name} (CWE-{cwe.id}).\n\nAnswer: {cwe.name} (CWE-{cwe.id}) occurs when {cwe.description}. In detail: {cwe.extended_description}",
                 "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 204,
-                "count_limit": 10
-            },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.map_rel ERROR: got exception: TmplParseTransf.map_rel ERROR: no property or relationship found: Weakness-[:extended_description]->*  for type Weakness, relstr: extended_description",
-            "generated_count": 0
-        },
-        {
-            "template_index": 64,
-            "template_object": {
-                "shortname": "W.2",
-                "comment": "W.2",
-                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: What is the root cause of {cwe:Weakness.name} (CWE-{cwe.id})?\n\nAnswer: The root cause of {cwe.name} is often found in functional areas like {cwe.functional_area}. In essence, {cwe.description}.",
-                "source_file": "templates-aligned-2026-02.docx",
                 "source_line": 206,
                 "count_limit": 10
             },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.map_rel ERROR: got exception: TmplParseTransf.map_rel ERROR: no property or relationship found: Weakness-[:functional_area]->*  for type Weakness, relstr: functional_area",
-            "generated_count": 0
+            "generated_count": 969,
+            "generation_time": 0.059357404708862305,
+            "query": "MATCH (cwe:Weakness)          LIMIT 2000     RETURN DISTINCT cwe.name, cwe.id, cwe.description, cwe.extended_description     ORDER BY rand()"
         },
         {
             "template_index": 65,
             "template_object": {
-                "shortname": "W.3",
-                "comment": "W.3",
-                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Describe how attackers could exploit {cwe:Weakness.name} (CWE-{cwe.id}) and what the consequences are.\n\nAnswer: Attackers exploit {cwe.name} with a likelihood of exploit of {cwe.Likelihood_Of_Exploit}, which can lead to observed examples such as CVE-{cve.id}, described as {cve:cwe.observed_as.description}",
+                "shortname": "W.2",
+                "comment": "W.2",
+                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: What is the root cause of {cwe:Weakness.name} (CWE-{cwe.id})?\n\nAnswer: The root cause of {cwe.name} is often found in functional areas like {cwe.functional_areas}. In essence, {cwe.extended_description}.",
                 "source_file": "templates-aligned-2026-02.docx",
                 "source_line": 208,
-                "count_limit": 10,
-                "schema": "Weakness - observed_as - CVE"
+                "count_limit": 10
             },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.map_rel ERROR: got exception: TmplParseTransf.map_rel ERROR: no property or relationship found: Weakness-[:Likelihood_Of_Exploit]->*  for type Weakness, relstr: Likelihood_Of_Exploit",
-            "generated_count": 0
+            "generated_count": 969,
+            "generation_time": 0.04673457145690918,
+            "query": "MATCH (cwe:Weakness)          LIMIT 2000     RETURN DISTINCT cwe.name, cwe.id, cwe.functional_areas, cwe.extended_description     ORDER BY rand()"
         },
         {
             "template_index": 66,
+            "template_object": {
+                "shortname": "W.3",
+                "comment": "W.3",
+                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Describe how attackers could exploit {cwe:Weakness.name} (CWE-{cwe.id}) and what the consequences are.\n\nAnswer: Attackers exploit {cwe.name} with a likelihood of exploit of {cwe.likelihood_of_exploit}, which can lead to observed examples such as CVE-{cve.id} ({cve.title}), described as {cve:cwe.observed_as.descriptions[0]}",
+                "source_file": "templates-aligned-2026-02.docx",
+                "source_line": 210,
+                "count_limit": 10,
+                "schema": "Weakness - observed_as - CVE"
+            },
+            "generated_count": 2000,
+            "generation_time": 0.21181011199951172,
+            "query": "MATCH (cwe:Weakness), (cve:CVE), (cwe:Weakness)-[:observed_as]->(cve:CVE)          LIMIT 2000     RETURN DISTINCT cwe.name, cwe.id, cwe.likelihood_of_exploit, cve.id, cve.title, cve.descriptions     ORDER BY rand()"
+        },
+        {
+            "template_index": 67,
             "template_object": {
                 "shortname": "W.4",
                 "comment": "W.4",
                 "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: How can {cwe:Weakness.name} (CWE-{cwe.id}) be detected and prevented?\n\nAnswer: {cwe.name} can be detected with this detection method: {cwe.detected_by.method} To prevent it, apply this mitigation during the {mit.phase} mitigation phase as follows: {mit:cwe.mitigated_by.description}",
                 "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 211,
+                "source_line": 213,
                 "count_limit": 10,
                 "schema": "cwe:Weakness - mitigated_by - cwe:Mitigation, cwe:Weakness - mitigated_by - cwe:Mitigation"
             },
-            "generated_count": 1769,
-            "generation_time": 0.09546589851379395,
+            "generated_count": 1931,
+            "generation_time": 0.1007382869720459,
             "query": "MATCH (cwe:Weakness), (cwe:Weakness)-[:detected_by]->(_Detection_Method1:Detection_Method), (mit:Mitigation), (cwe:Weakness)-[:mitigated_by]->(mit:Mitigation)          LIMIT 2000     RETURN DISTINCT cwe.name, cwe.id, _Detection_Method1.method, mit.phase, mit.description     ORDER BY rand()"
         },
         {
-            "template_index": 67,
+            "template_index": 68,
             "template_object": {
                 "shortname": "W.5",
                 "comment": "W.5",
                 "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: At what stage is {cwe:Weakness.name} (CWE-{cwe.id}) usually introduced, and why?\n\nAnswer: {cwe.name} is commonly introduced during the {cwe.modes_of_introduction} specific lifecycle phases, as detailed in its description: {cwe.description}",
                 "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 214,
+                "source_line": 216,
                 "count_limit": 10
             },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.map_rel ERROR: got exception: TmplParseTransf.map_rel ERROR: no property or relationship found: Weakness-[:modes_of_introduction]->*  for type Weakness, relstr: modes_of_introduction",
-            "generated_count": 0
+            "generated_count": 969,
+            "generation_time": 0.048168182373046875,
+            "query": "MATCH (cwe:Weakness)          LIMIT 2000     RETURN DISTINCT cwe.name, cwe.id, cwe.modes_of_introduction, cwe.description     ORDER BY rand()"
         },
         {
-            "template_index": 68,
+            "template_index": 69,
             "template_object": {
                 "shortname": "W.6",
                 "comment": "W.6",
                 "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: List related weaknesses or attack patterns associated with {cwe:Weakness.name} (CWE-{cwe.id}).\n\nAnswer: {cwe.name} is the child of related weaknesses like CWE-{cwe.ChildOf.id} and CAPEC attack pattern {capec:cwe.related_attack_pattern.name} (CAPEC-{capec.id}.",
                 "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 216,
+                "source_line": 218,
                 "count_limit": 10,
                 "schema": "cwe:Weakness - related_attack_pattern - capec:CAPEC"
             },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.map_rel ERROR: got exception: TmplParseTransf.map_rel ERROR: no property or relationship found: CAPEC-[:name]->*  for type CAPEC, relstr: name",
-            "generated_count": 0
-        },
-        {
-            "template_index": 69,
-            "template_object": {
-                "shortname": "W.7",
-                "comment": "W.7",
-                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Give an example CVE related to {cwe:Weakness.name} (CWE-{cwe.id}) and explain its cause.\n\nAnswer: Examples include CVE {cve:cwe.observed_as.id}. It demonstrates weakness CWE-{cwe.id} by doing the following: {cve.description}.",
-                "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 219,
-                "count_limit": 10
-            },
-            "generated_count": 2000,
-            "generation_time": 0.10705208778381348,
-            "query": "MATCH (cwe:Weakness), (cwe:Weakness)-[:observed_as]->(cve:CVE), (cve:CVE)          LIMIT 2000     RETURN DISTINCT cwe.name, cwe.id, cve.id, cve.description     ORDER BY rand()"
+            "generated_count": 1545,
+            "generation_time": 0.07468271255493164,
+            "query": "MATCH (cwe:Weakness), (cwe:Weakness)-[:ChildOf]->(_Weakness1:Weakness), (cwe:Weakness)-[:related_attack_pattern]->(capec:CAPEC), (capec:CAPEC)          LIMIT 2000     RETURN DISTINCT cwe.name, cwe.id, _Weakness1.id, capec.name, capec.id     ORDER BY rand()"
         },
         {
             "template_index": 70,
             "template_object": {
+                "shortname": "W.7",
+                "comment": "W.7",
+                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Give an example CVE related to {cwe:Weakness.name} (CWE-{cwe.id}) and explain its cause.\n\nAnswer: Examples include CVE {cve:cwe.observed_as.id}. It demonstrates weakness CWE-{cwe.id} by doing the following: {cve.descriptions}.",
+                "source_file": "templates-aligned-2026-02.docx",
+                "source_line": 221,
+                "count_limit": 10
+            },
+            "generated_count": 2000,
+            "generation_time": 0.1004941463470459,
+            "query": "MATCH (cwe:Weakness), (cwe:Weakness)-[:observed_as]->(cve:CVE), (cve:CVE)          LIMIT 2000     RETURN DISTINCT cwe.name, cwe.id, cve.id, cve.descriptions     ORDER BY rand()"
+        },
+        {
+            "template_index": 71,
+            "template_object": {
                 "shortname": "P.1",
                 "comment": "P.1",
-                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Assess the exploitability likelihood for {epss:EPSS.id} with EPSS {epss:EPSS.epss} and percentile {epss:EPSS.percentile}.\n\nAnswer: {epss:EPSS.id} has an EPSS of {epss:EPSS.epss} ({epss:EPSS.percentile} percentile). Higher percentiles indicate greater exploit likelihood; prioritize remediation accordingly.",
+                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Assess the exploitability likelihood for CVE-{e:EPSS.cve}with EPSS and percentile.\n\nAnswer: CVE-{cve:e.scores.id} has an EPSS of {e.epss} and a percentile of {e.percentile}. Higher percentiles indicate greater exploit likelihood; prioritize remediation accordingly.",
                 "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 222,
+                "source_line": 224,
+                "count_limit": 10
+            },
+            "exception": "Error trying to process rule \"template\":\n\nTmplParseTransf.template ERROR: unbound variables (possible: from undefined node type): EPSS, e",
+            "generated_count": 0
+        },
+        {
+            "template_index": 72,
+            "template_object": {
+                "shortname": "P.2",
+                "comment": "P.2",
+                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Compare EPSS and CVSS for CVE-{e:EPSS.cve} and explain prioritization.\n\nAnswer: CVE-{cve:e.scores.id} has an EPSS of {e.epss} reflecting exploitation likelihood; a CVSS of{cve.cvss3_1_baseScore} indicates technical severity. High EPSS + high CVSS \u2192 urgent remediation; low EPSS + high CVSS \u2192 moderate priority.",
+                "source_file": "templates-aligned-2026-02.docx",
+                "source_line": 226,
+                "count_limit": 10
+            },
+            "exception": "Error trying to process rule \"template\":\n\nTmplParseTransf.template ERROR: unbound variables (possible: from undefined node type): EPSS, cve, e",
+            "generated_count": 0
+        },
+        {
+            "template_index": 73,
+            "template_object": {
+                "shortname": "P.3",
+                "comment": "P.3",
+                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Explain how EPSS for CVE-{e:EPSS.cve_FAIL} informs short-term patching.\n\nAnswer: On {epss:EPSS.date}, {cve:CVE.id} had EPSS {epss:EPSS.epss}, indicating probability of near-term exploitation. Rising scores suggest prioritizing immediate remediation.",
+                "source_file": "templates-aligned-2026-02.docx",
+                "source_line": 228,
                 "count_limit": 10
             },
             "exception": "Error trying to process rule \"template\":\n\nTmplParseTransf.template ERROR: unbound variables (possible: from undefined node type): EPSS",
             "generated_count": 0
         },
         {
-            "template_index": 71,
-            "template_object": {
-                "shortname": "P.2",
-                "comment": "P.2",
-                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Compare EPSS {epss:EPSS.epss} and CVSS {cve:CVE.cvss3_1} for {cve.id} and explain prioritization.\n\nAnswer: {cve:CVE.id}: EPSS {epss:EPSS.epss} reflects exploitation likelihood; CVSS {cve:CVE.cvss3_1} indicates technical severity. High EPSS + high CVSS \u2192 urgent remediation; low EPSS + high CVSS \u2192 moderate priority.",
-                "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 224,
-                "count_limit": 10
-            },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.map_rel ERROR: got exception: TmplParseTransf.map_rel ERROR: no property or relationship found: CVE-[:cvss3_1]->*  for type CVE, relstr: cvss3_1",
-            "generated_count": 0
-        },
-        {
-            "template_index": 72,
-            "template_object": {
-                "shortname": "P.3",
-                "comment": "P.3",
-                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Explain how EPSS {epss:EPSS.epss} for {cve:CVE.id} on {epss:EPSS.date} informs short-term patching.\n\nAnswer: On {epss:EPSS.date}, {cve:CVE.id} had EPSS {epss:EPSS.epss}, indicating probability of near-term exploitation. Rising scores suggest prioritizing immediate remediation.",
-                "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 226,
-                "count_limit": 10
-            },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.qfield_process ERROR: cannot redefine variable cve",
-            "generated_count": 0
-        },
-        {
-            "template_index": 73,
+            "template_index": 74,
             "template_object": {
                 "shortname": "P.4",
                 "comment": "P.4",
-                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Given {cve:CVE.id} with EPSS {epss:EPSS.epss} and another CVE with lower EPSS, which to prioritize?\n\nAnswer: {cve:CVE.id} with higher EPSS {epss:EPSS.epss} should be prioritized due to greater real-world exploit likelihood.",
-                "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 228,
-                "count_limit": 10
-            },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.qfield_process ERROR: cannot redefine variable cve",
-            "generated_count": 0
-        },
-        {
-            "template_index": 74,
-            "template_object": {
-                "shortname": "P.5",
-                "comment": "P.5",
-                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Correlate EPSS {epss:EPSS.epss} for {cve:CVE.id} with external threat intelligence.\n\nAnswer: EPSS {epss:EPSS.epss} for {cve:CVE.id} suggests exploit likelihood; combine with KEV, exploit DB, or campaign data to confirm real-world risk.",
+                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Given {cve:CVE.id_FAIL} with EPSS {epss:EPSS.epss} and another CVE with lower EPSS, which to prioritize?\n\nAnswer: {cve:CVE.id} with higher EPSS {epss:EPSS.epss} should be prioritized due to greater real-world exploit likelihood.",
                 "source_file": "templates-aligned-2026-02.docx",
                 "source_line": 230,
                 "count_limit": 10
             },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.qfield_process ERROR: cannot redefine variable cve",
+            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.map_rel ERROR: got exception: TmplParseTransf.map_rel ERROR: no property or relationship found: CVE-[:id_FAIL]->*  for type CVE, relstr: id_FAIL",
             "generated_count": 0
         },
         {
             "template_index": 75,
             "template_object": {
-                "shortname": "P.6",
-                "comment": "P.6",
-                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Provide an EPSS-based risk assessment for {cve:CVE.id}, with CVSS {cve:CVE.cvss3_1}.\n\nAnswer: {cve:CVE.id}: EPSS {epss:EPSS.epss} ({epss:EPSS.epss} chance of near-term exploitation), CVSS {cve:CVE.cvss3_1} indicates severity. Use both plus context to prioritize remediation.",
+                "shortname": "P.5",
+                "comment": "P.5",
+                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Correlate EPSS {epss:EPSS.epss_FAIL} for {cve:CVE.id} with external threat intelligence.\n\nAnswer: EPSS {epss:EPSS.epss} for {cve:CVE.id} suggests exploit likelihood; combine with KEV, exploit DB, or campaign data to confirm real-world risk.",
                 "source_file": "templates-aligned-2026-02.docx",
                 "source_line": 232,
                 "count_limit": 10
@@ -1148,207 +1181,222 @@
         {
             "template_index": 76,
             "template_object": {
+                "shortname": "P.6",
+                "comment": "P.6",
+                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Provide an EPSS-based risk assessment for {cve:e.id}, with CVSS.\n\nAnswer: {cve.id} has an EPSS of {e:EPSS.epss} (probability of near-term exploitation) with a percentile of {e.percentile}, and a CVSS {cve.cvss3_1_baseScore} indicates severity. Use both plus context to prioritize remediation.",
+                "source_file": "templates-aligned-2026-02.docx",
+                "source_line": 234,
+                "count_limit": 10
+            },
+            "exception": "Error trying to process rule \"template\":\n\nTmplParseTransf.template ERROR: unbound variables (possible: from undefined node type): EPSS, cve, e",
+            "generated_count": 0
+        },
+        {
+            "template_index": 77,
+            "template_object": {
                 "shortname": "E.1",
                 "comment": "E.1",
                 "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Describe how defenders can detect or disrupt the technique {ap:attack-pattern.name} ({ap.id}).\n\nAnswer: Technique {ap.name} ({ap.id}) can be detected using this method: {ap.x_mitre_detection}. It can be disrupted through mitigations, such as {coa:ap.mitigates<.name}.",
                 "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 235,
+                "source_line": 237,
                 "count_limit": 10,
                 "summary": "{coa:ap.mitigates<|description}",
                 "schema": "course-of-action - mitigates - attack-pattern"
             },
             "generated_count": 1445,
-            "generation_time": 0.08092379570007324,
+            "generation_time": 0.0661015510559082,
             "query": "MATCH (ap:`attack-pattern`), (ap:`attack-pattern`)<-[:mitigates]-(coa:`course-of-action`)          LIMIT 2000     RETURN DISTINCT ap.name, ap.mitre_id, ap.x_mitre_detection, coa.name     ORDER BY rand()"
         },
         {
-            "template_index": 77,
+            "template_index": 78,
             "template_object": {
                 "shortname": "E.2",
                 "comment": "E.2",
                 "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Explain how deception can be applied against the technique {ap:attack-pattern.name} ({ap.id}).\n\nAnswer: Deception can be applied against {ap.name} by deploying decoy systems or false targets that attract and expose adversary actions as defined in {ap.x_mitre_detection[_!=\"\"]}.",
                 "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 240,
+                "source_line": 242,
                 "count_limit": 10
             },
             "generated_count": 0,
-            "generation_time": 0.009950637817382812,
+            "generation_time": 0.008149147033691406,
             "query": "MATCH (ap:`attack-pattern`)     WHERE (ap.x_mitre_detection<>\"\")     LIMIT 2000     RETURN DISTINCT ap.name, ap.mitre_id, ap.x_mitre_detection     ORDER BY rand()"
         },
         {
-            "template_index": 78,
+            "template_index": 79,
             "template_object": {
                 "shortname": "E.3",
                 "comment": "E.3",
                 "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Which ATT&CK tactic does the technique {ap:attack-pattern.name} ({ap.id}) belong to, and how does it aid active defense?\n\nAnswer: {ap.name} is part of the {ap.achieves.name} tactic. Understanding this helps defenders anticipate adversary goals and plan proactive defenses.",
                 "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 242,
+                "source_line": 244,
                 "count_limit": 10,
                 "schema": "attack-pattern - achieves - x-mitre-tactic"
             },
             "generated_count": 1089,
-            "generation_time": 0.05843853950500488,
+            "generation_time": 0.044852256774902344,
             "query": "MATCH (ap:`attack-pattern`), (ap:`attack-pattern`)-[:achieves]->(_x_mitre_tactic1:`x-mitre-tactic`)          LIMIT 2000     RETURN DISTINCT ap.name, ap.mitre_id, _x_mitre_tactic1.name     ORDER BY rand()"
         },
         {
-            "template_index": 79,
+            "template_index": 80,
             "template_object": {
                 "shortname": "E.4",
                 "comment": "E.4",
                 "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: How can SOC teams use these data source: {ap:attack-pattern.x_mitre_data_sources}, to detect and engage adversaries performing {ap.name} ({ap.id})?\n\nAnswer: SOC teams can monitor {ap.x_mitre_data_sources} for behaviors linked to {ap.name} to engage or study attackers, using these detections methods: {ap.x_mitre_detection}",
                 "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 245,
+                "source_line": 247,
                 "count_limit": 10
             },
             "generated_count": 835,
-            "generation_time": 0.04654574394226074,
+            "generation_time": 0.040351152420043945,
             "query": "MATCH (ap:`attack-pattern`)          LIMIT 2000     RETURN DISTINCT ap.x_mitre_data_sources, ap.name, ap.mitre_id, ap.x_mitre_detection     ORDER BY rand()"
         },
         {
-            "template_index": 80,
+            "template_index": 81,
             "template_object": {
                 "shortname": "E.5",
                 "comment": "E.5",
                 "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Describe how defenders can mislead adversaries using {ap:attack-pattern.name} ({ap.id}).\n\nAnswer: Defenders can mislead adversaries by introducing deceptive configurations or honeypots that mimic assets targeted by {ap.name}, supported by detections methods as follows: {ap.x_mitre_detection}",
                 "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 247,
+                "source_line": 249,
                 "count_limit": 10
             },
             "generated_count": 835,
-            "generation_time": 0.04599499702453613,
+            "generation_time": 0.033950090408325195,
             "query": "MATCH (ap:`attack-pattern`)          LIMIT 2000     RETURN DISTINCT ap.name, ap.mitre_id, ap.x_mitre_detection     ORDER BY rand()"
         },
         {
-            "template_index": 81,
+            "template_index": 82,
             "template_object": {
                 "shortname": "E.6",
                 "comment": "E.6",
                 "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Explain how the group {is:intrusion-set.name} (ID {is.id}) uses {ap:is.uses>attack-pattern.name} (ID {ap.id}) and how defenders can counter it.\n\nAnswer: The group {is.name} employs {ap.name} to achieve its objectives. Defenders can counter it through targeted deception and course of action {coa:ap.mitigates<.name}, as follows: {coa.description}",
                 "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 249,
+                "source_line": 251,
                 "count_limit": 10,
                 "summary": "{is.uses>attack-pattern|description} {ap.mitigates<|description}",
                 "schema": "intrusion-set - uses - attack-pattern, course-of-action - mitigates - attack-pattern"
             },
             "generated_count": 2000,
-            "generation_time": 0.15842890739440918,
+            "generation_time": 0.1155252456665039,
             "query": "MATCH (is:`intrusion-set`), (is:`intrusion-set`)-[:uses]->(ap:`attack-pattern`), (ap:`attack-pattern`), (ap:`attack-pattern`)<-[:mitigates]-(coa:`course-of-action`), (coa:`course-of-action`)          LIMIT 2000     RETURN DISTINCT is.name, is.mitre_id, ap.name, ap.mitre_id, coa.name, coa.description     ORDER BY rand()"
         },
         {
-            "template_index": 82,
+            "template_index": 83,
             "template_object": {
                 "shortname": "M.1",
                 "comment": "M.1",
                 "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Explain the Technique {ap:attack-pattern.name} ID ({ap.id}) and how it works.\n\nAnswer: This the description of the {ap.name} (ID {ap.id}): {ap.description}",
                 "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 253,
+                "source_line": 255,
                 "count_limit": 10
             },
             "generated_count": 835,
-            "generation_time": 0.052175045013427734,
+            "generation_time": 0.04140925407409668,
             "query": "MATCH (ap:`attack-pattern`)          LIMIT 2000     RETURN DISTINCT ap.name, ap.mitre_id, ap.description     ORDER BY rand()"
         },
         {
-            "template_index": 83,
+            "template_index": 84,
             "template_object": {
                 "shortname": "M.2",
                 "comment": "M.2",
-                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: What are the defensive measures against teachnique with ID {ap:attack-pattern.id}?\n\nAnswer: One set of defensive measures against attack pattern {ap.name} (ID {ap.id}) is the following: {coa:ap.mitigatates<.description}.",
+                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: What are the defensive measures against teachnique with ID {ap:attack-pattern.id}?\n\nAnswer: One set of defensive measures against attack pattern {ap.name} (ID {ap.id}) is the following: {coa:ap.mitigates<.description}.",
                 "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 255,
+                "source_line": 257,
                 "count_limit": 10,
                 "summary": "{coa.mitigates|description}",
                 "schema": "course-of-action - mitigates - attack-pattern"
             },
-            "exception": "Error trying to process rule \"qfield\":\n\nTmplParseTransf.map_rel ERROR: got exception: TmplParseTransf.map_rel ERROR: inverse case: no relationship found: [:mitigatates]->attack-pattern  for type attack-pattern, relstr: mitigatates<",
-            "generated_count": 0
+            "generated_count": 1445,
+            "generation_time": 0.06581902503967285,
+            "query": "MATCH (ap:`attack-pattern`), (ap:`attack-pattern`)<-[:mitigates]-(coa:`course-of-action`)          LIMIT 2000     RETURN DISTINCT ap.mitre_id, ap.name, coa.description     ORDER BY rand()"
         },
         {
-            "template_index": 84,
+            "template_index": 85,
             "template_object": {
                 "shortname": "M.3",
                 "comment": "M.3",
                 "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Which threat actors commonly use technique (attack-pattern) {ap:is.uses>attack-pattern.name} (ID {ap.id})?\n\nAnswer: Threat actor {is:intrusion-set.name} is known to use technique {ap.name} (ID {ap.id}) in its campaigns.",
                 "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 259,
+                "source_line": 261,
                 "count_limit": 10,
                 "summary": "{is.uses>attack-pattern|description}",
                 "schema": "malware - uses - attack-pattern"
             },
             "generated_count": 2000,
-            "generation_time": 0.09846067428588867,
+            "generation_time": 0.08298969268798828,
             "query": "MATCH (is:`intrusion-set`)-[:uses]->(ap:`attack-pattern`), (ap:`attack-pattern`), (is:`intrusion-set`)          LIMIT 2000     RETURN DISTINCT ap.name, ap.mitre_id, is.name     ORDER BY rand()"
         },
         {
-            "template_index": 85,
+            "template_index": 86,
             "template_object": {
                 "shortname": "M.4",
                 "comment": "M.4",
                 "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: What subtechniques fall under attack pattern  {ap:sub.subtechnique-of.id}?\n\nAnswer: Subtechniques of {ap.name} (ID {ap.id}) include {sub:attack-pattern.name}.",
                 "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 263,
+                "source_line": 265,
                 "count_limit": 10,
                 "schema": "attack-pattern - subtechnique-of - attack-pattern"
             },
             "generated_count": 477,
-            "generation_time": 0.03361678123474121,
+            "generation_time": 0.024258852005004883,
             "query": "MATCH (sub:`attack-pattern`)-[:`subtechnique-of`]->(ap:`attack-pattern`), (ap:`attack-pattern`), (sub:`attack-pattern`)     WHERE elementId(ap) <> elementId(sub)     LIMIT 2000     RETURN DISTINCT ap.mitre_id, ap.name, sub.name     ORDER BY rand()"
         },
         {
-            "template_index": 86,
+            "template_index": 87,
             "template_object": {
                 "shortname": "M.5",
                 "comment": "M.5",
-                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: How can attack pattern {ap:attack-pattern.id} be detected in network traffic?\n\nAnswer: {ap.name} (ID {ap.id}) can be detected in network traffic by monitoring {ap.x_mitre_data_sources[?~\"Network Traffic\"} in the following way: {ap.x_mitre_detection}",
+                "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: How can attack pattern {ap:attack-pattern.id} be detected in network traffic?\n\nAnswer: {ap.name} (ID {ap.id}) can be detected in network traffic by monitoring {ap.x_mitre_data_sources[?~\"Network Traffic\"]} in the following way: {ap.x_mitre_detection}",
                 "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 266,
+                "source_line": 268,
                 "count_limit": 10
             },
-            "exception": "No terminal matches '}' in the current parser context, at line 5 col 125\n\nx_mitre_data_sources[?~\"Network Traffic\"} in the following way: {ap.x_mitre_dete\n                                        ^\nExpected one of: \n\t* RSQB\n",
-            "generated_count": 0
+            "generated_count": 0,
+            "generation_time": 0.007949352264404297,
+            "query": "MATCH (ap:`attack-pattern`)     WHERE ANY(_x_mitre_data_sources IN ap.x_mitre_data_sources WHERE                     toLower(_x_mitre_data_sources) CONTAINS toLower(\"Network Traffic\"))     LIMIT 2000     RETURN DISTINCT ap.mitre_id, ap.name, ap.x_mitre_data_sources, ap.x_mitre_detection     ORDER BY rand()"
         },
         {
-            "template_index": 87,
+            "template_index": 88,
             "template_object": {
                 "shortname": "M.6",
                 "comment": "M.6",
                 "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Which platforms are affected by attack pattern {ap:attack-pattern.id}, {ap.name}?\n\nAnswer: {ap.name} (ID {ap.id}) is applicable to {ap.x_mitre_platforms} environments.",
                 "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 268,
+                "source_line": 270,
                 "count_limit": 10
             },
             "generated_count": 835,
-            "generation_time": 0.04415130615234375,
+            "generation_time": 0.041489362716674805,
             "query": "MATCH (ap:`attack-pattern`)          LIMIT 2000     RETURN DISTINCT ap.mitre_id, ap.name, ap.x_mitre_platforms     ORDER BY rand()"
         },
         {
-            "template_index": 88,
+            "template_index": 89,
             "template_object": {
                 "shortname": "M.7",
                 "comment": "M.7",
                 "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Which tactic does technique {ap:attack-pattern.id} support?\n\nAnswer: {ap.name} (ID {ap.id}) supports tactic {ap.achieves.name} tactic, which focuses on {tac:ap.achieves.description}",
                 "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 270,
+                "source_line": 272,
                 "count_limit": 10,
                 "schema": "attack-pattern - achieves - x-mitre-tactic"
             },
             "generated_count": 618,
-            "generation_time": 0.04571938514709473,
+            "generation_time": 0.03489065170288086,
             "query": "MATCH (ap:`attack-pattern`), (ap:`attack-pattern`)-[:achieves]->(_x_mitre_tactic1:`x-mitre-tactic`), (ap:`attack-pattern`)-[:achieves]->(tac:`x-mitre-tactic`)          LIMIT 2000     RETURN DISTINCT ap.mitre_id, ap.name, _x_mitre_tactic1.name, tac.description     ORDER BY rand()"
         },
         {
-            "template_index": 89,
+            "template_index": 90,
             "template_object": {
                 "shortname": "longpath.1",
                 "comment": "longpath.1",
                 "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: Which technique and malware are used by both intrusion sets {is1:intrusion-set.name} (ID {is1.id}) and {is2:intrusion-set.name} (ID {is2.id})? Recommend a course of action for that technique.\n\nAnswer: An attack pattern used by both intrusion sets {is1.name} and {is2.name} is {ap1:is1.uses>attack-pattern.name} (ID {ap1.id}). Both intrusion sets rely on malware {m1:is1.uses>malware.name} (ID {m1.id}). A course of action recommended for that technique is {coa1:ap1.mitigates<.name}.  <* this is an 'invisible' constraint: {ap2:is2.uses>attack-pattern.id} {force  ap1.id=ap2.id}  {m2:is2.uses>malware.id} {force m1.id=m2.id} {force m1.uses.id=ap1.id} {ap1.id[_=\"T1027.013\"]} *>",
                 "source_file": "templates-aligned-2026-02.docx",
-                "source_line": 277,
+                "source_line": 279,
                 "count_limit": 10,
                 "schema": "course-of-action - mitigates - attack-pattern, intrusion-set - uses - malware, malware - uses - attack-pattern"
             },
             "generated_count": 24,
-            "generation_time": 0.050046443939208984,
+            "generation_time": 0.04186511039733887,
             "query": "MATCH (is1:`intrusion-set`), (is2:`intrusion-set`), (is1:`intrusion-set`)-[:uses]->(ap1:`attack-pattern`), (ap1:`attack-pattern`), (is1:`intrusion-set`)-[:uses]->(m1:malware), (m1:malware), (ap1:`attack-pattern`)<-[:mitigates]-(coa1:`course-of-action`), (is2:`intrusion-set`)-[:uses]->(ap2:`attack-pattern`), (ap2:`attack-pattern`), (is2:`intrusion-set`)-[:uses]->(m2:malware), (m2:malware), (m1:malware)-[:uses]->(_attack_pattern1:`attack-pattern`)     WHERE ap1.mitre_id = ap2.mitre_id AND m1.mitre_id = m2.mitre_id AND _attack_pattern1.mitre_id = ap1.mitre_id AND elementId(is1) <> elementId(is2) AND (ap1.mitre_id=\"T1027.013\")     LIMIT 2000     RETURN DISTINCT is1.name, is1.mitre_id, is2.name, is2.mitre_id, ap1.name, ap1.mitre_id, m1.name, m1.mitre_id, coa1.name, ap2.mitre_id, m2.mitre_id, _attack_pattern1.mitre_id     ORDER BY rand()"
         }
     ]

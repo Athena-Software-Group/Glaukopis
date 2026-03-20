@@ -10,9 +10,9 @@
         "source_line": 240,
         "count_limit": 10
     },
-    "timestamp": "2026-03-02T14:05:54.373Z",
+    "timestamp": "2026-03-17T13:00:51.338Z",
     "template_index": 77,
-    "generation_time": 0.009950637817382812,
+    "generation_time": 0.040354013442993164,
     "generated_count": 0,
     "query": "MATCH (ap:`attack-pattern`)     WHERE (ap.x_mitre_detection<>\"\")     LIMIT 2000     RETURN DISTINCT ap.name, ap.mitre_id, ap.x_mitre_detection     ORDER BY rand()",
     "generated_strings": []

@@ -1,0 +1,19 @@
+{
+    "gen_conf_file": "gencfg_default_neo4j.json",
+    "templates_file": "templates-aligned-2026-02.json",
+    "results_dir": "results-dir",
+    "template_object": {
+        "shortname": "M.5",
+        "comment": "M.5",
+        "text": "Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.\n\nQuestion: How can attack pattern {ap:attack-pattern.id} be detected in network traffic?\n\nAnswer: {ap.name} (ID {ap.id}) can be detected in network traffic by monitoring {ap.x_mitre_data_sources[?~\"Network Traffic\"]} in the following way: {ap.x_mitre_detection}",
+        "source_file": "templates-aligned-2026-02.docx",
+        "source_line": 268,
+        "count_limit": 10
+    },
+    "timestamp": "2026-03-20T12:36:19.174Z",
+    "template_index": 87,
+    "generation_time": 0.007949352264404297,
+    "generated_count": 0,
+    "query": "MATCH (ap:`attack-pattern`)     WHERE ANY(_x_mitre_data_sources IN ap.x_mitre_data_sources WHERE                     toLower(_x_mitre_data_sources) CONTAINS toLower(\"Network Traffic\"))     LIMIT 2000     RETURN DISTINCT ap.mitre_id, ap.name, ap.x_mitre_data_sources, ap.x_mitre_detection     ORDER BY rand()",
+    "generated_strings": []
+}

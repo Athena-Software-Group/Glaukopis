@@ -1,0 +1,21 @@
+{
+    "gen_conf_file": "gencfg_default_neo4j.json",
+    "templates_file": "templates-aligned-2026-02.json",
+    "results_dir": "results-dir",
+    "template_object": {
+        "shortname": "4.8",
+        "comment": "4.8",
+        "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: How does the ATT&CK technique {ap:attack-pattern.name} relate to hardware security ?\n\nAnswer: Technique {ap.name} (ID {ap.id}) involves the following: {ap.description[_~\"hardware security\"]}. This is mitigated by course of action {coa:ap.mitigates<.name} (ID {coa.id}) by doing the following: {coa.description}",
+        "source_file": "templates-aligned-2026-02.docx",
+        "source_line": 110,
+        "count_limit": 10,
+        "summary": "{coa:ap.mitigates<.description}",
+        "schema": "course-of-action mitigates attack-pattern"
+    },
+    "timestamp": "2026-03-20T12:36:15.393Z",
+    "template_index": 34,
+    "generation_time": 0.020638227462768555,
+    "generated_count": 0,
+    "query": "MATCH (ap:`attack-pattern`), (ap:`attack-pattern`)<-[:mitigates]-(coa:`course-of-action`), (coa:`course-of-action`)     WHERE (toLower(ap.description) CONTAINS toLower(\"hardware security\"))     LIMIT 2000     RETURN DISTINCT ap.name, ap.mitre_id, ap.description, coa.name, coa.mitre_id, coa.description     ORDER BY rand()",
+    "generated_strings": []
+}

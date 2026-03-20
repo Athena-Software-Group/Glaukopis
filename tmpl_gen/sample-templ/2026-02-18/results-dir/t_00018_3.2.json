@@ -1,0 +1,21 @@
+{
+    "gen_conf_file": "gencfg_default_neo4j.json",
+    "templates_file": "templates-aligned-2026-02.json",
+    "results_dir": "results-dir",
+    "template_object": {
+        "shortname": "3.2",
+        "comment": "3.2",
+        "text": "Instruction: You are a CTI expert that gives precise and concise answers.\n\nQuestion: What is the most effective mitigation for the technique {ap:attack-pattern.name} (id {ap.id}) to reduce organizational risk?\n\nAnswer: To mitigate {ap.name}, organizations should implement course of action {coa:ap.mitigates<.name} (id{coa.id}). Description of mitigation: {coa.description[_~\"organizational risk\"]}.",
+        "source_file": "templates-aligned-2026-02.docx",
+        "source_line": 65,
+        "count_limit": 10,
+        "summary": "{coa.mitigates|description}",
+        "schema": "course-of-action - mitigates - attack-pattern"
+    },
+    "timestamp": "2026-03-20T12:36:14.390Z",
+    "template_index": 18,
+    "generation_time": 0.009282350540161133,
+    "generated_count": 0,
+    "query": "MATCH (ap:`attack-pattern`), (ap:`attack-pattern`)<-[:mitigates]-(coa:`course-of-action`), (coa:`course-of-action`)     WHERE (toLower(coa.description) CONTAINS toLower(\"organizational risk\"))     LIMIT 2000     RETURN DISTINCT ap.name, ap.mitre_id, coa.name, coa.mitre_id, coa.description     ORDER BY rand()",
+    "generated_strings": []
+}
