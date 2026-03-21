@@ -22,6 +22,8 @@ echo
 #   (specified in the $GENCONF file):
 COUNT_MAX=2000
 
+rm -vfr $RESULTS_DIR
+
 python3 $PY_IFTGEN --cmd generate --genconf $GENCONF \
         --dbconf $NEO4JCONF --tmpl $TMPL_JSON \
         --results_dir $RESULTS_DIR --count_max $COUNT_MAX

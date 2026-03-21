@@ -1082,8 +1082,10 @@ class TmplGenNeo4j:
                 
                 # TODO: what to do if idx >= len(propval) ??
                 if idx >= len(propval):
-                    raise ValueError(f"TmplGenNeo4j.format_prop_val ERROR: wrong index in {nodespec}.{propspec}")
-                pv = self.format_prop_val(return_spec, nodespec, propspec, propval[idx])
+                    pv = "N/A"
+                    # raise ValueError(f"TmplGenNeo4j.format_prop_val ERROR: wrong index in {nodespec}.{propspec}")
+                else:
+                    pv = self.format_prop_val(return_spec, nodespec, propspec, propval[idx])
             else:
                 # return the entire list formatted as a string:
                 sep = self.gencfg.get("list_property_separator", default_sep)

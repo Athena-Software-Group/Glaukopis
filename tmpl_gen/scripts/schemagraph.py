@@ -24,25 +24,33 @@ def make_gv(fn:str, fnout:str):
     # print(df)
     nodes = []
     rels = []
-    state = 0   # reading nodes
+    state = 0   # 0=reading garbage, 1=reading Nodes, 2=reading relationships
+
     for i in range(df.shape[0]):
+        if type(df[2][i]) != str:
+            continue
+        cell = df[2][i].strip()
+        # print("Cell ", i, ":", cell)
+
         if state == 0:
-            if type(df[2][i]) == float:
+            if cell == "Nodes":
                 state = 1
-            else:
-                nodes.append(df[2][i].strip())
         elif state == 1:
-            if df[2][i] == "Relationships":
+            if cell == "Relationships":
                 state = 2
+            elif cell != "":
+                nodes.append(cell)
         else:
-            rels.append(df[2][i].strip())
+            rels.append(cell)
 
     with open(fnout, "w") as fout:
         fout.write("digraph schema_athena_cti {\n\
 //    rankdir LR;\n\
     node [shape=box, style=filled];\n")
-    
+
         for node in nodes:
+            print("node", node)
+            
             bgcolor = get_bgcolor(node)
             fout.write(f'"{node}" [color=navy, fontcolor=indigo, fillcolor={bgcolor}];\n')
             
@@ -58,7 +66,7 @@ def get_bgcolor(node:str) -> str:
     # col = "lightblue"
     col = "khaki1"
     coldct = {"cve": "tan1", "cwe": "wheat1", 
-              "capec": "palegreen", "en": "lightblue", "kev": "lightpink"}
+              "capec": "palegreen", "en": "lightblue", "kev": "lightpink", "epss": "turquoise"}
     for d,c in coldct.items():
         if node.startswith(f"{d}:"):
             col = c 

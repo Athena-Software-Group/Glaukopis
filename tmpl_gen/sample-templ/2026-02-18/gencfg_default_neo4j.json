@@ -26,6 +26,8 @@
                     "malware",
                     "tool",
                     "x-mitre-data-component",
+		    "x-mitre-detection-strategy",
+		    "x-mitre-analytic",
                     "x-mitre-data-source",
                     "x-mitre-tactic"
                 ]
