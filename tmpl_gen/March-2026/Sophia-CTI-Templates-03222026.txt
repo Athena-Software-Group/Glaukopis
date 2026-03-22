@@ -1,0 +1,187 @@
+Hand Crafted Templates:
+Id abbreviations:
+CAPEC – A, CISA – S, CVE – V, CWE – W, EPSS – P, MITRE – M, MITRE ENGAGE - E
+
+Attack Patterns
+A.1 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Describe the CAPEC attack pattern {capec:CAPEC.name} (CAPEC-{capec:CAPEC.id}).
+Answer: {capec:CAPEC.name} (CAPEC-{capec:CAPEC.id}) is {capec:CAPEC.description}. It is a {capec:CAPEC.abstraction}-level pattern ({capec:CAPEC.status}) with {capec:CAPEC.severity} severity and a {capec:CAPEC.likelihood_of_attack} likelihood. 
+
+
+A.2 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Summarize how {capec:CAPEC.name} (CAPEC-{capec:CAPEC.id}) is executed and what conditions enable it.
+Answer: Execution flow: {capec:CAPEC.description}. Key prerequisites: {capec:CAPEC.prerequisites}. Attacker requirements: {capec:CAPEC.skills_required}. 
+
+A.3 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: What signs indicate {capec:CAPEC.name} (CAPEC-{capec:CAPEC.id}) and what are its typical impacts?
+Answer: Indicators include {capec:CAPEC.indicators}. Consequences: {capec:CAPEC.consequences}, typically causing {capec:CAPEC.severity} impact on system confidentiality, integrity, or availability. 
+
+A.4 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Explain how to detect and mitigate {capec:CAPEC.name} (CAPEC-{capec:CAPEC.id}).
+Answer: Detect via {capec:CAPEC.indicators} and execution behaviors ({capec:CAPEC.description}). Mitigate through {capec:CAPEC.mitigations} and by controlling enabling conditions ({capec:CAPEC.prerequisites}). 
+
+A.5 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Provide real-world examples of {capec:CAPEC.name} (CAPEC-{capec:CAPEC.id}) in action.
+Answer: Examples: {capec:CAPEC.example_instances}. These cases align with {Execution_Flow}  {capec:CAPEC.description} and exploit {capec:CAPEC.weakness.name}. 
+
+
+A.6 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: How is {capec:CAPEC.name} (CAPEC-{capec:CAPEC.id}) related to other weaknesses or taxonomies?
+Answer: {capec:CAPEC.name} connects to weaknesses {capec:CAPEC.weakness.id} and taxonomy mappings {capec:CAPEC.description}, reflecting {capec:CAPEC.description} as the shared attack principle. 
+
+A.7 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Write a short analyst note for responding to {capec:CAPEC.name} (CAPEC-{capec:CAPEC.id}).
+Answer: Detect via {capec:CAPEC.indicators}; contain affected systems; apply {capec:CAPEC.mitigations}. Triage using {capec:CAPEC.example_instances} and {capec:CAPEC.weakness.id} for contextual linking. 
+
+Exploits
+S.1 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Assess remediation urgency for {kve:KVE.id}: {kve:KVE.vulnerabilityName} in {kve:KVE.product}.
+Answer: {kve:KVE.id} ({kve:KVE.vulnerabilityName}) in {kve:KVE.product} ({kve:KVE.vendorProject}) is actively exploited. Recommended action: {kve:KVE.requiredAction}. 
+
+S.2 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Explain the significance of {kve:KVE.dueDate} for {kve:KVE.id}: {kve:KVE.vulnerabilityName}.
+Answer: Patching for {kve:KVE.id} ({kve:KVE.vulnerabilityName}) is due by {kve:KVE.dueDate}. Meeting this deadline ensures compliance with BOD 22-01 and reduces exposure to active exploitation. 
+
+S.3 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Identify if {kve:KVE.id}: {kve:KVE.vulnerabilityName} in {kve:KVE.product} is associated with ransomware activity.
+Answer: {kve:KVE.id} ({kve:KVE.vulnerabilityName}) in {kve:KVE.product} has ransomware association: {kve:KVE.knownRansomwareCampaignUse}. Immediate patching is recommended for higher risk. 
+
+S.4 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Summarize the technical impact and mitigation for {kve:KVE.id}: {kve:KVE.vulnerabilityName} in {kve:KVE.product}.
+Answer: {kve:KVE.id} ({kve:KVE.vulnerabilityName}) causes: {kve:KVE.shortDescription}. Mitigation: {kve:KVE.requiredAction}. Listed in KEV — patch immediately. 
+
+S.5 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Generate a detailed patching advisory for {kve:KVE.id}: {kve:KVE.vulnerabilityName} in {kve:KVE.vendorProject} {kve:KVE.product}.
+Answer: Vulnerability {kve:KVE.id} ({kve:KVE.vulnerabilityName}) in {kve:KVE.product} ({kve:KVE.vendorProject}) is actively exploited. Detailed advisory: {kve:KVE.shortDescription}. Recommended action: {kve:KVE.requiredAction} before {kve:KVE.dueDate}. 
+
+S.6 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Provide a technical summary for {kve:KVE.id}: {kve:KVE.vulnerabilityName} in {kve:KVE.vendorProject} {kve:KVE.product}, including its weakness type.
+Answer: {kve:KVE.id} ({kve:KVE.vulnerabilityName}) affects {kve:KVE.product} ({kve:KVE.vendorProject}). Description: {kve:KVE.shortDescription}. Mitigation: {kve:KVE.requiredAction}. Weakness(es) involved: [{kve:KVE.cwes}]. 
+
+Vulnerabilities
+V.1 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: What is CVE {cve:CVE.id}, describe the vulnerability and the potential impact.
+Answer: CVE {cve:CVE.id} describes a vulnerability {cve:CVE.descriptions} and the potential impact is {cve:CVE.cvss3_1}. 
+
+V.2 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Given the description {cve:CVE.description} of the CVE, predict its CVE ID.
+Answer: The CVE ID for the vulnerability described in {cve:CVE.descriptions} is {cve:CVE.id}. 
+
+V.3 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Given the {cve:CVE.id}, predict its severity score {cve:CVE.cvss3_1}.
+Answer: The severity score for the vulnerability described in {cve:CVE.id} is {cve:CVE.cvss3_1}. 
+
+V.4 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Given the description {cve:CVE.descriptions} of the CVE, predict its severity score {cve:CVE.cvss3_1}.
+Answer: The severity score for the vulnerability described in {cve:CVE.descriptions} is {cve:CVE.cvss3_1}. 
+
+V.5 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Identify the CVSS v3.1 Attack Vector (AV) for the following vulnerability {cve:CVE.descriptions}
+Answer: Attack Vector: {cve:CVE.cvss3_1} 
+
+Weaknesses
+W.1 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Explain the weakness {cwe:Weakness.name} (CWE-{cwe:Weakness.id}).
+Answer: {cwe:Weakness.name} (CWE-{cwe:Weakness.id}) occurs when {cwe:Weakness.description}. {Extended_Description}
+
+W.2 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: What is the root cause of {cwe:Weakness.name} (CWE-{cwe:Weakness.id})?
+Answer: The root cause of {cwe:Weakness.name} is often found in functional areas like {cwe:Weakness.Functional_Area}. In essence, {cwe:Weakness.description}. 
+
+W.3 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Describe how attackers could exploit {cwe:Weakness.name} (CWE-{cwe:Weakness.id}) and what the consequences are.
+Answer: Attackers exploit {cwe:Weakness.name} based on its {cwe:Weakness.Likelihood_Of_Exploit}, which can lead to observations such as {cwe:Weakness.observed_as.Description}. 
+
+W.4 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: How can {cwe:Weakness.name} (CWE-{cwe:Weakness.id}) be detected and prevented?
+Answer: {cwe:Weakness.name} can be detected through {cwe:Weakness.detected_by.Method}. To prevent it, apply these mitigations: {cwe:Weakness.mitigated_by.Description}. 
+
+W.5 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: At what stage is {cwe:Weakness.name} (CWE-{cwe:Weakness.id}) usually introduced, and why?
+Answer: {cwe:Weakness.name} is commonly introduced during specific lifecycle phases, as detailed in description: {cwe:Weakness.description}. 
+
+W.6 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: List related weaknesses or attack patterns associated with {cwe:Weakness.name} (CWE-{cwe:Weakness.id}).
+Answer: {cwe:Weakness.name} is associated with related weaknesses like {cwe:Weakness.ChildOf.id} and attack patterns {cwe:Weakness.related_attack_pattern.id}. 
+
+W.7 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Give an example CVE related to {cwe:Weakness.name} (CWE-{cwe:Weakness.id}) and explain its cause.
+Answer: Examples include {cwe:Weakness.observed_as.id}. It demonstrates {cwe:Weakness.description} as the core issue of {cwe:Weakness.name}. 
+
+Exploit Prediction
+P.1 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Assess the exploitability likelihood for {epss:EPSS.id} with EPSS {epss:EPSS.epss} and percentile {epss:EPSS.percentile}.
+Answer: {epss:EPSS.id} has an EPSS of {epss:EPSS.epss} ({epss:EPSS.percentile} percentile). Higher percentiles indicate greater exploit likelihood; prioritize remediation accordingly. 
+
+P.2 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Compare EPSS {epss:EPSS.epss} and CVSS {cve:CVE.cvss3_1} for {cve:CVE.id} and explain prioritization.
+Answer: {cve:CVE.id}: EPSS {epss:EPSS.epss} reflects exploitation likelihood; CVSS {cve:CVE.cvss3_1} indicates technical severity. High EPSS + high CVSS → urgent remediation; low EPSS + high CVSS → moderate priority. 
+
+P.3 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Explain how EPSS {epss:EPSS.epss} for {cve:CVE.id} on {epss:EPSS.date} informs short-term patching.
+Answer: On {epss:EPSS.date}, {cve:CVE.id} had EPSS {epss:EPSS.epss}, indicating probability of near-term exploitation. Rising scores suggest prioritizing immediate remediation. 
+
+P.4 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Given {cve:CVE.id} with EPSS {epss:EPSS.epss} and another CVE with lower EPSS, which to prioritize?
+Answer: {cve:CVE.id} with higher EPSS {epss:EPSS.epss} should be prioritized due to greater real-world exploit likelihood. 
+
+P.5 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Correlate EPSS {epss:EPSS.epss} for {cve:CVE.id} with external threat intelligence.
+Answer: EPSS {epss:EPSS.epss} for {cve:CVE.id} suggests exploit likelihood; combine with KEV, exploit DB, or campaign data to confirm real-world risk. 
+
+P.6 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Provide an EPSS-based risk assessment for {cve:CVE.id}, with CVSS {cve:CVE.cvss3_1}.
+Answer: {cve:CVE.id}: EPSS {epss:EPSS.epss} ({epss:EPSS.epss} chance of near-term exploitation), CVSS {cve:CVE.cvss3_1} indicates severity. Use both plus context to prioritize remediation. 
+
+Attack Patterns & Techniques
+E.1 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Describe how defenders can detect or disrupt the technique {ack:attack-pattern.name} ({ack:attack-pattern.id}).
+Answer: The technique {ack:attack-pattern.name} ({ack:attack-pattern.id}) can be detected using {ack:attack-pattern.x_mitre_detection}. It can be disrupted through mitigations such as {ack:attack-pattern.mitigates.name}. 
+
+E.2 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Explain how deception can be applied against the technique {ack:attack-pattern.name} ({ack:attack-pattern.id}).
+Answer: Deception can be applied against {ack:attack-pattern.name} by deploying decoy systems or false targets that attract and expose adversary actions as defined in {ack:attack-pattern.x_mitre_detection}. 
+
+E.3 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Which ATT&CK tactic does the technique {ack:attack-pattern.name} ({ack:attack-pattern.id}) belong to, and how does it aid active defense?
+Answer: {ack:attack-pattern.name} is part of the {ack:attack-pattern.achieves.name} tactic. Understanding this helps defenders anticipate adversary goals and plan proactive defenses. 
+
+E.4 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: How can SOC teams use {ack:attack-pattern.x_mitre_data_sources} to detect and engage adversaries performing {ack:attack-pattern.name} ({ack:attack-pattern.id})?
+Answer: SOC teams can monitor {ack:attack-pattern.x_mitre_data_sources} for behaviors linked to {ack:attack-pattern.name}, using detections from {ack:attack-pattern.x_mitre_detection} to engage or study attackers. 
+
+E.5 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Describe how defenders can mislead adversaries using {ack:attack-pattern.name} ({ack:attack-pattern.id}).
+Answer: Defenders can mislead adversaries by introducing deceptive configurations or honeypots that mimic assets targeted by {ack:attack-pattern.name}, supported by detections in {ack:attack-pattern.x_mitre_detection}. 
+
+E.6 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Explain how the group {ack:intrusion-set.name} ({ack:intrusion-set.id}) uses {ack:attack-pattern.name} ({ack:attack-pattern.id}) and how defenders can counter it.
+Answer: The group {ack:intrusion-set.name} employs {ack:attack-pattern.name} to achieve its objectives. Defenders can counter it through {ack:attack-pattern.mitigates.name} and targeted deception. 
+
+M.1 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Explain the Technique {ack:attack-pattern.name} {ack:attack-pattern.id} and how it works.
+Answer: This the description of the {ack:attack-pattern.name} ({ack:attack-pattern.id}) — {ack:attack-pattern.description}. 
+
+M.2 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: What are the defensive measures against {ack:attack-pattern.id}?
+Answer: The defensive measures against {ack:attack-pattern.name} ({ack:attack-pattern.id}) are {ack:attack-pattern.mitigatated_by.description}. 
+
+M.3 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Which threat actors commonly use technique (attack-pattern){ack:intrusion-set.uses.name} ({ack:intrusion-set.uses.id})?
+Answer: Threat actors such as {ack:intrusion-set.name} are known to use technique {ack:intrusion-set.uses.name} ({ack:intrusion-set.uses.id}) in their campaigns. 
+
+M.4 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: What subtechniques fall under {ack:attack-pattern.id}?
+Answer: Subtechniques of {ack:attack-pattern.name} ({ack:attack-pattern.id}) include {ack:attack-pattern.subtechnique-of.name}. 
+
+M.5 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: How can {ack:attack-pattern.id} be detected in network traffic?
+Answer: {ack:attack-pattern.name} ({ack:attack-pattern.id}) can be detected in network traffic by monitoring {ack:attack-pattern.x_mitre_data_sources}. 
+
+M.6 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Which platforms are affected by {ack:attack-pattern.id}?
+Answer: {ack:attack-pattern.name} ({ack:attack-pattern.id}) is applicable to {ack:attack-pattern.x_mitre_platforms} environments. 
+
+M.7 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Which tactic does {ack:attack-pattern.id} support?
+Answer: {ack:attack-pattern.name} ({ack:attack-pattern.id}) supports the {ack:attack-pattern.achieves.name} tactic, which focuses on {ack:attack-pattern.achieves.description}. 
