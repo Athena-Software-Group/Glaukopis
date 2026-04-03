@@ -9,10 +9,7 @@ Created on Fri Sep 26 12:39:18 2025
 TODO:
     - add edge relationships to grammar and text generation
     - explain how new var name binds to second node in var:n1.rel.n2
-    - check if constraint {cname.prop[_=value]} works for non-list properties, RE: template 2.6
-    - check if constraint {cname.prop[_=value]} works for bool, RE: template 2.6
     - implement code for list comprehensions, RE: template 2.8
-    - add support for substring check in {cname.prop[_^value]} in make_subscript_term(), RE template 3.2
     - add support for scope, e.g. cwe#Weakness
     - MAYBE add support for JSON objects
 """
@@ -74,7 +71,9 @@ listsection: "[" (TEXTSECTION | qfield)* "]"
 
 svalue:       QSTRING | BOOL | NUMBER | OTHERVALUE
 
-RELOP:        "=" | "!=" | "<" | "<=" | ">=" | ">" | "~"
+// added a space around " < " and " > " to avoid confusion  with <> used for 
+//     edges:
+RELOP:        "=" | "!=" | " < " | "<=" | ">=" | " > " | "~"
  
 INVCONTENT:   /(?:[^*{]|\*(?!>))+/
 QFTEXT:       /(?:[^}])+/
