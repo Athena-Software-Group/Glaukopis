@@ -1,0 +1,7 @@
+{   
+    "comment": "Connection configuration to the local neo4j service: GUI and bolt JSON/HTTP interface",
+    "uri": "bolt://localhost:7687",
+    "auth": ["neo4j", "athena-cti-db"],    
+    "db_name": "athena-cti-db",
+    "nickname": "ASG-CTI"
+}

@@ -1,7 +1,0 @@
-{   
-    "comment": "Connection configuration to the ASG neo4j service: GUI and bolt JSON/HTTP interface",
-    "uri": "bolt://172.16.129.217:7687/",
-    "auth": ["neo4j", "ylFzaioDo6WtDUcEdZZcRMyVcgTDEFWd"],    
-    "db_name": "neo4j",
-    "nickname": "ASG-CTI"
-}

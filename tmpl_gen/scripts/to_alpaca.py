@@ -88,8 +88,8 @@ def parse_triples(args:argparse.Namespace, jsin) -> list[dict[str, str]]:
         m = re.search(pattern, txt, flags=re.S)
         if m:
             instr = m.group(1).strip() if instruction_override == "" else instruction_override
-            d = {"instruction": instr, "question": m.group(2).strip(), 
-                 "answer": m.group(3).strip()}
+            d = {"instruction": instr, "input": m.group(2).strip(), 
+                 "output": m.group(3).strip()}
             if shortname:
                 d["shortname"] = shortname
             lst_out.append(d)
