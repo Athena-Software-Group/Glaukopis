@@ -46,10 +46,7 @@ python --version
 
 Clone the repository and install LlamaFactory in editable mode along with optional dependencies:
 
-```bash
-git clone --depth 1 https://github.com/hiyouga/LlamaFactory.git
-cd LlamaFactory
-
+```bash 
 pip install -e .
 pip install -r requirements/metrics.txt -r requirements/deepspeed.txt
 pip install wandb huggingface_hub
