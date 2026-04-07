@@ -1,0 +1,10 @@
+### model
+model_name_or_path: Qwen/Qwen2.5-14B-Instruct
+adapter_name_or_path: saves/Qwen2.5-14B-Instruct/lora/train_2026-04-04-21-52-50
+template: qwen
+finetuning_type: lora
+
+### export
+export_dir: models/qwen2.5_14b_sft_lora
+export_device: cpu
+export_legacy_format: false
