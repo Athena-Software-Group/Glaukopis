@@ -1,0 +1,10 @@
+### model
+model_name_or_path: meta-llama/Llama-3.1-8B-Instruct
+adapter_name_or_path: saves/Llama-3.1-8B-Instruct/lora/train_2026-04-15-09-22-29
+template: llama3
+finetuning_type: lora
+
+### export
+export_dir: models/llama3_8b_ift
+export_device: cpu
+export_legacy_format: false

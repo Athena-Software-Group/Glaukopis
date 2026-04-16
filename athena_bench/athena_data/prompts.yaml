@@ -1,0 +1,88 @@
+RCM: |
+  Analyze the following CVE description and identify the most appropriate Common Weakness Enumeration (CWE) that represents the root cause of the vulnerability. Briefly justify your choice.
+
+  The final line of your response must begin with "Answer:" and contain only the CWE ID in the following exact format, without any extra commentary or text after it.
+
+  Final line example format:
+  Answer: CWE-287
+
+  CVE Description:
+  {}
+CVSS: |
+  Analyze the following CVE description and calculate the CVSS v3.1 Base Score. Determine the values for each base metric: AV, AC, PR, UI, S, C, I, and A. For each metric, state the chosen value and briefly justify your choice.
+
+  Valid options for each metric are as follows:
+  Attack Vector (AV): Network (N), Adjacent (A), Local (L), Physical (P)
+  Attack Complexity (AC): Low (L), High (H)
+  Privileges Required (PR): None (N), Low (L), High (H)
+  User Interaction (UI): None (N), Required (R)
+  Scope (S): Unchanged (U), Changed (C)
+  Confidentiality (C): None (N), Low (L), High (H)
+  Integrity (I): None (N), Low (L), High (H)
+  Availability (A): None (N), Low (L), High (H)
+
+  After summarizing all metrics, construct the complete CVSS v3.1 vector string. The final line of your response must begin with "Answer:" and contain only the CVSS v3.1 Vector String in the following exact format, without any extra commentary or text after it.
+
+  Final line example format:
+  Answer: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H
+
+  CVE Description:
+  {}
+TAA: |
+  Analyze the following anonymized incident summary, which includes attacker behaviors, tools, infrastructure, file/artifact usage, operational tradecraft, targeting, and other contextual details. Any direct mentions of the threat actor group have been anonymized with the pronoun “they”. Your task is to attribute the description to a known threat actor based on the techniques, tactics, procedures (TTPs), and any other relevant information described. Please provide the name of the threat actor you believe is responsible and briefly explain your reasoning.
+
+  The final line of your response must begin with "Answer:" and contain only the threat actor in the following exact format, without any extra commentary or text after it.
+
+  Final line example format:
+  Answer: Lazarus
+
+  Threat report:
+  {}
+RMS: |
+  Analyze the following attack scenario in a {} environment. Recommend the most appropriate MITRE ATT&CK mitigation ID(s) (format: M10xx) that address the scenario. Return exactly {} mitigation IDs as a comma-separated list. Briefly justify your choice. Only ATT&CK mitigations (M10xx)—do not output techniques (T####), groups, or generic advice.
+  
+  The final line of your response must begin with "Answer:" and contain only the mitigation IDs in the following exact format, without any extra commentary or text after it.
+  
+  Final line example format:
+  Answer: M1037, M1041
+  
+  Scenario:
+  {}
+ATE: |
+  Analyze the following attack scenario in a {} environment. Identify the single MITRE ATT&CK technique (ID format: T####) that best matches the behavior described. Briefly justify your choice. Only ATT&CK techniques—do not output sub-techniques (T####.###), mitigations (M10xx), groups, software, or multiple IDs.
+  
+  The final line of your response must begin with "Answer:" and contain only the technique ID in the following exact format, without any extra commentary or text after it.
+  
+  Final line example format:
+  Answer: T1059
+  
+  Scenario:
+  {}
+MCQ: |
+  You are a cybersecurity expert specializing in Cyber Threat Intelligence (CTI).
+  From the content below, generate up to {} multiple-choice questions with five options each.
+
+  Rules:
+  - Difficulty: Non-trivial. Suitable for 3–5 years CTI experience.
+  - Mix: Balance recall (definitions, key facts, IDs) and operational judgment (analytic choices, prioritization, implications).
+  - Precision: Use correct technical terms and identifiers exactly as in the content (e.g., CVE-YYYY-NNNN, ATT&CK T#### or T####.###, malware family names, threat actors, TTPs, IOCs, CVSS details).
+  - Options: Exactly 5 options (A–E). No “All of the above”/“None of the above”. Only one correct answer per question. Distractions must be plausible but incorrect.
+  - Standalone: Write questions and options that make sense without seeing the content. Do not mention or reference the source (e.g., avoid phrases like “in the content above,” “according to the report,” quotes/citations, URLs, or filenames).
+  - Grounding: Base every question strictly on the provided content. Do not assume facts not present.
+  - Formatting: Output a TSV with exactly 8 columns per row, separated by TABs, in this order:
+    Question\tOption A\tOption B\tOption C\tOption D\tOption E\tCorrect Answer (A/B/C/D/E)\tExplanation
+    Do not include tabs or newlines within any field. No extra commentary before or after the table.
+  - Explanations: 1–2 sentences citing specific details from the content to justify the correct option and briefly note why a key distractor is wrong.
+  - Quality: Avoid vague, broad, or obvious questions. Remove redundancy. Randomize the position of the correct option across A–E.
+
+  Content:
+  {}
+MCQ_EVAL: |
+  You are given a multiple-choice question (MCQ) from a Cyber Threat Intelligence (CTI) benchmark. Choose the single best option among the five provided (A–E). Briefly justify your choice.
+
+  The final line of your response must begin with "Answer:" and contain only a single uppercase letter (A, B, C, D, or E) in the following exact format, without any extra commentary or text after it.
+
+  Final line example format:
+  Answer: C
+
+  {}

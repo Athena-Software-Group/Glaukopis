@@ -1,0 +1,81 @@
+COMMON:
+  task_prompt_file: athena_data/prompts.yaml  # Path to the task prompts file used by the pipeline.
+  nvd_start_date: 2025-01-01                  # Inclusive start date for CVE retrieval (YYYY-MM-DD).
+  nvd_end_date: 2025-07-31                    # Inclusive end date for CVE retrieval (YYYY-MM-DD).
+  nvd_data_dir: data/processed/nvd/           # Directory where CVE records fetched from the NVD API will be saved.
+
+RCM:
+  start_date: 2025-01-01                      # Inclusive start date for building the RCM set (YYYY-MM-DD).
+  end_date: 2025-07-31                        # Inclusive end date for building the RCM set (YYYY-MM-DD).
+  num_questions: 2000                         # Number of benchmark tasks to sample for RCM within the date window.
+  min_description_words: 25                   # Exclude CVEs with word cound less than this
+  output_path: benchmark_data/athena_bench/athena-cti-rcm.jsonl # Destination JSONL file for the generated RCM benchmark tasks.
+
+CVSS:
+  start_date: 2025-01-01                      # Inclusive start date for selecting CVEs used to create CVSS questions.
+  end_date: 2025-07-31                        # Inclusive end date for selecting CVEs used to create CVSS questions.
+  num_questions: 2000                         # Number of benchmark tasks to sample from valid CVEs in the date window.
+  use_nvd_score_only: True                    # If true, include only CVEs with an NVD-assigned CVSS (exclude CNA-only).
+  cvss_version: v31                           # CVSS version to use ('v31' or 'v40'); default is v31.
+  min_description_words: 30                   # Exclude CVEs with word cound less than this
+  output_path: benchmark_data/athena_bench/athena-cti-vsp.jsonl # Destination JSONL file for the generated CVSS benchmark tasks.
+
+TAA:
+  start_date: 2024-01-01                      # Inclusive start date for selecting threat report URLs used to create TAA questions.
+  end_date: 2025-07-31                        # Inclusive end date for selecting threat report URLs used to create TAA questions.
+  min_description_words: 30                   # Exclude report with word cound less than this
+  urls_csv: data/processed/taa/threat_actor_report_urls.csv
+  model: gpt-5                   # Model to use for generating TAA questions.
+  reasoning_effort: minimal     # Reasoning effort level for TAA questions (minimal, moderate, or extensive).
+  verbosity: low                # Verbosity level for TAA questions
+  sleep_between_calls: 1.5
+  processed_path: data/processed/taa/athena-cti-taa.jsonl # Destination JSONL file for the processed TAA records.
+  output_path: benchmark_data/athena_bench/athena-cti-taa.jsonl # Destination JSONL file for the generated TAA benchmark tasks.
+  text_max_chars: 12000 # Maximum number of characters to include in the TAA question text.
+  openai_timeout_s: 120
+  openai_max_retries: 4
+  num_questions: 100 # Number of benchmark tasks to sample from valid TAA records in the date window.
+
+
+MITRE_ATTCK:
+  attack_url: "https://raw.githubusercontent.com/mitre/cti/master/enterprise-attack/enterprise-attack.json"
+  cache_path: data/processed/mitre_attck/enterprise-attack.json
+  data_dir: data/processed/mitre_attck/
+  min_desc_chars: 100
+  max_items: 500
+  start_time: 2024-01-01                      # Inclusive start date for selecting attack descriptions.
+  end_time: 2025-07-31                        # Inclusive end date for selecting attack descriptions.
+  seed: 1337
+  sleep_between_gpt_calls: 0.5
+  gpt:
+    model: gpt-5
+    reasoning_effort: minimal
+    verbosity: low
+    timeout_s: 90
+    max_retries: 3
+    backoff_base: 2.0
+
+RMS:
+  num_questions: 500
+  output_path: benchmark_data/athena_bench/athena-cti-rms.jsonl
+  seed: 1337
+
+ATE:
+  num_questions: 500
+  output_path: benchmark_data/athena_bench/athena-cti-ate.jsonl
+  seed: 1337
+
+MCQ:
+  plan_path: data/processed/mcq/mcq_plan.tsv          # Plan TSV enumerating content files and desired counts
+  processed_root: data/processed/mcq                  # Root folder for processed text content
+  output_path: benchmark_data/athena_bench/athena-cti-mcq.jsonl         # Aggregate JSONL of generated MCQs
+  model: gpt-5                                        # Model for question generation
+  reasoning_effort: minimal                           # Reasoning effort 
+  verbosity: low                                      # OpenAI text verbosity
+  sleep_between_calls: 1.0                            # Throttle to be polite with rate limits
+  openai_timeout_s: 120                               # Per-call timeout
+  openai_max_retries: 4                               # Retries on transient errors
+  text_max_chars: 12000                               # Max content chars fed to the model per row
+
+    
+    

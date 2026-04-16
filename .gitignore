@@ -406,3 +406,14 @@ wandb/
 swanlog/
 generated_predictions.jsonl
 predictions_score.json
+
+# Athena Bench Gitignore files
+#virtual environment 
+athena-cti/ 
+myenv/
+
+# environment variables and secrets 
+.env 
+# Python cache
+__pycache__/
+.cache/

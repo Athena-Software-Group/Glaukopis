@@ -1,0 +1,148 @@
+description,ground_truth,predicted_cve
+"Attackers can crash a Cisco IOS router or device, provided they can get to an interactive prompt (such as a login).  This applies to some IOS 9.x, 10.x, and 11.x releases.",CVE-1999-0159,CVE-1999-0159
+Internet Explorer 5.0 allows a remote server to read arbitrary files on the client's file system using the Microsoft Scriptlet Component.,CVE-1999-0468,NOT_FOUND
+"Cisco IOS 12.2(15) and earlier allows remote attackers to cause a denial of service (refused VTY (virtual terminal) connections), via a crafted TCP connection to the Telnet or reverse Telnet port.",CVE-2004-1464,CVE-2004-1464
+"Unspecified vulnerability in Microsoft Excel 2000, XP, 2003, and 2004 for Mac, and possibly other Office products, allows remote user-assisted attackers to execute arbitrary code via unknown attack vectors, as demonstrated by Exploit-MSExcel.h in targeted zero-day attacks.",CVE-2007-0671,CVE-2007-0671
+"The Macrovision InstallShield InstallScript One-Click Install (OCI) ActiveX control 12.0 before SP2 does not validate the DLL files that are named as parameters to the control, which allows remote attackers to download arbitrary library code onto a client machine.",CVE-2007-5661,CVE-2007-5661
+"The JavaScript engine in Mozilla Firefox before 3.0.12 and Thunderbird allows remote attackers to cause a denial of service (memory corruption and application crash) or possibly execute arbitrary code via vectors related to (1) nsDOMClassInfo.cpp, (2) JS_HashTableRawLookup, and (3) MirrorWrappedNativeParent and js_LockGCThingRT.",CVE-2009-2466,CVE-2009-2466
+"CgiUserConfigEdit in BackupPC 3.1.0, when SSH keys and Rsync are in use in a multi-user environment, does not restrict users from the ClientNameAlias function, which allows remote authenticated users to read and write sensitive files by modifying ClientNameAlias to match another system, then initiating a backup or restore.",CVE-2009-3369,CVE-2009-3369
+"modules/arch/win32/mod_isapi.c in mod_isapi in the Apache HTTP Server 2.0.37 through 2.0.63, 2.2.0 through 2.2.14, and 2.3.x before 2.3.7, when running on Windows, does not ensure that request processing is complete before calling isapi_unload for an ISAPI .dll module, which allows remote attackers to execute arbitrary code via unspecified vectors related to a crafted request, a reset packet, and ""orphaned callback pointers.""",CVE-2010-0425,NOT_FOUND
+Multiple integer overflows in Google Chrome before 4.1.249.1036 allow remote attackers to have an unspecified impact via vectors involving WebKit JavaScript objects.,CVE-2010-1233,NOT_FOUND
+Cross-site scripting (XSS) vulnerability in CGI/Browse.pm in BackupPC 3.2.0 and possibly other versions before 3.2.1 allows remote attackers to inject arbitrary web script or HTML via the num parameter in a browse action to index.cgi.,CVE-2011-3361,CVE-2011-3361
+"Cross-site scripting (XSS) vulnerability in View.pm in BackupPC 3.0.0, 3.1.0, 3.2.0, 3.2.1, and possibly earlier allows remote attackers to inject arbitrary web script or HTML via the num parameter in a view action to index.cgi, related to the log file viewer, a different vulnerability than CVE-2011-3361.",CVE-2011-4923,CVE-2011-4923
+"Cross-site scripting (XSS) vulnerability in RestoreFile.pm in BackupPC 3.1.0, 3.2.1, and possibly other earlier versions allows remote attackers to inject arbitrary web script or HTML via the share parameter in a RestoreFile action to index.cgi.",CVE-2011-5081,CVE-2011-5081
+"The default configuration of the apache2 package in Debian GNU/Linux squeeze before 2.2.16-6+squeeze7, wheezy before 2.2.22-4, and sid before 2.2.22-4, when mod_php or mod_rivet is used, provides example scripts under the doc/ URI, which might allow local users to conduct cross-site scripting (XSS) attacks, gain privileges, or obtain sensitive information via vectors involving localhost HTTP requests to the Apache HTTP Server.",CVE-2012-0216,CVE-2012-0216
+"WellinTech KingSCADA 3.0 uses a cleartext base64 format for storage of passwords in user.db, which allows context-dependent attackers to obtain sensitive information by reading this file.",CVE-2012-1977,CVE-2012-1977
+"These Sinapsi devices do not check the validity of the data before 
+executing queries. By accessing the SQL table of certain pages that do 
+not require authentication within the device, attackers can leak 
+information from the device. This could allow the attacker to compromise
+ confidentiality.",CVE-2012-5861,NOT_FOUND
+"These Sinapsi devices
+store hard-coded passwords in the PHP file of the device. By using the 
+hard-coded passwords in the device, attackers can log into the device 
+with administrative privileges. This could allow the attacker to have 
+unauthorized access.",CVE-2012-5862,CVE-2012-5862
+"These Sinapsi devices do not check for special elements in commands sent 
+to the system. By accessing certain pages with administrative privileges
+ that do not require authentication within the device, attackers can 
+execute arbitrary, unexpected, or dangerous commands directly onto the 
+operating system.",CVE-2012-5863,CVE-2012-5863
+"These Sinapsi devices 
+do not check if users that visit pages within the device have properly 
+authenticated. By directly visiting the pages within the device, 
+attackers can gain unauthorized access with administrative privileges.",CVE-2012-5864,CVE-2012-5864
+"Post Oak AWAM Bluetooth Reader Traffic System does not use a sufficient source of entropy for private keys, which makes it easier for man-in-the-middle attackers to spoof a device by predicting a key value.",CVE-2012-4687,CVE-2012-4687
+"Mesh OS before 7.9.1.1 on Tropos wireless mesh routers does not use a sufficient source of entropy for SSH keys, which makes it easier for man-in-the-middle attackers to spoof a device or modify a client-server data stream by leveraging knowledge of a key from a product installation elsewhere.",CVE-2012-4898,NOT_FOUND
+"The Carlo Gavazzi 
+EOS-Box
+
+does not check the validity of the data before executing queries. By accessing the SQL table of certain pages that do not require authentication, attackers can leak information from the device. This could allow the attacker to compromise confidentiality.",CVE-2012-6427,CVE-2012-6427
+"The Carlo Gavazzi 
+EOS-Box
+
+stores hard-coded passwords in the PHP file of 
+the device. By using the hard-coded passwords, attackers can log into 
+the device with administrative privileges. This could allow the attacker
+ to have unauthorized access.",CVE-2012-6428,CVE-2012-6428
+The Central application in i-GEN opLYNX before 2.01.9 allows remote attackers to bypass authentication via vectors involving the disabling of browser JavaScript support.,CVE-2012-4688,CVE-2012-4688
+Directory traversal vulnerability in the web server in SpecView 2.5 build 853 and earlier allows remote attackers to read arbitrary files via a ... (dot dot dot) in a URI.,CVE-2012-5972,CVE-2012-5972
+"The Runtime Toolkit in CODESYS Runtime System 2.3.x and 2.4.x does not require authentication, which allows remote attackers to execute commands via the command-line interface in the TCP listener service or transfer files via requests to the TCP listener service.",CVE-2012-6068,CVE-2012-6068
+"The CoDeSys Runtime Toolkit’s file transfer functionality does not 
+perform input validation, which allows an attacker to access files and 
+directories outside the intended scope. This may allow an attacker to 
+upload and download any file on the device. This could allow the 
+attacker to affect the availability, integrity, and confidentiality of 
+the device.",CVE-2012-6069,CVE-2012-6069
+"When an affected product receives a valid CIP message from an unauthorized or unintended source to Port 2222/TCP, Port 2222/UDP, Port 44818/TCP, or Port 44818/UDP that instructs the CPU to stop logic execution and enter a fault state, a DoS can occur. This situation could cause loss of availability and a disruption of communication with other connected devices.
+
+
+
+
+
+Rockwell Automation EtherNet/IP products; 1756-ENBT, 1756-EWEB, 1768-ENBT, and 1768-EWEB communication modules; CompactLogix L32E and L35E controllers; 1788-ENBT FLEXLogix adapter; 1794-AENTR FLEX I/O EtherNet/IP adapter; ControlLogix 18 and earlier; CompactLogix 18 and earlier; GuardLogix 18 and earlier; SoftLogix 18 and earlier; CompactLogix controllers 19 and earlier; SoftLogix controllers 19 and earlier; ControlLogix controllers 20 and earlier; GuardLogix controllers 20 and earlier; and MicroLogix 1100 and 1400",CVE-2012-6435,CVE-2012-6435
+"The device does not properly validate the data being sent to the buffer. An attacker can send a malformed CIP packet to Port 2222/TCP, Port 2222/UDP, Port 44818/TCP, or Port 44818/UDP, which creates a buffer overflow and causes the CPU to crash. Successful exploitation of this vulnerability could cause loss of availability and a disruption in communications with other connected devices.
+
+
+
+
+
+
+
+Rockwell Automation EtherNet/IP products; 1756-ENBT, 1756-EWEB, 1768-ENBT, and 1768-EWEB communication modules; CompactLogix L32E and L35E controllers; 1788-ENBT FLEXLogix adapter; 1794-AENTR FLEX I/O EtherNet/IP adapter; ControlLogix 18 and earlier; CompactLogix 18 and earlier; GuardLogix 18 and earlier; SoftLogix 18 and earlier; CompactLogix controllers 19 and earlier; SoftLogix controllers 19 and earlier; ControlLogix controllers 20 and earlier; GuardLogix controllers 20 and earlier; and MicroLogix 1100 and 1400",CVE-2012-6436,CVE-2012-6436
+"The device does not properly authenticate users and the potential exists for a remote user to upload a new firmware image to the Ethernet card, whether it is a corrupt or legitimate firmware image. Successful exploitation of this vulnerability could cause loss of availability, integrity, and confidentiality and a disruption in communications with other connected devices.
+
+
+
+
+
+Rockwell Automation EtherNet/IP products; 1756-ENBT, 1756-EWEB, 1768-ENBT, and 1768-EWEB communication modules; CompactLogix L32E and L35E controllers; 1788-ENBT FLEXLogix adapter; 1794-AENTR FLEX I/O EtherNet/IP adapter; ControlLogix 18 and earlier; CompactLogix 18 and earlier; GuardLogix 18 and earlier; SoftLogix 18 and earlier; CompactLogix controllers 19 and earlier; SoftLogix controllers 19 and earlier; ControlLogix controllers 20 and earlier; GuardLogix controllers 20 and earlier; and MicroLogix 1100 and 1400",CVE-2012-6437,CVE-2012-6437
+"The device does not properly validate the data being sent to the buffer. An attacker can send a malformed CIP packet to Port 2222/TCP, Port 2222/UDP, Port 44818/TCP, or Port 44818/UDP, which creates a buffer overflow and causes the NIC to crash. Successful exploitation of this vulnerability could cause loss of availability and a disruption in communications with other connected devices.
+
+
+
+
+
+Rockwell Automation EtherNet/IP products; 1756-ENBT, 1756-EWEB, 1768-ENBT, and 1768-EWEB communication modules; CompactLogix L32E and L35E controllers; 1788-ENBT FLEXLogix adapter; 1794-AENTR FLEX I/O EtherNet/IP adapter; ControlLogix 18 and earlier; CompactLogix 18 and earlier; GuardLogix 18 and earlier; SoftLogix 18 and earlier; CompactLogix controllers 19 and earlier; SoftLogix controllers 19 and earlier; ControlLogix controllers 20 and earlier; GuardLogix controllers 20 and earlier; and MicroLogix 1100 and 1400",CVE-2012-6438,CVE-2012-6438
+"When an affected 
+product receives a valid CIP message from an unauthorized or unintended 
+source to Port 2222/TCP, Port 2222/UDP, Port 44818/TCP, or Port 
+44818/UDP that changes the product’s configuration and network 
+parameters, a DoS condition can occur. This situation could cause loss 
+of availability and a disruption of communication with other connected 
+devices. 
+
+Rockwell Automation EtherNet/IP products; 1756-ENBT, 1756-EWEB, 1768-ENBT, and 1768-EWEB communication modules; CompactLogix L32E and L35E controllers; 1788-ENBT FLEXLogix adapter; 1794-AENTR FLEX I/O EtherNet/IP adapter; ControlLogix 18 and earlier; CompactLogix 18 and earlier; GuardLogix 18 and earlier; SoftLogix 18 and earlier; CompactLogix controllers 19 and earlier; SoftLogix controllers 19 and earlier; ControlLogix controllers 20 and earlier; GuardLogix controllers 20 and earlier; and MicroLogix 1100 and 1400",CVE-2012-6439,NOT_FOUND
+"The Web server password authentication mechanism used by the products is vulnerable to a MitM and Replay attack. Successful exploitation of this vulnerability will allow unauthorized access of the product’s Web server to view and alter product configuration and diagnostics information.
+
+
+
+Rockwell Automation EtherNet/IP products; 1756-ENBT, 1756-EWEB, 1768-ENBT, and 1768-EWEB communication modules; CompactLogix L32E and L35E controllers; 1788-ENBT FLEXLogix adapter; 1794-AENTR FLEX I/O EtherNet/IP adapter; ControlLogix 18 and earlier; CompactLogix 18 and earlier; GuardLogix 18 and earlier; SoftLogix 18 and earlier; CompactLogix controllers 19 and earlier; SoftLogix controllers 19 and earlier; ControlLogix controllers 20 and earlier; GuardLogix controllers 20 and earlier; and MicroLogix 1100 and 1400",CVE-2012-6440,CVE-2012-6440
+"An information exposure of confidential information results when the device receives a specially crafted CIP packet to Port 2222/TCP, Port 2222/UDP, Port 44818/TCP, or Port 44818/UDP. Successful exploitation of this vulnerability could cause loss of confidentiality.
+
+
+
+
+
+Rockwell Automation EtherNet/IP products; 1756-ENBT, 1756-EWEB, 1768-ENBT, and 1768-EWEB communication modules; CompactLogix L32E and L35E controllers; 1788-ENBT FLEXLogix adapter; 1794-AENTR FLEX I/O EtherNet/IP adapter; ControlLogix 18 and earlier; CompactLogix 18 and earlier; GuardLogix 18 and earlier; SoftLogix 18 and earlier; CompactLogix controllers 19 and earlier; SoftLogix controllers 19 and earlier; ControlLogix controllers 20 and earlier; GuardLogix controllers 20 and earlier; and MicroLogix 1100 and 1400",CVE-2012-6441,NOT_FOUND
+"When an affected product receives a valid CIP message from an unauthorized or unintended source to Port 2222/TCP, Port 2222/UDP, Port 44818/TCP, or Port 44818/UDP that instructs the product to reset, a DoS can occur. This situation could cause loss of availability and a disruption of communication with other connected devices.
+
+
+
+Rockwell Automation EtherNet/IP products; 1756-ENBT, 1756-EWEB, 1768-ENBT, and 1768-EWEB communication modules; CompactLogix L32E and L35E controllers; 1788-ENBT FLEXLogix adapter; 1794-AENTR FLEX I/O EtherNet/IP adapter; ControlLogix 18 and earlier; CompactLogix 18 and earlier; GuardLogix 18 and earlier; SoftLogix 18 and earlier; CompactLogix controllers 19 and earlier; SoftLogix controllers 19 and earlier; ControlLogix controllers 20 and earlier; GuardLogix controllers 20 and earlier; and MicroLogix 1100 and 1400",CVE-2012-6442,CVE-2012-6442
+Cross-site scripting (XSS) vulnerability in the Monster Menus module 7.x-1.x before 7.x-1.12 for Drupal allows remote authenticated users with permissions to add pages to inject arbitrary web script or HTML via a title in the page settings.,CVE-2013-4229,NOT_FOUND
+"The mm_webform submodule in the Monster Menus module 6.x-6.x before 6.x-6.61 and 7.x-1.x before 7.x-1.13 for Drupal does not properly restrict access to webform submissions, which allows remote authenticated users with the ""Who can read data submitted to this webform"" permission to delete arbitrary submissions via unspecified vectors.",CVE-2013-4230,CVE-2013-4230
+Multiple cross-site scripting (XSS) vulnerabilities in ls/htmlchat.php in the VideoWhisper Live Streaming Integration plugin 4.25.3 and possibly earlier for WordPress allow remote attackers to inject arbitrary web script or HTML via the (1) name or (2) message parameter.  NOTE: some of these details are obtained from third party information.,CVE-2013-5714,CVE-2013-5714
+"Use-after-free vulnerability in the SetMouseCapture implementation in mshtml.dll in Microsoft Internet Explorer 6 through 11 allows remote attackers to execute arbitrary code via crafted JavaScript strings, as demonstrated by use of an ms-help: URL that triggers loading of hxds.dll.",CVE-2013-3893,CVE-2013-3893
+The SCADA server in Ecava IntegraXor before 4.1.4369 allows remote attackers to read arbitrary project backup files via a crafted URL.,CVE-2014-0752,CVE-2014-0752
+Stack-based buffer overflow in the SCADA server in Ecava IntegraXor before 4.1.4390 allows remote attackers to cause a denial of service (system crash) by triggering access to DLL code located in the IntegraXor directory.,CVE-2014-0753,CVE-2014-0753
+"Directory traversal vulnerability in gefebt.exe in the WebView CimWeb components in GE Intelligent Platforms Proficy HMI/SCADA - CIMPLICITY through 8.2 SIM 24, and Proficy Process Systems with CIMPLICITY, allows remote attackers to execute arbitrary code via a crafted HTTP request, aka ZDI-CAN-1622.",CVE-2014-0750,CVE-2014-0750
+"The CIMPLICITY Web-based access component, CimWebServer, does not check 
+the location of shell files being loaded into the system. By modifying 
+the source location, an attacker could send shell code to the 
+CimWebServer which would deploy the nefarious files as part of any SCADA
+ project. This could allow the attacker to execute arbitrary code.",CVE-2014-0751,CVE-2014-0751
+Smart Software Solutions (3S) CoDeSys Runtime Toolkit before 2.4.7.44 allows remote attackers to cause a denial of service (NULL pointer dereference and application crash) via unspecified vectors.,CVE-2014-0757,CVE-2014-0757
+"An ActiveX control in GenLaunch.htm in ICONICS GENESIS32 8.0, 8.02, 8.04, and 8.05 allows remote attackers to execute arbitrary programs via a crafted HTML document.",CVE-2014-0758,CVE-2014-0758
+"Multiple cross-site scripting (XSS) vulnerabilities in the VideoWhisper Live Streaming Integration plugin before 4.29.5 for WordPress allow remote attackers to inject arbitrary web script or HTML via the (1) m parameter to lb_status.php; (2) msg parameter to vc_chatlog.php; n parameter to (3) channel.php, (4) htmlchat.php, (5) video.php, or (6) videotext.php; (7) message parameter to lb_logout.php; or ct parameter to (8) lb_status.php or (9) v_status.php in ls/.",CVE-2014-1906,CVE-2014-1906
+Multiple directory traversal vulnerabilities in the VideoWhisper Live Streaming Integration plugin before 4.29.5 for WordPress allow remote attackers to (1) read arbitrary files via a .. (dot dot) in the s parameter to ls/rtmp_login.php or (2) delete arbitrary files via a .. (dot dot) in the s parameter to ls/rtmp_logout.php.,CVE-2014-1907,CVE-2014-1907
+"The Festo CECX-X-C1 Modular Master Controller with CoDeSys and CECX-X-M1
+ Modular Controller with CoDeSys and SoftMotion provide an undocumented 
+access method involving the FTP protocol, which could allow a remote attacker to execute arbitrary code or cause a denial of service (application 
+crash) via unspecified vectors.",CVE-2014-0760,CVE-2014-0760
+"The Festo CECX-X-C1 Modular Master Controller with CoDeSys and CECX-X-M1 Modular Controller with CoDeSys and SoftMotion do not require authentication for connections to certain TCP ports, which allows remote attackers to (1) modify the configuration via a request to the debug service on port 4000 or (2) delete log entries via a request to the log service on port 4001.",CVE-2014-0769,CVE-2014-0769
+The Monster Menus module 7.x-1.x before 7.x-1.15 allows remote attackers to read arbitrary node comments via a crafted URL.,CVE-2013-4504,CVE-2013-4504
+Multiple stack-based buffer overflows in BOINC 6.13.x allow remote attackers to cause a denial of service (crash) via a long trickle-up to (1) client/cs_trickle.cpp or (2) db/db_base.cpp.,CVE-2011-5280,CVE-2011-5280
+Stack-based buffer overflow in BOINC 6.10.58 and 6.12.34 allows remote attackers to have unspecified impact via multiple file_signature elements.,CVE-2013-2019,CVE-2013-2019
+"Multiple stack-based buffer overflows in the XML parser in BOINC 7.x allow attackers to have unspecified impact via a crafted XML file, related to the scheduler.",CVE-2013-2298,CVE-2013-2298
+"Format string vulnerability in the PROJECT::write_account_file function in client/cs_account.cpp in BOINC, possibly 7.2.33, allows remote attackers to cause a denial of service (crash) or possibly execute arbitrary code via format string specifiers in the gui_urls item in an account file.",CVE-2013-7386,CVE-2013-7386
+"Directory traversal vulnerability in SchneiderWEB on Schneider Electric Modicon PLC Ethernet modules 140CPU65x Exec before 5.5, 140NOC78x Exec before 1.62, 140NOE77x Exec before 6.2, BMXNOC0401 before 2.05, BMXNOE0100 before 2.9, BMXNOE0110x Exec before 6.0, TSXETC101 Exec before 2.04, TSXETY4103x Exec before 5.7, TSXETY5103x Exec before 5.9, TSXP57x ETYPort Exec before 5.7, and TSXP57x Ethernet Copro Exec before 5.5 allows remote attackers to visit arbitrary resources via a crafted HTTP request.",CVE-2014-0754,CVE-2014-0754
+"X.Org X Window System (aka X11 and X) X11R5 and X.Org Server (aka xserver and xorg-server) before 1.16.3, when using SUN-DES-1 (Secure RPC) authentication credentials, does not check the return value of a malloc call, which allows remote attackers to cause a denial of service (NULL pointer dereference and server crash) via a crafted connection request.",CVE-2014-8091,NOT_FOUND
+"Multiple integer overflows in X.Org X Window System (aka X11 or X) X11R1 and X.Org Server (aka xserver and xorg-server) before 1.16.3 allow remote authenticated users to cause a denial of service (crash) or possibly execute arbitrary code via a crafted request to the (1) ProcPutImage, (2) GetHosts, (3) RegionSizeof, or (4) REQUEST_FIXED_SIZE function, which triggers an out-of-bounds read or write.",CVE-2014-8092,NOT_FOUND
+"Multiple integer overflows in the GLX extension in XFree86 4.0, X.Org X Window System (aka X11 or X) X11R6.7, and X.Org Server (aka xserver and xorg-server) before 1.16.3 allow remote authenticated users to cause a denial of service (crash) or possibly execute arbitrary code via a crafted request to the (1) __glXDisp_ReadPixels, (2) __glXDispSwap_ReadPixels, (3) __glXDisp_GetTexImage, (4) __glXDispSwap_GetTexImage, (5) GetSeparableFilter, (6) GetConvolutionFilter, (7) GetHistogram, (8) GetMinmax, (9) GetColorTable, (10) __glXGetAnswerBuffer, (11) __GLX_GET_ANSWER_BUFFER, (12) __glXMap1dReqSize, (13) __glXMap1fReqSize, (14) Map2Size, (15) __glXMap2dReqSize, (16) __glXMap2fReqSize, (17) __glXImageSize, or (18) __glXSeparableFilter2DReqSize function, which triggers an out-of-bounds read or write.",CVE-2014-8093,CVE-2014-8093
+"Integer overflow in the ProcDRI2GetBuffers function in the DRI2 extension in X.Org Server (aka xserver and xorg-server) 1.7.0 through 1.16.x before 1.16.3 allows remote authenticated users to cause a denial of service (crash) or possibly execute arbitrary code via a crafted request, which triggers an out-of-bounds read or write.",CVE-2014-8094,CVE-2014-8094
+"The XInput extension in X.Org X Window System (aka X11 or X) X11R4 and X.Org Server (aka xserver and xorg-server) before 1.16.3 allows remote authenticated users to cause a denial of service (out-of-bounds read or write) or possibly execute arbitrary code via a crafted length or index value to the (1) SProcXChangeDeviceControl, (2) ProcXChangeDeviceControl, (3) ProcXChangeFeedbackControl, (4) ProcXSendExtensionEvent, (5) SProcXIAllowEvents, (6) SProcXIChangeCursor, (7) ProcXIChangeHierarchy, (8) SProcXIGetClientPointer, (9) SProcXIGrabDevice, (10) SProcXIUngrabDevice, (11) ProcXIUngrabDevice, (12) SProcXIPassiveGrabDevice, (13) ProcXIPassiveGrabDevice, (14) SProcXIPassiveUngrabDevice, (15) ProcXIPassiveUngrabDevice, (16) SProcXListDeviceProperties, (17) SProcXDeleteDeviceProperty, (18) SProcXIListProperties, (19) SProcXIDeleteProperty, (20) SProcXIGetProperty, (21) SProcXIQueryDevice, (22) SProcXIQueryPointer, (23) SProcXISelectEvents, (24) SProcXISetClientPointer, (25) SProcXISetFocus, (26) SProcXIGetFocus, or (27) SProcXIWarpPointer function.",CVE-2014-8095,CVE-2014-8095
+The SProcXCMiscGetXIDList function in the XC-MISC extension in X.Org X Window System (aka X11 or X) X11R6.0 and X.Org Server (aka xserver and xorg-server) before 1.16.3 allows remote authenticated users to cause a denial of service (out-of-bounds read or write) or possibly execute arbitrary code via a crafted length or index value.,CVE-2014-8096,CVE-2014-8096
+The DBE extension in X.Org X Window System (aka X11 or X) X11R6.1 and X.Org Server (aka xserver and xorg-server) before 1.16.3 allows remote authenticated users to cause a denial of service (out-of-bounds read or write) or possibly execute arbitrary code via a crafted length or index value to the (1) ProcDbeSwapBuffers or (2) SProcDbeSwapBuffers function.,CVE-2014-8097,CVE-2014-8097
+"The GLX extension in XFree86 4.0, X.Org X Window System (aka X11 or X) X11R6.7, and X.Org Server (aka xserver and xorg-server) before 1.16.3 allows remote authenticated users to cause a denial of service (out-of-bounds read or write) or possibly execute arbitrary code via a crafted length or index value to the (1) __glXDisp_Render, (2) __glXDisp_RenderLarge, (3) __glXDispSwap_VendorPrivate, (4) __glXDispSwap_VendorPrivateWithReply, (5) set_client_info, (6) __glXDispSwap_SetClientInfoARB, (7) DoSwapInterval, (8) DoGetProgramString, (9) DoGetString, (10) __glXDispSwap_RenderMode, (11) __glXDisp_GetCompressedTexImage, (12) __glXDispSwap_GetCompressedTexImage, (13) __glXDisp_FeedbackBuffer, (14) __glXDispSwap_FeedbackBuffer, (15) __glXDisp_SelectBuffer, (16) __glXDispSwap_SelectBuffer, (17) __glXDisp_Flush, (18) __glXDispSwap_Flush, (19) __glXDisp_Finish, (20) __glXDispSwap_Finish, (21) __glXDisp_ReadPixels, (22) __glXDispSwap_ReadPixels, (23) __glXDisp_GetTexImage, (24) __glXDispSwap_GetTexImage, (25) __glXDisp_GetPolygonStipple, (26) __glXDispSwap_GetPolygonStipple, (27) __glXDisp_GetSeparableFilter, (28) __glXDisp_GetSeparableFilterEXT, (29) __glXDisp_GetConvolutionFilter, (30) __glXDisp_GetConvolutionFilterEXT, (31) __glXDisp_GetHistogram, (32) __glXDisp_GetHistogramEXT, (33) __glXDisp_GetMinmax, (34) __glXDisp_GetMinmaxEXT, (35) __glXDisp_GetColorTable, (36) __glXDisp_GetColorTableSGI, (37) GetSeparableFilter, (38) GetConvolutionFilter, (39) GetHistogram, (40) GetMinmax, or (41) GetColorTable function.",CVE-2014-8098,CVE-2014-8098
+"The XVideo extension in XFree86 4.0.0, X.Org X Window System (aka X11 or X) X11R6.7, and X.Org Server (aka xserver and xorg-server) before 1.16.3 allows remote authenticated users to cause a denial of service (out-of-bounds read or write) or possibly execute arbitrary code via a crafted length or index value to the (1) SProcXvQueryExtension, (2) SProcXvQueryAdaptors, (3) SProcXvQueryEncodings, (4) SProcXvGrabPort, (5) SProcXvUngrabPort, (6) SProcXvPutVideo, (7) SProcXvPutStill, (8) SProcXvGetVideo, (9) SProcXvGetStill, (10) SProcXvPutImage, (11) SProcXvShmPutImage, (12) SProcXvSelectVideoNotify, (13) SProcXvSelectPortNotify, (14) SProcXvStopVideo, (15) SProcXvSetPortAttribute, (16) SProcXvGetPortAttribute, (17) SProcXvQueryBestSize, (18) SProcXvQueryPortAttributes, (19) SProcXvQueryImageAttributes, or (20) SProcXvListImageFormats function.",CVE-2014-8099,CVE-2014-8099

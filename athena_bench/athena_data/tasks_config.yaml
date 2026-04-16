@@ -1,0 +1,8 @@
+tasks:
+  MCQ: benchmark_data/athena_bench/athena-cti-mcq-updated.jsonl
+  MCQ3k: benchmark_data/athena_bench/athena-cti-mcq-3k.jsonl
+  ATE: benchmark_data/athena_bench/athena-cti-ate.jsonl
+  RCM: benchmark_data/athena_bench/athena-cti-rcm.jsonl
+  RMS: benchmark_data/athena_bench/athena-cti-rms.jsonl
+  VSP: benchmark_data/athena_bench/athena-cti-vsp.jsonl
+  TAA: benchmark_data/athena_bench/athena_taa/athena-cti-taa.jsonl

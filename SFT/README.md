@@ -35,7 +35,7 @@ python --version
 
 ## Prerequisites
 
-- An NVIDIA GPU with sufficient VRAM (A100 80 GB recommended for 14B-parameter models)
+- An NVIDIA GPU with sufficient VRAM (A100 80 GB recommended for 14B-parameter models); RunPod A100 SXM is used for training and benchmarking both LLMs
 - CUDA toolkit compatible with PyTorch (CUDA 12.4 is tested)
 - A [Weights & Biases](https://wandb.ai/) API key for experiment tracking
 - A [Hugging Face](https://huggingface.co/) token with write access (required for model upload)
@@ -136,13 +136,21 @@ Register the dataset in `data/dataset_info.json` by adding an entry that maps yo
 
 ## Training
 
-The training command is provided as a standalone script at `ift_training.sh`. Run it directly:
+Training scripts are provided for different model configurations:
+
+| Script | Model | Description |
+|--------|-------|-------------|
+| `ift_training.sh` | Qwen2.5-14B-Instruct | General training script for Qwen 2.5-14B |
+| `ift_training_qwen_2.5_14b.sh` | Qwen2.5-14B-Instruct | Optimized configuration for Qwen 2.5-14B Instruct |
+| `ift_training_llama3_8b.sh` | Llama-3.1-8B-Instruct | Training configuration for Llama 3.1-8B Instruct |
+
+Run any script directly:
 
 ```bash
 bash ift_training.sh
 ```
 
-This launches SFT with LoRA on Qwen2.5-14B-Instruct using the `ift_data` dataset with a 20% validation split. The full command inside the script is:
+This launches SFT with LoRA on Qwen2.5-14B-Instruct using the `ift_data` dataset with a 5% validation split. The full command inside the script is:
 
 ```bash
 llamafactory-cli train \
@@ -174,7 +182,7 @@ llamafactory-cli train \
     --bf16 True \
     --plot_loss True \
     --trust_remote_code True \
-    --ddp_timeout 180000000 \
+    --ddp_timeout 18000 \
     --include_num_input_tokens_seen True \
     --optim adamw_torch \
     --lora_rank 8 \
@@ -193,8 +201,8 @@ LoRA (Low-Rank Adaptation) inserts small trainable matrices into the model's exi
 
 | Parameter      | Value  | Description                                                                                                  |
 |----------------|--------|--------------------------------------------------------------------------------------------------------------|
-| `lora_rank`    | 8      | Rank of the low-rank decomposition matrices. Lower rank = fewer parameters and less capacity. Common values: 4, 8, 16, 32. Higher rank captures more complex adaptations but increases memory and risks overfitting on small datasets. |
-| `lora_alpha`   | 16     | Scaling factor applied to the LoRA output. The effective learning rate for LoRA layers is scaled by `alpha / rank` (here 16 / 8 = 2.0). A ratio of 2:1 (alpha:rank) is a standard starting point. |
+| `lora_rank`    | 64      | Rank of the low-rank decomposition matrices. Lower rank = fewer parameters and less capacity. Common values: 4, 8, 16, 32. Higher rank captures more complex adaptations but increases memory and risks overfitting on small datasets. |
+| `lora_alpha`   | 128     | Scaling factor applied to the LoRA output. The effective learning rate for LoRA layers is scaled by `alpha / rank` (here 16 / 8 = 2.0). A ratio of 2:1 (alpha:rank) is a standard starting point. |
 | `lora_dropout` | 0.05   | Dropout probability applied to LoRA layers during training. Provides light regularization to reduce overfitting. |
 | `lora_target`  | `all`  | Applies LoRA adapters to all linear layers in the model (attention projections, MLP layers, etc.) rather than a subset. This gives the adapter maximum expressiveness. |
 
@@ -247,6 +255,10 @@ Update `adapter_name_or_path` to point to the checkpoint directory from your tra
 
 ```bash
 llamafactory-cli export examples/merge_lora/qwen2.5_lora_sft.yaml
+```
+
+```bash
+llamafactory-cli export examples/merge_lora/llama3_lora_sft.yaml
 ```
 
 The merged model (including tokenizer, config, and safetensors shards) is written to `models/qwen2.5_14b_sft_lora/`. Do not use a quantized base model or `quantization_bit` when merging.

@@ -1,0 +1,34 @@
+commands for running athena-cti-benchmark
+
+CLI Commands:
+
+python inference.py task model-name --rows 5 (optional) --data_path path-to-tsv-file
+
+Available task: [mcq, rcm, vsp, ate, taa]
+
+Examples:
+python inference.py ate gpt-4-turbo --rows 5 --data_path data\cti-ate.tsv  
+python inference.py mcq gpt-4-turbo --rows 10 --data_path data\cti-mcq.tsv
+python inference.py rcm gpt-4-turbo --data_path data\cti-rcm.tsv 
+python inference.py vsp gemini-1.5-pro --data_path data\cti-vsp.tsv 
+
+# CLI Commands for evaluation metrics results
+
+python evaluate.py ate model-name path-of-file-generated
+python evaluate.py ate gpt-4-turbo responses\ate_all_gpt-4-turbo_response.tsv
+
+
+# CLI Commands for URLHAUS data
+
+python -m scrape.urlhaus.fetch_urlhaus.py      (for fetching data)
+python -m scrape.urlhaus.generate_benign_urlhaus_iocs --model gpt5 --num_iocs 50   (for generating benign iocs using llm)
+python inference.py urlhaus gpt5 --rows 20 --data_path data/urlhaus/urls_benchmark.csv    (for inference)
+python evaluate.py urlhaus gpt-5- responses/urlhaus_20_gpt-5_response.csv   (for evaluation)
+
+
+# CLI Commands for CVE data
+
+python -m scrape.nvd_cve.your_script                (for fetching last 90 days data)
+python inference.py cve gpt5 --Athena-CTI-LND --rows 100 --data_path data/cve/nvd_cve.jsonl   (for inference using web_search_preview)
+
+python tasks_evaluation.py athena-rcm llama-3-8b responses/meta-llama_Meta-Llama-3.1-8B-Instruct/athena-rcm/athena-rcm_all_meta-llama_Meta-Llama-3.1-8B-Instruct_response.jsonl

@@ -1,0 +1,12 @@
+{"url": "https://attack.mitre.org/", "status": 200, "content_type": "text/html; charset=utf-8"}
+{"url": "https://attack.mitre.org/techniques/", "status": 200, "content_type": "text/html; charset=utf-8"}
+{"url": "https://attack.mitre.org/techniques/enterprise/", "status": 200, "content_type": "text/html; charset=utf-8"}
+{"url": "https://attack.mitre.org/techniques/mobile/", "status": 200, "content_type": "text/html; charset=utf-8"}
+{"url": "https://attack.mitre.org/techniques/ics/", "status": 200, "content_type": "text/html; charset=utf-8"}
+{"url": "https://attack.mitre.org/groups/", "status": 200, "content_type": "text/html; charset=utf-8"}
+{"url": "https://attack.mitre.org/software/", "status": 200, "content_type": "text/html; charset=utf-8"}
+{"url": "https://attack.mitre.org/mitigations/", "status": 200, "content_type": "text/html; charset=utf-8"}
+{"url": "https://attack.mitre.org/datasources/", "status": 200, "content_type": "text/html; charset=utf-8"}
+{"url": "https://attack.mitre.org/campaigns/", "status": 200, "content_type": "text/html; charset=utf-8"}
+{"url": "https://attack.mitre.org/matrices/", "status": 200, "content_type": "text/html; charset=utf-8"}
+{"url": "https://attack.mitre.org/matrices/enterprise/", "status": 200, "content_type": "text/html; charset=utf-8"}

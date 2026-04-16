@@ -1,0 +1,47 @@
+[
+    {
+        "date": "2025-10-02 14:03:01",
+        "task": "athena-ate",
+        "model_name": "gemini-2.5-flash",
+        "input_tokens": 125074,
+        "output_tokens": 1516602,
+        "input_tokens_cost": 0.03752220000000008,
+        "output_tokens_cost": 3.791504999999999,
+        "grounding_calls": 0,
+        "total_cost": 3.8290271999999974
+    },
+    {
+        "date": "2025-10-02 21:10:02",
+        "task": "athena-rcm",
+        "model_name": "gemini-2.5-flash",
+        "input_tokens": 367622,
+        "output_tokens": 2328098,
+        "input_tokens_cost": 0.11028660000000019,
+        "output_tokens_cost": 5.820244999999998,
+        "grounding_calls": 0,
+        "total_cost": 5.930531599999995
+    },
+    {
+        "date": "2025-10-03 07:30:49",
+        "task": "athena-vsp",
+        "model_name": "gemini-2.5-flash",
+        "input_tokens": 902164,
+        "output_tokens": 7211332,
+        "input_tokens_cost": 0.27064920000000015,
+        "output_tokens_cost": 18.028330000000004,
+        "grounding_calls": 0,
+        "total_cost": 18.298979199999998
+    },
+    {
+        "date": "2025-10-03 19:58:03",
+        "task": "athena-mcq",
+        "model_name": "gemini-2.5-flash",
+        "version": 1,
+        "input_tokens": 874408,
+        "output_tokens": 9140418,
+        "input_tokens_cost": 0.26232239999999957,
+        "output_tokens_cost": 22.851045000000056,
+        "grounding_calls": 0,
+        "total_cost": 23.113367399999913
+    }
+]

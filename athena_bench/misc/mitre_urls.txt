@@ -1,0 +1,12 @@
+https://attack.mitre.org/
+https://attack.mitre.org/campaigns/
+https://attack.mitre.org/datasources/
+https://attack.mitre.org/groups/
+https://attack.mitre.org/matrices/
+https://attack.mitre.org/matrices/enterprise/
+https://attack.mitre.org/mitigations/
+https://attack.mitre.org/software/
+https://attack.mitre.org/techniques/
+https://attack.mitre.org/techniques/enterprise/
+https://attack.mitre.org/techniques/ics/
+https://attack.mitre.org/techniques/mobile/
