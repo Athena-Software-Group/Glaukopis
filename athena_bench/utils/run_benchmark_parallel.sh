@@ -16,6 +16,10 @@
 #   ./run_benchmark_parallel.sh <model-name> [--gpus N] [--version N]
 #                               [--tasks "athena-mcq ..."] [--overwrite] [--yes]
 #
+# While shards run, an aggregate progress line is printed to stdout (and log)
+# every PROGRESS_INTERVAL seconds (default 15), e.g.:
+#   [progress  45s] s0:12/750 s1:11/750 s2:12/750 s3:11/750 | total 46/3000 (1%) eta 48m20s
+#
 # Log: athena_bench/utils/<safe-model-name>_parallel.log  (main driver)
 #      athena_bench/utils/<safe-model-name>_parallel.shard<i>.log (per GPU)
 
@@ -203,12 +207,14 @@ PY
         fi
 
         # Launch one inference.py per GPU, pinned via CUDA_VISIBLE_DEVICES.
-        pids=(); rcs=(); shard_logs=()
+        pids=(); rcs=(); shard_logs=(); shard_targets=(); shard_sizes=()
         for (( i=0; i<GPUS; i++ )); do
             sv=$(shard_version "$i")
             shard_log="${SCRIPT_DIR}/${SAFE_NAME}_parallel.${task}.shard${i}.log"
             shard_logs+=("${shard_log}")
-            echo "  launching shard ${i}: CUDA_VISIBLE_DEVICES=${i} --version ${sv} ($(wc -l < "${SHARD_FILES[$i]}") rows) -> ${shard_log##*/}"
+            shard_targets+=("$(shard_response_path "${task}" "$i")")
+            shard_sizes+=("$(wc -l < "${SHARD_FILES[$i]}")")
+            echo "  launching shard ${i}: CUDA_VISIBLE_DEVICES=${i} --version ${sv} (${shard_sizes[$i]} rows) -> ${shard_log##*/}"
             CUDA_VISIBLE_DEVICES="${i}" \
                 python inference.py "${task}" "${MODEL_NAME}" \
                     --data_path "${SHARD_FILES[$i]}" \
@@ -217,11 +223,53 @@ PY
             pids+=($!)
         done
 
+        # Background progress monitor: polls each shard's response file and
+        # prints an aggregate status line every PROGRESS_INTERVAL seconds.
+        # Counting lines works because inference.py appends one JSON line per
+        # completed row. Runs as a subshell; killed once all shards finish.
+        PROGRESS_INTERVAL="${PROGRESS_INTERVAL:-15}"
+        mon_start=$(date +%s)
+        (
+            while :; do
+                sleep "${PROGRESS_INTERVAL}"
+                now=$(date +%s); elapsed=$(( now - mon_start ))
+                done_total=0; parts=""
+                for (( j=0; j<GPUS; j++ )); do
+                    n=0
+                    if [[ -s "${shard_targets[$j]}" ]]; then
+                        n=$(wc -l < "${shard_targets[$j]}" 2>/dev/null || echo 0)
+                        n=$(( n + 0 ))  # strip whitespace padding (BSD wc)
+                    fi
+                    done_total=$(( done_total + n ))
+                    parts="${parts}s${j}:${n}/${shard_sizes[$j]} "
+                done
+                pct=0
+                if [[ ${total_rows} -gt 0 ]]; then
+                    pct=$(( done_total * 100 / total_rows ))
+                fi
+                eta="--"
+                if [[ ${done_total} -gt 0 && ${done_total} -lt ${total_rows} ]]; then
+                    rate_num=${done_total}; rate_den=${elapsed}
+                    [[ ${rate_den} -lt 1 ]] && rate_den=1
+                    remaining=$(( total_rows - done_total ))
+                    eta_s=$(( remaining * rate_den / rate_num ))
+                    eta=$(printf '%dm%02ds' $(( eta_s / 60 )) $(( eta_s % 60 )))
+                fi
+                printf '  [progress %3ds] %s| total %d/%d (%d%%) eta %s\n' \
+                    "${elapsed}" "${parts}" "${done_total}" "${total_rows}" "${pct}" "${eta}"
+            done
+        ) &
+        mon_pid=$!
+
         # Wait for all shards; record exit codes individually.
         for (( i=0; i<GPUS; i++ )); do
             if wait "${pids[$i]}"; then rcs+=(0); else rcs+=($?); fi
             echo "  shard ${i} finished (exit ${rcs[$i]})"
         done
+
+        # Stop the progress monitor.
+        kill "${mon_pid}" 2>/dev/null || true
+        wait "${mon_pid}" 2>/dev/null || true
 
         # Concatenate shard response JSONLs -> canonical response file.
         final="$(final_response_path "${task}")"
