@@ -56,8 +56,12 @@ The script is idempotent and handles:
 2. Creating/reusing the conda env (default `ctibench`, Python 3.11).
 3. Installing the CUDA-matched PyTorch wheels (`cu124` by default).
 4. Installing `requirements.txt` and (optionally) `flash-attn`.
-   - `flash-attn` installs the matching prebuilt wheel from GitHub releases
-     directly (avoids the known EXDEV / cross-device-link build bug).
+   - `flash-attn` is **optional and non-fatal**: the runtime uses PyTorch SDPA
+     by default (see *Attention backend* below), so a failed flash-attn
+     install no longer aborts setup.
+   - When requested, the script installs the matching prebuilt wheel from
+     GitHub releases directly (avoids the known EXDEV / cross-device-link
+     build bug).
 5. Installing Git LFS (but **not** running `git lfs pull` by default — see below).
 6. Printing a PyTorch/CUDA verification summary.
 7. Running `conda init` for your shell (unless `--no-conda-init` is given) so
@@ -71,6 +75,25 @@ exec bash                 # or open a new terminal
 conda activate ctibench
 ./utils/smoke_test.sh
 ```
+
+### Attention backend
+
+HuggingFace models are loaded with PyTorch's SDPA attention by default. SDPA
+dispatches to flash / memory-efficient CUDA kernels under the hood and avoids
+the `transformers` × `flash-attn` version-mismatch failures that surface on
+Qwen2-based models (DeepHat, Qwen2.5-*, etc.).
+
+Override via env var if you have a working flash-attn build and want to use it
+explicitly:
+
+```bash
+ATHENA_ATTN_IMPL=flash_attention_2 python inference.py ...
+ATHENA_ATTN_IMPL=sdpa              python inference.py ...   # default
+ATHENA_ATTN_IMPL=eager             python inference.py ...   # last-resort fallback
+```
+
+If the requested implementation fails to load, the loader falls back through
+`sdpa` and then `eager` automatically.
 
 ### Git LFS and the `data/` directory
 

@@ -10,7 +10,7 @@
 #   4. LlamaFactory (editable install of this directory)
 #   5. Optional extras: metrics, deepspeed, vllm (opt-in via --extras)
 #   6. wandb + huggingface_hub
-#   7. flash-attn (optional, skipped with --no-flash-attn)
+#   7. flash-attn (optional, non-fatal; skipped with --no-flash-attn)
 #
 # Usage:
 #   ./setup.sh [--cuda cu124|cu121|cu118|cpu] [--env-name NAME] [--python VERSION]
@@ -114,13 +114,13 @@ done
 echo "=== Installing wandb + huggingface_hub ==="
 pip install wandb huggingface_hub
 
-# 7. flash-attn ---------------------------------------------------------------
-# flash-attn's setup.py downloads a prebuilt wheel and then os.rename()s it
-# into the pip cache. On hosts where $CONDA_PREFIX and $PIP_CACHE_DIR are on
-# different filesystems (e.g. RunPod: /root vs /home) this fails with EXDEV.
-# We work around both issues by (a) trying to install the exact prebuilt wheel
-# from GitHub releases directly, and (b) falling back to a standard install
-# with TMPDIR/PIP_CACHE_DIR pinned to one filesystem.
+# 7. flash-attn (optional) ----------------------------------------------------
+# flash-attn is installed opportunistically: training configs can use it when
+# available, but failures are non-fatal because the prebuilt wheels are pinned
+# to a specific torch x cuda x python combo and often ABI-mismatch against the
+# version pip resolves. flash-attn's setup.py also has an EXDEV bug when
+# $CONDA_PREFIX and $PIP_CACHE_DIR live on different filesystems (e.g. RunPod:
+# /root vs /home), which is why we try a prebuilt wheel first.
 FLASH_ATTN_VERSION="${FLASH_ATTN_VERSION:-2.8.3}"
 
 install_flash_attn() {
@@ -155,8 +155,16 @@ PY
 }
 
 if [[ ${INSTALL_FLASH_ATTN} -eq 1 && "${CUDA_TAG}" != "cpu" ]]; then
-    echo "=== Installing flash-attn (v${FLASH_ATTN_VERSION}) ==="
+    echo "=== Installing flash-attn (v${FLASH_ATTN_VERSION}) — optional, non-fatal ==="
+    set +e
     install_flash_attn
+    fa_status=$?
+    set -e
+    if [[ ${fa_status} -ne 0 ]]; then
+        echo "  [WARN] flash-attn install failed (exit ${fa_status}); continuing without it."
+        echo "         Trainer configs that request flash-attn must be adjusted or"
+        echo "         this install must be repaired to match the local torch ABI."
+    fi
 elif [[ "${CUDA_TAG}" == "cpu" ]]; then
     echo "=== Skipping flash-attn (CPU build) ==="
 fi

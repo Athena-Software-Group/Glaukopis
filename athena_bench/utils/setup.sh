@@ -7,7 +7,7 @@
 #   2. A conda environment with Python 3.11
 #   3. PyTorch matched to the requested CUDA version
 #   4. athena_bench Python dependencies from requirements.txt
-#   5. flash-attn (optional, skipped with --no-flash-attn)
+#   5. flash-attn (optional, non-fatal; the runtime defaults to SDPA)
 #   6. Git LFS, and runs `git lfs pull` to fetch the large files under data/
 #
 # Usage:
@@ -107,13 +107,19 @@ pip install --index-url "${TORCH_INDEX_URL}" torch torchvision torchaudio
 echo "=== Installing athena_bench requirements ==="
 pip install -r "${BENCH_DIR}/requirements.txt"
 
-# 5. flash-attn ---------------------------------------------------------------
-# flash-attn's setup.py downloads a prebuilt wheel and then os.rename()s it
-# into the pip cache. On hosts where $CONDA_PREFIX and $PIP_CACHE_DIR are on
-# different filesystems (e.g. RunPod: /root vs /home) this fails with EXDEV.
-# We work around both issues by (a) trying to install the exact prebuilt wheel
-# from GitHub releases directly, and (b) falling back to a standard install
-# with TMPDIR/PIP_CACHE_DIR pinned to one filesystem.
+# 5. flash-attn (optional) ----------------------------------------------------
+# flash-attn is no longer required: the benchmark runner defaults to PyTorch's
+# SDPA attention (ATHENA_ATTN_IMPL=sdpa), which dispatches to flash / memory-
+# efficient kernels under the hood and avoids the transformers x flash-attn
+# version-mismatch bugs that surface on Qwen2-based models.
+#
+# We still attempt to install flash-attn 2.x here for users who want to opt
+# back into it via ATHENA_ATTN_IMPL=flash_attention_2, but failures are
+# *non-fatal*: setup completes and the runtime falls back to SDPA.
+#
+# flash-attn's setup.py also has a known EXDEV bug on hosts where
+# $CONDA_PREFIX and $PIP_CACHE_DIR live on different filesystems (e.g. RunPod:
+# /root vs /home), which is why we try a prebuilt wheel first.
 FLASH_ATTN_VERSION="${FLASH_ATTN_VERSION:-2.8.3}"
 
 install_flash_attn() {
@@ -148,8 +154,16 @@ PY
 }
 
 if [[ ${INSTALL_FLASH_ATTN} -eq 1 && "${CUDA_TAG}" != "cpu" ]]; then
-    echo "=== Installing flash-attn (v${FLASH_ATTN_VERSION}) ==="
+    echo "=== Installing flash-attn (v${FLASH_ATTN_VERSION}) — optional, non-fatal ==="
+    set +e
     install_flash_attn
+    fa_status=$?
+    set -e
+    if [[ ${fa_status} -ne 0 ]]; then
+        echo "  [WARN] flash-attn install failed (exit ${fa_status})."
+        echo "         This is non-fatal: the runtime uses SDPA by default."
+        echo "         Set ATHENA_ATTN_IMPL=flash_attention_2 only if you fix this install."
+    fi
 elif [[ "${CUDA_TAG}" == "cpu" ]]; then
     echo "=== Skipping flash-attn (CPU build) ==="
 fi
