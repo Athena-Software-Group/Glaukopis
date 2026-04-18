@@ -313,19 +313,37 @@ class HuggingFaceModel(BaseModel):
             print("Loading model in bfloat16")
 
         print(f"Loading model {model_id}... (this may take time on first run)")
-        try:
-            # First try with FlashAttention
-            self.model = AutoModelForCausalLM.from_pretrained(
-                model_id,
-                attn_implementation="flash_attention_2",
-                **loading_kwargs
+        # Attention implementation selection.
+        # Default is "sdpa" (PyTorch's scaled-dot-product attention) because it
+        # dispatches to flash / mem-efficient kernels under the hood without the
+        # transformers x flash-attn version mismatch that surfaces on Qwen2-based
+        # models (DeepHat, Qwen2.5-*, etc.). Set ATHENA_ATTN_IMPL=flash_attention_2
+        # to opt back into FA2 when a compatible flash-attn build is installed.
+        preferred_impl = os.environ.get("ATHENA_ATTN_IMPL", "sdpa").strip() or "sdpa"
+        impl_order = [preferred_impl]
+        for fallback in ("sdpa", "eager"):
+            if fallback not in impl_order:
+                impl_order.append(fallback)
+
+        last_err = None
+        for impl in impl_order:
+            try:
+                self.model = AutoModelForCausalLM.from_pretrained(
+                    model_id,
+                    attn_implementation=impl,
+                    **loading_kwargs,
+                )
+                print(f" Attention implementation active: {impl}")
+                break
+            except Exception as e:
+                last_err = e
+                print(f" attn_implementation='{impl}' failed: {e}")
+                continue
+        else:
+            raise RuntimeError(
+                f"All attn_implementation fallbacks failed for {model_id}; "
+                f"last error: {last_err}"
             )
-            print(" Flash Attention 2 enabled successfully — optimized attention active")
-        except Exception as e:
-            print(f" Flash Attention not available or failed: {e}")
-            print("↪ Falling back to standard attention (original behavior)")
-            #  Fallback to standard attention
-            self.model = AutoModelForCausalLM.from_pretrained(model_id, **loading_kwargs)
 
         self.current_model_id = model_id
         print(f"Model {model_id} loaded on {next(self.model.parameters()).device}")
