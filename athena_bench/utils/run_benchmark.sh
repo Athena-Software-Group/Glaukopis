@@ -4,8 +4,16 @@
 #
 # Executes all six Athena tasks (mcq, rcm, vsp, ate, taa, rms) using each
 # benchmark class's default --data_path (i.e. the full-size files under
-# benchmark_data/athena_bench/), with --cleanup between tasks so a single
-# GPU can handle the whole sweep sequentially.
+# benchmark_data/athena_bench/). Each task is launched as its own
+# inference.py subprocess, so VRAM is naturally freed at process exit
+# before the next task starts.
+#
+# NOTE: inference.py's --cleanup flag is NOT passed here. Despite the name,
+# --cleanup evicts the HuggingFace model from VRAM after *every single row*
+# and forces a full reload on the next row (~8-10s of wasted disk I/O per
+# question). It is only useful on severely memory-starved RunPod setups
+# where the model cannot stay resident between rows. For the sweep, we
+# rely on per-task subprocess exit to free VRAM.
 #
 # All stdout/stderr is tee'd to <model-name>.log in this directory.
 #
@@ -60,7 +68,8 @@ done
 SAFE_NAME="${MODEL_NAME//\//_}"
 LOG_FILE="${SCRIPT_DIR}/${SAFE_NAME}.log"
 
-extra_args=(--version "${VERSION}" --cleanup)
+# NOTE: intentionally NOT passing --cleanup here (see header comment).
+extra_args=(--version "${VERSION}")
 if [[ -n "${ROWS}" ]]; then
     extra_args+=(--rows "${ROWS}")
 fi
