@@ -11,12 +11,14 @@
 #   6. Git LFS, and runs `git lfs pull` to fetch the large files under data/
 #
 # Usage:
-#   ./setup.sh [--cuda cu124|cu121|cu118|cpu] [--env-name NAME] [--python VERSION] [--no-flash-attn] [--no-lfs-pull]
+#   ./setup.sh [--cuda cu124|cu121|cu118|cpu] [--env-name NAME] [--python VERSION]
+#              [--no-flash-attn] [--no-lfs-pull] [--no-conda-init]
 #
 # Defaults:
 #   --cuda cu124
 #   --env-name ctibench
 #   --python 3.11
+#   (conda init runs by default for your shell; use --no-conda-init to skip)
 
 set -e
 
@@ -28,6 +30,7 @@ ENV_NAME="ctibench"
 PYTHON_VERSION="3.11"
 INSTALL_FLASH_ATTN=1
 RUN_LFS_PULL=1
+RUN_CONDA_INIT=1
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -36,8 +39,9 @@ while [[ $# -gt 0 ]]; do
         --python)         PYTHON_VERSION="$2"; shift 2 ;;
         --no-flash-attn)  INSTALL_FLASH_ATTN=0; shift ;;
         --no-lfs-pull)    RUN_LFS_PULL=0; shift ;;
+        --no-conda-init)  RUN_CONDA_INIT=0; shift ;;
         -h|--help)
-            sed -n '3,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+            sed -n '3,22p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
             exit 0
             ;;
         *) echo "Unknown argument: $1"; exit 1 ;;
@@ -165,9 +169,34 @@ if torch.cuda.is_available():
     print("bf16 supported    :", torch.cuda.is_bf16_supported())
 PY
 
+# 8. Shell integration --------------------------------------------------------
+# In a fresh interactive shell, `conda activate` fails with
+#   "Run 'conda init' before 'conda activate'"
+# unless the conda shell hook has been installed into the user's rc file.
+# `conda init` is idempotent: it will not duplicate the block on reruns.
+if [[ ${RUN_CONDA_INIT} -eq 1 ]]; then
+    target_shell="$(basename "${SHELL:-/bin/bash}")"
+    case "${target_shell}" in
+        bash|zsh|fish)
+            echo
+            echo "=== Running 'conda init ${target_shell}' ==="
+            conda init "${target_shell}" || true
+            ;;
+        *)
+            echo "  [WARN] Unsupported shell '${target_shell}' for conda init; skipping."
+            target_shell=""
+            ;;
+    esac
+fi
+
 echo
 echo "=== Setup complete ==="
-echo "Activate the environment with:"
+if [[ ${RUN_CONDA_INIT} -eq 1 && -n "${target_shell:-}" ]]; then
+    echo "Start a new shell (or run 'exec ${target_shell}') to pick up the conda hook,"
+    echo "then activate the environment with:"
+else
+    echo "Activate the environment with:"
+fi
 echo "    conda activate ${ENV_NAME}"
 echo "Then run a benchmark, e.g.:"
 echo "    cd ${BENCH_DIR}"

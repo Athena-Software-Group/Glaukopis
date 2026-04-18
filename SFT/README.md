@@ -34,6 +34,7 @@ cd SFT/utils
 ./setup.sh --env-name llm-sft-dev          # custom env name
 ./setup.sh --extras "metrics deepspeed vllm"  # install additional requirement groups
 ./setup.sh --no-flash-attn                 # skip flash-attn (e.g. unsupported GPU)
+./setup.sh --no-conda-init                 # skip modifying your shell rc
 ./setup.sh --cuda cpu                      # CPU-only install (also skips flash-attn)
 ./setup.sh --help
 ```
@@ -45,12 +46,18 @@ The script is idempotent and handles:
 4. Installing LlamaFactory in editable mode (`pip install -e .`).
 5. Installing optional requirement groups from `requirements/` (default: `metrics` + `deepspeed`).
 6. Installing `wandb` and `huggingface_hub`.
-7. (Optionally) installing `flash-attn`.
+7. (Optionally) installing `flash-attn` — installs the matching prebuilt
+   wheel from GitHub releases directly (avoids the known EXDEV /
+   cross-device-link build bug).
 8. Printing a PyTorch/CUDA/LlamaFactory verification summary.
+9. Running `conda init` for your shell (unless `--no-conda-init` is given) so
+   that `conda activate` works in any new terminal.
 
-After it finishes, activate the env and log in to the experiment/model services:
+After it finishes, start a new shell (or `exec bash`) to pick up the conda
+shell hook, then activate the env and log in to the experiment/model services:
 
 ```bash
+exec bash                 # or open a new terminal
 conda activate llm-sft
 wandb login
 huggingface-cli login

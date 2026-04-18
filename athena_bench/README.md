@@ -46,6 +46,7 @@ cd athena_bench/utils
 ./setup.sh --env-name ctibench-dev  # use a custom conda env name
 ./setup.sh --no-flash-attn          # skip flash-attn (e.g. unsupported GPU)
 ./setup.sh --no-lfs-pull            # skip 'git lfs pull' for data/
+./setup.sh --no-conda-init          # skip modifying your shell rc
 ./setup.sh --cuda cpu               # CPU-only install (also skips flash-attn)
 ./setup.sh --help
 ```
@@ -55,13 +56,18 @@ The script is idempotent and handles:
 2. Creating/reusing the conda env (default `ctibench`, Python 3.11).
 3. Installing the CUDA-matched PyTorch wheels (`cu124` by default).
 4. Installing `requirements.txt` and (optionally) `flash-attn`.
+   - `flash-attn` installs the matching prebuilt wheel from GitHub releases
+     directly (avoids the known EXDEV / cross-device-link build bug).
 5. Installing Git LFS and running `git lfs pull` to fetch the large files in `data/`.
 6. Printing a PyTorch/CUDA verification summary.
+7. Running `conda init` for your shell (unless `--no-conda-init` is given) so
+   that `conda activate` works in any new terminal.
 
-After it finishes, activate the env and verify the install end-to-end with the
-smoke test:
+After it finishes, start a new shell (or `exec bash`) to pick up the conda
+shell hook, then activate the env and run the smoke test:
 
 ```bash
+exec bash                 # or open a new terminal
 conda activate ctibench
 ./utils/smoke_test.sh
 ```
