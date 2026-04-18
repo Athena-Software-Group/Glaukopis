@@ -20,8 +20,10 @@
 # every PROGRESS_INTERVAL seconds (default 15), e.g.:
 #   [progress  45s] s0:12/750 s1:11/750 s2:12/750 s3:11/750 | total 46/3000 (1%) eta 48m20s
 #
-# Log: athena_bench/utils/<safe-model-name>_parallel.log  (main driver)
-#      athena_bench/utils/<safe-model-name>_parallel.shard<i>.log (per GPU)
+# Log:     athena_bench/utils/<safe-model-name>_parallel.log
+#          athena_bench/utils/<safe-model-name>_parallel.<task>.shard<i>.log
+# Summary: athena_bench/utils/<safe-model-name>_parallel.summary.json
+#          (aggregate per-task metrics + timings, written at end of sweep)
 
 set -u
 
@@ -143,7 +145,9 @@ fi
 
 # --- Main driver (tee'd to log) -------------------------------------------
 SHARD_DIR="$(mktemp -d -t athena_parallel.XXXXXX)"
-trap 'rm -rf "${SHARD_DIR}"' EXIT
+SUMMARY_TMP="$(mktemp -t athena_summary.XXXXXX)"
+SUMMARY_FILE="${SCRIPT_DIR}/${SAFE_NAME}_parallel.summary.json"
+trap 'rm -rf "${SHARD_DIR}"; rm -f "${SUMMARY_TMP}"' EXIT
 
 {
     echo "=== Athena parallel benchmark sweep ==="
@@ -295,13 +299,19 @@ PY
         fi
 
         # Re-run evaluation on the merged file (per-shard metrics in the shard
-        # logs are partial; this is the authoritative one).
+        # logs are partial; this is the authoritative one). Capture eval
+        # stdout to a file so we can both display it and parse the
+        # `ATHENA-XXX Metrics: {...}` line for the summary JSON.
         echo "  evaluating merged file..."
+        eval_out_file="$(mktemp -t athena_eval.XXXXXX)"
         set +e
         python tasks_evaluation.py --task "${task}" --model "${MODEL_NAME}" \
-            --response_file "${final}" 2>&1 | sed 's/^/    /'
+            --response_file "${final}" >"${eval_out_file}" 2>&1
         eval_status=$?
         set -e
+        sed 's/^/    /' "${eval_out_file}"
+        metrics_line="$(grep -E '^ATHENA-[A-Z]+ Metrics:' "${eval_out_file}" | tail -1 || true)"
+        rm -f "${eval_out_file}"
 
         task_end=$(date +%s)
         elapsed=$(( task_end - task_start ))
@@ -312,12 +322,67 @@ PY
         for rc in "${rcs[@]}"; do
             [[ "${rc}" -ne 0 ]] && overall_status=1
         done
+
+        # Append a per-task record (NDJSON) to the summary tmp file.
+        python - "${SUMMARY_TMP}" "${task}" "${metrics_line}" "${elapsed}" \
+                "${merged_rows}" "${total_rows}" "${eval_status}" \
+                "${rcs[*]}" "${final}" <<'PY'
+import sys, json, ast, re
+tmp, task, metrics_line, elapsed, merged_rows, total_rows, eval_status, rcs_str, final = sys.argv[1:10]
+metrics = None
+m = re.match(r"^ATHENA-[A-Z]+ Metrics:\s*(\{.*\})\s*$", metrics_line.strip())
+if m:
+    try:
+        metrics = ast.literal_eval(m.group(1))
+    except Exception:
+        metrics = {"raw": metrics_line.strip()}
+elif metrics_line.strip():
+    metrics = {"raw": metrics_line.strip()}
+record = {
+    "task": task,
+    "metrics": metrics,
+    "elapsed_s": int(elapsed),
+    "merged_rows": int(merged_rows),
+    "total_rows": int(total_rows),
+    "eval_status": int(eval_status),
+    "shard_exit_codes": [int(x) for x in rcs_str.split() if x],
+    "response_file": final,
+}
+with open(tmp, "a") as f:
+    f.write(json.dumps(record) + "\n")
+PY
     done
 
     echo
     echo "=== Sweep complete ==="
     echo "  finished: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
     echo "  exit    : ${overall_status}"
+
+    # Aggregate per-task records -> summary JSON next to the log.
+    python - "${SUMMARY_TMP}" "${SUMMARY_FILE}" "${MODEL_NAME}" \
+            "${DISPLAY_NAME}" "${VERSION}" "${GPUS}" "${overall_status}" <<'PY'
+import sys, json, pathlib
+from datetime import datetime, timezone
+tmp, out, model, display, version, gpus, overall = sys.argv[1:8]
+records = []
+p = pathlib.Path(tmp)
+if p.exists():
+    for line in p.read_text().splitlines():
+        line = line.strip()
+        if line:
+            records.append(json.loads(line))
+summary = {
+    "model": model,
+    "display_name": display,
+    "version": int(version),
+    "gpus": int(gpus),
+    "overall_status": int(overall),
+    "finished_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    "tasks": records,
+}
+pathlib.Path(out).write_text(json.dumps(summary, indent=2) + "\n")
+PY
+    echo "  summary : ${SUMMARY_FILE#${BENCH_DIR}/}"
     exit ${overall_status}
 } 2>&1 | tee "${LOG_FILE}"
 
