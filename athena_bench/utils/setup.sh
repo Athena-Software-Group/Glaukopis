@@ -94,9 +94,48 @@ echo "=== Installing athena_bench requirements ==="
 pip install -r "${BENCH_DIR}/requirements.txt"
 
 # 5. flash-attn ---------------------------------------------------------------
+# flash-attn's setup.py downloads a prebuilt wheel and then os.rename()s it
+# into the pip cache. On hosts where $CONDA_PREFIX and $PIP_CACHE_DIR are on
+# different filesystems (e.g. RunPod: /root vs /home) this fails with EXDEV.
+# We work around both issues by (a) trying to install the exact prebuilt wheel
+# from GitHub releases directly, and (b) falling back to a standard install
+# with TMPDIR/PIP_CACHE_DIR pinned to one filesystem.
+FLASH_ATTN_VERSION="${FLASH_ATTN_VERSION:-2.8.3}"
+
+install_flash_attn() {
+    local info
+    info="$(python - <<'PY'
+import torch, sys
+tv = torch.__version__.split("+")[0]          # "2.6.0"
+tv_mm = ".".join(tv.split(".")[:2])           # "2.6"
+cu = (torch.version.cuda or "").replace(".", "")  # "124"
+cu_major = cu[:2] if cu else ""               # "12"
+py_tag = f"cp{sys.version_info.major}{sys.version_info.minor}"
+print(f"{tv_mm} {cu_major} {py_tag}")
+PY
+)"
+    read -r TORCH_MM CU_MAJOR PY_TAG <<< "${info}"
+
+    if [[ -z "${CU_MAJOR}" ]]; then
+        echo "  [WARN] torch has no CUDA build; skipping flash-attn"
+        return 0
+    fi
+
+    local wheel_url="https://github.com/Dao-AILab/flash-attention/releases/download/v${FLASH_ATTN_VERSION}/flash_attn-${FLASH_ATTN_VERSION}+cu${CU_MAJOR}torch${TORCH_MM}cxx11abiFALSE-${PY_TAG}-${PY_TAG}-linux_x86_64.whl"
+    echo "  Trying prebuilt wheel: ${wheel_url}"
+    if pip install --no-build-isolation "${wheel_url}"; then
+        return 0
+    fi
+
+    echo "  Prebuilt wheel failed; retrying standard install with pinned TMPDIR/PIP_CACHE_DIR..."
+    export TMPDIR="${HOME}/tmp" PIP_CACHE_DIR="${HOME}/.cache/pip"
+    mkdir -p "${TMPDIR}" "${PIP_CACHE_DIR}"
+    pip install "flash-attn==${FLASH_ATTN_VERSION}" --no-build-isolation
+}
+
 if [[ ${INSTALL_FLASH_ATTN} -eq 1 && "${CUDA_TAG}" != "cpu" ]]; then
-    echo "=== Installing flash-attn (no build isolation) ==="
-    pip install flash-attn --no-build-isolation
+    echo "=== Installing flash-attn (v${FLASH_ATTN_VERSION}) ==="
+    install_flash_attn
 elif [[ "${CUDA_TAG}" == "cpu" ]]; then
     echo "=== Skipping flash-attn (CPU build) ==="
 fi
