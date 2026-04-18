@@ -1,0 +1,88 @@
+{
+  "model": "deepseek-r1-14b",
+  "display_name": "deepseek-ai_DeepSeek-R1-Distill-Qwen-14B",
+  "version": 1,
+  "gpus": 2,
+  "overall_status": 1,
+  "finished_utc": "2026-04-18T18:45:49Z",
+  "tasks": [
+    {
+      "task": "athena-mcq",
+      "metrics": null,
+      "elapsed_s": 0,
+      "merged_rows": 0,
+      "total_rows": 3000,
+      "eval_status": 1,
+      "shard_exit_codes": [
+        1,
+        1
+      ],
+      "response_file": "/home/Glaukopis/athena_bench/responses/deepseek-ai_DeepSeek-R1-Distill-Qwen-14B/athena-mcq/athena-mcq_all_v1_deepseek-ai_DeepSeek-R1-Distill-Qwen-14B_response.jsonl"
+    },
+    {
+      "task": "athena-rcm",
+      "metrics": null,
+      "elapsed_s": 0,
+      "merged_rows": 0,
+      "total_rows": 2000,
+      "eval_status": 1,
+      "shard_exit_codes": [
+        1,
+        1
+      ],
+      "response_file": "/home/Glaukopis/athena_bench/responses/deepseek-ai_DeepSeek-R1-Distill-Qwen-14B/athena-rcm/athena-rcm_all_v1_deepseek-ai_DeepSeek-R1-Distill-Qwen-14B_response.jsonl"
+    },
+    {
+      "task": "athena-vsp",
+      "metrics": null,
+      "elapsed_s": 0,
+      "merged_rows": 0,
+      "total_rows": 2000,
+      "eval_status": 1,
+      "shard_exit_codes": [
+        1,
+        1
+      ],
+      "response_file": "/home/Glaukopis/athena_bench/responses/deepseek-ai_DeepSeek-R1-Distill-Qwen-14B/athena-vsp/athena-vsp_all_v1_deepseek-ai_DeepSeek-R1-Distill-Qwen-14B_response.jsonl"
+    },
+    {
+      "task": "athena-ate",
+      "metrics": null,
+      "elapsed_s": 0,
+      "merged_rows": 0,
+      "total_rows": 500,
+      "eval_status": 1,
+      "shard_exit_codes": [
+        1,
+        1
+      ],
+      "response_file": "/home/Glaukopis/athena_bench/responses/deepseek-ai_DeepSeek-R1-Distill-Qwen-14B/athena-ate/athena-ate_all_v1_deepseek-ai_DeepSeek-R1-Distill-Qwen-14B_response.jsonl"
+    },
+    {
+      "task": "athena-taa",
+      "metrics": null,
+      "elapsed_s": 0,
+      "merged_rows": 0,
+      "total_rows": 100,
+      "eval_status": 1,
+      "shard_exit_codes": [
+        1,
+        1
+      ],
+      "response_file": "/home/Glaukopis/athena_bench/responses/deepseek-ai_DeepSeek-R1-Distill-Qwen-14B/athena-taa/athena-taa_all_v1_deepseek-ai_DeepSeek-R1-Distill-Qwen-14B_response.jsonl"
+    },
+    {
+      "task": "athena-rms",
+      "metrics": null,
+      "elapsed_s": 0,
+      "merged_rows": 0,
+      "total_rows": 500,
+      "eval_status": 1,
+      "shard_exit_codes": [
+        1,
+        1
+      ],
+      "response_file": "/home/Glaukopis/athena_bench/responses/deepseek-ai_DeepSeek-R1-Distill-Qwen-14B/athena-rms/athena-rms_all_v1_deepseek-ai_DeepSeek-R1-Distill-Qwen-14B_response.jsonl"
+    }
+  ]
+}

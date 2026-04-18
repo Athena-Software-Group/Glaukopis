@@ -43,5 +43,17 @@
         "output_tokens_cost": 22.851045000000056,
         "grounding_calls": 0,
         "total_cost": 23.113367399999913
+    },
+    {
+        "date": "2026-04-18 14:48:55",
+        "task": "athena-mcq",
+        "model_name": "deephat-7b",
+        "version": 1,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "input_tokens_cost": 0.0,
+        "output_tokens_cost": 0.0,
+        "grounding_calls": 0,
+        "total_cost": 0.0
     }
 ]
