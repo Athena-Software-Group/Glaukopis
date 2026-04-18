@@ -65,6 +65,7 @@ model_mapping = {
     'foundation-8b': 'fdtn-ai/Foundation-Sec-8B',                           # Cisco Foundation-Sec-8B simple model
     'minerva-llama8b':'athena-security/minerva-llama8b',
     'deephat-7b': 'DeepHat/DeepHat-V1-7B',
+    'deepseek-r1-14b': 'deepseek-ai/DeepSeek-R1-Distill-Qwen-14B',
 }
 
 # --- Centralized Helpers ---
@@ -74,6 +75,7 @@ def check_disk_space(model_id):
     required_gb = 5
     if '70b' in model_id.lower(): required_gb = 150
     elif '20b' in model_id.lower(): required_gb = 45
+    elif '14b' in model_id.lower(): required_gb = 32
     elif '13b' in model_id.lower(): required_gb = 30
     elif '8b' in model_id.lower(): required_gb = 20
     elif '3b' in model_id.lower(): required_gb = 10
@@ -475,7 +477,7 @@ def get_cached_model(model_name):
             _model_cache[model_name] = OpenAIModel(model_name)
         elif model_name.startswith("gemini"):
             _model_cache[model_name] = GeminiModel(model_name)
-        elif model_name.startswith("llama") or model_name.startswith("qwen") or model_name.startswith("foundation") or model_name.startswith("minerva") or model_name.startswith("deephat"):
+        elif model_name.startswith("llama") or model_name.startswith("qwen") or model_name.startswith("foundation") or model_name.startswith("minerva") or model_name.startswith("deephat") or model_name.startswith("deepseek"):
             _model_cache[model_name] = HuggingFaceModel(model_name)
         else:
             raise ValueError(f"Unknown model type for: {model_name}")
