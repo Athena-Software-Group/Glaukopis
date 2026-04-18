@@ -36,9 +36,10 @@ def main():
 
     # validate batch flag
     is_gpt_or_gemini = any(k in model_key for k in ["gpt", "gemini"])
+    is_hf_inference = model_key.endswith("-hf")
     if args.batch is not None:
-        if not is_gpt_or_gemini:
-            raise ValueError("--batch flag is only supported for GPT, Gemini models")
+        if not (is_gpt_or_gemini or is_hf_inference):
+            raise ValueError("--batch flag is only supported for GPT, Gemini, and HF Inference (*-hf) models")
         if args.batch <= 0:
             raise ValueError("--batch must be a positive integer")
         
@@ -97,10 +98,10 @@ def main():
 
     # Pass web search flag only for CVE + supported models
     use_web_search = args.task == "cve" and args.athena_cti_lnd and model_key in ["gpt5", "gemini-2.5-flash"]
-    
+
     try:
         # Pass both cleanup and use_web_search to generate_responses
-        benchmark.generate_responses(cleanup=args.cleanup, use_web_search=use_web_search,batch=args.batch if is_gpt_or_gemini else None)
+        benchmark.generate_responses(cleanup=args.cleanup, use_web_search=use_web_search,batch=args.batch if (is_gpt_or_gemini or is_hf_inference) else None)
     except KeyboardInterrupt:
         print("\nKeyboardInterrupt detected. Saving checkpoint...")
         save_checkpoint(args.task, model_key, version=args.version)

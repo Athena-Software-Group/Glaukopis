@@ -19,9 +19,12 @@
 #
 # Usage:
 #   ./run_benchmark.sh <model-name> [--version N] [--rows N] [--tasks "mcq rcm vsp"]
-#                                   [--overwrite] [--yes]
+#                                   [--batch N] [--overwrite] [--yes]
 #
 # Flags:
+#   --batch N     Run N concurrent requests per task. Only supported for
+#                 GPT/Gemini and HF Inference ('*-hf') models. Use 16-64
+#                 for hosted-API runs to get real throughput.
 #   --overwrite   Delete existing response files for the selected (tasks,
 #                 rows, version, model) tuple before running, forcing a
 #                 fresh run instead of resume-from-checkpoint.
@@ -34,6 +37,7 @@
 #   ./run_benchmark.sh deephat-7b --rows 100 --tasks "athena-mcq athena-rcm"
 #   ./run_benchmark.sh deephat-7b --overwrite                 # interactive
 #   ./run_benchmark.sh deephat-7b --overwrite --yes           # no prompt
+#   ./run_benchmark.sh deepseek-r1-14b-hf --batch 32          # hosted + parallel
 
 set -u
 
@@ -49,6 +53,7 @@ MODEL_NAME="$1"; shift
 
 VERSION=1
 ROWS=""
+BATCH=""
 TASKS="athena-mcq athena-rcm athena-vsp athena-ate athena-taa athena-rms"
 OVERWRITE=0
 ASSUME_YES=0
@@ -57,6 +62,7 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --version)   VERSION="$2"; shift 2 ;;
         --rows)      ROWS="$2"; shift 2 ;;
+        --batch)     BATCH="$2"; shift 2 ;;
         --tasks)     TASKS="$2"; shift 2 ;;
         --overwrite) OVERWRITE=1; shift ;;
         --yes|-y)    ASSUME_YES=1; shift ;;
@@ -72,6 +78,9 @@ LOG_FILE="${SCRIPT_DIR}/${SAFE_NAME}.log"
 extra_args=(--version "${VERSION}")
 if [[ -n "${ROWS}" ]]; then
     extra_args+=(--rows "${ROWS}")
+fi
+if [[ -n "${BATCH}" ]]; then
+    extra_args+=(--batch "${BATCH}")
 fi
 
 # Resolve the model's on-disk response directory name via the same mapping
@@ -169,6 +178,7 @@ fi
     echo "  env         : ${CONDA_DEFAULT_ENV:-<none>}"
     echo "  version     : ${VERSION}"
     echo "  rows        : ${ROWS_STR}"
+    echo "  batch       : ${BATCH:-<none>}"
     echo "  tasks       : ${TASKS}"
     echo "  overwrite   : $([[ ${OVERWRITE} -eq 1 ]] && echo yes || echo no)"
     echo "  started     : $(date -u +"%Y-%m-%dT%H:%M:%SZ")"

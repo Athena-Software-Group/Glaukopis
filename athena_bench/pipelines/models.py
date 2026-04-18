@@ -66,6 +66,14 @@ model_mapping = {
     'minerva-llama8b':'athena-security/minerva-llama8b',
     'deephat-7b': 'DeepHat/DeepHat-V1-7B',
     'deepseek-r1-14b': 'deepseek-ai/DeepSeek-R1-Distill-Qwen-14B',
+
+    # --- HF Inference Providers (hosted; '-hf' suffix routes to HFInferenceModel) ---
+    'deepseek-r1-14b-hf':  'deepseek-ai/DeepSeek-R1-Distill-Qwen-14B',
+    'deepseek-r1-70b-hf':  'deepseek-ai/DeepSeek-R1-Distill-Llama-70B',
+    'qwen3-14b-hf':        'Qwen/Qwen3-14B',
+    'qwen2.5-14b-hf':      'Qwen/Qwen2.5-14B-Instruct',
+    'llama-3-70b-hf':      'meta-llama/Meta-Llama-3-70B-Instruct',
+    'llama3.3-70b-hf':     'meta-llama/Llama-3.3-70B-Instruct',
 }
 
 # --- Centralized Helpers ---
@@ -261,6 +269,81 @@ class GeminiModel(BaseModel):
             add_tokens(self.model_name, input_tokens, output_tokens + thoughts_tokens, grounding=use_grounding)
 
         return response.text
+
+
+# ----------------- HuggingFace Inference Providers (hosted) ----------------- #
+class HFInferenceModel(BaseModel):
+    """Run inference against HuggingFace Inference Providers (hosted API).
+
+    Uses the OpenAI-compatible chat.completions endpoint on
+    https://router.huggingface.co/v1 with server-side auto-routing to a
+    provider (Together, Fireworks, Sambanova, etc.). No local GPU used.
+
+    Requires HUGGINGFACE_TOKEN (with inference scope) and billing enabled
+    on the HF account, or a Pro subscription with included credits.
+
+    Model keys use the '-hf' suffix convention so the same base model can
+    coexist with its local-GPU variant in model_mapping (e.g. 'qwen3-14b'
+    vs 'qwen3-14b-hf').
+    """
+
+    _TRANSIENT_HTTP = {408, 409, 425, 429, 500, 502, 503, 504}
+
+    def __init__(self, model_name):
+        super().__init__(model_name)
+        try:
+            from huggingface_hub import InferenceClient
+        except ImportError as e:
+            raise ImportError(
+                "huggingface_hub is required for HF Inference Providers. "
+                "Install or upgrade: pip install -U 'huggingface_hub>=0.34'"
+            ) from e
+        if not hf_token:
+            raise RuntimeError(
+                "HUGGINGFACE_TOKEN is not set. HF Inference Providers "
+                "requires an HF token with inference scope and billing enabled."
+            )
+        self.hf_model_id = model_mapping.get(model_name, model_name)
+        # provider=None => server-side auto-routing on router.huggingface.co/v1
+        self.client = InferenceClient(api_key=hf_token)
+        print(f"HF Inference client ready for {self.hf_model_id} (provider=auto)")
+
+    def generate(self, question, task=None, cleanup_after=False, use_web_search=False,
+                 temperature=0.0, max_new_tokens=2048, **kwargs):
+        import time
+        sys_prompt = get_system_prompt(task)
+        messages = []
+        if sys_prompt:
+            messages.append({"role": "system", "content": sys_prompt})
+        messages.append({"role": "user", "content": question})
+
+        last_err = None
+        for attempt in range(5):
+            try:
+                resp = self.client.chat.completions.create(
+                    model=self.hf_model_id,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=max_new_tokens,
+                )
+                choice = resp.choices[0] if resp.choices else None
+                content = (choice.message.content if choice and choice.message else "") or ""
+                return content
+            except Exception as e:
+                last_err = e
+                status = getattr(e, "status_code", None) or getattr(
+                    getattr(e, "response", None), "status_code", None)
+                msg = str(e)
+                retriable = status in self._TRANSIENT_HTTP or any(
+                    s in msg.lower() for s in ("timeout", "rate limit", "temporarily", "connection"))
+                if not retriable or attempt == 4:
+                    raise
+                backoff = min(2 ** attempt, 30)
+                print(f"HF Inference transient error ({status or 'err'}) on "
+                      f"{self.hf_model_id}, retry {attempt+1}/5 in {backoff}s: {msg[:200]}")
+                time.sleep(backoff)
+        # Unreachable but keeps type-checkers happy
+        raise last_err if last_err else RuntimeError("HF Inference: unknown failure")
 
 
 # ----------------- HuggingFace Model ----------------- #
@@ -471,7 +554,10 @@ _model_cache = {}
 def get_cached_model(model_name):
     """Get or create a cached model instance"""
     if model_name not in _model_cache:
-        if model_name.startswith("gpt-oss"):
+        # '-hf' suffix => hosted via HF Inference Providers, not local GPU
+        if model_name.endswith("-hf"):
+            _model_cache[model_name] = HFInferenceModel(model_name)
+        elif model_name.startswith("gpt-oss"):
             _model_cache[model_name] = HuggingFaceModel(model_name)
         elif model_name.startswith("gpt"):
             _model_cache[model_name] = OpenAIModel(model_name)

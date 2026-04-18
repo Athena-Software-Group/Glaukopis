@@ -183,6 +183,87 @@ Run inference for the ATHENA-MCQ task using GPT-5:
 python inference.py athena-mcq gpt5 --batch 5 --version 2 --data_path benchmark_data\athena_bench\athena-mcq.tsv --cleanup
 ```
 
+### HuggingFace Inference Providers (hosted API)
+
+Any model key ending in `-hf` is routed through the HuggingFace Inference
+Providers router (`https://router.huggingface.co/v1`) rather than loaded onto
+a local GPU. The router auto-selects a backing provider (Together, Fireworks,
+Sambanova, Cerebras, Novita, etc.) based on what has the model hosted and the
+account's provider preference order.
+
+This is the fastest path for large or reasoning models (e.g.
+`deepseek-r1-14b`) where per-row inference locally would take 10s+.
+
+**One-time account setup** (no model deployment required — the models are
+already hosted by the providers):
+
+1. Log in at https://huggingface.co and open **Settings → Access Tokens**.
+   Create a token with scope **"Make calls to Inference Providers"**
+   (read-only is sufficient). Copy the token.
+2. Open **Settings → Billing** and either:
+   - subscribe to **HF Pro** (includes monthly inference credits), or
+   - enable **pay-as-you-go** by attaching a payment method. Usage is then
+     billed per token at the backing provider's rate.
+3. Optionally open **Settings → Inference Providers** to reorder which
+   provider gets tried first for each model.
+
+**Repo setup**:
+
+Put the token in the usual `.env` file the rest of the framework already
+reads (or export it in the shell):
+
+```bash
+# athena_bench/.env
+HUGGINGFACE_TOKEN=hf_xxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+`huggingface_hub` is already pinned in `requirements.txt`, so no new install
+step is needed.
+
+**Available `-hf` model keys**:
+
+| Key | Backing model |
+|---|---|
+| `deepseek-r1-14b-hf` | `deepseek-ai/DeepSeek-R1-Distill-Qwen-14B` |
+| `deepseek-r1-70b-hf` | `deepseek-ai/DeepSeek-R1-Distill-Llama-70B` |
+| `qwen3-14b-hf`       | `Qwen/Qwen3-14B` |
+| `qwen2.5-14b-hf`     | `Qwen/Qwen2.5-14B-Instruct` |
+| `llama-3-70b-hf`     | `meta-llama/Meta-Llama-3-70B-Instruct` |
+| `llama3.3-70b-hf`    | `meta-llama/Llama-3.3-70B-Instruct` |
+
+Additional keys can be registered by adding an entry to `model_mapping` in
+`pipelines/models.py` with the `-hf` suffix.
+
+**Example — single task with concurrency**:
+
+```bash
+python inference.py athena-mcq deepseek-r1-14b-hf --batch 32 --version 1
+```
+
+`--batch N` fires N concurrent HTTP requests (via `ThreadPoolExecutor`); the
+provider's continuous batching handles the rest. Typical throughput for a
+14B reasoning model on Together: 30-60× vs local single-GPU HF.
+
+**Example — full sweep**:
+
+```bash
+./utils/run_benchmark.sh deepseek-r1-14b-hf --batch 32 --overwrite --yes
+```
+
+Note: do **not** use `run_benchmark_parallel.sh` for `-hf` models. That script
+shards across GPUs, which only makes sense for local inference. The sequential
+`run_benchmark.sh` + `--batch N` is the right tool for hosted inference, since
+concurrency is already handled at the HTTP layer.
+
+**Cost estimation** (very rough, depends on provider's per-token rate):
+
+| Model | Typical rate | Full 6-task sweep |
+|---|---|---|
+| `deepseek-r1-14b-hf` | ~$0.30 / 1M tokens combined | ~$10-15 |
+| `llama3.3-70b-hf`    | ~$0.80 / 1M tokens combined | ~$20-30 |
+
+Check `https://huggingface.co/<model-id>?inference_provider=...` for the
+current per-provider pricing.
 
 ## Evaluation
 
