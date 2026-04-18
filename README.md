@@ -1,3 +1,1 @@
-# Sophia Template Based Generator.
-
-Check out [README.me](tmpl_gen/README.md) in the tmpl_gen directory.
+Glaukopis: End to end CTI SFT training pipeline. [Ariadne->Sophia->Glaukopis->Alkidemos]
