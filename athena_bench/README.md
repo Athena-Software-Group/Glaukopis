@@ -34,21 +34,54 @@ Athena CTI Bench provides a comprehensive evaluation suite for assessing Large L
 
 ## Setup
 
-### Environment Setup
+### Automated Setup (Linux + CUDA)
+
+The recommended path on a Linux CUDA host is the scripted installer under
+[`utils/`](utils/):
 
 ```bash
-# Create and activate conda environment
-conda create -n ctibench 
+cd athena_bench/utils
+./setup.sh                          # defaults: CUDA 12.4, env=ctibench, python=3.11
+./setup.sh --cuda cu121             # target a different CUDA toolkit
+./setup.sh --env-name ctibench-dev  # use a custom conda env name
+./setup.sh --no-flash-attn          # skip flash-attn (e.g. unsupported GPU)
+./setup.sh --no-lfs-pull            # skip 'git lfs pull' for data/
+./setup.sh --cuda cpu               # CPU-only install (also skips flash-attn)
+./setup.sh --help
+```
+
+The script is idempotent and handles:
+1. Bootstrapping Miniconda to `$HOME/miniconda3` if `conda` is not on `PATH`.
+2. Creating/reusing the conda env (default `ctibench`, Python 3.11).
+3. Installing the CUDA-matched PyTorch wheels (`cu124` by default).
+4. Installing `requirements.txt` and (optionally) `flash-attn`.
+5. Installing Git LFS and running `git lfs pull` to fetch the large files in `data/`.
+6. Printing a PyTorch/CUDA verification summary.
+
+After it finishes, activate the env and verify the install end-to-end with the
+smoke test:
+
+```bash
 conda activate ctibench
-# Install dependencies
+./utils/smoke_test.sh
+```
+
+### Manual Setup
+
+If you prefer to install by hand:
+
+```bash
+conda create -n ctibench python=3.11 -y
+conda activate ctibench
 pip install -r requirements.txt
 # (Important) Install Flash Attention for Hugging Face model performance
 pip install flash-attn --no-build-isolation
 
-conda install git-lfs
+conda install -c conda-forge git-lfs -y
 git lfs install
 git lfs pull
 ```
+
 Git LFS is required to fetch the large files stored in `data/`.
 
 ## Usage

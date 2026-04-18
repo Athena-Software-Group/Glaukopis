@@ -23,6 +23,41 @@ This document describes the end-to-end workflow for supervised fine-tuning (SFT)
 
 A Linux environment is required. Use Anaconda or Miniconda to manage a dedicated Python environment with Python 3.11 or higher.
 
+### Automated Setup (Linux + CUDA)
+
+The recommended path is the scripted installer under [`utils/`](utils/):
+
+```bash
+cd SFT/utils
+./setup.sh                                 # defaults: CUDA 12.4, env=llm-sft, python=3.11
+./setup.sh --cuda cu121                    # target a different CUDA toolkit
+./setup.sh --env-name llm-sft-dev          # custom env name
+./setup.sh --extras "metrics deepspeed vllm"  # install additional requirement groups
+./setup.sh --no-flash-attn                 # skip flash-attn (e.g. unsupported GPU)
+./setup.sh --cuda cpu                      # CPU-only install (also skips flash-attn)
+./setup.sh --help
+```
+
+The script is idempotent and handles:
+1. Bootstrapping Miniconda to `$HOME/miniconda3` if `conda` is not on `PATH`.
+2. Creating/reusing the conda env (default `llm-sft`, Python 3.11).
+3. Installing the CUDA-matched PyTorch wheels (`cu124` by default).
+4. Installing LlamaFactory in editable mode (`pip install -e .`).
+5. Installing optional requirement groups from `requirements/` (default: `metrics` + `deepspeed`).
+6. Installing `wandb` and `huggingface_hub`.
+7. (Optionally) installing `flash-attn`.
+8. Printing a PyTorch/CUDA/LlamaFactory verification summary.
+
+After it finishes, activate the env and log in to the experiment/model services:
+
+```bash
+conda activate llm-sft
+wandb login
+huggingface-cli login
+```
+
+### Manual Setup
+
 ```bash
 conda create -n llm-sft python=3.11 -y
 conda activate llm-sft
@@ -44,9 +79,9 @@ python --version
 
 ## Installation
 
-Clone the repository and install LlamaFactory in editable mode along with optional dependencies:
+If you are not using [`utils/setup.sh`](utils/setup.sh), install LlamaFactory in editable mode along with the optional dependency groups by hand:
 
-```bash 
+```bash
 pip install -e .
 pip install -r requirements/metrics.txt -r requirements/deepspeed.txt
 pip install wandb huggingface_hub

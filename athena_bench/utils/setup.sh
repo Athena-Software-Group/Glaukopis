@@ -1,0 +1,136 @@
+#!/bin/bash
+
+# End-to-end setup script for athena_bench on a Linux CUDA machine.
+#
+# Installs (as needed):
+#   1. Miniconda (if `conda` is not on PATH)
+#   2. A conda environment with Python 3.11
+#   3. PyTorch matched to the requested CUDA version
+#   4. athena_bench Python dependencies from requirements.txt
+#   5. flash-attn (optional, skipped with --no-flash-attn)
+#   6. Git LFS, and runs `git lfs pull` to fetch the large files under data/
+#
+# Usage:
+#   ./setup.sh [--cuda cu124|cu121|cu118|cpu] [--env-name NAME] [--python VERSION] [--no-flash-attn] [--no-lfs-pull]
+#
+# Defaults:
+#   --cuda cu124
+#   --env-name ctibench
+#   --python 3.11
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BENCH_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+CUDA_TAG="cu124"
+ENV_NAME="ctibench"
+PYTHON_VERSION="3.11"
+INSTALL_FLASH_ATTN=1
+RUN_LFS_PULL=1
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --cuda)           CUDA_TAG="$2"; shift 2 ;;
+        --env-name)       ENV_NAME="$2"; shift 2 ;;
+        --python)         PYTHON_VERSION="$2"; shift 2 ;;
+        --no-flash-attn)  INSTALL_FLASH_ATTN=0; shift ;;
+        --no-lfs-pull)    RUN_LFS_PULL=0; shift ;;
+        -h|--help)
+            sed -n '3,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+            exit 0
+            ;;
+        *) echo "Unknown argument: $1"; exit 1 ;;
+    esac
+done
+
+case "${CUDA_TAG}" in
+    cu124|cu121|cu118) TORCH_INDEX_URL="https://download.pytorch.org/whl/${CUDA_TAG}" ;;
+    cpu)               TORCH_INDEX_URL="https://download.pytorch.org/whl/cpu" ;;
+    *) echo "Unsupported --cuda value: ${CUDA_TAG} (expected cu124|cu121|cu118|cpu)"; exit 1 ;;
+esac
+
+echo "=== athena_bench setup ==="
+echo "  bench dir : ${BENCH_DIR}"
+echo "  env name  : ${ENV_NAME}"
+echo "  python    : ${PYTHON_VERSION}"
+echo "  cuda tag  : ${CUDA_TAG}"
+echo "  flash-attn: $([[ ${INSTALL_FLASH_ATTN} -eq 1 ]] && echo yes || echo no)"
+echo "  git lfs   : $([[ ${RUN_LFS_PULL} -eq 1 ]] && echo yes || echo no)"
+echo
+
+# 1. Miniconda bootstrap ------------------------------------------------------
+if ! command -v conda >/dev/null 2>&1; then
+    echo "=== conda not found — installing Miniconda to \$HOME/miniconda3 ==="
+    MINICONDA_INSTALLER="/tmp/Miniconda3-latest-Linux-x86_64.sh"
+    curl -L -o "${MINICONDA_INSTALLER}" \
+        https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+    bash "${MINICONDA_INSTALLER}" -b -p "${HOME}/miniconda3"
+    rm -f "${MINICONDA_INSTALLER}"
+    export PATH="${HOME}/miniconda3/bin:${PATH}"
+fi
+
+# Make `conda activate` work inside this non-interactive shell.
+# shellcheck disable=SC1091
+source "$(conda info --base)/etc/profile.d/conda.sh"
+
+# 2. Conda environment --------------------------------------------------------
+if conda env list | awk '{print $1}' | grep -qx "${ENV_NAME}"; then
+    echo "=== Reusing existing conda env: ${ENV_NAME} ==="
+else
+    echo "=== Creating conda env: ${ENV_NAME} (python=${PYTHON_VERSION}) ==="
+    conda create -n "${ENV_NAME}" "python=${PYTHON_VERSION}" -y
+fi
+conda activate "${ENV_NAME}"
+
+python -m pip install --upgrade pip wheel setuptools
+
+# 3. PyTorch ------------------------------------------------------------------
+echo "=== Installing PyTorch (${CUDA_TAG}) ==="
+pip install --index-url "${TORCH_INDEX_URL}" torch torchvision torchaudio
+
+# 4. athena_bench requirements ------------------------------------------------
+echo "=== Installing athena_bench requirements ==="
+pip install -r "${BENCH_DIR}/requirements.txt"
+
+# 5. flash-attn ---------------------------------------------------------------
+if [[ ${INSTALL_FLASH_ATTN} -eq 1 && "${CUDA_TAG}" != "cpu" ]]; then
+    echo "=== Installing flash-attn (no build isolation) ==="
+    pip install flash-attn --no-build-isolation
+elif [[ "${CUDA_TAG}" == "cpu" ]]; then
+    echo "=== Skipping flash-attn (CPU build) ==="
+fi
+
+# 6. Git LFS ------------------------------------------------------------------
+if ! command -v git-lfs >/dev/null 2>&1; then
+    echo "=== Installing git-lfs via conda-forge ==="
+    conda install -n "${ENV_NAME}" -c conda-forge git-lfs -y
+fi
+git lfs install
+
+if [[ ${RUN_LFS_PULL} -eq 1 ]]; then
+    echo "=== Running 'git lfs pull' to fetch data/ ==="
+    (cd "${BENCH_DIR}" && git lfs pull)
+fi
+
+# 7. Verification -------------------------------------------------------------
+echo
+echo "=== Verifying PyTorch / CUDA ==="
+python - <<'PY'
+import torch
+print("torch version     :", torch.__version__)
+print("torch cuda build  :", torch.version.cuda)
+print("cuda available    :", torch.cuda.is_available())
+if torch.cuda.is_available():
+    print("device            :", torch.cuda.get_device_name(0))
+    print("bf16 supported    :", torch.cuda.is_bf16_supported())
+PY
+
+echo
+echo "=== Setup complete ==="
+echo "Activate the environment with:"
+echo "    conda activate ${ENV_NAME}"
+echo "Then run a benchmark, e.g.:"
+echo "    cd ${BENCH_DIR}"
+echo "    python inference.py athena-mcq <model_name> --batch 5 --version 1 \\"
+echo "        --data_path benchmark_data/athena_bench/athena-mcq.tsv"
