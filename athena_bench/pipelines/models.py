@@ -61,9 +61,10 @@ model_mapping = {
     'qwen3-14b': 'Qwen/Qwen3-14B',
     'qwen3.5-9b':'Qwen/Qwen3.5-9B',
     'gpt-oss-20b': 'openai/gpt-oss-20b',
-    'foundation-8b-reasoning': 'fdtn-ai/Foundation-Sec-8B-Reasoning', # Cisco Foundation-Sec-8B-Reasoning
-    'foundation-8b': 'fdtn-ai/Foundation-Sec-8B', # Cisco Foundation-Sec-8B simple model
+    'foundation-8b-reasoning': 'fdtn-ai/Foundation-Sec-8B-Reasoning',       # Cisco Foundation-Sec-8B-Reasoning
+    'foundation-8b': 'fdtn-ai/Foundation-Sec-8B',                           # Cisco Foundation-Sec-8B simple model
     'minerva-llama8b':'athena-security/minerva-llama8b',
+    'deephat-7b': 'DeepHat/DeepHat-V1-7B',
 }
 
 # --- Centralized Helpers ---
@@ -456,7 +457,7 @@ def get_cached_model(model_name):
             _model_cache[model_name] = OpenAIModel(model_name)
         elif model_name.startswith("gemini"):
             _model_cache[model_name] = GeminiModel(model_name)
-        elif model_name.startswith("llama") or model_name.startswith("qwen") or model_name.startswith("foundation") or model_name.startswith("minerva"):
+        elif model_name.startswith("llama") or model_name.startswith("qwen") or model_name.startswith("foundation") or model_name.startswith("minerva") or model_name.startswith("deephat"):
             _model_cache[model_name] = HuggingFaceModel(model_name)
         else:
             raise ValueError(f"Unknown model type for: {model_name}")
