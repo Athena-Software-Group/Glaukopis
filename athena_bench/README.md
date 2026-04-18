@@ -45,7 +45,7 @@ cd athena_bench/utils
 ./setup.sh --cuda cu121             # target a different CUDA toolkit
 ./setup.sh --env-name ctibench-dev  # use a custom conda env name
 ./setup.sh --no-flash-attn          # skip flash-attn (e.g. unsupported GPU)
-./setup.sh --no-lfs-pull            # skip 'git lfs pull' for data/
+./setup.sh --lfs-pull               # opt in to 'git lfs pull' for data/ (see note below)
 ./setup.sh --no-conda-init          # skip modifying your shell rc
 ./setup.sh --cuda cpu               # CPU-only install (also skips flash-attn)
 ./setup.sh --help
@@ -58,7 +58,7 @@ The script is idempotent and handles:
 4. Installing `requirements.txt` and (optionally) `flash-attn`.
    - `flash-attn` installs the matching prebuilt wheel from GitHub releases
      directly (avoids the known EXDEV / cross-device-link build bug).
-5. Installing Git LFS and running `git lfs pull` to fetch the large files in `data/`.
+5. Installing Git LFS (but **not** running `git lfs pull` by default — see below).
 6. Printing a PyTorch/CUDA verification summary.
 7. Running `conda init` for your shell (unless `--no-conda-init` is given) so
    that `conda activate` works in any new terminal.
@@ -71,6 +71,32 @@ exec bash                 # or open a new terminal
 conda activate ctibench
 ./utils/smoke_test.sh
 ```
+
+### Git LFS and the `data/` directory
+
+The scripted installer no longer runs `git lfs pull` by default because:
+
+- The benchmark files under `benchmark_data/` and `benchmark_data_mini/` used by
+  `inference.py` are tracked as **regular git files** — they do not need LFS.
+- The tree under `data/` (MCQ scrape output, NVD daily snapshots, processed
+  MITRE ATT&CK bundles, TAA working files, etc.) consists entirely of LFS
+  pointer files whose backing objects are largely **missing from the LFS
+  server**. Running `git lfs pull` against this repo currently fails with
+  `Object does not exist on the server: [404]`.
+- `data/` is only needed when you are **regenerating** benchmark datasets
+  (see the *Dataset creation* section below). It can be reproduced from
+  scratch via the `athena_scrape` pipelines.
+
+If you do need `data/` populated, either:
+
+```bash
+./setup.sh --lfs-pull              # best-effort fetch; non-fatal if objects are missing
+# or, after setup:
+git lfs pull                       # best-effort; expect 404s for missing objects
+```
+
+…and then regenerate whatever is still missing using the commands under
+*Dataset creation*.
 
 ### Manual Setup
 
@@ -85,7 +111,7 @@ pip install flash-attn --no-build-isolation
 
 conda install -c conda-forge git-lfs -y
 git lfs install
-git lfs pull
+# 'git lfs pull' is optional; see the 'Git LFS and the data/ directory' note above
 ```
 
 Git LFS is required to fetch the large files stored in `data/`.

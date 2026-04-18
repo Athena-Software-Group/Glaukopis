@@ -12,13 +12,22 @@
 #
 # Usage:
 #   ./setup.sh [--cuda cu124|cu121|cu118|cpu] [--env-name NAME] [--python VERSION]
-#              [--no-flash-attn] [--no-lfs-pull] [--no-conda-init]
+#              [--no-flash-attn] [--lfs-pull] [--no-conda-init]
 #
 # Defaults:
 #   --cuda cu124
 #   --env-name ctibench
 #   --python 3.11
 #   (conda init runs by default for your shell; use --no-conda-init to skip)
+#
+# Note on Git LFS:
+#   'git lfs pull' is NOT run by default. The benchmark data under
+#   benchmark_data/ is tracked as regular git files and does not need LFS.
+#   The only LFS-tracked content lives under data/ (scrape output used for
+#   dataset *generation*, not for running benchmarks) and a number of those
+#   objects are missing from the LFS server. Pass --lfs-pull to attempt a
+#   pull anyway; failures will be reported as a warning but will not abort
+#   the setup.
 
 set -e
 
@@ -29,7 +38,7 @@ CUDA_TAG="cu124"
 ENV_NAME="ctibench"
 PYTHON_VERSION="3.11"
 INSTALL_FLASH_ATTN=1
-RUN_LFS_PULL=1
+RUN_LFS_PULL=0
 RUN_CONDA_INIT=1
 
 while [[ $# -gt 0 ]]; do
@@ -38,10 +47,11 @@ while [[ $# -gt 0 ]]; do
         --env-name)       ENV_NAME="$2"; shift 2 ;;
         --python)         PYTHON_VERSION="$2"; shift 2 ;;
         --no-flash-attn)  INSTALL_FLASH_ATTN=0; shift ;;
-        --no-lfs-pull)    RUN_LFS_PULL=0; shift ;;
+        --lfs-pull)       RUN_LFS_PULL=1; shift ;;
+        --no-lfs-pull)    RUN_LFS_PULL=0; shift ;;    # kept for backwards compat
         --no-conda-init)  RUN_CONDA_INIT=0; shift ;;
         -h|--help)
-            sed -n '3,22p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+            sed -n '3,31p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
             exit 0
             ;;
         *) echo "Unknown argument: $1"; exit 1 ;;
@@ -152,8 +162,15 @@ fi
 git lfs install
 
 if [[ ${RUN_LFS_PULL} -eq 1 ]]; then
-    echo "=== Running 'git lfs pull' to fetch data/ ==="
-    (cd "${BENCH_DIR}" && git lfs pull)
+    echo "=== Running 'git lfs pull' (requested via --lfs-pull) ==="
+    if ! (cd "${BENCH_DIR}" && git lfs pull); then
+        echo "  [WARN] 'git lfs pull' reported errors."
+        echo "         This is expected: many LFS objects under data/ are missing"
+        echo "         from the server. Benchmark runs do not depend on data/."
+    fi
+else
+    echo "=== Skipping 'git lfs pull' (default; pass --lfs-pull to opt in) ==="
+    echo "    benchmark_data/ is plain git-tracked and does not need LFS."
 fi
 
 # 7. Verification -------------------------------------------------------------

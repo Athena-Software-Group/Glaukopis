@@ -408,12 +408,20 @@ generated_predictions.jsonl
 predictions_score.json
 
 # Athena Bench Gitignore files
-#virtual environment 
-athena-cti/ 
+#virtual environment
+athena-cti/
 myenv/
 
-# environment variables and secrets 
-.env 
+# environment variables and secrets
+.env
 # Python cache
 __pycache__/
 .cache/
+
+# Athena Bench scrape / processing outputs.
+# These were previously tracked as Git LFS pointer files but most of the
+# backing LFS objects are missing from the server (404 on 'git lfs pull').
+# The benchmark runner does not depend on this directory; it is only used
+# for regenerating datasets via the scraping pipelines.
+athena_bench/data/processed/
+athena_bench/data/raw/
