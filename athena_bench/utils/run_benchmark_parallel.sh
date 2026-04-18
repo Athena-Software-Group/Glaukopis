@@ -179,10 +179,12 @@ trap 'rm -rf "${SHARD_DIR}"' EXIT
         total_rows=$(wc -l < "${input_abs}")
         echo "  input   : ${input_rel} (${total_rows} rows)"
 
-        # Split into GPUS chunks (line-balanced, no split across lines).
-        # Done in Python for portability (BSD split lacks -n l/N / -d /
-        # --additional-suffix; writing this in Python keeps the script
-        # portable across Linux and macOS).
+        # Split into GPUS interleaved (round-robin) shards: row j -> shard
+        # (j mod n). This averages out per-row cost variation that depends
+        # on input position (e.g. inputs ordered by difficulty / length),
+        # which a contiguous chunked split would otherwise concentrate on
+        # one GPU. Shard sizes still differ by at most 1 row.
+        # Done in Python for portability (BSD split lacks -n / -d / etc.).
         shard_prefix="${SHARD_DIR}/${task}_shard_"
         python - "${input_abs}" "${shard_prefix}" "${GPUS}" <<'PY'
 import sys, pathlib
@@ -190,15 +192,9 @@ src = pathlib.Path(sys.argv[1])
 prefix = sys.argv[2]
 n = int(sys.argv[3])
 lines = src.read_text().splitlines(keepends=True)
-total = len(lines)
-# Line-balanced split: first (total % n) shards get one extra line each.
-base, extra = divmod(total, n)
-idx = 0
 for i in range(n):
-    size = base + (1 if i < extra else 0)
     out = pathlib.Path(f"{prefix}{i:02d}.jsonl")
-    out.write_text("".join(lines[idx:idx+size]))
-    idx += size
+    out.write_text("".join(lines[i::n]))
 PY
         mapfile -t SHARD_FILES < <(ls "${shard_prefix}"*.jsonl | sort)
         if [[ ${#SHARD_FILES[@]} -ne ${GPUS} ]]; then
