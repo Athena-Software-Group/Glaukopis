@@ -198,21 +198,64 @@ fi
 
     cd "${BENCH_DIR}" || { echo "[FAIL] cannot cd to ${BENCH_DIR}"; exit 1; }
 
+    # Per-task results collected during the sweep, emitted as a table + JSON
+    # summary at the end.
+    declare -a RES_TASKS=()
+    declare -a RES_ELAPSED=()
+    declare -a RES_EXIT=()
+    declare -a RES_METRICS=()
+    declare -a RES_ROWS=()
+    declare -a RES_STARTED=()
+    declare -a RES_FINISHED=()
+
+    sweep_start_epoch=$(date +%s)
+    sweep_start_iso="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+
     overall_status=0
     for task in ${TASKS}; do
         echo
         echo "----- task: ${task} -----"
-        echo "  started : $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+        task_started_iso="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+        echo "  started : ${task_started_iso}"
         task_start=$(date +%s)
 
+        # Capture the task's stdout+stderr in a temp file so we can parse the
+        # "Evaluation result for ... : {...}" line while still streaming output
+        # through the outer tee unchanged.
+        task_out_file="$(mktemp -t athena_task.XXXXXX)"
         set +e
-        python inference.py "${task}" "${MODEL_NAME}" "${extra_args[@]}"
-        task_status=$?
+        set -o pipefail
+        python inference.py "${task}" "${MODEL_NAME}" "${extra_args[@]}" 2>&1 \
+            | tee "${task_out_file}"
+        task_status=${PIPESTATUS[0]}
+        set +o pipefail
         set -e
 
         task_end=$(date +%s)
         elapsed=$(( task_end - task_start ))
-        echo "  finished: $(date -u +"%Y-%m-%dT%H:%M:%SZ") (elapsed ${elapsed}s, exit ${task_status})"
+        task_finished_iso="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+        echo "  finished: ${task_finished_iso} (elapsed ${elapsed}s, exit ${task_status})"
+
+        # Extract the metrics dict printed by inference.py. Line looks like:
+        #   Evaluation result for athena-mcq with deepseek-v3.2-exp-hf: {'accuracy': '78.42%'}
+        metrics_raw="$(grep -E "^Evaluation result for ${task} with " "${task_out_file}" | tail -1 | sed -E "s/^Evaluation result for ${task} with [^:]+: //" || true)"
+        rm -f "${task_out_file}"
+
+        # Count rows actually written (evaluator's authoritative input file).
+        resp_file="${BENCH_DIR}/responses/${DISPLAY_NAME}/${task}/${task}_${ROWS_STR}_v${VERSION}_${DISPLAY_NAME}_response.jsonl"
+        if [[ -f "${resp_file}" ]]; then
+            row_count=$(wc -l < "${resp_file}" | tr -d ' ')
+        else
+            row_count=0
+        fi
+
+        RES_TASKS+=("${task}")
+        RES_ELAPSED+=("${elapsed}")
+        RES_EXIT+=("${task_status}")
+        RES_METRICS+=("${metrics_raw}")
+        RES_ROWS+=("${row_count}")
+        RES_STARTED+=("${task_started_iso}")
+        RES_FINISHED+=("${task_finished_iso}")
 
         if [[ ${task_status} -ne 0 ]]; then
             overall_status=${task_status}
@@ -220,10 +263,52 @@ fi
         fi
     done
 
+    sweep_end_epoch=$(date +%s)
+    sweep_end_iso="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+    sweep_elapsed=$(( sweep_end_epoch - sweep_start_epoch ))
+
     echo
     echo "=== Sweep complete ==="
-    echo "  finished: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+    echo "  finished: ${sweep_end_iso}"
     echo "  exit    : ${overall_status}"
+
+    # Summary artifacts: pretty table to stdout (tee'd to log) + JSON/MD
+    # dropped next to the response files. Handed off to Python so we can
+    # literal-eval the metrics dicts and format percentages consistently.
+    summary_dir="${BENCH_DIR}/responses/${DISPLAY_NAME}"
+    mkdir -p "${summary_dir}"
+    summary_json="${summary_dir}/summary_${ROWS_STR}_v${VERSION}.json"
+    summary_md="${summary_dir}/summary_${ROWS_STR}_v${VERSION}.md"
+
+    # Hand data to Python via environment (bash arrays -> newline-joined strings).
+    export RB_MODEL="${MODEL_NAME}"
+    export RB_DISPLAY="${DISPLAY_NAME}"
+    export RB_VERSION="${VERSION}"
+    export RB_ROWS_STR="${ROWS_STR}"
+    export RB_BATCH="${BATCH:-}"
+    export RB_TASKS_REQUESTED="${TASKS}"
+    export RB_STARTED="${sweep_start_iso}"
+    export RB_FINISHED="${sweep_end_iso}"
+    export RB_ELAPSED="${sweep_elapsed}"
+    export RB_OVERALL_EXIT="${overall_status}"
+    export RB_SUMMARY_JSON="${summary_json}"
+    export RB_SUMMARY_MD="${summary_md}"
+    export RB_LOG_FILE="${LOG_FILE}"
+    export RB_ENV_NAME="${CONDA_DEFAULT_ENV:-}"
+    # Join arrays with '\x1f' (ASCII unit separator) to avoid collisions with
+    # quotes / braces inside metrics dicts.
+    _join_us() { local IFS=$'\x1f'; echo -n "$*"; }
+    export RB_RES_TASKS="$(_join_us "${RES_TASKS[@]:-}")"
+    export RB_RES_ELAPSED="$(_join_us "${RES_ELAPSED[@]:-}")"
+    export RB_RES_EXIT="$(_join_us "${RES_EXIT[@]:-}")"
+    export RB_RES_METRICS="$(_join_us "${RES_METRICS[@]:-}")"
+    export RB_RES_ROWS="$(_join_us "${RES_ROWS[@]:-}")"
+    export RB_RES_STARTED="$(_join_us "${RES_STARTED[@]:-}")"
+    export RB_RES_FINISHED="$(_join_us "${RES_FINISHED[@]:-}")"
+
+    echo
+    python "${SCRIPT_DIR}/_print_sweep_summary.py" || echo "[WARN] summary generation failed (non-fatal)"
+
     exit ${overall_status}
 } 2>&1 | tee "${LOG_FILE}"
 
