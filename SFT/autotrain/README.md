@@ -62,7 +62,7 @@ chmod 600 SFT/autotrain/.env        # recommended
 # 4. Train (foreground). Defaults to FULL-parameter SFT and requires ~80 GB
 #    aggregate VRAM; train.sh pre-flight-checks this and refuses to launch
 #    on an undersized box. On success AutoTrain pushes the model to
-#    hf://${HF_USERNAME}/llama31-8b-athena-ift
+#    hf://${HF_USERNAME}/athena-cti-sft-llama31-8b
 ./train.sh
 # or, to detach:
 ./train.sh --nohup
@@ -71,9 +71,9 @@ chmod 600 SFT/autotrain/.env        # recommended
 ./train.sh --config autotrain_llama3_8b_lora.yml
 
 # 5. Register the model in athena_bench and benchmark it
-./run_athenabench.sh                                # default: llama31-8b-athena-ift
+./run_athenabench.sh                                # default: athena-cti-sft-llama31-8b
 # for the LoRA variant:
-./run_athenabench.sh --alias llama31-8b-athena-lora
+./run_athenabench.sh --alias athena-cti-sft-llama31-8b-lora
 ```
 
 ## Script reference

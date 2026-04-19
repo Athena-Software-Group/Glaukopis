@@ -13,7 +13,7 @@
 #
 # Defaults:
 #   --repo-id       ${HF_USERNAME}/${ALIAS}
-#   --alias         llama31-8b-athena-ift      (must match project_name in the YAML)
+#   --alias         athena-cti-sft-llama31-8b  (must match project_name in the YAML)
 #   --env-name      ctibench
 #   --rows          2    (smoke test size)
 #   --tasks         "athena-mcq athena-rcm athena-vsp athena-ate athena-taa athena-rms"
@@ -34,7 +34,7 @@ MODELS_PY="${REPO_ROOT}/athena_bench/pipelines/models.py"
 BENCH_SCRIPT="${REPO_ROOT}/athena_bench/utils/run_benchmark.sh"
 
 REPO_ID=""
-ALIAS="llama31-8b-athena-ift"
+ALIAS="athena-cti-sft-llama31-8b"
 ENV_NAME="ctibench"
 ROWS=2
 BATCH=""

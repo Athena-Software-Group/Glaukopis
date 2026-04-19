@@ -14,7 +14,7 @@
 
 task: llm-sft
 base_model: meta-llama/Llama-3.1-8B-Instruct
-project_name: llama31-8b-athena-lora
+project_name: athena-cti-sft-llama31-8b-lora
 log: wandb
 backend: local
 
