@@ -564,7 +564,7 @@ def get_cached_model(model_name):
             _model_cache[model_name] = OpenAIModel(model_name)
         elif model_name.startswith("gemini"):
             _model_cache[model_name] = GeminiModel(model_name)
-        elif model_name.startswith("llama") or model_name.startswith("qwen") or model_name.startswith("foundation") or model_name.startswith("minerva") or model_name.startswith("deephat") or model_name.startswith("deepseek"):
+        elif any(fam in model_name for fam in ("llama", "qwen", "foundation", "minerva", "deephat", "deepseek")):
             _model_cache[model_name] = HuggingFaceModel(model_name)
         else:
             raise ValueError(f"Unknown model type for: {model_name}")
