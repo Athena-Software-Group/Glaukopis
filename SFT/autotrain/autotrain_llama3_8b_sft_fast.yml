@@ -1,0 +1,59 @@
+### Full-parameter SFT of Llama-3.1-8B-Instruct on athena-ift, tuned for
+### high-VRAM boxes (>=140 GB per GPU, e.g. 2x H200/MI300X, or 2x H100 NVL).
+###
+### Difference vs autotrain_llama3_8b_sft.yml:
+###   batch_size                1  -> 8       (per-GPU micro-batch)
+###   gradient_accumulation     8  -> 1       (same effective batch: 8 * 1 * 2 = 16)
+###   gradient_checkpointing    true -> false (~30-40% speedup)
+###
+### Per-GPU memory estimate with these settings at seq_len=2048, bf16:
+###   * weights               : 16 GB
+###   * AdamW optimizer states: 32 GB (fp32 momentum + variance)
+###   * gradients             : 16 GB
+###   * activations           : ~40 GB (batch=8, no grad ckpt)
+###   * ---------------------------------
+###   * TOTAL                 : ~104 GB per GPU   -> needs >=120 GB per GPU
+###
+### If you are on 1x or 2x 80 GB, use autotrain_llama3_8b_sft.yml instead.
+###
+### NOTE: project_name must be alphanumeric + hyphens only (no dots).
+
+task: llm-sft
+base_model: meta-llama/Llama-3.1-8B-Instruct
+project_name: llama31-8b-athena-ift
+log: tensorboard
+backend: local
+
+data:
+  path: ${HF_USERNAME}/athena-ift
+  train_split: train
+  valid_split: null
+  chat_template: null         # text column is already templated
+  column_mapping:
+    text_column: text
+
+params:
+  # --- full SFT, no adapter, no quantization -------------------------------
+  peft: false
+  quantization: null
+  # -------------------------------------------------------------------------
+  block_size: 2048
+  model_max_length: 8192
+  epochs: 3
+  batch_size: 8                # large per-GPU batch -> saturate H100/H200
+  gradient_accumulation: 1     # effective batch = 8 * 1 * 2 GPUs = 16
+  lr: 1.0e-5
+  optimizer: adamw_torch
+  scheduler: cosine
+  warmup_ratio: 0.05
+  mixed_precision: bf16
+  padding: right
+  gradient_checkpointing: false
+  logging_steps: 25
+  save_total_limit: 2
+  seed: 42
+
+hub:
+  username: ${HF_USERNAME}
+  token: ${HF_TOKEN}
+  push_to_hub: true

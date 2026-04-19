@@ -67,22 +67,47 @@ if ! command -v autotrain >/dev/null 2>&1; then
     exit 127
 fi
 
-PROJECT_NAME="$(python -c "
+# Extract project_name and training hyperparams for the summary block so the
+# user can eyeball effective batch size and detect silent scaling mistakes.
+read -r PROJECT_NAME BATCH_SIZE GRAD_ACCUM GRAD_CKPT PEFT_FLAG < <(python - "${CONFIG}" <<'PY'
 import yaml, sys
-with open(sys.argv[1]) as f: print(yaml.safe_load(f).get('project_name','autotrain-run'))
-" "${CONFIG}")"
+with open(sys.argv[1]) as f: c = yaml.safe_load(f) or {}
+p = c.get("params", {}) or {}
+print(
+    c.get("project_name", "autotrain-run"),
+    int(p.get("batch_size", 1)),
+    int(p.get("gradient_accumulation", 1)),
+    bool(p.get("gradient_checkpointing", False)),
+    bool(p.get("peft", False)),
+)
+PY
+)
+
+NUM_VISIBLE_GPUS=1
+if [[ -n "${CUDA_DEVICES}" ]]; then
+    NUM_VISIBLE_GPUS=$(awk -F',' '{print NF}' <<<"${CUDA_DEVICES}")
+elif command -v nvidia-smi >/dev/null 2>&1; then
+    NUM_VISIBLE_GPUS=$(nvidia-smi --query-gpu=name --format=csv,noheader | wc -l)
+fi
+EFFECTIVE_BATCH=$((BATCH_SIZE * GRAD_ACCUM * NUM_VISIBLE_GPUS))
 
 TIMESTAMP="$(date -u +"%Y%m%d-%H%M%SZ")"
 LOG_FILE="${SCRIPT_DIR}/${PROJECT_NAME}_${TIMESTAMP}.log"
 
 echo "=== AutoTrain run ==="
-echo "  config       : ${CONFIG}"
-echo "  project_name : ${PROJECT_NAME}"
-echo "  hub target   : ${HF_USERNAME}/${PROJECT_NAME}"
-echo "  log file     : ${LOG_FILE}"
-echo "  cuda devices : ${CUDA_DEVICES:-<all visible>}"
-echo "  detach       : $([[ ${DETACH} -eq 1 ]] && echo yes || echo no)"
-echo "  started      : $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+echo "  config         : ${CONFIG}"
+echo "  project_name   : ${PROJECT_NAME}"
+echo "  hub target     : ${HF_USERNAME}/${PROJECT_NAME}"
+echo "  mode           : $([[ "${PEFT_FLAG}" == "True" ]] && echo 'LoRA (peft)' || echo 'full SFT')"
+echo "  per-GPU batch  : ${BATCH_SIZE}"
+echo "  grad accum     : ${GRAD_ACCUM}"
+echo "  visible GPUs   : ${NUM_VISIBLE_GPUS}"
+echo "  effective batch: ${EFFECTIVE_BATCH}   (= ${BATCH_SIZE} x ${GRAD_ACCUM} x ${NUM_VISIBLE_GPUS})"
+echo "  grad ckpt      : ${GRAD_CKPT}"
+echo "  log file       : ${LOG_FILE}"
+echo "  cuda devices   : ${CUDA_DEVICES:-<all visible>}"
+echo "  detach         : $([[ ${DETACH} -eq 1 ]] && echo yes || echo no)"
+echo "  started        : $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 echo
 
 # Brief GPU snapshot (non-fatal if nvidia-smi missing)
@@ -100,30 +125,24 @@ fi
 # Refuse to launch if the box is obviously too small, so the user finds out
 # in one second instead of after minutes of tokenizer download + init only
 # to crash with a cryptic CUDA OOM at step 0.
-if [[ ${SKIP_VRAM_CHECK} -eq 0 ]]; then
-    PEFT_ENABLED="$(python - "${CONFIG}" <<'PY'
-import yaml, sys
-with open(sys.argv[1]) as f: print(bool(yaml.safe_load(f).get("params", {}).get("peft", False)))
-PY
-)"
-    if [[ "${PEFT_ENABLED}" == "False" ]] && command -v nvidia-smi >/dev/null 2>&1; then
-        TOTAL_VRAM_GB="$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits \
-            | awk '{s+=$1} END {printf "%.0f", s/1024}')"
-        if [[ -n "${TOTAL_VRAM_GB}" && "${TOTAL_VRAM_GB}" -lt "${MIN_VRAM_GB}" ]]; then
-            echo "[FAIL] full-parameter SFT requires >= ${MIN_VRAM_GB} GB aggregate VRAM;" >&2
-            echo "       detected only ${TOTAL_VRAM_GB} GB across visible GPUs." >&2
-            echo >&2
-            echo "Options:" >&2
-            echo "  * move to a bigger box (A100-80G, H100-80G, or 2x A100-40G)" >&2
-            echo "  * run the LoRA + int4 variant instead:" >&2
-            echo "      ./train.sh --config ${SCRIPT_DIR}/autotrain_llama3_8b_lora.yml" >&2
-            echo "  * override this check (you will OOM at step 0):" >&2
-            echo "      ./train.sh --skip-vram-check" >&2
-            exit 2
-        fi
-        echo "  vram check   : ${TOTAL_VRAM_GB} GB >= ${MIN_VRAM_GB} GB required for full SFT -> OK"
-        echo
+if [[ ${SKIP_VRAM_CHECK} -eq 0 && "${PEFT_FLAG}" == "False" ]] \
+        && command -v nvidia-smi >/dev/null 2>&1; then
+    TOTAL_VRAM_GB="$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits \
+        | awk '{s+=$1} END {printf "%.0f", s/1024}')"
+    if [[ -n "${TOTAL_VRAM_GB}" && "${TOTAL_VRAM_GB}" -lt "${MIN_VRAM_GB}" ]]; then
+        echo "[FAIL] full-parameter SFT requires >= ${MIN_VRAM_GB} GB aggregate VRAM;" >&2
+        echo "       detected only ${TOTAL_VRAM_GB} GB across visible GPUs." >&2
+        echo >&2
+        echo "Options:" >&2
+        echo "  * move to a bigger box (A100-80G, H100-80G, or 2x A100-40G)" >&2
+        echo "  * run the LoRA + int4 variant instead:" >&2
+        echo "      ./train.sh --config ${SCRIPT_DIR}/autotrain_llama3_8b_lora.yml" >&2
+        echo "  * override this check (you will OOM at step 0):" >&2
+        echo "      ./train.sh --skip-vram-check" >&2
+        exit 2
     fi
+    echo "  vram check     : ${TOTAL_VRAM_GB} GB >= ${MIN_VRAM_GB} GB required for full SFT -> OK"
+    echo
 fi
 
 CMD=(autotrain --config "${CONFIG}")

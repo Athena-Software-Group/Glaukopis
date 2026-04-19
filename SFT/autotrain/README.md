@@ -18,9 +18,10 @@ control (LoRA, DPO, GPTQ merge, etc.).
 |---|---|
 | `setup.sh` | Create an isolated `autotrain` conda env and install `autotrain-advanced`. |
 | `prepare_dataset.sh` | Convert `ift_data.json` into a chat-templated JSONL and upload it as an HF dataset repo. |
-| `autotrain_llama3_8b_sft.yml` | AutoTrain config — **full-parameter** SFT of Llama-3.1-8B-Instruct (bf16, cosine, 3 epochs). Requires ~80 GB VRAM. |
-| `autotrain_llama3_8b_lora.yml` | AutoTrain config — **LoRA + int4** SFT (rank 16, `all-linear`, `merge_adapter: true`). Fits on 1× or 2× 24 GB GPUs. |
-| `train.sh` | Launch `autotrain --config <yaml>` with logging, optional `--nohup` detach, and optional `--cuda-devices` pinning. Defaults to the full-SFT YAML; pass `--config autotrain_llama3_8b_lora.yml` for the LoRA variant. |
+| `autotrain_llama3_8b_sft.yml` | **Full-parameter SFT, conservative** — bf16, cosine, 3 epochs, `batch_size: 1 × grad_accum: 8`, `gradient_checkpointing: true`. Fits on 1× 80 GB or 2× 40 GB. |
+| `autotrain_llama3_8b_sft_fast.yml` | **Full-parameter SFT, high-throughput** — same schedule, but `batch_size: 8 × grad_accum: 1`, `gradient_checkpointing: false`. ~3-4× faster than the conservative config; needs ≥ 120 GB per GPU (2× H200, 2× H100 NVL, MI300X). |
+| `autotrain_llama3_8b_lora.yml` | **LoRA + int4** — rank 16, `all-linear`, `merge_adapter: true`. Fits on 1× or 2× 24 GB GPUs. |
+| `train.sh` | Launch `autotrain --config <yaml>` with logging, optional `--nohup` detach, `--cuda-devices` pinning, and a VRAM pre-flight. Defaults to the conservative full-SFT YAML; pass `--config` to select another. Prints effective batch size (`per-GPU × grad_accum × num_GPUs`) at launch. |
 | `run_athenabench.sh` | Register the trained model in `athena_bench/pipelines/models.py` (idempotent), run a smoke test, then the full sweep. |
 
 ## Prerequisites
