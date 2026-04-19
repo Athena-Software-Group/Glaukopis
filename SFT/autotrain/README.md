@@ -64,11 +64,16 @@ conda activate autotrain
 ### `setup.sh`
 
 Creates `conda env autotrain` (python 3.11) and installs
-`autotrain-advanced==0.8.*`. Safe to rerun.
+`autotrain-advanced==0.8.36` (the latest stable on PyPI). AutoTrain pins
+its entire dependency tree exactly (`transformers==4.48.0`,
+`huggingface-hub==0.27.0`, `accelerate==1.2.1`, …); the script installs
+it in a single pass and does not upgrade anything afterwards. Safe to
+rerun; pass `--recreate` to nuke and rebuild the env from scratch.
 
 ```bash
 ./setup.sh [--env-name NAME] [--python VERSION]
-           [--autotrain-version SPEC] [--no-conda-init]
+           [--autotrain-version SPEC]
+           [--recreate] [--no-conda-init]
 ```
 
 ### `prepare_dataset.sh`
