@@ -12,12 +12,19 @@
 #
 # Usage:
 #   ./train.sh [--config PATH] [--cuda-devices LIST] [--nohup]
+#              [--min-vram-gb N] [--skip-vram-check]
 #
 # Defaults:
-#   --config        autotrain_llama3_8b_sft.yml  (next to this script)
-#   --cuda-devices  (unset -> all visible GPUs)
+#   --config          autotrain_llama3_8b_sft.yml  (full-parameter SFT)
+#   --cuda-devices    (unset -> all visible GPUs)
+#   --min-vram-gb     72    (only enforced for full-SFT configs; see below)
 #
-# Required env vars (same as prepare_dataset.sh):
+# Full SFT of an 8B model needs ~80 GB of aggregate bf16 VRAM. The pre-flight
+# check refuses to launch if the selected GPUs fall below --min-vram-gb for
+# any YAML with peft: false (override with --skip-vram-check if you know
+# what you're doing). LoRA configs (peft: true) skip the check entirely.
+#
+# Required env vars (loaded automatically from ./.env if present):
 #   HF_TOKEN, HF_USERNAME
 
 set -euo pipefail
@@ -26,13 +33,17 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG="${SCRIPT_DIR}/autotrain_llama3_8b_sft.yml"
 CUDA_DEVICES=""
 DETACH=0
+MIN_VRAM_GB=72
+SKIP_VRAM_CHECK=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --config)        CONFIG="$2"; shift 2 ;;
-        --cuda-devices)  CUDA_DEVICES="$2"; shift 2 ;;
-        --nohup)         DETACH=1; shift ;;
-        -h|--help) sed -n '3,21p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        --config)           CONFIG="$2"; shift 2 ;;
+        --cuda-devices)     CUDA_DEVICES="$2"; shift 2 ;;
+        --nohup)            DETACH=1; shift ;;
+        --min-vram-gb)      MIN_VRAM_GB="$2"; shift 2 ;;
+        --skip-vram-check)  SKIP_VRAM_CHECK=1; shift ;;
+        -h|--help) sed -n '3,26p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "Unknown argument: $1" >&2; exit 1 ;;
     esac
 done
@@ -83,6 +94,36 @@ fi
 
 if [[ -n "${CUDA_DEVICES}" ]]; then
     export CUDA_VISIBLE_DEVICES="${CUDA_DEVICES}"
+fi
+
+# Pre-flight VRAM check: full-parameter SFT of 8B needs ~80 GB aggregate.
+# Refuse to launch if the box is obviously too small, so the user finds out
+# in one second instead of after minutes of tokenizer download + init only
+# to crash with a cryptic CUDA OOM at step 0.
+if [[ ${SKIP_VRAM_CHECK} -eq 0 ]]; then
+    PEFT_ENABLED="$(python - "${CONFIG}" <<'PY'
+import yaml, sys
+with open(sys.argv[1]) as f: print(bool(yaml.safe_load(f).get("params", {}).get("peft", False)))
+PY
+)"
+    if [[ "${PEFT_ENABLED}" == "False" ]] && command -v nvidia-smi >/dev/null 2>&1; then
+        TOTAL_VRAM_GB="$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits \
+            | awk '{s+=$1} END {printf "%.0f", s/1024}')"
+        if [[ -n "${TOTAL_VRAM_GB}" && "${TOTAL_VRAM_GB}" -lt "${MIN_VRAM_GB}" ]]; then
+            echo "[FAIL] full-parameter SFT requires >= ${MIN_VRAM_GB} GB aggregate VRAM;" >&2
+            echo "       detected only ${TOTAL_VRAM_GB} GB across visible GPUs." >&2
+            echo >&2
+            echo "Options:" >&2
+            echo "  * move to a bigger box (A100-80G, H100-80G, or 2x A100-40G)" >&2
+            echo "  * run the LoRA + int4 variant instead:" >&2
+            echo "      ./train.sh --config ${SCRIPT_DIR}/autotrain_llama3_8b_lora.yml" >&2
+            echo "  * override this check (you will OOM at step 0):" >&2
+            echo "      ./train.sh --skip-vram-check" >&2
+            exit 2
+        fi
+        echo "  vram check   : ${TOTAL_VRAM_GB} GB >= ${MIN_VRAM_GB} GB required for full SFT -> OK"
+        echo
+    fi
 fi
 
 CMD=(autotrain --config "${CONFIG}")

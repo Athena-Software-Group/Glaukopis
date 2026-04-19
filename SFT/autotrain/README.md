@@ -58,14 +58,21 @@ chmod 600 SFT/autotrain/.env        # recommended
 # 3. Convert + upload the training dataset -> hf://datasets/${HF_USERNAME}/athena-ift
 ./prepare_dataset.sh
 
-# 4. Train (foreground); on success AutoTrain pushes the model to
-#    hf://${HF_USERNAME}/llama3.1-8b-athena-ift
+# 4. Train (foreground). Defaults to FULL-parameter SFT and requires ~80 GB
+#    aggregate VRAM; train.sh pre-flight-checks this and refuses to launch
+#    on an undersized box. On success AutoTrain pushes the model to
+#    hf://${HF_USERNAME}/llama31-8b-athena-ift
 ./train.sh
 # or, to detach:
 ./train.sh --nohup
 
+# ...if the box is smaller (< 72 GB), use the LoRA + int4 variant instead:
+./train.sh --config autotrain_llama3_8b_lora.yml
+
 # 5. Register the model in athena_bench and benchmark it
-./run_athenabench.sh
+./run_athenabench.sh                                # default: llama31-8b-athena-ift
+# for the LoRA variant:
+./run_athenabench.sh --alias llama31-8b-athena-lora
 ```
 
 ## Script reference
