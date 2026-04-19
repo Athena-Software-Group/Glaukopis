@@ -1,22 +1,24 @@
 ### Full-parameter SFT of Llama-3.1-8B-Instruct on athena-ift, tuned for
-### 2x 80 GB-class GPUs (2x H100 80G, 2x A100 80G) or anything larger.
+### 2x 80 GB-class GPUs (2x H100 80G, 2x A100 80G) via DeepSpeed ZeRO-3.
 ###
-### Difference vs autotrain_llama3_8b_sft.yml (conservative):
-###   batch_size                1 -> 4        (better per-step throughput)
-###   gradient_accumulation     8 -> 2        (same effective batch: 4 * 2 * 2 = 16)
-###   logging_steps            10 -> 25       (less log spam at higher tok/s)
-### Gradient checkpointing stays ON -- disabling it on 2x 80 GB would OOM at
-### batch_size=4 (activations ~24 GB/GPU + ~64 GB fixed = ~88 GB/GPU).
+### Why DeepSpeed is mandatory here:
+### AutoTrain 0.8.36 loads the base model in fp32 regardless of the
+### mixed_precision setting (only autocast is bf16, storage is still fp32).
+### Full SFT of an 8B model therefore needs, per GPU in plain DDP:
+###   weights (fp32)              : 32 GB
+###   gradients (fp32)            : 32 GB
+###   AdamW states m+v (fp32)     : 64 GB
+###   activations (batch=4, ckpt) : ~6 GB
+###   -------------------------------------------------------------------
+###   TOTAL in DDP                : ~134 GB / GPU  -> will OOM on 80 GB
 ###
-### Per-GPU memory estimate at seq_len=2048, bf16, grad ckpt on:
-###   * weights               : 16 GB
-###   * AdamW optimizer states: 32 GB (fp32 momentum + variance)
-###   * gradients             : 16 GB
-###   * activations           : ~6 GB (batch=4, grad ckpt ~5x reduction)
-###   * ---------------------------------
-###   * TOTAL                 : ~70 GB per GPU   -> fits on 80 GB
-###
-### Expected ~2x wall-clock speedup vs autotrain_llama3_8b_sft.yml on 2x H100.
+### DeepSpeed ZeRO-3 shards weights/gradients/optimizer across the 2 GPUs:
+###   weights (sharded)           : 16 GB
+###   gradients (sharded)         : 16 GB
+###   AdamW states (sharded)      : 32 GB
+###   activations                 : ~6 GB
+###   -------------------------------------------------------------------
+###   TOTAL with ZeRO-3           : ~70 GB / GPU   -> fits on 80 GB
 ###
 ### NOTE: project_name must be alphanumeric + hyphens only (no dots).
 ### NOTE: autotrain's gradient-ckpt key is `disable_gradient_checkpointing`
@@ -28,6 +30,7 @@ base_model: meta-llama/Llama-3.1-8B-Instruct
 project_name: llama31-8b-athena-ift
 log: wandb
 backend: local
+distributed_backend: deepspeed      # ZeRO-3 sharding (see memory table above)
 
 data:
   path: ${HF_USERNAME}/athena-ift
@@ -45,13 +48,14 @@ params:
   block_size: 2048
   model_max_length: 8192
   epochs: 3
-  batch_size: 4                     # fits on 80 GB/GPU with grad ckpt on
-  gradient_accumulation: 2          # effective batch = 4 * 2 * 2 GPUs = 16
+  batch_size: 2                     # ZeRO-3 sharded; conservative for 80 GB
+  gradient_accumulation: 4          # effective batch = 2 * 4 * 2 GPUs = 16
   lr: 1.0e-5
   optimizer: adamw_torch
   scheduler: cosine
   warmup_ratio: 0.05
   mixed_precision: bf16
+  use_flash_attention_2: true       # saves ~5-8 GB on attention activations
   padding: right
   disable_gradient_checkpointing: false   # autotrain's actual key (inverted)
   logging_steps: 25

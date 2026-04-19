@@ -2,11 +2,16 @@
 ### using HuggingFace AutoTrain Advanced.
 ###
 ### Consumed by `train.sh`. Environment variable substitution on HF_USERNAME
-### and HF_TOKEN is applied by autotrain at launch.
+### and HF_TOKEN is applied by `train.sh` before autotrain sees the YAML.
 ###
-### Hardware: needs ~80 GB of effective VRAM (1x A100-80G, 1x H100-80G, or
-### 2x A100-40G with accelerate). For smaller GPUs (e.g. 1x or 2x L4 @
-### 24 GB) use the LoRA variant autotrain_llama3_8b_lora.yml instead.
+### Hardware: 2x 80 GB GPUs (2x H100 80G / 2x A100 80G), DeepSpeed ZeRO-3.
+### AutoTrain loads the model in fp32 regardless of mixed_precision (only
+### autocast is bf16), so plain DDP needs ~130 GB/GPU and will OOM on 80 GB.
+### ZeRO-3 shards weights/grads/optimizer across the 2 workers, bringing the
+### per-GPU working set to ~70 GB. See autotrain_llama3_8b_sft_fast.yml for
+### the full memory breakdown.
+###
+### For <= 24 GB GPUs use the LoRA variant autotrain_llama3_8b_lora.yml.
 ###
 ### NOTE: autotrain requires `project_name` to be alphanumeric + hyphens
 ### only (no dots), which is why this is not 'llama3.1-...'.
@@ -16,6 +21,7 @@ base_model: meta-llama/Llama-3.1-8B-Instruct
 project_name: llama31-8b-athena-ift
 log: wandb
 backend: local
+distributed_backend: deepspeed      # ZeRO-3 sharding required for full 8B SFT
 
 data:
   path: ${HF_USERNAME}/athena-ift
@@ -34,14 +40,15 @@ params:
   model_max_length: 8192
   epochs: 3
   batch_size: 1
-  gradient_accumulation: 8
+  gradient_accumulation: 8               # effective batch = 1 * 8 * 2 GPUs = 16
   lr: 1.0e-5
   optimizer: adamw_torch
   scheduler: cosine
   warmup_ratio: 0.05
   mixed_precision: bf16
+  use_flash_attention_2: true            # saves ~5-8 GB on attention activations
   padding: right
-  disable_gradient_checkpointing: false      # keep grad ckpt ON (autotrain's key)
+  disable_gradient_checkpointing: false  # keep grad ckpt ON (autotrain's key)
   logging_steps: 10
   save_total_limit: 2
   seed: 42

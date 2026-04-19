@@ -75,6 +75,10 @@ python -m pip install "autotrain-advanced==${AUTOTRAIN_VERSION}"
 # wandb is optional for autotrain but required by train.sh when the YAML
 # sets `log: wandb`. Installed here so it is present in the env image.
 python -m pip install "wandb>=0.17,<1.0"
+# deepspeed is required by `distributed_backend: deepspeed` in the full-SFT
+# YAMLs (ZeRO-3 sharding). autotrain-advanced does not pin it, so install
+# a version compatible with the accelerate 1.2.x shipped in 0.8.36.
+python -m pip install "deepspeed>=0.15,<0.17"
 
 echo
 echo "=== Verification ==="
@@ -91,6 +95,7 @@ print("accelerate        :", _v("accelerate"))
 print("peft              :", _v("peft"))
 print("trl               :", _v("trl"))
 print("wandb             :", _v("wandb"))
+print("deepspeed         :", _v("deepspeed"))
 try:
     from autotrain.cli.autotrain import main  # noqa: F401
     print("autotrain import  : ok")

@@ -33,7 +33,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG="${SCRIPT_DIR}/autotrain_llama3_8b_sft.yml"
 CUDA_DEVICES=""
 DETACH=0
-MIN_VRAM_GB=72
+# Aggregate VRAM floor for full-parameter 8B SFT. AutoTrain 0.8.36 loads the
+# model in fp32 (autocast-only mixed precision), so even with ZeRO-3 sharding
+# across 2 GPUs the working set is ~70 GB/GPU => ~140 GB aggregate minimum.
+MIN_VRAM_GB=140
 SKIP_VRAM_CHECK=0
 
 while [[ $# -gt 0 ]]; do
@@ -69,16 +72,21 @@ fi
 
 # Extract project_name and training hyperparams for the summary block so the
 # user can eyeball effective batch size and detect silent scaling mistakes.
-read -r PROJECT_NAME BATCH_SIZE GRAD_ACCUM GRAD_CKPT PEFT_FLAG < <(python - "${CONFIG}" <<'PY'
+read -r PROJECT_NAME BATCH_SIZE GRAD_ACCUM GRAD_CKPT PEFT_FLAG DIST_BACKEND FA2_FLAG < <(python - "${CONFIG}" <<'PY'
 import yaml, sys
 with open(sys.argv[1]) as f: c = yaml.safe_load(f) or {}
 p = c.get("params", {}) or {}
+# autotrain stores `disable_gradient_checkpointing` (inverted) in params;
+# translate back to the more readable "grad_ckpt ON/OFF" flag for the banner.
+grad_ckpt_on = not bool(p.get("disable_gradient_checkpointing", False))
 print(
     c.get("project_name", "autotrain-run"),
     int(p.get("batch_size", 1)),
     int(p.get("gradient_accumulation", 1)),
-    bool(p.get("gradient_checkpointing", False)),
+    bool(grad_ckpt_on),
     bool(p.get("peft", False)),
+    c.get("distributed_backend") or "ddp",
+    bool(p.get("use_flash_attention_2", False)),
 )
 PY
 )
@@ -104,6 +112,8 @@ echo "  grad accum     : ${GRAD_ACCUM}"
 echo "  visible GPUs   : ${NUM_VISIBLE_GPUS}"
 echo "  effective batch: ${EFFECTIVE_BATCH}   (= ${BATCH_SIZE} x ${GRAD_ACCUM} x ${NUM_VISIBLE_GPUS})"
 echo "  grad ckpt      : ${GRAD_CKPT}"
+echo "  flash attn 2   : ${FA2_FLAG}"
+echo "  dist backend   : ${DIST_BACKEND}"
 echo "  log file       : ${LOG_FILE}"
 echo "  cuda devices   : ${CUDA_DEVICES:-<all visible>}"
 echo "  detach         : $([[ ${DETACH} -eq 1 ]] && echo yes || echo no)"
@@ -161,6 +171,17 @@ with open(dst, "w") as f: f.write(os.path.expandvars(text))
 PY
 echo "  rendered yaml  : ${RENDERED_CONFIG}"
 
+# --- Distributed backend (deepspeed) -----------------------------------------
+# The full-SFT YAMLs request ZeRO-3 via `distributed_backend: deepspeed`.
+# If this env was built before deepspeed was added to setup.sh, install it
+# on demand rather than failing with an opaque autotrain error.
+if [[ "${DIST_BACKEND}" == "deepspeed" ]]; then
+    if ! python -c "import deepspeed" 2>/dev/null; then
+        echo "  deepspeed      : installing (missing from env) ..."
+        python -m pip install --quiet "deepspeed>=0.15,<0.17"
+    fi
+fi
+
 # --- Logging backend (wandb) -------------------------------------------------
 # The YAMLs set `log: wandb`. Ensure the `wandb` python package is present
 # and that WANDB_API_KEY is exported, otherwise autotrain's WandbCallback
@@ -190,6 +211,11 @@ echo
 # Line-buffer python stdout so `tail -f` on the log shows Trainer progress
 # lines in real time instead of in fsync-flush chunks.
 export PYTHONUNBUFFERED=1
+
+# Expandable segments materially reduce CUDA OOM-by-fragmentation during the
+# first optimizer step when Adam states materialize (the PyTorch error message
+# at step 0 explicitly suggests this as a remediation).
+export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
 
 CMD=(autotrain --config "${RENDERED_CONFIG}")
 
