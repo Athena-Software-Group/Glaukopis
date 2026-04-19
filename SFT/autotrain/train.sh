@@ -11,13 +11,21 @@
 # hub: section).
 #
 # Usage:
-#   ./train.sh [--config PATH] [--cuda-devices LIST] [--nohup]
+#   ./train.sh [--config PATH] [--cuda-devices LIST] [--nohup] [--no-follow]
 #              [--min-vram-gb N] [--skip-vram-check]
 #
 # Defaults:
 #   --config          autotrain_llama3_8b_sft.yml  (full-parameter SFT)
 #   --cuda-devices    (unset -> all visible GPUs)
-#   --min-vram-gb     72    (only enforced for full-SFT configs; see below)
+#   --min-vram-gb     140   (only enforced for full-SFT configs; see below)
+#
+# Output:
+#   Progress is always duplicated to both stdout and <project>_<ts>.log.
+#   In foreground mode this is done via `tee`; in --nohup mode the script
+#   launches training detached and then attaches `tail -F` on the log so
+#   you see live progress in the current shell. Press Ctrl-C to detach
+#   the tail -- the nohup'd training keeps running. Use --no-follow to
+#   skip the tail and return to the shell immediately.
 #
 # Full SFT of an 8B model needs ~80 GB of aggregate bf16 VRAM. The pre-flight
 # check refuses to launch if the selected GPUs fall below --min-vram-gb for
@@ -33,6 +41,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG="${SCRIPT_DIR}/autotrain_llama3_8b_sft.yml"
 CUDA_DEVICES=""
 DETACH=0
+FOLLOW=1
 # Aggregate VRAM floor for full-parameter 8B SFT. AutoTrain 0.8.36 loads the
 # model in fp32 (autocast-only mixed precision), so even with ZeRO-3 sharding
 # across 2 GPUs the working set is ~70 GB/GPU => ~140 GB aggregate minimum.
@@ -44,9 +53,10 @@ while [[ $# -gt 0 ]]; do
         --config)           CONFIG="$2"; shift 2 ;;
         --cuda-devices)     CUDA_DEVICES="$2"; shift 2 ;;
         --nohup)            DETACH=1; shift ;;
+        --no-follow)        FOLLOW=0; shift ;;
         --min-vram-gb)      MIN_VRAM_GB="$2"; shift 2 ;;
         --skip-vram-check)  SKIP_VRAM_CHECK=1; shift ;;
-        -h|--help) sed -n '3,26p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) sed -n '3,34p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "Unknown argument: $1" >&2; exit 1 ;;
     esac
 done
@@ -217,25 +227,58 @@ export PYTHONUNBUFFERED=1
 # at step 0 explicitly suggests this as a remediation).
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
 
+# Line-buffer wrapper: without this, piping autotrain through `tee` (fg) or
+# redirecting to a file (nohup) switches python's stdout/stderr to block-
+# buffered mode, so progress only appears in 4-8 KB chunks. stdbuf is part
+# of GNU coreutils -- available on every Linux distro, absent on bare macOS.
+if command -v stdbuf >/dev/null 2>&1; then
+    BUF=(stdbuf -oL -eL)
+else
+    BUF=()
+fi
+
 CMD=(autotrain --config "${RENDERED_CONFIG}")
 
 if [[ ${DETACH} -eq 1 ]]; then
     echo "=== Launching detached (nohup) ==="
-    nohup "${CMD[@]}" > "${LOG_FILE}" 2>&1 &
+    # Create the log up front so tail -F can attach instantly without the
+    # brief "waiting for file" pause that would otherwise show up between
+    # the nohup fork and the first write.
+    : > "${LOG_FILE}"
+    # Line-buffered so the log (and `tail -F` below) receive progress lines
+    # as soon as they are emitted rather than in fsync-flush chunks.
+    nohup "${BUF[@]}" "${CMD[@]}" > "${LOG_FILE}" 2>&1 &
     pid=$!
     # Don't let the EXIT trap delete the rendered config while the child
     # is still using it; reset the trap and let the log file reference it.
     trap - EXIT
     echo "  pid          : ${pid}"
-    echo "  follow log   : tail -f ${LOG_FILE}"
+    echo "  log file     : ${LOG_FILE}"
     echo "  gpu live     : watch -n 2 nvidia-smi"
     [[ "${LOG_BACKEND}" == "wandb" && -n "${WANDB_API_KEY:-}" ]] && \
         echo "  wandb        : https://wandb.ai/${WANDB_ENTITY:-$(whoami)}/${WANDB_PROJECT}/runs/${WANDB_NAME}"
+
+    if [[ ${FOLLOW} -eq 1 ]]; then
+        echo
+        echo "=== Following ${LOG_FILE} (Ctrl-C detaches tail; training keeps running) ==="
+        # tail -F retries across log rotation. -n +1 starts from the top
+        # so the user sees initialization output, not just new lines.
+        # Exit cleanly on Ctrl-C without signalling the nohup'd child.
+        trap 'echo; echo "[detached] training still running as pid ${pid}."; echo "[detached] reattach with: tail -F ${LOG_FILE}"; exit 0' INT
+        tail -n +1 -F "${LOG_FILE}"
+    else
+        echo "  follow log   : tail -F ${LOG_FILE}"
+    fi
     exit 0
 fi
 
+echo "=== Streaming to stdout + ${LOG_FILE} ==="
+echo
+# Line-buffered so progress flows through the `tee` pipe in real time;
+# without BUF, piping to `tee` would switch autotrain's stdout to block
+# buffering (4-8 KB) and progress lines would appear in chunks.
 {
-    "${CMD[@]}"
+    "${BUF[@]}" "${CMD[@]}"
     status=$?
     echo
     echo "=== AutoTrain finished ==="
