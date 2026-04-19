@@ -79,6 +79,12 @@ python -m pip install "wandb>=0.17,<1.0"
 # YAMLs (ZeRO-3 sharding). autotrain-advanced does not pin it, so install
 # a version compatible with the accelerate 1.2.x shipped in 0.8.36.
 python -m pip install "deepspeed>=0.15,<0.17"
+# flash-attn enables `use_flash_attention_2: true` in the YAMLs. The wheel
+# index at pypi ships prebuilt binaries for common torch/cuda combos; if
+# none match, pip will fall back to a local source build (~5-10 min).
+# packaging + ninja are required by the source build path.
+python -m pip install packaging ninja
+python -m pip install flash-attn --no-build-isolation
 
 echo
 echo "=== Verification ==="
@@ -96,6 +102,7 @@ print("peft              :", _v("peft"))
 print("trl               :", _v("trl"))
 print("wandb             :", _v("wandb"))
 print("deepspeed         :", _v("deepspeed"))
+print("flash-attn        :", _v("flash-attn"))
 try:
     from autotrain.cli.autotrain import main  # noqa: F401
     print("autotrain import  : ok")
