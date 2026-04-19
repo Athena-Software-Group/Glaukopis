@@ -30,7 +30,11 @@ control (LoRA, DPO, GPTQ merge, etc.).
   a 24 GB consumer GPU.
 - Conda (`setup.sh` assumes `conda` is on `PATH`; run
   [`SFT/utils/setup.sh`](../utils/setup.sh) or install Miniconda first).
-- A write-scope HF token at `HF_TOKEN` and your HF namespace at `HF_USERNAME`.
+- HF credentials in `SFT/autotrain/.env` (a gitignored file auto-created
+  from `.env.example` on first `setup.sh` run). You need a write-scope
+  token for `HF_TOKEN` and your namespace for `HF_USERNAME`. All three
+  runtime scripts (`prepare_dataset.sh`, `train.sh`, `run_athenabench.sh`)
+  auto-source this file — no manual `export` required.
 - License acceptance for the base model
   (`meta-llama/Llama-3.1-8B-Instruct` is gated — visit the model page once
   with the same account whose token you're using).
@@ -38,24 +42,27 @@ control (LoRA, DPO, GPTQ merge, etc.).
 ## Quick start
 
 ```bash
-# 0. Credentials (once per shell)
-export HF_TOKEN=hf_xxx...            # write scope
-export HF_USERNAME=<your-hf-user>
-
-# 1. Create the autotrain conda env (isolated from llm-sft)
+# 1. Create the autotrain conda env (isolated from llm-sft).
+#    Also copies .env.example -> .env on first run so step 2 has a file to edit.
 ./setup.sh
 conda activate autotrain
 
-# 2. Convert + upload the training dataset -> hf://datasets/${HF_USERNAME}/athena-ift
+# 2. Fill in HF credentials ONCE in .env (gitignored).
+#    Replace HF_TOKEN=hf_xxx_replace_me and HF_USERNAME=your-hf-username:
+$EDITOR SFT/autotrain/.env
+chmod 600 SFT/autotrain/.env        # recommended
+# Every script below automatically sources this file; no 'export' needed.
+
+# 3. Convert + upload the training dataset -> hf://datasets/${HF_USERNAME}/athena-ift
 ./prepare_dataset.sh
 
-# 3. Train (foreground); on success AutoTrain pushes the model to
+# 4. Train (foreground); on success AutoTrain pushes the model to
 #    hf://${HF_USERNAME}/llama3.1-8b-athena-ift
 ./train.sh
 # or, to detach:
 ./train.sh --nohup
 
-# 4. Register the model in athena_bench and benchmark it
+# 5. Register the model in athena_bench and benchmark it
 ./run_athenabench.sh
 ```
 

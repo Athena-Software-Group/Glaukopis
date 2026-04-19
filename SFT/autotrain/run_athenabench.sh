@@ -55,8 +55,13 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+if [[ -f "${SCRIPT_DIR}/.env" ]]; then
+    # shellcheck disable=SC1091
+    source "${SCRIPT_DIR}/.env"
+fi
+
 if [[ -z "${REPO_ID}" ]]; then
-    : "${HF_USERNAME:?Set HF_USERNAME or pass --repo-id}"
+    : "${HF_USERNAME:?Set HF_USERNAME in SFT/autotrain/.env or pass --repo-id}"
     REPO_ID="${HF_USERNAME}/llama3.1-8b-athena-ift"
 fi
 

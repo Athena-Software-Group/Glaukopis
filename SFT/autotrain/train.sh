@@ -37,8 +37,13 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-: "${HF_TOKEN:?Set HF_TOKEN before running (write-scope token)}"
-: "${HF_USERNAME:?Set HF_USERNAME before running}"
+if [[ -f "${SCRIPT_DIR}/.env" ]]; then
+    # shellcheck disable=SC1091
+    source "${SCRIPT_DIR}/.env"
+fi
+
+: "${HF_TOKEN:?Set HF_TOKEN in SFT/autotrain/.env (see .env.example)}"
+: "${HF_USERNAME:?Set HF_USERNAME in SFT/autotrain/.env (see .env.example)}"
 
 if [[ ! -f "${CONFIG}" ]]; then
     echo "[FAIL] config not found: ${CONFIG}" >&2

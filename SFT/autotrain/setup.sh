@@ -107,13 +107,34 @@ if [[ ${RUN_CONDA_INIT} -eq 1 ]]; then
     esac
 fi
 
+# Bootstrap a local .env from the committed template so the user has a
+# single place to drop HF credentials. The file is gitignored.
+ENV_FILE="${SCRIPT_DIR}/.env"
+ENV_EXAMPLE="${SCRIPT_DIR}/.env.example"
+if [[ ! -f "${ENV_FILE}" && -f "${ENV_EXAMPLE}" ]]; then
+    cp "${ENV_EXAMPLE}" "${ENV_FILE}"
+    chmod 600 "${ENV_FILE}" 2>/dev/null || true
+    NEEDS_ENV_EDIT=1
+else
+    NEEDS_ENV_EDIT=0
+    if [[ -f "${ENV_FILE}" ]] && grep -q 'hf_xxx_replace_me\|your-hf-username' "${ENV_FILE}"; then
+        NEEDS_ENV_EDIT=1
+    fi
+fi
+
 echo
 echo "=== Next steps ==="
 echo "1. Activate the env:"
 echo "     conda activate ${ENV_NAME}"
-echo "2. Export HF credentials (needed by prepare_dataset.sh and train.sh):"
-echo "     export HF_TOKEN=hf_xxx...   # write-scope token"
-echo "     export HF_USERNAME=<your-hf-user>"
+if [[ ${NEEDS_ENV_EDIT} -eq 1 ]]; then
+    echo "2. Fill in HF credentials (edit the placeholders in this file):"
+    echo "     ${ENV_FILE}"
+    echo "   Template: ${ENV_EXAMPLE}"
+    echo "   Required: HF_TOKEN (write-scope), HF_USERNAME"
+else
+    echo "2. HF credentials look configured in:"
+    echo "     ${ENV_FILE}"
+fi
 echo "3. Prepare the dataset:"
 echo "     ${SCRIPT_DIR}/prepare_dataset.sh"
 echo "4. Launch training:"
