@@ -57,7 +57,9 @@ conda activate "${ENV_NAME}"
 
 python -m pip install --upgrade pip wheel setuptools
 python -m pip install --upgrade "autotrain-advanced==${AUTOTRAIN_VERSION}"
-python -m pip install --upgrade "huggingface_hub"
+# autotrain 0.8.x pins transformers which in turn requires huggingface_hub
+# <1.0; an unconstrained upgrade pulls hub 1.x and breaks the import chain.
+python -m pip install --upgrade "huggingface_hub>=0.24,<1.0"
 
 echo
 echo "=== Verification ==="
