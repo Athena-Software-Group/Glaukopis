@@ -20,6 +20,13 @@
 ###   -------------------------------------------------------------------
 ###   TOTAL with ZeRO-3           : ~70 GB / GPU   -> fits on 80 GB
 ###
+### Attention: we deliberately do NOT set use_flash_attention_2 here.
+### On Hopper (sm_90) with torch 2.5+ and cuDNN 9.1+, transformers' default
+### SDPA backend auto-routes to cuDNN's FlashAttention-3 kernels, which are
+### ~20-30% faster than FA2 and use at least as little memory. Installing
+### the standalone `flash-attn` PyPI package (FA2 only) would be both
+### redundant and a source-build risk on CUDA 13.x (no prebuilt wheels).
+###
 ### NOTE: project_name must be alphanumeric + hyphens only (no dots).
 ### NOTE: autotrain's gradient-ckpt key is `disable_gradient_checkpointing`
 ###       (an inverted boolean). `gradient_checkpointing: <bool>` is silently
@@ -54,7 +61,6 @@ params:
   scheduler: cosine
   warmup_ratio: 0.05
   mixed_precision: bf16
-  use_flash_attention_2: true       # saves ~5-8 GB on attention activations
   padding: right
   disable_gradient_checkpointing: false   # autotrain's actual key (inverted)
   logging_steps: 25

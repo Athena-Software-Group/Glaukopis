@@ -76,15 +76,14 @@ python -m pip install "autotrain-advanced==${AUTOTRAIN_VERSION}"
 # sets `log: wandb`. Installed here so it is present in the env image.
 python -m pip install "wandb>=0.17,<1.0"
 # deepspeed is required by `distributed_backend: deepspeed` in the full-SFT
-# YAMLs (ZeRO-3 sharding). autotrain-advanced does not pin it, so install
-# a version compatible with the accelerate 1.2.x shipped in 0.8.36.
-python -m pip install "deepspeed>=0.15,<0.17"
-# flash-attn enables `use_flash_attention_2: true` in the YAMLs. The wheel
-# index at pypi ships prebuilt binaries for common torch/cuda combos; if
-# none match, pip will fall back to a local source build (~5-10 min).
-# packaging + ninja are required by the source build path.
+# YAMLs (ZeRO-3 sharding). autotrain-advanced does not pin it. Floor at
+# 0.17 so its JIT CPU extensions build cleanly against modern torch
+# (>= 2.6) and CUDA 12.4+/13.x combos; older pins (<0.17) fail to compile
+# against torch 2.11 / cu13.
+# `ninja` makes deepspeed's first-run op compilation materially faster
+# (parallel builds vs serial), and `packaging` is required by its setup.
 python -m pip install packaging ninja
-python -m pip install flash-attn --no-build-isolation
+python -m pip install "deepspeed>=0.17"
 
 echo
 echo "=== Verification ==="
@@ -102,7 +101,6 @@ print("peft              :", _v("peft"))
 print("trl               :", _v("trl"))
 print("wandb             :", _v("wandb"))
 print("deepspeed         :", _v("deepspeed"))
-print("flash-attn        :", _v("flash-attn"))
 try:
     from autotrain.cli.autotrain import main  # noqa: F401
     print("autotrain import  : ok")
@@ -111,9 +109,20 @@ except Exception as e:
     raise SystemExit(1)
 import torch
 print("torch             :", torch.__version__)
+print("torch cuda        :", torch.version.cuda)
+print("torch cudnn       :", torch.backends.cudnn.version())
 print("cuda available    :", torch.cuda.is_available())
 if torch.cuda.is_available():
+    cc = torch.cuda.get_device_capability(0)
     print("device            :", torch.cuda.get_device_name(0))
+    print("compute cap       :", f"{cc[0]}.{cc[1]}  (H100=9.0, A100=8.0)")
+    # cuDNN SDPA is available since torch 2.5 on sm_80+ and gives us
+    # FlashAttention-3 on Hopper automatically (see full-SFT YAMLs).
+    try:
+        from torch.backends.cuda import sdp_kernel  # noqa: F401
+        print("sdpa backends     : flash/mem-efficient/math/cudnn available")
+    except ImportError:
+        print("sdpa backends     : older torch; SDPA backend selection limited")
 PY
 
 if [[ ${RUN_CONDA_INIT} -eq 1 ]]; then

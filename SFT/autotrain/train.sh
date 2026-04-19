@@ -125,7 +125,11 @@ echo "  grad accum     : ${GRAD_ACCUM}"
 echo "  visible GPUs   : ${NUM_VISIBLE_GPUS}"
 echo "  effective batch: ${EFFECTIVE_BATCH}   (= ${BATCH_SIZE} x ${GRAD_ACCUM} x ${NUM_VISIBLE_GPUS})"
 echo "  grad ckpt      : ${GRAD_CKPT}"
-echo "  flash attn 2   : ${FA2_FLAG}"
+if [[ "${FA2_FLAG}" == "True" ]]; then
+    echo "  attention      : flash_attention_2 (requires flash-attn package)"
+else
+    echo "  attention      : SDPA default (cuDNN FA3 on Hopper/sm_90)"
+fi
 echo "  dist backend   : ${DIST_BACKEND}"
 echo "  log file       : ${LOG_FILE}"
 echo "  cuda devices   : ${CUDA_DEVICES:-<all visible>}"
@@ -191,27 +195,15 @@ echo "  rendered yaml  : ${RENDERED_CONFIG}"
 if [[ "${DIST_BACKEND}" == "deepspeed" ]]; then
     if ! python -c "import deepspeed" 2>/dev/null; then
         echo "  deepspeed      : installing (missing from env) ..."
-        python -m pip install --quiet "deepspeed>=0.15,<0.17"
+        python -m pip install --quiet "deepspeed>=0.17"
     fi
 fi
 
-# --- Flash Attention 2 -------------------------------------------------------
-# `use_flash_attention_2: true` requires the separate `flash-attn` package,
-# which is NOT pulled in by transformers/autotrain. Install it on demand.
-# Prefer a prebuilt wheel (~instant); fall back to a source build (~5-10 min
-# on a modern CPU) only if no wheel matches the active torch/cuda combo.
-if [[ "${FA2_FLAG}" == "True" ]]; then
-    if ! python -c "import flash_attn" 2>/dev/null; then
-        echo "  flash-attn     : installing (missing from env; wheel if available) ..."
-        python -m pip install --quiet packaging ninja
-        python -m pip install --quiet flash-attn --no-build-isolation \
-            || { echo "[FAIL] flash-attn install failed; either disable" >&2; \
-                 echo "       use_flash_attention_2 in the YAML or install" >&2; \
-                 echo "       flash-attn manually. See:" >&2; \
-                 echo "       https://github.com/Dao-AILab/flash-attention" >&2; \
-                 exit 1; }
-    fi
-fi
+# Note on attention: we rely on transformers' default SDPA backend, which on
+# Hopper (sm_90) with cuDNN 9.1+ auto-routes to FlashAttention-3 kernels.
+# The standalone `flash-attn` PyPI package (FA2 only) is deliberately NOT
+# installed -- it has no prebuilt wheels for CUDA 13.x and would be strictly
+# slower than cuDNN FA3 on H100.
 
 # --- Logging backend (wandb) -------------------------------------------------
 # The YAMLs set `log: wandb`. Ensure the `wandb` python package is present

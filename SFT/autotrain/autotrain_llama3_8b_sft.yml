@@ -45,7 +45,8 @@ params:
   scheduler: cosine
   warmup_ratio: 0.05
   mixed_precision: bf16
-  use_flash_attention_2: true            # saves ~5-8 GB on attention activations
+  # FA2 intentionally not enabled: SDPA + cuDNN 9.1+ on Hopper uses
+  # FlashAttention-3 automatically (faster than FA2). See sft_fast.yml.
   padding: right
   disable_gradient_checkpointing: false  # keep grad ckpt ON (autotrain's key)
   logging_steps: 10
