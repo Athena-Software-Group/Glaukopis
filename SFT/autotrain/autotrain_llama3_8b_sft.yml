@@ -5,12 +5,15 @@
 ### and HF_TOKEN is applied by autotrain at launch.
 ###
 ### Hardware: needs ~80 GB of effective VRAM (1x A100-80G, 1x H100-80G, or
-### 2x A100-40G with accelerate). Drop to `peft: true` + `quantization: int4`
-### if you only have 1x 24 GB.
+### 2x A100-40G with accelerate). For smaller GPUs (e.g. 1x or 2x L4 @
+### 24 GB) use the LoRA variant autotrain_llama3_8b_lora.yml instead.
+###
+### NOTE: autotrain requires `project_name` to be alphanumeric + hyphens
+### only (no dots), which is why this is not 'llama3.1-...'.
 
 task: llm-sft
 base_model: meta-llama/Llama-3.1-8B-Instruct
-project_name: llama3.1-8b-athena-ift
+project_name: llama31-8b-athena-ift
 log: tensorboard
 backend: local
 

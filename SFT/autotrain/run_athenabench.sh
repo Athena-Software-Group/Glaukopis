@@ -12,8 +12,8 @@
 #                        [--tasks "athena-mcq athena-rcm ..."]
 #
 # Defaults:
-#   --repo-id       ${HF_USERNAME}/llama3.1-8b-athena-ift
-#   --alias         llama3.1-8b-athena-ift
+#   --repo-id       ${HF_USERNAME}/${ALIAS}
+#   --alias         llama31-8b-athena-ift      (must match project_name in the YAML)
 #   --env-name      ctibench
 #   --rows          2    (smoke test size)
 #   --tasks         "athena-mcq athena-rcm athena-vsp athena-ate athena-taa athena-rms"
@@ -34,7 +34,7 @@ MODELS_PY="${REPO_ROOT}/athena_bench/pipelines/models.py"
 BENCH_SCRIPT="${REPO_ROOT}/athena_bench/utils/run_benchmark.sh"
 
 REPO_ID=""
-ALIAS="llama3.1-8b-athena-ift"
+ALIAS="llama31-8b-athena-ift"
 ENV_NAME="ctibench"
 ROWS=2
 BATCH=""
@@ -62,7 +62,7 @@ fi
 
 if [[ -z "${REPO_ID}" ]]; then
     : "${HF_USERNAME:?Set HF_USERNAME in SFT/autotrain/.env or pass --repo-id}"
-    REPO_ID="${HF_USERNAME}/llama3.1-8b-athena-ift"
+    REPO_ID="${HF_USERNAME}/${ALIAS}"
 fi
 
 echo "=== athenabench run ==="

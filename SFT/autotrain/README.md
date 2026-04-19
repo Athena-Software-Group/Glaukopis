@@ -18,16 +18,18 @@ control (LoRA, DPO, GPTQ merge, etc.).
 |---|---|
 | `setup.sh` | Create an isolated `autotrain` conda env and install `autotrain-advanced`. |
 | `prepare_dataset.sh` | Convert `ift_data.json` into a chat-templated JSONL and upload it as an HF dataset repo. |
-| `autotrain_llama3_8b_sft.yml` | AutoTrain config — full-parameter SFT of Llama-3.1-8B-Instruct (bf16, cosine, 3 epochs). |
-| `train.sh` | Launch `autotrain --config <yaml>` with logging, optional `--nohup` detach, and optional `--cuda-devices` pinning. |
+| `autotrain_llama3_8b_sft.yml` | AutoTrain config — **full-parameter** SFT of Llama-3.1-8B-Instruct (bf16, cosine, 3 epochs). Requires ~80 GB VRAM. |
+| `autotrain_llama3_8b_lora.yml` | AutoTrain config — **LoRA + int4** SFT (rank 16, `all-linear`, `merge_adapter: true`). Fits on 1× or 2× 24 GB GPUs. |
+| `train.sh` | Launch `autotrain --config <yaml>` with logging, optional `--nohup` detach, and optional `--cuda-devices` pinning. Defaults to the full-SFT YAML; pass `--config autotrain_llama3_8b_lora.yml` for the LoRA variant. |
 | `run_athenabench.sh` | Register the trained model in `athena_bench/pipelines/models.py` (idempotent), run a smoke test, then the full sweep. |
 
 ## Prerequisites
 
-- A Linux box with CUDA and **≥ 80 GB effective VRAM** for the default
-  full-SFT config (1× A100-80G, 1× H100-80G, or 2× A100-40G sharded).
-  Drop to `peft: true` + `quantization: int4` in the YAML if you only have
-  a 24 GB consumer GPU.
+- A Linux box with CUDA and enough VRAM for your chosen config:
+  - **Full SFT** (`autotrain_llama3_8b_sft.yml`): ≥ 80 GB effective
+    (1× A100-80G, 1× H100-80G, or 2× A100-40G sharded).
+  - **LoRA + int4** (`autotrain_llama3_8b_lora.yml`): 1× or 2× 24 GB
+    (L4, A10, RTX 4090, RTX 3090, …).
 - Conda (`setup.sh` assumes `conda` is on `PATH`; run
   [`SFT/utils/setup.sh`](../utils/setup.sh) or install Miniconda first).
 - HF credentials in `SFT/autotrain/.env` (a gitignored file auto-created

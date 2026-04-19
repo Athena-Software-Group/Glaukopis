@@ -1,0 +1,58 @@
+### LoRA + int4 SFT of Llama-3.1-8B-Instruct on the athena-ift dataset,
+### using HuggingFace AutoTrain Advanced.
+###
+### Hardware: fits on 1x 24 GB (L4, A10, RTX 4090, RTX 3090) or on a
+### 2x 24 GB box (L4 x2) with accelerate. Use this variant when the
+### full-SFT config (autotrain_llama3_8b_sft.yml) does not fit.
+###
+### AutoTrain merges the LoRA adapter back into the base model before
+### pushing ('merge_adapter: true'), so the pushed repo contains the full
+### merged weights and is directly consumable by athenabench without any
+### extra adapter-loading step.
+###
+### NOTE: project_name must be alphanumeric + hyphens only (no dots).
+
+task: llm-sft
+base_model: meta-llama/Llama-3.1-8B-Instruct
+project_name: llama31-8b-athena-lora
+log: tensorboard
+backend: local
+
+data:
+  path: ${HF_USERNAME}/athena-ift
+  train_split: train
+  valid_split: null
+  chat_template: null         # text column is already templated
+  column_mapping:
+    text_column: text
+
+params:
+  # --- LoRA + int4 ---------------------------------------------------------
+  peft: true
+  quantization: int4
+  target_modules: all-linear
+  lora_r: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  merge_adapter: true         # push merged full weights to the Hub
+  # -------------------------------------------------------------------------
+  block_size: 2048
+  model_max_length: 8192
+  epochs: 3
+  batch_size: 1
+  gradient_accumulation: 8
+  lr: 2.0e-4                  # LoRA tolerates/prefers a higher LR than full SFT
+  optimizer: paged_adamw_8bit
+  scheduler: cosine
+  warmup_ratio: 0.05
+  mixed_precision: bf16
+  padding: right
+  gradient_checkpointing: true
+  logging_steps: 10
+  save_total_limit: 2
+  seed: 42
+
+hub:
+  username: ${HF_USERNAME}
+  token: ${HF_TOKEN}
+  push_to_hub: true
