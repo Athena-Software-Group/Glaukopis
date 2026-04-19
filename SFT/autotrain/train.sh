@@ -145,14 +145,66 @@ if [[ ${SKIP_VRAM_CHECK} -eq 0 && "${PEFT_FLAG}" == "False" ]] \
     echo
 fi
 
-CMD=(autotrain --config "${CONFIG}")
+# --- Env-var expansion in the YAML -------------------------------------------
+# AutoTrain only substitutes ${HF_USERNAME}/${HF_TOKEN} inside its 'hub:'
+# section; any '${VAR}' reference elsewhere (e.g. data.path) is passed to
+# the downstream datasets/huggingface_hub loaders as a literal string and
+# blows up with an HFValidationError. Render the YAML ourselves so every
+# field is a fully resolved literal before autotrain sees it.
+RENDERED_CONFIG="${SCRIPT_DIR}/.rendered_${PROJECT_NAME}_$(date -u +%s).yml"
+trap 'rm -f "${RENDERED_CONFIG}"' EXIT
+python - "${CONFIG}" "${RENDERED_CONFIG}" <<'PY'
+import os, sys
+src, dst = sys.argv[1], sys.argv[2]
+with open(src) as f: text = f.read()
+with open(dst, "w") as f: f.write(os.path.expandvars(text))
+PY
+echo "  rendered yaml  : ${RENDERED_CONFIG}"
+
+# --- Logging backend (wandb) -------------------------------------------------
+# The YAMLs set `log: wandb`. Ensure the `wandb` python package is present
+# and that WANDB_API_KEY is exported, otherwise autotrain's WandbCallback
+# silently falls back to offline mode.
+LOG_BACKEND="$(python - "${RENDERED_CONFIG}" <<'PY'
+import yaml, sys
+with open(sys.argv[1]) as f: print(yaml.safe_load(f).get("log", "none"))
+PY
+)"
+if [[ "${LOG_BACKEND}" == "wandb" ]]; then
+    if ! python -c "import wandb" 2>/dev/null; then
+        echo "  wandb          : installing (missing from env) ..."
+        python -m pip install --quiet wandb
+    fi
+    if [[ -z "${WANDB_API_KEY:-}" ]]; then
+        echo "[WARN] log: wandb but WANDB_API_KEY is not set; wandb will run in offline mode." >&2
+        echo "       Add WANDB_API_KEY=... to SFT/autotrain/.env (see .env.example)." >&2
+    else
+        echo "  wandb project  : ${WANDB_PROJECT:-athena-cti-sft}"
+        export WANDB_PROJECT="${WANDB_PROJECT:-athena-cti-sft}"
+        export WANDB_NAME="${PROJECT_NAME}_${TIMESTAMP}"
+        export WANDB_WATCH="false"     # skip grad/param logging to reduce overhead
+    fi
+fi
+echo
+
+# Line-buffer python stdout so `tail -f` on the log shows Trainer progress
+# lines in real time instead of in fsync-flush chunks.
+export PYTHONUNBUFFERED=1
+
+CMD=(autotrain --config "${RENDERED_CONFIG}")
 
 if [[ ${DETACH} -eq 1 ]]; then
     echo "=== Launching detached (nohup) ==="
     nohup "${CMD[@]}" > "${LOG_FILE}" 2>&1 &
     pid=$!
-    echo "  pid  : ${pid}"
-    echo "  tail : tail -f ${LOG_FILE}"
+    # Don't let the EXIT trap delete the rendered config while the child
+    # is still using it; reset the trap and let the log file reference it.
+    trap - EXIT
+    echo "  pid          : ${pid}"
+    echo "  follow log   : tail -f ${LOG_FILE}"
+    echo "  gpu live     : watch -n 2 nvidia-smi"
+    [[ "${LOG_BACKEND}" == "wandb" && -n "${WANDB_API_KEY:-}" ]] && \
+        echo "  wandb        : https://wandb.ai/${WANDB_ENTITY:-$(whoami)}/${WANDB_PROJECT}/runs/${WANDB_NAME}"
     exit 0
 fi
 

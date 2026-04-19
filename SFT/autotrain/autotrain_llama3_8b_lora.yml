@@ -15,7 +15,7 @@
 task: llm-sft
 base_model: meta-llama/Llama-3.1-8B-Instruct
 project_name: llama31-8b-athena-lora
-log: tensorboard
+log: wandb
 backend: local
 
 data:
@@ -47,7 +47,7 @@ params:
   warmup_ratio: 0.05
   mixed_precision: bf16
   padding: right
-  gradient_checkpointing: true
+  disable_gradient_checkpointing: false   # autotrain's actual key (inverted)
   logging_steps: 10
   save_total_limit: 2
   seed: 42

@@ -1,27 +1,32 @@
 ### Full-parameter SFT of Llama-3.1-8B-Instruct on athena-ift, tuned for
-### high-VRAM boxes (>=140 GB per GPU, e.g. 2x H200/MI300X, or 2x H100 NVL).
+### 2x 80 GB-class GPUs (2x H100 80G, 2x A100 80G) or anything larger.
 ###
-### Difference vs autotrain_llama3_8b_sft.yml:
-###   batch_size                1  -> 8       (per-GPU micro-batch)
-###   gradient_accumulation     8  -> 1       (same effective batch: 8 * 1 * 2 = 16)
-###   gradient_checkpointing    true -> false (~30-40% speedup)
+### Difference vs autotrain_llama3_8b_sft.yml (conservative):
+###   batch_size                1 -> 4        (better per-step throughput)
+###   gradient_accumulation     8 -> 2        (same effective batch: 4 * 2 * 2 = 16)
+###   logging_steps            10 -> 25       (less log spam at higher tok/s)
+### Gradient checkpointing stays ON -- disabling it on 2x 80 GB would OOM at
+### batch_size=4 (activations ~24 GB/GPU + ~64 GB fixed = ~88 GB/GPU).
 ###
-### Per-GPU memory estimate with these settings at seq_len=2048, bf16:
+### Per-GPU memory estimate at seq_len=2048, bf16, grad ckpt on:
 ###   * weights               : 16 GB
 ###   * AdamW optimizer states: 32 GB (fp32 momentum + variance)
 ###   * gradients             : 16 GB
-###   * activations           : ~40 GB (batch=8, no grad ckpt)
+###   * activations           : ~6 GB (batch=4, grad ckpt ~5x reduction)
 ###   * ---------------------------------
-###   * TOTAL                 : ~104 GB per GPU   -> needs >=120 GB per GPU
+###   * TOTAL                 : ~70 GB per GPU   -> fits on 80 GB
 ###
-### If you are on 1x or 2x 80 GB, use autotrain_llama3_8b_sft.yml instead.
+### Expected ~2x wall-clock speedup vs autotrain_llama3_8b_sft.yml on 2x H100.
 ###
 ### NOTE: project_name must be alphanumeric + hyphens only (no dots).
+### NOTE: autotrain's gradient-ckpt key is `disable_gradient_checkpointing`
+###       (an inverted boolean). `gradient_checkpointing: <bool>` is silently
+###       ignored by autotrain with a "parameters not used" warning.
 
 task: llm-sft
 base_model: meta-llama/Llama-3.1-8B-Instruct
 project_name: llama31-8b-athena-ift
-log: tensorboard
+log: wandb
 backend: local
 
 data:
@@ -40,15 +45,15 @@ params:
   block_size: 2048
   model_max_length: 8192
   epochs: 3
-  batch_size: 8                # large per-GPU batch -> saturate H100/H200
-  gradient_accumulation: 1     # effective batch = 8 * 1 * 2 GPUs = 16
+  batch_size: 4                     # fits on 80 GB/GPU with grad ckpt on
+  gradient_accumulation: 2          # effective batch = 4 * 2 * 2 GPUs = 16
   lr: 1.0e-5
   optimizer: adamw_torch
   scheduler: cosine
   warmup_ratio: 0.05
   mixed_precision: bf16
   padding: right
-  gradient_checkpointing: false
+  disable_gradient_checkpointing: false   # autotrain's actual key (inverted)
   logging_steps: 25
   save_total_limit: 2
   seed: 42

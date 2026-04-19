@@ -72,6 +72,9 @@ python -m pip install --upgrade pip wheel setuptools
 # Installing anything else afterwards risks breaking that tree; let pip
 # resolve the closure in a single pass.
 python -m pip install "autotrain-advanced==${AUTOTRAIN_VERSION}"
+# wandb is optional for autotrain but required by train.sh when the YAML
+# sets `log: wandb`. Installed here so it is present in the env image.
+python -m pip install "wandb>=0.17,<1.0"
 
 echo
 echo "=== Verification ==="
@@ -87,6 +90,7 @@ print("huggingface_hub   :", _v("huggingface-hub"))
 print("accelerate        :", _v("accelerate"))
 print("peft              :", _v("peft"))
 print("trl               :", _v("trl"))
+print("wandb             :", _v("wandb"))
 try:
     from autotrain.cli.autotrain import main  # noqa: F401
     print("autotrain import  : ok")
