@@ -1,0 +1,49 @@
+### Full-parameter SFT of Llama-3.1-8B-Instruct on the athena-ift dataset,
+### using HuggingFace AutoTrain Advanced.
+###
+### Consumed by `train.sh`. Environment variable substitution on HF_USERNAME
+### and HF_TOKEN is applied by autotrain at launch.
+###
+### Hardware: needs ~80 GB of effective VRAM (1x A100-80G, 1x H100-80G, or
+### 2x A100-40G with accelerate). Drop to `peft: true` + `quantization: int4`
+### if you only have 1x 24 GB.
+
+task: llm-sft
+base_model: meta-llama/Llama-3.1-8B-Instruct
+project_name: llama3.1-8b-athena-ift
+log: tensorboard
+backend: local
+
+data:
+  path: ${HF_USERNAME}/athena-ift
+  train_split: train
+  valid_split: null
+  chat_template: null         # text column is already templated
+  column_mapping:
+    text_column: text
+
+params:
+  # --- full SFT, no adapter, no quantization -------------------------------
+  peft: false
+  quantization: null
+  # -------------------------------------------------------------------------
+  block_size: 2048
+  model_max_length: 8192
+  epochs: 3
+  batch_size: 1
+  gradient_accumulation: 8
+  lr: 1.0e-5
+  optimizer: adamw_torch
+  scheduler: cosine
+  warmup_ratio: 0.05
+  mixed_precision: bf16
+  padding: right
+  gradient_checkpointing: true
+  logging_steps: 10
+  save_total_limit: 2
+  seed: 42
+
+hub:
+  username: ${HF_USERNAME}
+  token: ${HF_TOKEN}
+  push_to_hub: true
