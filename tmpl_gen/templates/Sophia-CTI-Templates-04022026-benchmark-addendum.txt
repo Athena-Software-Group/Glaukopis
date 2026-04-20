@@ -1,0 +1,280 @@
+Benchmark-Aligned CTI Templates (Addendum to Sophia-CTI-Templates-04022026)
+
+This template set addresses three gaps identified against SecKnowledge / CyberPal.AI
+(Levi et al., 2024, arXiv:2408.09304):
+
+  Gap 1: Multi-hop cross-framework path templates
+  Gap 2: Hard-negative / discrimination templates
+  Gap 3: Task-type diversity (MCQ, Yes/No, Classification, Summarization)
+
+ID convention:
+  X.<edge>.<n>    cross-framework path  (e.g. X.VW.1 = CVE -> Weakness)
+  YN.<edge>.P.n   yes/no positive
+  YN.<edge>.N.n   yes/no hard-negative  (uses {force} to pick unconnected node)
+  Q.<edge>.<n>    multiple-choice (A/B/C/D)
+  CL.<src>.<n>    classification (closed-list)
+  SU.<src>.<n>    summarization (long -> short)
+
+Edge abbreviations:
+  V = CVE          W = Weakness (CWE)      A = CAPEC
+  M = Technique    T = Tactic              G = intrusion-set (threat group)
+  N = Mitigation   P = EPSS                K = KEV
+
+Note on {force}: as-written, distractor selection picks random non-match nodes.
+For SecKnowledge-style adversarial distractors (semantically near the correct
+answer rather than random), extend iftgen.py to pre-embed node descriptions and
+filter candidate bindings by cosine similarity to the correct answer.
+
+Section 1 - Cross-Framework Path Templates (Gap 1)
+
+X.VW.1 Instruction: You are a CTI analyst. Map a CVE to its root-cause weakness.
+Question: CVE-{cve:CVE.id} is described as: {cve:CVE.descriptions}. Which CWE is its root cause?
+Answer: The root cause of CVE-{cve:CVE.id} is CWE-{cve:CVE.problemType.id} ({cve:CVE.problemType.name}). The CVE description matches the pattern defined by CWE-{cve:CVE.problemType.id}: {cve:CVE.problemType.description}.
+
+X.VW.2 Instruction: You are a vulnerability analyst. Identify the weakness class for a CVE.
+Question: Which CWE does CVE-{cve:CVE.id} fall under?
+Answer: CVE-{cve:CVE.id} falls under CWE-{cve:CVE.problemType.id} ({cve:CVE.problemType.name}).
+
+X.VW.3 Instruction: You are a CTI analyst. Provide a concrete vulnerability example of a given weakness.
+Question: Give an example CVE that demonstrates CWE-{cwe:Weakness.id} ({cwe:Weakness.name}).
+Answer: CVE-{cwe:Weakness.observed_as.id} is an example of CWE-{cwe:Weakness.id}. It exhibits {cwe:Weakness.description}, which is the defining characteristic of {cwe:Weakness.name}.
+
+X.WA.1 Instruction: You are a CTI analyst linking weaknesses to attack patterns.
+Question: Which CAPEC attack pattern exploits CWE-{cwe:Weakness.id} ({cwe:Weakness.name})?
+Answer: CAPEC-{cwe:Weakness.related_attack_pattern.id} ({cwe:Weakness.related_attack_pattern.name}) exploits CWE-{cwe:Weakness.id}. The attack pattern leverages {cwe:Weakness.description} to achieve its goal.
+
+X.WA.2 Instruction: You are a CTI analyst mapping attack patterns to their target weaknesses.
+Question: Which CWE weakness does CAPEC-{capec:CAPEC.id} ({capec:CAPEC.name}) typically exploit?
+Answer: CAPEC-{capec:CAPEC.id} typically exploits CWE-{capec:CAPEC.weakness.id} ({capec:CAPEC.weakness.name}). The attack pattern ({capec:CAPEC.description}) targets the weakness class {capec:CAPEC.weakness.name}.
+
+X.AM.1 Instruction: You are a CTI analyst mapping attack patterns to MITRE ATT&CK techniques.
+Question: Which MITRE ATT&CK technique corresponds to the adversary behaviour in CAPEC-{capec:CAPEC.id} ({capec:CAPEC.name})?
+Answer: CAPEC-{capec:CAPEC.id} aligns with MITRE ATT&CK technique {capec:CAPEC.attack-pattern.mitre_id} ({capec:CAPEC.attack-pattern.name}). Both describe the same adversary behaviour: {capec:CAPEC.description}.
+
+X.MT.1 Instruction: You are a threat intelligence analyst. Identify the tactic that a MITRE ATT&CK technique serves.
+Question: What MITRE ATT&CK tactic does technique {ack:attack-pattern.mitre_id} ({ack:attack-pattern.name}) achieve?
+Answer: Technique {ack:attack-pattern.mitre_id} ({ack:attack-pattern.name}) achieves the {ack:attack-pattern.achieves.name} tactic, which represents the adversary objective: {ack:attack-pattern.achieves.description}.
+
+X.MT.2 Instruction: You are a threat hunter. Given a tactic, give a technique that achieves it.
+Question: Provide a technique that adversaries use to achieve the {tac:x-mitre-tactic.name} tactic.
+Answer: Technique {tac:x-mitre-tactic.related-to.mitre_id} ({tac:x-mitre-tactic.related-to.name}) is used to achieve the {tac:x-mitre-tactic.name} tactic: {tac:x-mitre-tactic.related-to.description}.
+
+X.MM.1 Instruction: You are a CTI analyst. Identify the parent technique of a sub-technique.
+Question: What is the parent technique of sub-technique {ack:attack-pattern.mitre_id} ({ack:attack-pattern.name})?
+Answer: Sub-technique {ack:attack-pattern.mitre_id} is a refinement of technique {ack:attack-pattern.subtechnique-of.mitre_id} ({ack:attack-pattern.subtechnique-of.name}). The parent covers the general approach: {ack:attack-pattern.subtechnique-of.description}.
+
+X.MN.1 Instruction: You are a defensive architect. Given a technique, identify a mitigation that addresses it.
+Question: What mitigation addresses MITRE ATT&CK technique {ack:attack-pattern.mitre_id} ({ack:attack-pattern.name})?
+Answer: Mitigation {ack:attack-pattern.mitigated_by.mitre_id} ({ack:attack-pattern.mitigated_by.name}) addresses technique {ack:attack-pattern.mitre_id}. The mitigation recommends: {ack:attack-pattern.mitigated_by.description}.
+
+X.MN.2 Instruction: You are a defensive architect. List a mitigation for the given technique.
+Question: List a mitigation for technique {ack:attack-pattern.mitre_id} ({ack:attack-pattern.name}).
+Answer: Technique {ack:attack-pattern.mitre_id} ({ack:attack-pattern.name}) is mitigated by {ack:attack-pattern.mitigated_by.mitre_id} ({ack:attack-pattern.mitigated_by.name}): {ack:attack-pattern.mitigated_by.description}.
+
+X.GM.1 Instruction: You are a CTI analyst. Identify techniques used by a given threat group.
+Question: Which MITRE ATT&CK technique does the threat group {grp:intrusion-set.name} ({grp:intrusion-set.mitre_id}) commonly use?
+Answer: The threat group {grp:intrusion-set.name} ({grp:intrusion-set.mitre_id}) commonly uses technique {grp:intrusion-set.uses.mitre_id} ({grp:intrusion-set.uses.name}). This behaviour is documented in MITRE ATT&CK as: {grp:intrusion-set.uses.description}.
+
+X.GM.2 Instruction: You are a threat attribution analyst. Given a technique, identify a group that uses it.
+Question: Which threat group is known to use technique {ack:attack-pattern.mitre_id} ({ack:attack-pattern.name})?
+Answer: Threat group {ack:attack-pattern.uses<intrusion-set.name} ({ack:attack-pattern.uses<intrusion-set.mitre_id}) is known to use technique {ack:attack-pattern.mitre_id} ({ack:attack-pattern.name}) in their operations.
+
+X.GS.1 Instruction: You are a CTI analyst. Identify software associated with a threat group.
+Question: What software has threat group {grp:intrusion-set.name} ({grp:intrusion-set.mitre_id}) been observed using?
+Answer: The threat group {grp:intrusion-set.name} has been observed using {grp:intrusion-set.uses>malware.name} ({grp:intrusion-set.uses>malware.mitre_id}).
+
+X.VP.1 Instruction: You are a vulnerability risk analyst. Assess exploitation likelihood using EPSS.
+Question: What is the EPSS exploitation likelihood for CVE-{cve:CVE.id}, and how should this inform prioritisation?
+Answer: CVE-{cve:CVE.id} has an EPSS score of {epss:EPSS.epss} ({epss:EPSS.percentile} percentile), reflecting the probability of exploitation in the next 30 days. Higher scores should be prioritised for patching.
+
+X.VK.1 Instruction: You are a SOC analyst triaging KEV-listed vulnerabilities.
+Question: Is CVE-{cve:CVE.id} listed in the CISA KEV catalog, and what is the required remediation?
+Answer: CVE-{cve:CVE.id} is listed in the CISA KEV catalog as {kev:KEV.vulnerabilityName} affecting {kev:KEV.product} ({kev:KEV.vendorProject}). Required action: {kev:KEV.requiredAction}. Due by: {kev:KEV.dueDate}.
+
+X.VWA.1 Instruction: You are a CTI analyst building an end-to-end threat picture.
+Question: Trace CVE-{cve:CVE.id} from vulnerability to weakness to attack pattern.
+Answer: CVE-{cve:CVE.id} ({cve:CVE.descriptions}) is an instance of CWE-{cve:CVE.problemType.id} ({cve:CVE.problemType.name}). This weakness is exploited by CAPEC-{cve:CVE.problemType.related_attack_pattern.id} ({cve:CVE.problemType.related_attack_pattern.name}). Chain: CVE-{cve:CVE.id} -> CWE-{cve:CVE.problemType.id} -> CAPEC-{cve:CVE.problemType.related_attack_pattern.id}.
+
+X.TMN.1 Instruction: You are a defensive architect. Trace from a tactic to a concrete mitigation.
+Question: Starting from the {tac:x-mitre-tactic.name} tactic, provide a technique that achieves it and a mitigation against that technique.
+Answer: The {tac:x-mitre-tactic.name} tactic ({tac:x-mitre-tactic.description}) is achieved by technique {tac:x-mitre-tactic.related-to.mitre_id} ({tac:x-mitre-tactic.related-to.name}), which can be mitigated by {tac:x-mitre-tactic.related-to.mitigated_by.mitre_id} ({tac:x-mitre-tactic.related-to.mitigated_by.name}): {tac:x-mitre-tactic.related-to.mitigated_by.description}.
+
+Section 2 - Yes/No Discrimination Templates (Gap 2)
+
+YN.VW.P.1 Instruction: You are a CTI analyst. Answer yes or no, then justify in one sentence.
+Question: Does CVE-{cve:CVE.id} ({cve:CVE.descriptions}) have CWE-{cve:CVE.problemType.id} ({cve:CVE.problemType.name}) as a root cause?
+Answer: Yes. CVE-{cve:CVE.id} describes {cve:CVE.descriptions}, which matches the pattern of CWE-{cve:CVE.problemType.id} ({cve:CVE.problemType.name}): {cve:CVE.problemType.description}.
+
+YN.VW.N.1 Instruction: You are a CTI analyst. Answer yes or no, then justify in one sentence.
+Question: Does CVE-{cve:CVE.id} ({cve:CVE.descriptions}) have CWE-{negw:Weakness.id} ({negw:Weakness.name}) as a root cause?
+Answer: No. CVE-{cve:CVE.id} describes {cve:CVE.descriptions}, which does not match CWE-{negw:Weakness.id} ({negw:Weakness.name}) (that weakness concerns {negw:Weakness.description}). The actual root cause is CWE-{cve:CVE.problemType.id} ({cve:CVE.problemType.name}).
+{force negw:Weakness.id != cve:CVE.problemType.id}
+
+YN.WA.P.1 Instruction: You are a CTI analyst. Answer yes or no with a brief justification.
+Question: Does CAPEC-{capec:CAPEC.id} ({capec:CAPEC.name}) exploit CWE-{capec:CAPEC.weakness.id} ({capec:CAPEC.weakness.name})?
+Answer: Yes. CAPEC-{capec:CAPEC.id} exploits CWE-{capec:CAPEC.weakness.id}. The attack pattern ({capec:CAPEC.description}) leverages the weakness {capec:CAPEC.weakness.name} ({capec:CAPEC.weakness.description}).
+
+YN.WA.N.1 Instruction: You are a CTI analyst. Answer yes or no with a brief justification.
+Question: Does CAPEC-{capec:CAPEC.id} ({capec:CAPEC.name}) exploit CWE-{negw:Weakness.id} ({negw:Weakness.name})?
+Answer: No. CAPEC-{capec:CAPEC.id} does not exploit CWE-{negw:Weakness.id}. Instead, CAPEC-{capec:CAPEC.id} targets {capec:CAPEC.weakness.name} (CWE-{capec:CAPEC.weakness.id}).
+{force negw:Weakness.id != capec:CAPEC.weakness.id}
+
+YN.MT.P.1 Instruction: You are a threat hunter. Answer yes or no with a brief justification.
+Question: Does technique {ack:attack-pattern.mitre_id} ({ack:attack-pattern.name}) serve the {ack:attack-pattern.achieves.name} tactic?
+Answer: Yes. Technique {ack:attack-pattern.mitre_id} ({ack:attack-pattern.name}) is classified under the {ack:attack-pattern.achieves.name} tactic in MITRE ATT&CK.
+
+YN.MT.N.1 Instruction: You are a threat hunter. Answer yes or no with a brief justification.
+Question: Does technique {ack:attack-pattern.mitre_id} ({ack:attack-pattern.name}) serve the {negtac:x-mitre-tactic.name} tactic?
+Answer: No. Technique {ack:attack-pattern.mitre_id} serves the {ack:attack-pattern.achieves.name} tactic, not {negtac:x-mitre-tactic.name}.
+{force negtac:x-mitre-tactic.mitre_id != ack:attack-pattern.achieves.mitre_id}
+
+YN.GM.P.1 Instruction: You are a CTI attribution analyst. Answer yes or no with a brief justification.
+Question: Is threat group {grp:intrusion-set.name} ({grp:intrusion-set.mitre_id}) known to use technique {grp:intrusion-set.uses.mitre_id} ({grp:intrusion-set.uses.name})?
+Answer: Yes. MITRE ATT&CK documents {grp:intrusion-set.name} as using technique {grp:intrusion-set.uses.mitre_id} ({grp:intrusion-set.uses.name}): {grp:intrusion-set.uses.description}.
+
+YN.GM.N.1 Instruction: You are a CTI attribution analyst. Answer yes or no with a brief justification.
+Question: Is threat group {grp:intrusion-set.name} ({grp:intrusion-set.mitre_id}) known to use technique {negack:attack-pattern.mitre_id} ({negack:attack-pattern.name})?
+Answer: No. There is no documented use of technique {negack:attack-pattern.mitre_id} by {grp:intrusion-set.name} in MITRE ATT&CK; {grp:intrusion-set.name} is instead associated with {grp:intrusion-set.uses.mitre_id}.
+{force negack:attack-pattern.mitre_id != grp:intrusion-set.uses.mitre_id}
+
+YN.MN.P.1 Instruction: You are a defensive architect. Answer yes or no with a brief justification.
+Question: Does mitigation {ack:attack-pattern.mitigated_by.mitre_id} ({ack:attack-pattern.mitigated_by.name}) address MITRE ATT&CK technique {ack:attack-pattern.mitre_id} ({ack:attack-pattern.name})?
+Answer: Yes. Mitigation {ack:attack-pattern.mitigated_by.mitre_id} addresses technique {ack:attack-pattern.mitre_id} by {ack:attack-pattern.mitigated_by.description}.
+
+YN.MN.N.1 Instruction: You are a defensive architect. Answer yes or no with a brief justification.
+Question: Does mitigation {negmit:Mitigation.mitre_id} ({negmit:Mitigation.name}) address MITRE ATT&CK technique {ack:attack-pattern.mitre_id} ({ack:attack-pattern.name})?
+Answer: No. Mitigation {negmit:Mitigation.mitre_id} does not address technique {ack:attack-pattern.mitre_id}. The appropriate mitigation for this technique is {ack:attack-pattern.mitigated_by.mitre_id} ({ack:attack-pattern.mitigated_by.name}).
+{force negmit:Mitigation.mitre_id != ack:attack-pattern.mitigated_by.mitre_id}
+
+
+Section 3 - Multiple-Choice Templates (Gap 3)
+
+Note: distractor bindings (negw, negack, negtac, negmit, negcap) use {force} to
+ensure they differ from the correct answer. Extend iftgen.py with semantic
+filtering to promote near-miss distractors (SecKnowledge-style).
+
+Q.VW.1 Instruction: You are a CTI analyst. Choose the single best answer from A, B, C, or D.
+Question: What is the root-cause CWE of CVE-{cve:CVE.id} ({cve:CVE.descriptions})?
+A) CWE-{cve:CVE.problemType.id} ({cve:CVE.problemType.name})
+B) CWE-{negw1:Weakness.id} ({negw1:Weakness.name})
+C) CWE-{negw2:Weakness.id} ({negw2:Weakness.name})
+D) CWE-{negw3:Weakness.id} ({negw3:Weakness.name})
+Answer: A. The correct root cause is CWE-{cve:CVE.problemType.id} ({cve:CVE.problemType.name}), whose definition ({cve:CVE.problemType.description}) matches the CVE description.
+{force negw1:Weakness.id != cve:CVE.problemType.id}
+{force negw2:Weakness.id != cve:CVE.problemType.id}
+{force negw3:Weakness.id != cve:CVE.problemType.id}
+{force negw1:Weakness.id != negw2:Weakness.id}
+{force negw1:Weakness.id != negw3:Weakness.id}
+{force negw2:Weakness.id != negw3:Weakness.id}
+
+Q.WA.1 Instruction: You are a CTI analyst. Choose the single best answer from A, B, C, or D.
+Question: Which CAPEC attack pattern primarily exploits CWE-{cwe:Weakness.id} ({cwe:Weakness.name})?
+A) CAPEC-{cwe:Weakness.related_attack_pattern.id} ({cwe:Weakness.related_attack_pattern.name})
+B) CAPEC-{negcap1:CAPEC.id} ({negcap1:CAPEC.name})
+C) CAPEC-{negcap2:CAPEC.id} ({negcap2:CAPEC.name})
+D) CAPEC-{negcap3:CAPEC.id} ({negcap3:CAPEC.name})
+Answer: A. CAPEC-{cwe:Weakness.related_attack_pattern.id} ({cwe:Weakness.related_attack_pattern.name}) is the attack pattern that exploits CWE-{cwe:Weakness.id}.
+{force negcap1:CAPEC.id != cwe:Weakness.related_attack_pattern.id}
+{force negcap2:CAPEC.id != cwe:Weakness.related_attack_pattern.id}
+{force negcap3:CAPEC.id != cwe:Weakness.related_attack_pattern.id}
+{force negcap1:CAPEC.id != negcap2:CAPEC.id}
+{force negcap1:CAPEC.id != negcap3:CAPEC.id}
+{force negcap2:CAPEC.id != negcap3:CAPEC.id}
+
+Q.MT.1 Instruction: You are a threat hunter. Choose the single best answer from A, B, C, or D.
+Question: Which MITRE ATT&CK tactic does technique {ack:attack-pattern.mitre_id} ({ack:attack-pattern.name}) achieve?
+A) {ack:attack-pattern.achieves.name}
+B) {negtac1:x-mitre-tactic.name}
+C) {negtac2:x-mitre-tactic.name}
+D) {negtac3:x-mitre-tactic.name}
+Answer: A. Technique {ack:attack-pattern.mitre_id} ({ack:attack-pattern.name}) achieves the {ack:attack-pattern.achieves.name} tactic in MITRE ATT&CK.
+{force negtac1:x-mitre-tactic.mitre_id != ack:attack-pattern.achieves.mitre_id}
+{force negtac2:x-mitre-tactic.mitre_id != ack:attack-pattern.achieves.mitre_id}
+{force negtac3:x-mitre-tactic.mitre_id != ack:attack-pattern.achieves.mitre_id}
+{force negtac1:x-mitre-tactic.mitre_id != negtac2:x-mitre-tactic.mitre_id}
+{force negtac1:x-mitre-tactic.mitre_id != negtac3:x-mitre-tactic.mitre_id}
+{force negtac2:x-mitre-tactic.mitre_id != negtac3:x-mitre-tactic.mitre_id}
+
+Q.MN.1 Instruction: You are a defensive architect. Choose the single best answer from A, B, C, or D.
+Question: Which MITRE ATT&CK mitigation addresses technique {ack:attack-pattern.mitre_id} ({ack:attack-pattern.name})?
+A) {ack:attack-pattern.mitigated_by.mitre_id} ({ack:attack-pattern.mitigated_by.name})
+B) {negmit1:Mitigation.mitre_id} ({negmit1:Mitigation.name})
+C) {negmit2:Mitigation.mitre_id} ({negmit2:Mitigation.name})
+D) {negmit3:Mitigation.mitre_id} ({negmit3:Mitigation.name})
+Answer: A. Mitigation {ack:attack-pattern.mitigated_by.mitre_id} ({ack:attack-pattern.mitigated_by.name}) addresses technique {ack:attack-pattern.mitre_id}: {ack:attack-pattern.mitigated_by.description}.
+{force negmit1:Mitigation.mitre_id != ack:attack-pattern.mitigated_by.mitre_id}
+{force negmit2:Mitigation.mitre_id != ack:attack-pattern.mitigated_by.mitre_id}
+{force negmit3:Mitigation.mitre_id != ack:attack-pattern.mitigated_by.mitre_id}
+{force negmit1:Mitigation.mitre_id != negmit2:Mitigation.mitre_id}
+{force negmit1:Mitigation.mitre_id != negmit3:Mitigation.mitre_id}
+{force negmit2:Mitigation.mitre_id != negmit3:Mitigation.mitre_id}
+
+Q.GM.1 Instruction: You are a CTI attribution analyst. Choose the single best answer from A, B, C, or D.
+Question: Which MITRE ATT&CK technique is {grp:intrusion-set.name} ({grp:intrusion-set.mitre_id}) known to use?
+A) {grp:intrusion-set.uses.mitre_id} ({grp:intrusion-set.uses.name})
+B) {negack1:attack-pattern.mitre_id} ({negack1:attack-pattern.name})
+C) {negack2:attack-pattern.mitre_id} ({negack2:attack-pattern.name})
+D) {negack3:attack-pattern.mitre_id} ({negack3:attack-pattern.name})
+Answer: A. MITRE ATT&CK documents {grp:intrusion-set.name} as using {grp:intrusion-set.uses.mitre_id} ({grp:intrusion-set.uses.name}).
+{force negack1:attack-pattern.mitre_id != grp:intrusion-set.uses.mitre_id}
+{force negack2:attack-pattern.mitre_id != grp:intrusion-set.uses.mitre_id}
+{force negack3:attack-pattern.mitre_id != grp:intrusion-set.uses.mitre_id}
+{force negack1:attack-pattern.mitre_id != negack2:attack-pattern.mitre_id}
+{force negack1:attack-pattern.mitre_id != negack3:attack-pattern.mitre_id}
+{force negack2:attack-pattern.mitre_id != negack3:attack-pattern.mitre_id}
+
+Q.AM.1 Instruction: You are a CTI analyst. Choose the single best answer from A, B, C, or D.
+Question: Which MITRE ATT&CK technique corresponds to CAPEC-{capec:CAPEC.id} ({capec:CAPEC.name})?
+A) {capec:CAPEC.attack-pattern.mitre_id} ({capec:CAPEC.attack-pattern.name})
+B) {negack1:attack-pattern.mitre_id} ({negack1:attack-pattern.name})
+C) {negack2:attack-pattern.mitre_id} ({negack2:attack-pattern.name})
+D) {negack3:attack-pattern.mitre_id} ({negack3:attack-pattern.name})
+Answer: A. CAPEC-{capec:CAPEC.id} aligns with MITRE ATT&CK technique {capec:CAPEC.attack-pattern.mitre_id} ({capec:CAPEC.attack-pattern.name}); both describe the same adversary behaviour.
+{force negack1:attack-pattern.mitre_id != capec:CAPEC.attack-pattern.mitre_id}
+{force negack2:attack-pattern.mitre_id != capec:CAPEC.attack-pattern.mitre_id}
+{force negack3:attack-pattern.mitre_id != capec:CAPEC.attack-pattern.mitre_id}
+{force negack1:attack-pattern.mitre_id != negack2:attack-pattern.mitre_id}
+{force negack1:attack-pattern.mitre_id != negack3:attack-pattern.mitre_id}
+{force negack2:attack-pattern.mitre_id != negack3:attack-pattern.mitre_id}
+
+
+Section 4 - Classification Templates (Gap 3)
+
+CL.V.1 Instruction: You are a CTI analyst. Classify the vulnerability into a CWE class, responding with the CWE id only.
+Question: Classify the following vulnerability: {cve:CVE.descriptions}
+Answer: CWE-{cve:CVE.problemType.id}
+
+CL.V.2 Instruction: You are a CTI triage analyst. Reply with one of: KEV, NON-KEV.
+Question: Is CVE-{cve:CVE.id} ({cve:CVE.descriptions}) known to be exploited in the wild per the CISA KEV catalog?
+Answer: KEV. CVE-{cve:CVE.id} is listed in CISA KEV as {kev:KEV.vulnerabilityName}, required action: {kev:KEV.requiredAction}.
+
+CL.M.1 Instruction: You are a threat hunter. Classify the technique by tactic, responding with the tactic name only.
+Question: Classify MITRE ATT&CK technique {ack:attack-pattern.mitre_id} ({ack:attack-pattern.name}) by tactic: {ack:attack-pattern.description}
+Answer: {ack:attack-pattern.achieves.name}
+
+CL.A.1 Instruction: You are a CTI analyst. Classify the attack pattern by its primary target weakness class, responding with the CWE id only.
+Question: Classify CAPEC-{capec:CAPEC.id} ({capec:CAPEC.name}) by primary target weakness: {capec:CAPEC.description}
+Answer: CWE-{capec:CAPEC.weakness.id}
+
+CL.G.1 Instruction: You are a CTI attribution analyst. Classify the technique usage by threat group, responding with the group name only.
+Question: Which threat group is associated with technique {ack:attack-pattern.mitre_id} ({ack:attack-pattern.name})?
+Answer: {ack:attack-pattern.uses<intrusion-set.name}
+
+Section 5 - Summarization Templates (Gap 3)
+
+SU.V.1 Instruction: You are a CTI analyst. Produce a one-sentence executive summary.
+Question: Summarise CVE-{cve:CVE.id} in a single sentence covering impact and root cause: {cve:CVE.descriptions}
+Answer: CVE-{cve:CVE.id} is a {cve:CVE.problemType.name} (CWE-{cve:CVE.problemType.id}) vulnerability allowing {cve:CVE.descriptions}.
+
+SU.W.1 Instruction: You are a CTI analyst. Produce a one-sentence summary of the weakness class.
+Question: Summarise CWE-{cwe:Weakness.id} ({cwe:Weakness.name}) for an executive audience: {cwe:Weakness.description}
+Answer: CWE-{cwe:Weakness.id} ({cwe:Weakness.name}) is a weakness class in which {cwe:Weakness.description}, commonly exploited via CAPEC-{cwe:Weakness.related_attack_pattern.id} ({cwe:Weakness.related_attack_pattern.name}).
+
+SU.M.1 Instruction: You are a threat hunter. Produce a one-sentence technique summary.
+Question: Summarise MITRE ATT&CK technique {ack:attack-pattern.mitre_id} ({ack:attack-pattern.name}) including its tactic and a mitigation.
+Answer: {ack:attack-pattern.name} ({ack:attack-pattern.mitre_id}) is a {ack:attack-pattern.achieves.name} technique that can be mitigated by {ack:attack-pattern.mitigated_by.mitre_id} ({ack:attack-pattern.mitigated_by.name}).
+
+SU.G.1 Instruction: You are a CTI attribution analyst. Produce a one-sentence profile of a threat group.
+Question: Summarise threat group {grp:intrusion-set.name} ({grp:intrusion-set.mitre_id}), including one technique and one associated piece of software.
+Answer: {grp:intrusion-set.name} ({grp:intrusion-set.mitre_id}) is a threat group known to use technique {grp:intrusion-set.uses.mitre_id} ({grp:intrusion-set.uses.name}) and the software {grp:intrusion-set.uses>malware.name}.
+
