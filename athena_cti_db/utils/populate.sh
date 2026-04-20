@@ -7,8 +7,9 @@
 #   ./populate.sh
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-PY_POPULATE="${SCRIPT_DIR}/threat_framework/populate_neo4j_complete.py"
+PY_POPULATE="${REPO_DIR}/threat_framework/populate_neo4j_complete.py"
 
 set -e
 
