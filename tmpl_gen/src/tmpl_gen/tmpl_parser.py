@@ -1235,13 +1235,77 @@ class TmplGenNeo4j:
             str_where = "WHERE " + " AND ".join(lst_filters)
         
         str_order = self.qry_make_order(tmplobj)
-        
+
+        # Optional primary-node pre-sampling: if the template declares
+        # `sample: <varname>`, draw LIMIT random primary nodes first and
+        # expand the rest of the pattern from that bounded set. This caps
+        # Cartesian fan-out on high-out-degree nodes (e.g. intrusion-set in
+        # AB.TAA, attack-pattern in AB.MCQ negative sampling) and prevents
+        # the DISTINCT/ORDER-BY-rand() full-graph materialisation.
+        sample_varname = tmplobj.get("sample", "").strip()
+        str_sample_prefix = ""
+        sample_grouping_active = False
+        str_inner_return_vars = ""
+        sv_safe = ""
+        if sample_varname:
+            sample_ntype = None
+            for pr in lst_prs_results:
+                if isinstance(pr, Pathspec):
+                    for spec in pr.lst:
+                        if isinstance(spec, Nodespec) and spec.varname == sample_varname:
+                            sample_ntype = spec.ntype
+                            break
+                if sample_ntype:
+                    break
+            if sample_ntype:
+                sv_safe = neo4j_safe_identif(sample_varname)
+                st_safe = neo4j_safe_identif(sample_ntype)
+                str_sample_prefix = (f"MATCH ({sv_safe}:{st_safe}) "
+                                     f"WITH DISTINCT {sv_safe} ORDER BY rand() LIMIT {limit} ")
+                # Per-primary grouping: collect all non-primary varnames that
+                # appear in RETURN so we can yield one row per primary via a
+                # CALL subquery with LIMIT 1. This ensures each of the LIMIT
+                # primaries contributes one combination (deterministic first
+                # match), giving LIMIT distinct subjects per template.
+                other_vars = []
+                seen = {sample_varname}
+                for rs in lst_return:
+                    vn = rs.split(".", 1)[0]
+                    if vn not in seen:
+                        other_vars.append(vn)
+                        seen.add(vn)
+                if other_vars:
+                    sample_grouping_active = True
+                    str_inner_return_vars = ", ".join(neo4j_safe_identif(v) for v in other_vars)
+            else:
+                print(f"  WARN: sample var '{sample_varname}' not found among parsed nodes; ignoring sample directive")
+
         # Primary form: sample over the full candidate space for diversity
         # (LIMIT after RETURN DISTINCT ... ORDER BY rand()).
+        # Optional per-primary grouping (gated by gencfg "per_primary_grouping"):
+        # when active, wrap the pattern expansion in a CALL subquery with LIMIT 1
+        # per primary so each of the LIMIT primaries contributes exactly one row.
+        # This is experimental because the planner's handling of the resulting
+        # query is sensitive to graph shape and can be very slow on templates
+        # with many free bindings of the same type; keep off by default.
         # Fallback form: apply LIMIT before RETURN to bound memory for queries
         # whose Cartesian fan-out would otherwise exceed dbms.memory.transaction.total.max.
-        match_query = f"MATCH {str_match}     {str_where}{str_with}     RETURN DISTINCT {str_return}     {str_order}     LIMIT {limit}"
-        match_query_fallback = f"MATCH {str_match}     {str_where}{str_with}     LIMIT {limit}     RETURN DISTINCT {str_return}     {str_order}"
+        use_per_primary = bool(self.gencfg.get("per_primary_grouping", False))
+        if sample_grouping_active and use_per_primary:
+            match_query = (
+                f"{str_sample_prefix}"
+                f"CALL ({sv_safe}) {{ "
+                f"MATCH {str_match}     {str_where}{str_with}     "
+                f"RETURN {str_inner_return_vars}     LIMIT 1 }}     "
+                f"RETURN DISTINCT {str_return}     {str_order}     LIMIT {limit}"
+            )
+            match_query_fallback = (
+                f"{str_sample_prefix}MATCH {str_match}     {str_where}{str_with}"
+                f"     LIMIT {limit}     RETURN DISTINCT {str_return}     {str_order}"
+            )
+        else:
+            match_query = f"{str_sample_prefix}MATCH {str_match}     {str_where}{str_with}     RETURN DISTINCT {str_return}     {str_order}     LIMIT {limit}"
+            match_query_fallback = f"{str_sample_prefix}MATCH {str_match}     {str_where}{str_with}     LIMIT {limit}     RETURN DISTINCT {str_return}     {str_order}"
 
         if self.gencfg.get("verbose", 0) > 0:
             print(f"\nMatch query:\n{match_query}\n")

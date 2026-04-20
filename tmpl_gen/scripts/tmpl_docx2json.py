@@ -153,8 +153,8 @@ def extract_templates_from_txt(args) -> list[dict]:
             if l.startswith("Question:"):
                 q_parts = [l[len("Question:"):].strip()]
                 i += 1
-                # Append MCQ option lines (A) … D)) that immediately follow
-                while i < len(lines) and re.match(r"^[A-D]\)", lines[i].strip()):
+                # Append MCQ option lines (A), B), ... that immediately follow
+                while i < len(lines) and re.match(r"^[A-Z]\)", lines[i].strip()):
                     q_parts.append(lines[i].strip())
                     i += 1
                 t_q = "\n".join(q_parts)
@@ -191,7 +191,7 @@ def extract_templates_from_txt(args) -> list[dict]:
             "count_limit": args.count_limit,
         }
 
-        # Collect optional Summary/Schema; skip {force} lines and blank lines
+        # Collect optional Summary/Schema/Sample; skip {force} lines and blank lines
         while i < len(lines):
             l = lines[i].strip()
             if re_id_instr.match(l):
@@ -199,7 +199,7 @@ def extract_templates_from_txt(args) -> list[dict]:
             if l == "" or l.startswith("{force"):
                 i += 1
                 continue
-            for prefix in ("Summary", "Schema"):
+            for prefix in ("Summary", "Schema", "Sample"):
                 if l.startswith(f"{prefix}: "):
                     tmpl[prefix.lower()] = l[len(f"{prefix}: "):]
                     break

@@ -54,6 +54,7 @@ Answer: MITRE ATT&CK classifies technique {ap.mitre_id} ({ap.name}) under the {t
 {force negtac2.mitre_id != negtac3.mitre_id}
 {force negtac2.mitre_id != negtac4.mitre_id}
 {force negtac3.mitre_id != negtac4.mitre_id}
+Sample: ap
 
 AB.MCQ.2 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult MITRE ATT&CK, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
 Question: Which MITRE ATT&CK mitigation addresses technique {ap:attack-pattern.mitre_id} ({ap.name})? Technique description: {ap.description}
@@ -73,25 +74,27 @@ Answer: MITRE ATT&CK records mitigation {coa.mitre_id} ({coa.name}) as addressin
 {force negcoa2.mitre_id != negcoa3.mitre_id}
 {force negcoa2.mitre_id != negcoa4.mitre_id}
 {force negcoa3.mitre_id != negcoa4.mitre_id}
+Sample: ap
 
 AB.MCQ.3 Instruction: You are a CTI analyst at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult the MITRE CVE and CWE knowledge bases, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
 Question: What is the root-cause CWE of the following vulnerability? {cve:CVE.id}: {cve.descriptions}
-A) {cve.problemType.id} ({cve.problemType.name})
+A) {cwe:cve.problemType>Weakness.id} ({cwe.name})
 B) {negw1:Weakness.id} ({negw1.name})
 C) {negw2:Weakness.id} ({negw2.name})
 D) {negw3:Weakness.id} ({negw3.name})
 E) {negw4:Weakness.id} ({negw4.name})
-Answer: The CVE description matches the pattern defined by {cve.problemType.id} ({cve.problemType.name}): {cve.problemType.description}. Therefore, A.
-{force negw1.id != cve.problemType.id}
-{force negw2.id != cve.problemType.id}
-{force negw3.id != cve.problemType.id}
-{force negw4.id != cve.problemType.id}
+Answer: The CVE description matches the pattern defined by {cwe.id} ({cwe.name}): {cwe.description}. Therefore, A.
+{force negw1.id != cwe.id}
+{force negw2.id != cwe.id}
+{force negw3.id != cwe.id}
+{force negw4.id != cwe.id}
 {force negw1.id != negw2.id}
 {force negw1.id != negw3.id}
 {force negw1.id != negw4.id}
 {force negw2.id != negw3.id}
 {force negw2.id != negw4.id}
 {force negw3.id != negw4.id}
+Sample: cve
 
 AB.MCQ.4 Instruction: You are a CTI analyst at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult the MITRE CWE and CAPEC knowledge bases, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
 Question: Which CAPEC attack pattern primarily exploits {cwe:Weakness.id} ({cwe.name})? Weakness description: {cwe.description}
@@ -111,6 +114,7 @@ Answer: MITRE CAPEC records CAPEC-{cap.id} ({cap.name}) as the attack pattern ex
 {force negcap2.id != negcap3.id}
 {force negcap2.id != negcap4.id}
 {force negcap3.id != negcap4.id}
+Sample: cwe
 
 AB.MCQ.5 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult MITRE ATT&CK, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
 Question: Which MITRE ATT&CK technique is threat group {grp:intrusion-set.name} ({grp.mitre_id}) documented as using? Group description: {grp.description}
@@ -130,6 +134,7 @@ Answer: MITRE ATT&CK documents {grp.name} ({grp.mitre_id}) as using technique {a
 {force negack2.mitre_id != negack3.mitre_id}
 {force negack2.mitre_id != negack4.mitre_id}
 {force negack3.mitre_id != negack4.mitre_id}
+Sample: grp
 
 AB.MCQ.6 Instruction: You are a CTI analyst at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult the MITRE CAPEC and ATT&CK knowledge bases, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
 Question: Which MITRE ATT&CK technique corresponds to CAPEC-{cap:CAPEC.id} ({cap.name})? Attack pattern description: {cap.description}
@@ -149,6 +154,7 @@ Answer: CAPEC-{cap.id} aligns with MITRE ATT&CK technique {ap.mitre_id} ({ap.nam
 {force negack2.mitre_id != negack3.mitre_id}
 {force negack2.mitre_id != negack4.mitre_id}
 {force negack3.mitre_id != negack4.mitre_id}
+Sample: cap
 
 Section 2 - AB.RCM.* Root-Cause Mapping (athena-rcm)
 
@@ -200,8 +206,10 @@ Section 6 - AB.TAA.* Threat Actor Attribution (athena-taa)
 AB.TAA.1 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center performing threat actor attribution from observed tradecraft. Analyse the following anonymised incident summary, which reports the MITRE ATT&CK techniques and malware family observed during an intrusion, and identify the responsible named intrusion set. Consult the MITRE ATT&CK groups knowledge base, reason about which documented intrusion set the combination of techniques and tooling matches, and then state the adversary name.
 Question: <*{grp:intrusion-set.name}*>An adversary has been observed employing MITRE ATT&CK techniques {ap1:grp.uses>attack-pattern.name} ({ap1.mitre_id}), {ap2:grp.uses>attack-pattern.name} ({ap2.mitre_id}), and {ap3:grp.uses>attack-pattern.name} ({ap3.mitre_id}), alongside the malware family {mw:grp.uses>malware.name}.
 Answer: The joint use of {ap1.name}, {ap2.name}, and {ap3.name} together with {mw.name} matches the documented tradecraft of {grp.name} ({grp.mitre_id}). Therefore, the adversary is {grp.name}.
+Sample: grp
 
 AB.TAA.2 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center performing threat actor attribution from observed tradecraft. Analyse the following anonymised narrative summarising attacker techniques and associated tooling and identify the responsible adversary. Consult the MITRE ATT&CK groups knowledge base, reason about which documented intrusion set the evidence matches, and then state the adversary name.
 Question: <*{grp:intrusion-set.name}*>An adversary has been observed employing MITRE ATT&CK technique {ap1:grp.uses>attack-pattern.mitre_id} ({ap1.name}) together with technique {ap2:grp.uses>attack-pattern.mitre_id} ({ap2.name}), and has deployed the malware family {mw:grp.uses>malware.name}.
 Answer: Use of {ap1.name} and {ap2.name} together with {mw.name} matches the documented tradecraft of {grp.name} ({grp.mitre_id}). Therefore, the adversary is {grp.name}.
+Sample: grp
 
