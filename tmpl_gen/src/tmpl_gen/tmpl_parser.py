@@ -1236,7 +1236,7 @@ class TmplGenNeo4j:
         
         str_order = self.qry_make_order(tmplobj)
         
-        match_query = f"MATCH {str_match}     {str_where}{str_with}     LIMIT {limit}     RETURN DISTINCT {str_return}     {str_order}"
+        match_query = f"MATCH {str_match}     {str_where}{str_with}     RETURN DISTINCT {str_return}     {str_order}     LIMIT {limit}"
 
         if self.gencfg.get("verbose", 0) > 0:
             print(f"\nMatch query:\n{match_query}\n")
