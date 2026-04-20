@@ -1,0 +1,276 @@
+Hand Crafted Templates (Expanded)
+Date: 2026-03-22
+
+Id abbreviations:
+CAPEC - A, KEV - S, CVE - V, CWE - W, EPSS - P, ATT&CK - M, MITRE ENGAGE - E, Cross-source Correlation - X
+
+ATT&CK Core Templates
+M.1 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Explain ATT&CK technique {ap:attack-pattern.name} ({ap.id}) and how it is used.
+Answer: Technique {ap.name} ({ap.id}) is described as follows:  {ap.description}. It is commonly observed across {ap.x_mitre_platforms}.
+
+M.2 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: What is a recommended defense for technique {ap:attack-pattern.name} ({ap.id})?
+Answer: A recommended course of action is {coa:ap.mitigates<course-of-action.name} ({coa.id}). Mitigation details: {coa.description}.
+
+M.3 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Which ATT&CK techniques are used by intrusion set {is:intrusion-set.name} ({is.id})?
+Answer: Intrusion set {is.name} is associated with attack pattern {ap:is.uses>attack-pattern.name} ({ap.id}), described as {ap.description}.
+
+M.4 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: What is the parent technique of sub-technique {sub:attack-pattern.name} ({sub.id})?
+Answer: Sub-technique {sub.name} ({sub.id}) belongs to parent technique {par:sub.subtechnique-of>attack-pattern.name} ({par.id}).
+
+M.5 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: How can defenders detect {ap:attack-pattern.name} ({ap.id}) using ATT&CK detection content?
+Answer: Technique {ap.name} can be detected with detection strategy {det:ap.detects<x-mitre-detection-strategy.name} ({det.mitre_id}), implemented by analytic {an:det.implemented_by>x-mitre-analytic.name} ({an.id}) using data component {dc:an.requires_data>x-mitre-data-component.name}.
+
+M.6 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Which ATT&CK tactic does technique {ap:attack-pattern.name} ({ap.id}) support?
+Answer: Technique {ap.name} ({ap.id}) supports tactic {ta:ap.achieves>x-mitre-tactic.name} ({ta.id}), with tactic context: {ta.description}.
+
+M.7 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Summarize campaign {c:campaign.name} with its actor, malware, tool, and technique usage.
+Answer: Campaign {c.name} is attributed to {is:c.attributed-to>intrusion-set.name}. It uses malware {mw:c.uses>malware.name}, tool {tl:c.uses>tool.name}, and technique {ap:c.uses>attack-pattern.name} ({ap.id}).
+
+M.8 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: What replacement should analysts use for revoked ATT&CK technique {old:attack-pattern.name} ({old.id})?
+Answer: Revoked technique {old.name} ({old.id}) is superseded by {new:old.revoked-by>attack-pattern.name} ({new.id}).
+
+
+CAPEC Attack Pattern Templates
+A.1 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Describe CAPEC attack pattern {cap:CAPEC.name} (CAPEC-{cap.id}).
+Answer: {cap.name} (CAPEC-{cap.id}) is {cap.description}. It is {cap.abstraction}-level, with severity {cap.severity} and likelihood {cap.likelihood_of_attack}.
+
+A.2 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Summarize the execution flow and prerequisites for {cap:CAPEC.name} (CAPEC-{cap.id}).
+Answer: Execution flow: {cap.execution_flow}. Prerequisites: {cap.prerequisites}. Required skills: {cap.skills_required}.
+
+A.3 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Which weakness is exploited by {cap:CAPEC.name} (CAPEC-{cap.id})?
+Answer: CAPEC pattern {cap.name} exploits weakness {cwe:cap.exploits>Weakness.name} (CWE-{cwe.id}), described as {cwe.extended_description}.
+
+A.4 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Which ATT&CK technique maps to {cap:CAPEC.name} (CAPEC-{cap.id})?
+Answer: CAPEC {cap.name} maps to ATT&CK technique {ap:cap.map_ap>attack-pattern.name} ({ap.id}), which supports tactic {ta:ap.achieves>x-mitre-tactic.name}.
+
+A.5 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: What CAPEC hierarchy context exists for {cap:CAPEC.name} (CAPEC-{cap.id})?
+Answer: Related hierarchy includes child/parent pattern {par:cap.ChildOf>CAPEC.name}, peer pattern {peer:cap.PeerOf>CAPEC.name}, and a can-precede relation to {next:cap.CanPrecede>CAPEC.name}.
+
+A.6 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Which CVE records are impacted by CAPEC pattern {cap:CAPEC.name}?
+Answer: CVE {cve:cap.impacts<CVE.id} is linked to CAPEC {cap.name}. CVE details: {cve.descriptions}.
+
+A.7 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Provide real examples and mitigations for {cap:CAPEC.name} (CAPEC-{cap.id}).
+Answer: Example instances: {cap.example_instances}. Recommended mitigations: {cap.mitigations}. Consequences include: {cap.consequences}.
+
+A.8 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Correlate CVE, CWE, and CAPEC for a single vulnerability chain.
+Answer: CVE {cve:CVE.id} impacts CAPEC {cap:cve.impacts>CAPEC.name} and is categorized as weakness {cwe:cve.problemType>Weakness.name}. CAPEC {cap.id} exploits weakness {cwe2:cap.exploits>Weakness.name}. <*{force cwe.id=cwe2.id}*>
+
+
+CWE Weakness Templates
+W.1 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Explain weakness {cwe:Weakness.name} (CWE-{cwe.id}).
+Answer: {cwe.name} (CWE-{cwe.id}) has abstraction {cwe.abstraction}. Extended detail: {cwe.extended_description}.
+
+W.2 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: What are the root cause areas for {cwe:Weakness.name} (CWE-{cwe.id})?
+Answer: Functional areas: {cwe.functional_areas}. Likelihood of exploit: {cwe.likelihood_of_exploit}.
+
+W.3 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: At what lifecycle stage is {cwe:Weakness.name} introduced?
+Answer: {cwe.name} is introduced through modes/phases {cwe.modes_of_introduction} and {cwe.phases}.
+
+W.4 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Give an observed CVE example for weakness {cwe:Weakness.name}.
+Answer: Weakness {cwe.name} is observed as CVE {cve:cwe.observed_as>CVE.id} with description {cve.descriptions}.
+
+W.5 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: How can defenders detect and mitigate {cwe:Weakness.name}?
+Answer: Detection method: {dm:cwe.detected_by>Detection_Method.method}. Mitigation: {mit:cwe.mitigated_by>Mitigation.description} (phase: {mit.phase}).
+
+W.6 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Is weakness {cwe:Weakness.name} linked to KEV exploitation?
+Answer: Yes. Weakness {cwe.name} is linked to KEV entry for CVE {kev:cwe.known_exploit>KEV.cveID}, requiring action {kev.requiredAction} by {kev.dueDate}.
+
+W.7 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Which CAPEC and ATT&CK content correlate with weakness {cwe:Weakness.name}?
+Answer: Weakness {cwe.name} relates to CAPEC pattern {cap:cwe.related_attack_pattern>CAPEC.name}, mapped to ATT&CK technique {ap:cap.map_ap>attack-pattern.name} ({ap.id}).
+
+W.8 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Compare two CVEs from the same weakness and identify which has higher exploit likelihood.
+Answer: For weakness {cwe:Weakness.name}, CVE {cve1:cwe.observed_as>CVE.id} has EPSS {e1:cve1.scores<EPSS.epss} while CVE {cve2:cwe.observed_as>CVE.id} has EPSS {e2:cve2.scores<EPSS.epss}. Prioritize {cve1.id}. <*{force e1.epss > e2.epss} -- use “ > “ with spaces around > to denote greater than operator*>
+
+CVE Vulnerability Templates
+V.1 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Describe CVE {cve:CVE.id} and summarize its severity.
+Answer: CVE {cve.id} is described as {cve.descriptions}. CVSS base score: {cve.cvss3_1_baseScore}, vector string: {cve.cvss3_1_vectorString}, attack vector: {cve.cvss3_1_attackVector}.
+
+V.2 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Which CWE category applies to CVE {cve:CVE.id}?
+Answer: CVE {cve.id} maps to weakness {cwe:cve.problemType>Weakness.name} (CWE-{cwe.id}) with details: {cwe.extended_description}.
+
+V.3 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Which CAPEC attack pattern is associated with CVE {cve:CVE.id}?
+Answer: CVE {cve.id} impacts CAPEC pattern {cap:cve.impacts>CAPEC.name} (CAPEC-{cap.id}), with CAPEC description {cap.description}.
+
+V.4 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Is CVE {cve:CVE.id} in KEV and what action is required?
+Answer: CVE {cve.id} is tracked in KEV as {kev:cve.known_exploit>KEV.vulnerabilityName}. Required action: {kev.requiredAction}. Due date: {kev.dueDate}.
+
+V.5 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Compare exploitation likelihood and technical severity for CVE {cve:CVE.id}.
+Answer: CVE {cve.id} has EPSS {e:cve.scores<EPSS.epss} (percentile {e.percentile}) and CVSS base score {cve.cvss3_1_baseScore}. Use both likelihood and impact to prioritize.
+
+V.6 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Map CVE {cve:CVE.id} to ATT&CK technique context.
+Answer: CVE {cve.id} impacts CAPEC {cap:cve.impacts>CAPEC.name}, which maps to ATT&CK technique {ap:cap.map_ap>attack-pattern.name} ({ap.id}) in tactic {ta:ap.achieves>x-mitre-tactic.name}.
+
+V.7 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: What detection and mitigation guidance applies to CVE {cve:CVE.id} through its weakness mapping?
+Answer: CVE {cve.id} maps to weakness {cwe:cve.problemType>Weakness.name}. Detect via {dm:cwe.detected_by>Detection_Method.method}. Mitigate via {mit:cwe.mitigated_by>Mitigation.description}.
+
+V.8 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Identify high-priority CVEs by score and exploitation context.
+Answer: CVE {cve:CVE.id} with CVSS {cve.cvss3_1_baseScore} and EPSS {e:cve.scores<EPSS.epss} should be escalated when score context is high. <*{cve.cvss3_1_baseScore[_>=7]}*> 
+
+
+KEV (Known Exploited Vulnerabilities) Templates
+S.1 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Assess remediation urgency for KEV {kev:KEV.vulnerabilityName} affecting {kev.product}.
+Answer: KEV {kev.vulnerabilityName} (CVE {kev.cveID}) is actively exploited in {kev.product} ({kev.vendorProject}). Required action: {kev.requiredAction} by {kev.dueDate}.
+
+S.2 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Explain the operational significance of KEV due date {kev:KEV.dueDate}.
+Answer: Due date {kev.dueDate} for CVE {kev.cveID} indicates required remediation timing for active exploitation risk reduction.
+
+S.3 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Is KEV {kev:KEV.vulnerabilityName} associated with ransomware activity?
+Answer: KEV {kev.vulnerabilityName} has ransomware-use field value {kev.knownRansomwareCampaignUse} and notes {kev.notes}.
+
+S.4 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Which weakness is associated with KEV {kev:KEV.vulnerabilityName}?
+Answer: KEV {kev.vulnerabilityName} links to weakness {cwe:kev.known_exploit<Weakness.name} (CWE-{cwe.id}) with description {cwe.extended_description}.
+
+S.5 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Provide CVSS and EPSS context for KEV {kev:KEV.vulnerabilityName}.
+Answer: KEV {kev.vulnerabilityName} maps to CVE {cve:kev.known_exploit<CVE.id} with CVSS {cve.cvss3_1_baseScore} and EPSS {e:cve.scores<EPSS.epss} ({e.percentile}).
+
+S.6 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Correlate KEV {kev:KEV.vulnerabilityName} to ATT&CK technique coverage.
+Answer: CVE {cve:kev.known_exploit<CVE.id} impacts CAPEC {cap:cve.impacts>CAPEC.name}, mapped to ATT&CK technique {ap:cap.map_ap>attack-pattern.name} ({ap.id}).
+
+S.7 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: What mitigation and detection guidance can be derived from KEV {kev:KEV.vulnerabilityName} via CWE mapping?
+Answer: KEV {kev.vulnerabilityName} links to CWE {cwe:kev.known_exploit<Weakness.name}. Detection: {dm:cwe.detected_by>Detection_Method.method}. Mitigation: {mit:cwe.mitigated_by>Mitigation.description}.
+
+S.8 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Compare two KEV entries on the same product for patch sequencing.
+Answer: For product {kev1:KEV.product}, prioritize {kev1.vulnerabilityName} before {kev2:KEV.vulnerabilityName} when due date is earlier. <*{force kev1.product=kev2.product} {force kev1.dueDate < kev2.dueDate}*>
+
+
+EPSS Templates
+P.1 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Assess exploit likelihood using EPSS for CVE-{e:EPSS.cve}.
+Answer: CVE {cve:e.scores>CVE.id} has EPSS {e.epss} and percentile {e.percentile}. Higher values indicate greater near-term exploitation likelihood.
+
+P.2 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Compare EPSS and CVSS for CVE-{e:EPSS.cve}.
+Answer: CVE {cve:e.scores>CVE.id} has EPSS {e.epss} and CVSS {cve.cvss3_1_baseScore}. EPSS reflects exploitation probability; CVSS reflects technical impact.
+
+P.3 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Does CVE-{e:EPSS.cve} have KEV confirmation of active exploitation?
+Answer: CVE {cve:e.scores>CVE.id} has EPSS {e.epss} and KEV status via {kev:cve.known_exploit>KEV.cveID}. Use both to drive urgent remediation.
+
+P.4 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Correlate EPSS with CWE for CVE-{e:EPSS.cve}.
+Answer: CVE {cve:e.scores>CVE.id} maps to weakness {cwe:cve.problemType>Weakness.name} (CWE-{cwe.id}) and has EPSS {e.epss}.
+
+P.5 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Correlate EPSS to CAPEC and ATT&CK for CVE-{e:EPSS.cve}.
+Answer: CVE {cve:e.scores>CVE.id} impacts CAPEC {cap:cve.impacts>CAPEC.name}, mapped to ATT&CK technique {ap:cap.map_ap>attack-pattern.name} ({ap.id}); EPSS is {e.epss}.
+
+P.6 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Identify high-likelihood exploitation candidates from EPSS record CVE-{e:EPSS.cve}.
+Answer: CVE {cve:e.scores>CVE.id} has EPSS {e.epss} and percentile {e.percentile}. Prioritize records with high percentile.
+
+P.7 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Provide detection guidance for high-EPSS CVEs using ATT&CK links, starting from CVE-{e:EPSS.cve}.
+Answer: CVE {cve:e.scores>CVE.id} with EPSS {e.epss} maps to CAPEC {cap:cve.impacts>CAPEC.name} and ATT&CK {ap:cap.map_ap>attack-pattern.name}. Detect using detection strategy "{ds:ap.detects<.name}", with analytic "{anl:ds.implemented_by.name}", that requires data component "{anl.requires_data.name}”.
+
+P.8 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Compare two CVEs in the same CWE family and prioritize by EPSS.
+Answer: CVE {cve1:CVE.id} (EPSS {e1:cve1.scores<EPSS.epss}) and CVE {cve2:CVE.id} (EPSS {e2:cve2.scores<EPSS.epss}) share weakness {cwe:cve1.problemType>Weakness.name}. Prioritize {cve1.id}. <*{force cve1.problemType.id=cve2.problemType.id} {force e1.epss > e2.epss}*>
+
+
+MITRE ENGAGE Templates
+E.1 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Describe ENGAGE activity {act:activity.name} and its mapped tactic/technique context.
+Answer: Activity {act.name} ({act.id}) uses technique {atk:act.uses_technique>attack_technique.name} ({atk.id}) and aligns to tactic {at:act.with_tactic>attack_tactic.name} ({at.id}).
+
+E.2 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Summarize approach and goal design for ENGAGE activity {act:activity.name}.
+Answer: Activity {act.name} uses approach {app:act.has_approach>approach.name} and goal {g:act.has_goal>goal.name}. Approach detail: {app.description}. Goal detail: {g.description}.
+
+E.3 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Explain how approach {app:approach.name} supports activity operations.
+Answer: Approach {app.name} ({app.id}) supports activity {act:app.for_activity>activity.name} and is tied to goal {g:app.with_goal>goal.name}.
+
+E.4 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Which approach is associated with goal {g:goal.name}?
+Answer: Goal {g.name} ({g.id}) is associated with approach {app:g.for_approach>approach.name}, whose description is {app.description}.
+
+E.5 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Map ENGAGE technique {atk:attack_technique.name} to ATT&CK and tactic context.
+Answer: ENGAGE technique {atk.name} ({atk.id}) maps to ATT&CK technique {ap:atk.maps_ap>attack-pattern.name} ({ap.id}) and tactic {ta:atk.achieves>x-mitre-tactic.name}.
+
+E.6 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Map ENGAGE tactic {at:attack_tactic.name} to ATT&CK tactic context.
+Answer: ENGAGE tactic {at.name} ({at.id}) maps to ATT&CK tactic {ta:at.maps_ack>x-mitre-tactic.name} ({ta.id}) with description {ta.description}.
+
+E.7 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Correlate activity, vulnerability, and technique objects in ENGAGE.
+Answer: Activity {act:activity.name} is for vulnerability {v1:act.for_vulnerability>vulnerability.id} and uses technique {atk:act.uses_technique>attack_technique.name}. Technique {atk.id} is also linked to vulnerability {v2:atk.for_vulnerability>vulnerability.id}. <*{force v1.id=v2.id}*>
+
+E.8 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Align ENGAGE and ATT&CK tactic context for an activity.
+Answer: Activity {act:activity.name} maps to ENGAGE tactic {at:act.with_tactic>attack_tactic.name} and ATT&CK tactic {ta:at.maps_ack>x-mitre-tactic.name}. Its technique {atk:act.uses_technique>attack_technique.name} maps to ATT&CK {ap:atk.maps_ap>attack-pattern.name}. <*{force ta.id=ap.achieves.id}*>
+
+
+Cross-Source Correlation Templates
+X.1 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Build a full risk chain from EPSS through CVE, KEV, CWE, CAPEC, and ATT&CK.
+Answer: EPSS entry CVE-{e:EPSS.cve} maps to CVE {cve:e.scores>CVE.id}, KEV {kev:cve.known_exploit>KEV.vulnerabilityName}, weakness {cwe:cve.problemType>Weakness.name}, CAPEC {cap:cve.impacts>CAPEC.name}, and ATT&CK technique {ap:cap.map_ap>attack-pattern.name} ({ap.id}).
+
+X.2 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Correlate KEV {kev:KEV.vulnerabilityName} to ATT&CK tactic and mitigation recommendations.
+Answer: KEV {kev.vulnerabilityName} maps to CVE {cve:kev.known_exploit<CVE.id}, CAPEC {cap:cve.impacts>CAPEC.name}, ATT&CK technique {ap:cap.map_ap>attack-pattern.name}, tactic {ta:ap.achieves>x-mitre-tactic.name}, and mitigation {coa:ap.mitigates<course-of-action.name}.
+
+X.3 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Validate CWE consistency between CVE problem type and CAPEC exploited weakness.
+Answer: CVE {cve:CVE.id} maps to CAPEC {cap:cve.impacts>CAPEC.name} and CWE {cwe1:cve.problemType>Weakness.name}. CAPEC {cap.id} exploits CWE {cwe2:cap.exploits>Weakness.name}. <*{force cwe1.id=cwe2.id}*>
+
+X.4 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Build a weakness-centric chain across CVE, KEV, EPSS, CAPEC, and ATT&CK.
+Answer: Weakness {cwe:Weakness.name} is observed as CVE {cve:cwe.observed_as>CVE.id}, linked to KEV {kev:cwe.known_exploit>KEV.vulnerabilityName}, with EPSS {e:cve.scores<EPSS.epss}, CAPEC {cap:cwe.related_attack_pattern>CAPEC.name}, and ATT&CK {ap:cap.map_ap>attack-pattern.name}.
+
+X.5 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Correlate threat actor tradecraft with vulnerability intelligence.
+Answer: Intrusion set {is:intrusion-set.name} uses ATT&CK technique {ap:is.uses>attack-pattern.name}. That technique maps from CAPEC {cap:ap.map_ap<CAPEC.name}, which is impacted by CVE {cve:CVE.id} with EPSS {e:cve.scores<EPSS.epss} and KEV {kev:cve.known_exploit>KEV.cveID}. <*{force cap.id=cve.impacts.id}*>
+
+X.6 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Correlate MITRE ENGAGE activity with ATT&CK and CVE risk context.
+Answer: ENGAGE activity {act:activity.name} uses technique {atk:act.uses_technique>attack_technique.name}, mapped to ATT&CK {ap:atk.maps_ap>attack-pattern.name}. That ATT&CK technique aligns to CAPEC {cap:ap.map_ap<CAPEC.name} impacted by CVE {cve:CVE.id} with EPSS {e:cve.scores<EPSS.epss}. <*{force cap.id=cve.impacts.id}*>
+
+X.7 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Build detection-first prioritization for KEV vulnerabilities using ATT&CK analytics.
+Answer: KEV {kev:KEV.vulnerabilityName} maps to CVE {cve:kev.known_exploit<CVE.id}, CAPEC {cap:cve.impacts>CAPEC.name}, and ATT&CK {ap:cap.map_ap>attack-pattern.name}. Detect via strategy {det:ap.detects<x-mitre-detection-strategy.name}, analytic {an:det.implemented_by>x-mitre-analytic.name}, and data component {dc:an.requires_data>x-mitre-data-component.name}.
+
+X.8 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Prioritize two CVEs in the same weakness family using EPSS and KEV metadata.
+Answer: CVE {cve1:CVE.id} has EPSS {e1:cve1.scores<EPSS.epss} and KEV entry {kev1:cve1.known_exploit>KEV.vulnerabilityName}; CVE {cve2:CVE.id} has EPSS {e2:cve2.scores<EPSS.epss} and KEV entry {kev2:cve2.known_exploit>KEV.vulnerabilityName}. Prioritize {cve1.id}. <*{force cve1.problemType.id=cve2.problemType.id} {force e1.epss > e2.epss}*>
+
