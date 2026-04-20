@@ -22,7 +22,7 @@
 #
 # Defaults (tuned for a single-node multi-GPU box; override as needed):
 #   --model        Qwen/Qwen2.5-7B-Instruct
-#   --dataset      ift_data
+#   --dataset      ift_data_2026_04_20
 #   --template     qwen
 #   --finetuning   lora
 #   --epochs       2
@@ -46,7 +46,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SFT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 MODEL="Qwen/Qwen2.5-7B-Instruct"
-DATASET="ift_data"
+DATASET="ift_data_2026_04_20"
 TEMPLATE="qwen"
 FINETUNING="lora"
 EPOCHS="2"
