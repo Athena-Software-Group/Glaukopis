@@ -111,10 +111,118 @@ def extract_templates_from_json(args) -> list[dict]:
     return lst_tmpls
 
 
+def extract_templates_from_txt(args) -> list[dict]:
+    """
+    Reads templates from a plain-text file.
+    Expected format per template block (blocks separated by blank lines):
+
+      ID Instruction: <text>
+      Question: <text>
+      [A) ...  B) ...  C) ...  D) ...]   (optional MCQ options, appended to question)
+      Answer: <text>
+      [{force ...}]    (optional constraint annotations — skipped)
+      [Summary: <text>]
+      [Schema: <text>]
+    """
+    with open(args.input, "r") as fin:
+        lines = [l.rstrip("\n") for l in fin]
+
+    re_id_instr = re.compile(r"^(\S+)\s+Instruction:\s*(.+)$")
+
+    lst_tmpls = []
+    i = 0
+
+    while i < len(lines):
+        line = lines[i].strip()
+        m = re_id_instr.match(line)
+        if not m:
+            i += 1
+            continue
+
+        src_line = i + 1
+        t_id = m.group(1)
+        t_instr = m.group(2).strip()
+        i += 1
+
+        # Collect Question (skip any intervening blank lines)
+        t_q = None
+        while i < len(lines):
+            l = lines[i].strip()
+            if re_id_instr.match(l):
+                break
+            if l.startswith("Question:"):
+                q_parts = [l[len("Question:"):].strip()]
+                i += 1
+                # Append MCQ option lines (A) … D)) that immediately follow
+                while i < len(lines) and re.match(r"^[A-D]\)", lines[i].strip()):
+                    q_parts.append(lines[i].strip())
+                    i += 1
+                t_q = "\n".join(q_parts)
+                break
+            i += 1
+
+        if t_q is None:
+            print(f"\n@@@ Template {t_id} at line {src_line}: missing Question — skipping.\n")
+            continue
+
+        # Collect Answer
+        t_a = None
+        while i < len(lines):
+            l = lines[i].strip()
+            if re_id_instr.match(l):
+                break
+            if l.startswith("Answer:"):
+                t_a = l[len("Answer:"):].strip()
+                i += 1
+                break
+            i += 1
+
+        if t_a is None:
+            print(f"\n@@@ Template {t_id} at line {src_line}: missing Answer — skipping.\n")
+            continue
+
+        t_text = f"Instruction: {t_instr}\n\nQuestion: {t_q}\n\nAnswer: {t_a}"
+        tmpl = {
+            "shortname":   t_id,
+            "comment":     t_id,
+            "text":        t_text,
+            "source_file": args.input,
+            "source_line": src_line,
+            "count_limit": args.count_limit,
+        }
+
+        # Collect optional Summary/Schema; skip {force} lines and blank lines
+        while i < len(lines):
+            l = lines[i].strip()
+            if re_id_instr.match(l):
+                break  # leave for outer loop
+            if l == "" or l.startswith("{force"):
+                i += 1
+                continue
+            for prefix in ("Summary", "Schema"):
+                if l.startswith(f"{prefix}: "):
+                    tmpl[prefix.lower()] = l[len(f"{prefix}: "):]
+                    break
+            i += 1
+
+        lst_tmpls.append(tmpl)
+        print(f"    Loaded template {t_id}")
+
+    return lst_tmpls
+
+
 def extract_templates(args):
     # Route to JSON handler when input is a JSON file
     if args.input.lower().endswith(".json"):
         lst_tmpls = extract_templates_from_json(args)
+        with open(args.out, "w") as fout:
+            fout.write(json.dumps(lst_tmpls, indent=4))
+        print(f"\nWrote {len(lst_tmpls)} templates to file {args.out}")
+        return
+
+    # Route to plain-text handler for .txt files
+    if args.input.lower().endswith(".txt"):
+        lst_tmpls = extract_templates_from_txt(args)
         with open(args.out, "w") as fout:
             fout.write(json.dumps(lst_tmpls, indent=4))
         print(f"\nWrote {len(lst_tmpls)} templates to file {args.out}")
@@ -186,7 +294,7 @@ Usage examples:
          type=str,
          required=True,
 #         default="",
-         help="Input file: Word document (.docx) or structured JSON array (.json)"
+         help="Input file: Word document (.docx), plain-text (.txt), or structured JSON array (.json)"
     )
     
     parser.add_argument(
