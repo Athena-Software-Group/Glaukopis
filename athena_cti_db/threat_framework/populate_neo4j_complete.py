@@ -2443,6 +2443,24 @@ def create_achieves_relationships(cti_dir: Path):
     except Exception as e:
         logger.error(f"Failed to create achieves relationships: {e}")
 
+
+def create_mitigated_by_relationships():
+    """Derive (attack-pattern)-[:mitigated_by]->(course-of-action) as the inverse
+    of the already-imported (course-of-action)-[:mitigates]->(attack-pattern).
+    Must be called after process_attack_relationships() has run.
+    """
+    logger.info("Creating derived mitigated_by relationships...")
+    query = (
+        "MATCH (coa:`course-of-action`)-[:mitigates]->(ap:`attack-pattern`) "
+        "MERGE (ap)-[:mitigated_by]->(coa)"
+    )
+    try:
+        execute_queries([{'statement': query}])
+        logger.info("mitigated_by relationships created successfully")
+    except Exception as e:
+        logger.error(f"Failed to create mitigated_by relationships: {e}")
+
+
 def import_all_data(data_dir: Optional[Path] = None):
     """Main function to import all threat intelligence data."""
     logger.info("Starting complete threat intelligence data import...")
@@ -2475,6 +2493,9 @@ def import_all_data(data_dir: Optional[Path] = None):
     # 5. ATT&CK achieves relationships
     logger.info("Creating derived achieves relationships...")
     create_achieves_relationships(data_dir / "cti")
+
+    # 5b. Derived mitigated_by (inverse of mitigates)
+    create_mitigated_by_relationships()
 
     # 6. CAPEC nodes
     logger.info("Processing CAPEC data...")
