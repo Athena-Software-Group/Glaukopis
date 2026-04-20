@@ -1236,13 +1236,28 @@ class TmplGenNeo4j:
         
         str_order = self.qry_make_order(tmplobj)
         
+        # Primary form: sample over the full candidate space for diversity
+        # (LIMIT after RETURN DISTINCT ... ORDER BY rand()).
+        # Fallback form: apply LIMIT before RETURN to bound memory for queries
+        # whose Cartesian fan-out would otherwise exceed dbms.memory.transaction.total.max.
         match_query = f"MATCH {str_match}     {str_where}{str_with}     RETURN DISTINCT {str_return}     {str_order}     LIMIT {limit}"
+        match_query_fallback = f"MATCH {str_match}     {str_where}{str_with}     LIMIT {limit}     RETURN DISTINCT {str_return}     {str_order}"
 
         if self.gencfg.get("verbose", 0) > 0:
             print(f"\nMatch query:\n{match_query}\n")
-        
+
         # a sequence of results
-        qry_results = self.neo4j_driver.run_query_collect(match_query)
+        try:
+            qry_results = self.neo4j_driver.run_query_collect(match_query)
+        except neo4j.exceptions.TransientError as e:
+            msg = str(e)
+            if "MemoryPool" in msg or "memory pool" in msg.lower():
+                print(f"  WARN: primary query exceeded Neo4j transaction memory; falling back to bounded form")
+                if self.gencfg.get("verbose", 0) > 0:
+                    print(f"\nFallback query:\n{match_query_fallback}\n")
+                qry_results = self.neo4j_driver.run_query_collect(match_query_fallback)
+            else:
+                raise
         
         lst_gentext = list()      # stores all generated texts
         for record in qry_results:
