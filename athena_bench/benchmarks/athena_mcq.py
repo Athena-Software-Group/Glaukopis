@@ -60,7 +60,7 @@ class ATHENAMCQ(Benchmark):
         def process_record(idx_row):
             idx, row = idx_row
             prompt = row.get('Prompt') or row.get('prompt') or ""
-            gt_value = row.get('updated_answer') or ""
+            gt_value = row.get('GT') or row.get('answer') or row.get('correct_answer') or ""
             try:
                 response = get_single_prediction(
                     prompt,
