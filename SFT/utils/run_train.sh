@@ -17,28 +17,43 @@
 #                  [--batch N] [--grad-accum N] [--cutoff N]
 #                  [--save-steps N] [--max-samples N]
 #                  [--output-dir DIR] [--report-to wandb|none|tensorboard]
+#                  [--run-name NAME] [--wandb-project NAME]
+#                  [--push-to-hf org/repo] [--hf-public] [--hf-export-dir DIR]
 #                  [--extra "--flag value --flag2 value2"]
 #                  [--overwrite] [--dry-run]
 #
 # Defaults (tuned for a single H100 80GB; override as needed):
-#   --model        meta-llama/Llama-3.1-8B-Instruct
-#   --dataset      ift_data_2026_04_20
-#   --template     llama3
-#   --finetuning   lora
-#   --epochs       2
-#   --lr           1e-04
-#   --batch        16
-#   --grad-accum   2
-#   --cutoff       2048
-#   --save-steps   500
-#   --max-samples  150000
-#   --report-to    none
+#   --model         meta-llama/Llama-3.1-8B-Instruct
+#   --dataset       ift_data_2026_04_20
+#   --template      llama3
+#   --finetuning    lora
+#   --epochs        2
+#   --lr            1e-04
+#   --batch         16
+#   --grad-accum    2
+#   --cutoff        2048
+#   --save-steps    500
+#   --max-samples   150000
+#   --report-to     none
+#   --wandb-project athena-cti-sft
+#   --run-name      <auto: model-short_ft-tag_epN_lrX_bsY_TS>
+#
+# Post-training HF push (optional):
+#   When --push-to-hf org/repo is set and training exits 0, the LoRA
+#   adapter is merged with the base model via llamafactory-cli export
+#   and uploaded to the specified repo by SFT/upload_to_hf.py. Requires
+#   $HF_TOKEN or $HUGGINGFACE_TOKEN. Private by default; --hf-public
+#   creates a public repo. Merged output lands in --hf-export-dir
+#   (default: SFT/merged/<repo-basename>).
 #
 # Examples:
 #   ./run_train.sh                                  # defaults, LoRA, fresh dir
 #   ./run_train.sh --model Qwen/Qwen2.5-14B-Instruct --template qwen --batch 8 --grad-accum 4
 #   ./run_train.sh --finetuning full --batch 1 --grad-accum 2 --lr 1e-05
 #   ./run_train.sh --dry-run                        # print the CLI, don't run
+#   ./run_train.sh --epochs 1 --lr 5e-5 --report-to wandb \
+#                  --extra "--lora_rank 16 --lora_alpha 32 --lora_dropout 0.1" \
+#                  --push-to-hf pworth1971/athena-cti-sft-llama31-8b
 
 set -euo pipefail
 
@@ -61,27 +76,37 @@ OUTPUT_DIR=""
 EXTRA_ARGS=""
 OVERWRITE=0
 DRY_RUN=0
+RUN_NAME=""
+WANDB_PROJECT_ARG=""
+PUSH_TO_HF=""
+HF_PUBLIC=0
+HF_EXPORT_DIR=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --model)       MODEL="$2";       shift 2 ;;
-        --dataset)     DATASET="$2";     shift 2 ;;
-        --template)    TEMPLATE="$2";    shift 2 ;;
-        --finetuning)  FINETUNING="$2";  shift 2 ;;
-        --epochs)      EPOCHS="$2";      shift 2 ;;
-        --lr)          LR="$2";          shift 2 ;;
-        --batch)       BATCH="$2";       shift 2 ;;
-        --grad-accum)  GRAD_ACCUM="$2";  shift 2 ;;
-        --cutoff)      CUTOFF="$2";      shift 2 ;;
-        --save-steps)  SAVE_STEPS="$2";  shift 2 ;;
-        --max-samples) MAX_SAMPLES="$2"; shift 2 ;;
-        --output-dir)  OUTPUT_DIR="$2";  shift 2 ;;
-        --report-to)   REPORT_TO="$2";   shift 2 ;;
-        --extra)       EXTRA_ARGS="$2";  shift 2 ;;
-        --overwrite)   OVERWRITE=1;      shift ;;
-        --dry-run)     DRY_RUN=1;        shift ;;
+        --model)         MODEL="$2";             shift 2 ;;
+        --dataset)       DATASET="$2";           shift 2 ;;
+        --template)      TEMPLATE="$2";          shift 2 ;;
+        --finetuning)    FINETUNING="$2";        shift 2 ;;
+        --epochs)        EPOCHS="$2";            shift 2 ;;
+        --lr)            LR="$2";                shift 2 ;;
+        --batch)         BATCH="$2";             shift 2 ;;
+        --grad-accum)    GRAD_ACCUM="$2";        shift 2 ;;
+        --cutoff)        CUTOFF="$2";            shift 2 ;;
+        --save-steps)    SAVE_STEPS="$2";        shift 2 ;;
+        --max-samples)   MAX_SAMPLES="$2";       shift 2 ;;
+        --output-dir)    OUTPUT_DIR="$2";        shift 2 ;;
+        --report-to)     REPORT_TO="$2";         shift 2 ;;
+        --run-name)      RUN_NAME="$2";          shift 2 ;;
+        --wandb-project) WANDB_PROJECT_ARG="$2"; shift 2 ;;
+        --push-to-hf)    PUSH_TO_HF="$2";        shift 2 ;;
+        --hf-public)     HF_PUBLIC=1;            shift ;;
+        --hf-export-dir) HF_EXPORT_DIR="$2";     shift 2 ;;
+        --extra)         EXTRA_ARGS="$2";        shift 2 ;;
+        --overwrite)     OVERWRITE=1;            shift ;;
+        --dry-run)       DRY_RUN=1;              shift ;;
         -h|--help)
-            sed -n '3,41p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+            sed -n '3,56p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
             exit 0 ;;
         *) echo "Unknown argument: $1" >&2; exit 1 ;;
     esac
@@ -114,13 +139,49 @@ CONFIG_FILE="${OUTPUT_DIR}/train_config.json"
 
 # LoRA vs full-parameter flags. LoRA adds four extra switches; full adds none.
 LORA_ARGS=()
+LORA_RANK_DEFAULT="64"
+LORA_ALPHA_DEFAULT="128"
 if [[ "${FINETUNING}" == "lora" ]]; then
     LORA_ARGS=(
-        --lora_rank 64
-        --lora_alpha 128
+        --lora_rank "${LORA_RANK_DEFAULT}"
+        --lora_alpha "${LORA_ALPHA_DEFAULT}"
         --lora_dropout 0.05
         --lora_target all
     )
+fi
+
+# Build a wandb/trainer run name that encodes the headline hyperparameters,
+# so runs are readable at a glance in the dashboard. User --run-name wins.
+# Any --lora_rank / --lora_alpha override in --extra is reflected here too.
+SHORT_MODEL="$(basename "${MODEL}")"
+SHORT_MODEL="${SHORT_MODEL%-Instruct}"
+SHORT_MODEL="${SHORT_MODEL%-instruct}"
+SHORT_MODEL="${SHORT_MODEL%-Chat}"
+EFFECTIVE_BATCH=$(( BATCH * GRAD_ACCUM ))
+FT_TAG="${FINETUNING}"
+if [[ "${FINETUNING}" == "lora" ]]; then
+    EFF_RANK="${LORA_RANK_DEFAULT}"
+    EFF_ALPHA="${LORA_ALPHA_DEFAULT}"
+    if [[ "${EXTRA_ARGS}" =~ --lora_rank[[:space:]]+([0-9]+) ]]; then
+        EFF_RANK="${BASH_REMATCH[1]}"
+    fi
+    if [[ "${EXTRA_ARGS}" =~ --lora_alpha[[:space:]]+([0-9]+) ]]; then
+        EFF_ALPHA="${BASH_REMATCH[1]}"
+    fi
+    FT_TAG="lora-r${EFF_RANK}a${EFF_ALPHA}"
+fi
+AUTO_RUN_NAME="${SHORT_MODEL}_${FT_TAG}_ep${EPOCHS}_lr${LR}_bs${EFFECTIVE_BATCH}_${TIMESTAMP}"
+if [[ -z "${RUN_NAME}" ]]; then
+    RUN_NAME="${AUTO_RUN_NAME}"
+fi
+
+# wandb project: explicit --wandb-project > pre-set $WANDB_PROJECT > default
+if [[ "${REPORT_TO}" == "wandb" ]]; then
+    if [[ -n "${WANDB_PROJECT_ARG}" ]]; then
+        export WANDB_PROJECT="${WANDB_PROJECT_ARG}"
+    else
+        export WANDB_PROJECT="${WANDB_PROJECT:-athena-cti-sft}"
+    fi
 fi
 
 # Snapshot the effective configuration so the run is reproducible without
@@ -143,6 +204,9 @@ cfg = {
     "max_samples": int("${MAX_SAMPLES}"),
     "report_to": "${REPORT_TO}",
     "output_dir": "${OUTPUT_DIR}",
+    "run_name": "${RUN_NAME}",
+    "wandb_project": "${WANDB_PROJECT:-}",
+    "push_to_hf": "${PUSH_TO_HF}",
     "extra_args": "${EXTRA_ARGS}",
     "git_sha": "${GIT_SHA}",
     "git_status": "${GIT_DIRTY}",
@@ -177,6 +241,7 @@ BASE_ARGS=(
     --packing False
     --enable_thinking False
     --report_to "${REPORT_TO}"
+    --run_name "${RUN_NAME}"
     --output_dir "${OUTPUT_DIR}"
     --bf16 True
     --plot_loss True
@@ -201,7 +266,10 @@ print_banner() {
     echo "  dataset    : ${DATASET} (template=${TEMPLATE})"
     echo "  finetuning : ${FINETUNING}"
     echo "  epochs/lr  : ${EPOCHS} / ${LR}"
-    echo "  batch/accum: ${BATCH} / ${GRAD_ACCUM} (cutoff=${CUTOFF})"
+    echo "  batch/accum: ${BATCH} / ${GRAD_ACCUM} (cutoff=${CUTOFF}, eff_batch=${EFFECTIVE_BATCH})"
+    echo "  run name   : ${RUN_NAME}"
+    echo "  wandb proj : ${WANDB_PROJECT:-<not set>}"
+    echo "  push to hf : ${PUSH_TO_HF:-<none>}"
     echo "  output dir : ${OUTPUT_DIR}"
     echo "  log file   : ${LOG_FILE}"
     echo "  config     : ${CONFIG_FILE}"
@@ -218,6 +286,13 @@ if [[ ${DRY_RUN} -eq 1 ]]; then
         printf ' %q' "${a}"
     done
     echo
+    if [[ -n "${PUSH_TO_HF}" ]]; then
+        echo
+        echo "[dry-run] post-training HF push:"
+        echo "  python ${SFT_DIR}/upload_to_hf.py --adapter-dir ${OUTPUT_DIR} \\"
+        echo "      --base-model ${MODEL} --template ${TEMPLATE} \\"
+        echo "      --repo-id ${PUSH_TO_HF}$([[ ${HF_PUBLIC} -eq 1 ]] && echo ' --public')"
+    fi
     exit 0
 fi
 
@@ -240,6 +315,46 @@ fi
     echo "  finished: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
     echo "  exit    : ${status}"
     echo "  model   : ${OUTPUT_DIR}"
+
+    # Optional post-training step: merge LoRA + push to HF Hub. Runs only on
+    # a clean training exit; a non-zero train status short-circuits the push.
+    if [[ ${status} -eq 0 && -n "${PUSH_TO_HF}" ]]; then
+        echo
+        echo "=== HF push ==="
+        echo "  repo     : ${PUSH_TO_HF} ($([[ ${HF_PUBLIC} -eq 1 ]] && echo public || echo private))"
+        if [[ "${FINETUNING}" != "lora" ]]; then
+            echo "  [WARN] --push-to-hf with --finetuning ${FINETUNING}: uploading the"
+            echo "         output dir directly; upload_to_hf.py will not run a merge step"
+            echo "         for non-LoRA runs. Use --merged-dir manually if needed."
+            status=1
+        else
+            PUSH_ARGS=(
+                --adapter-dir "${OUTPUT_DIR}"
+                --base-model  "${MODEL}"
+                --template    "${TEMPLATE}"
+                --repo-id     "${PUSH_TO_HF}"
+            )
+            if [[ -n "${HF_EXPORT_DIR}" ]]; then
+                PUSH_ARGS+=( --export-dir "${HF_EXPORT_DIR}" )
+            fi
+            if [[ ${HF_PUBLIC} -eq 1 ]]; then
+                PUSH_ARGS+=( --public )
+            fi
+            set +e
+            python "${SFT_DIR}/upload_to_hf.py" "${PUSH_ARGS[@]}"
+            push_status=$?
+            set -e
+            echo "  finished: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+            echo "  exit    : ${push_status}"
+            if [[ ${push_status} -ne 0 ]]; then
+                status=${push_status}
+            fi
+        fi
+    elif [[ ${status} -ne 0 && -n "${PUSH_TO_HF}" ]]; then
+        echo
+        echo "[push-to-hf] skipped: training exited ${status}"
+    fi
+
     exit ${status}
 } 2>&1 | tee "${LOG_FILE}"
 
