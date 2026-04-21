@@ -222,7 +222,16 @@ else
     echo "Activate the environment with:"
 fi
 echo "    conda activate ${ENV_NAME}"
-echo "Then launch training, e.g.:"
+echo
+echo "Authenticate before training:"
+echo "    huggingface-cli login    # REQUIRED (Llama-3.1-8B-Instruct is a gated model)"
+echo "    wandb login              # optional, only needed if passing --report-to wandb"
+echo
+echo "Then launch training (defaults: Llama-3.1-8B-Instruct LoRA on ift_data_2026_04_20):"
 echo "    cd ${SFT_DIR}"
-echo "    bash ift_training_qwen_2.5_14b.sh"
-echo "Remember to 'wandb login' and 'huggingface-cli login' before training if needed."
+echo "    bash utils/run_train.sh --dry-run   # inspect the command, no training"
+echo "    bash utils/run_train.sh             # kick off the real run"
+echo
+echo "Override defaults as needed, e.g.:"
+echo "    bash utils/run_train.sh --epochs 1 --lr 5e-5 --report-to wandb \\"
+echo "        --extra \"--lora_rank 16 --lora_alpha 32 --lora_dropout 0.1 --eval_steps 100\""
