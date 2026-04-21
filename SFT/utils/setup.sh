@@ -111,8 +111,10 @@ for extra in ${EXTRAS}; do
 done
 
 # 6. Training/experiment tooling ---------------------------------------------
-echo "=== Installing wandb + huggingface_hub ==="
-pip install wandb huggingface_hub
+# python-dotenv: upload_to_hf.py reads HF_TOKEN / HUGGINGFACE_TOKEN from .env
+# files at SFT/ (and repo root) as one of its credential sources.
+echo "=== Installing wandb + huggingface_hub + python-dotenv ==="
+pip install wandb huggingface_hub python-dotenv
 
 # 7. flash-attn (optional) ----------------------------------------------------
 # flash-attn is installed opportunistically: training configs can use it when
@@ -224,8 +226,11 @@ fi
 echo "    conda activate ${ENV_NAME}"
 echo
 echo "Authenticate before training:"
-echo "    huggingface-cli login    # REQUIRED (Llama-3.1-8B-Instruct is a gated model)"
+echo "    hf auth login            # REQUIRED (Llama-3.1-8B-Instruct is a gated model)"
 echo "    wandb login              # optional, only needed if passing --report-to wandb"
+echo
+echo "Alternatively, put HF_TOKEN=... (or HUGGINGFACE_TOKEN=...) in ${SFT_DIR}/.env."
+echo "utils/run_train.sh --push-to-hf and upload_to_hf.py read it from there."
 echo
 echo "Then launch training (defaults: Llama-3.1-8B-Instruct LoRA on ift_data_2026_04_20):"
 echo "    cd ${SFT_DIR}"
