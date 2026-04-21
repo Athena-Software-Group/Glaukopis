@@ -199,7 +199,7 @@ def extract_templates_from_txt(args) -> list[dict]:
             if l == "" or l.startswith("{force"):
                 i += 1
                 continue
-            for prefix in ("Summary", "Schema", "Sample"):
+            for prefix in ("Summary", "Schema", "Sample", "Shuffle"):
                 if l.startswith(f"{prefix}: "):
                     tmpl[prefix.lower()] = l[len(f"{prefix}: "):]
                     break

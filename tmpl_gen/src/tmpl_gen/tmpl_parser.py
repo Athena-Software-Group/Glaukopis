@@ -19,6 +19,8 @@ import os
 import os.path
 import sys
 import json
+import re
+import random
 import time
 import datetime
 from datetime import timezone
@@ -1115,6 +1117,41 @@ class TmplGenNeo4j:
         return pv
     
  
+    # Regexes for native MCQ option shuffling (see _shuffle_mcq_options).
+    _MCQ_OPT_RE = re.compile(r"^([A-E])\)[ \t]+(.+?)[ \t]*$", re.M)
+    _MCQ_ANS_RE = re.compile(r"Therefore,\s+([A-E])\.")
+
+    @classmethod
+    def _shuffle_mcq_options(cls, text:str) -> str:
+        """
+        For an MCQ-style rendered triple (5 option lines labelled A)..E) in the
+        Question block and a final "Therefore, <letter>." in the Answer), shuffle
+        the options to a random A-E order and remap the final answer letter to
+        the new position of the originally correct option.
+
+        Returns the original text unchanged if the expected MCQ shape is not
+        detected (5 contiguous A-E options + one "Therefore, X." tail).
+        """
+        matches = list(cls._MCQ_OPT_RE.finditer(text))
+        if len(matches) != 5 or [m.group(1) for m in matches] != list("ABCDE"):
+            return text
+        ans_match = cls._MCQ_ANS_RE.search(text)
+        if not ans_match:
+            return text
+        orig_correct_idx = ord(ans_match.group(1)) - ord('A')
+
+        options = [m.group(2) for m in matches]
+        perm = list(range(5))
+        random.shuffle(perm)
+        new_options = [options[perm[i]] for i in range(5)]
+        new_correct_letter = chr(ord('A') + perm.index(orig_correct_idx))
+
+        start, end = matches[0].start(), matches[-1].end()
+        new_block = "\n".join(f"{chr(ord('A')+i)}) {new_options[i]}" for i in range(5))
+        new_text = text[:start] + new_block + text[end:]
+        new_text = cls._MCQ_ANS_RE.sub(f"Therefore, {new_correct_letter}.", new_text, count=1)
+        return new_text
+
     def process_template(self, tmplobj:dict) -> tuple[list[str], str]:
         """
         Process one template described by a JSON object (a dict) with properties:
@@ -1324,6 +1361,7 @@ class TmplGenNeo4j:
                 raise
         
         lst_gentext = list()      # stores all generated texts
+        shuffle_mode = str(tmplobj.get("shuffle", "")).strip().lower()
         for record in qry_results:
             # record is a neo4j Record object that looks like a dictionary, 
             # key:value pairs, where key is nodevar and value is the value from the DB
@@ -1356,6 +1394,8 @@ class TmplGenNeo4j:
                         is_invisible_counter -= 1
 
             gentext = "".join(lst_vals)
+            if shuffle_mode == "mcq":
+                gentext = self._shuffle_mcq_options(gentext)
             lst_gentext.append(gentext)
         return [lst_gentext, match_query]
 
