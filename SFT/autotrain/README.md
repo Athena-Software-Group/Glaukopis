@@ -20,6 +20,7 @@ control (LoRA, DPO, GPTQ merge, etc.).
 | `prepare_dataset.sh` | Convert `ift_data.json` into a chat-templated JSONL and upload it as an HF dataset repo. |
 | `autotrain_llama3_8b_sft.yml` | **Full-parameter SFT, conservative** — bf16, cosine, 3 epochs, `batch_size: 1 × grad_accum: 8`, `gradient_checkpointing: true`. Fits on 1× 80 GB or 2× 40 GB. |
 | `autotrain_llama3_8b_sft_fast.yml` | **Full-parameter SFT, high-throughput** — same schedule, but `batch_size: 8 × grad_accum: 1`, `gradient_checkpointing: false`. ~3-4× faster than the conservative config; needs ≥ 120 GB per GPU (2× H200, 2× H100 NVL, MI300X). |
+| `autotrain_llama3_8b_sft_fast_abaligned.yml` | **Full-parameter SFT on the AthenaBench-aligned 2026-04-22 dataset.** Clone of `_sft_fast.yml` with `project_name: athena-cti-sft-llama31-8b-abaligned` and `data.path: ${HF_USERNAME}/athena-ift-abaligned`. Training set is 138,343 rows from the `04222026/` template family (native MCQ shuffling, Description→ID ATE direction, full TAA/VSP/RCM/RMS coverage). |
 | `autotrain_llama3_8b_lora.yml` | **LoRA + int4** — rank 16, `all-linear`, `merge_adapter: true`. Fits on 1× or 2× 24 GB GPUs. |
 | `train.sh` | Launch `autotrain --config <yaml>` with logging, optional `--nohup` detach, `--cuda-devices` pinning, and a VRAM pre-flight. Defaults to the conservative full-SFT YAML; pass `--config` to select another. Prints effective batch size (`per-GPU × grad_accum × num_GPUs`) at launch. |
 | `run_athenabench.sh` | Register the trained model in `athena_bench/pipelines/models.py` (idempotent), run a smoke test, then the full sweep. |
@@ -75,6 +76,32 @@ chmod 600 SFT/autotrain/.env        # recommended
 # for the LoRA variant:
 ./run_athenabench.sh --alias athena-cti-sft-llama31-8b-lora
 ```
+
+### Variant: AthenaBench-aligned training set (2026-04-22)
+
+To train against the AthenaBench-aligned dataset (new `04222026/` template
+family, 138,343 rows; see `tmpl_gen/templates/04222026/`) run:
+
+```bash
+# 1. Push the new dataset to a dedicated HF repo (keeps it separate from the
+#    original athena-ift repo used by the baseline and -mcqfixed runs).
+./prepare_dataset.sh \
+    --src ../data/ift_data_2026_04_22.json \
+    --dataset-repo "${HF_USERNAME}/athena-ift-abaligned" \
+    --overwrite
+
+# 2. Train with the ab-aligned config; pushes to
+#    hf://${HF_USERNAME}/athena-cti-sft-llama31-8b-abaligned
+./train.sh --config autotrain_llama3_8b_sft_fast_abaligned.yml --nohup
+
+# 3. Smoke + full AthenaBench sweep
+./run_athenabench.sh --alias athena-cti-sft-llama31-8b-abaligned
+```
+
+`SFT/data/ift_data_2026_04_22.json` is gitignored (144 MB, exceeds GitHub's
+100 MB push limit). Regenerate it locally via the `tmpl_gen` pipeline or copy
+it from the workstation where it was produced before running step 1; the
+H100 does not need the raw JSON, only the HF dataset repo.
 
 ## Script reference
 
