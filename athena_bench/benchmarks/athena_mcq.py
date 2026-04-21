@@ -6,8 +6,39 @@ from pipelines.data_loader import load_json_or_jsonl
 from pipelines.models import get_single_prediction, model_mapping
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
+import re
 from tqdm import tqdm
 import os
+
+_LETTERS = ('A', 'B', 'C', 'D', 'E')
+
+
+def _normalize_mcq_gt(row: dict) -> str:
+    """Return the GT letter for an MCQ row.
+
+    Most rows carry an A-E letter in ``answer`` / ``GT`` / ``correct_answer``.
+    A small fraction of dataset rows instead carry a technique-ID substring
+    (e.g. 'T0859') that matches one of the option strings; for those we map
+    the substring back to its option letter via a word-boundary match.
+
+    Returns '' when:
+      * the GT field is empty
+      * the GT is too short to be distinctive (< 3 chars) and not a letter
+      * no option text contains the GT as a whole token
+    """
+    raw = (row.get('GT') or row.get('answer') or row.get('correct_answer') or "").strip()
+    if not raw:
+        return ""
+    if raw.upper() in _LETTERS:
+        return raw.upper()
+    if len(raw) < 3:
+        return ""
+    matches = []
+    for letter in _LETTERS:
+        opt = row.get(f'option_{letter.lower()}') or ""
+        if re.search(rf"\b{re.escape(raw)}\b", opt, re.IGNORECASE):
+            matches.append(letter)
+    return matches[0] if len(matches) == 1 else ""
 
 class ATHENAMCQ(Benchmark):
     """Benchmark class for CTI MCQ with thread pooling + safe resume."""
@@ -60,7 +91,7 @@ class ATHENAMCQ(Benchmark):
         def process_record(idx_row):
             idx, row = idx_row
             prompt = row.get('Prompt') or row.get('prompt') or ""
-            gt_value = row.get('GT') or row.get('answer') or row.get('correct_answer') or ""
+            gt_value = _normalize_mcq_gt(row)
             try:
                 response = get_single_prediction(
                     prompt,
