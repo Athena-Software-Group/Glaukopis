@@ -52,6 +52,7 @@ model_mapping = {
     'llama-3-8b': 'meta-llama/Meta-Llama-3.1-8B-Instruct',
     'llama-3-70b': 'meta-llama/Meta-Llama-3-70B-Instruct',
     'llama-primus-8b' : 'trendmicro-ailab/Llama-Primus-Merged',
+    'athena-cti-sft-llama31-8b': 'pworth1971/athena-cti-sft-llama31-8b',
     #'llama-4-17b': 'meta-llama/Llama-4-Maverick-17B-128E-Instruct',
     'minerva' : "xashru/minerva_v0",
     'llama3.3-70b': 'meta-llama/Llama-3.3-70B-Instruct',
