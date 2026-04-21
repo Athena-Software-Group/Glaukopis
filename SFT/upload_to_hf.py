@@ -11,7 +11,10 @@ Two modes:
    and only perform the upload.
 
 Token resolution order:
-    --token > $HF_TOKEN > $HUGGINGFACE_TOKEN
+    --token > $HF_TOKEN > $HUGGINGFACE_TOKEN > .env files > cached hf auth login
+
+.env files are searched in order and first-match wins for each variable:
+    <SFT>/.env  <SFT>/.env.local  <repo-root>/.env  <repo-root>/.env.local
 
 Examples:
     # merge + push (private repo)
@@ -35,8 +38,48 @@ import sys
 from pathlib import Path
 
 
+def _load_dotenv_files(script_dir):
+    """Populate os.environ from .env files without overriding existing vars.
+
+    Silently no-ops if python-dotenv is not installed. Search order is
+    SFT/.env, SFT/.env.local, <repo-root>/.env, <repo-root>/.env.local.
+    First-write-wins to honour anything the caller already exported.
+    """
+    try:
+        from dotenv import load_dotenv
+    except ImportError:
+        return []
+    repo_root = script_dir.parent
+    candidates = [
+        script_dir / ".env",
+        script_dir / ".env.local",
+        repo_root / ".env",
+        repo_root / ".env.local",
+    ]
+    loaded = []
+    for path in candidates:
+        if path.is_file():
+            load_dotenv(dotenv_path=path, override=False)
+            loaded.append(str(path))
+    return loaded
+
+
 def _resolve_token(cli_token):
-    return cli_token or os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_TOKEN")
+    """cli > HF_TOKEN > HUGGINGFACE_TOKEN > huggingface_hub cached login."""
+    if cli_token:
+        return cli_token
+    for var in ("HF_TOKEN", "HUGGINGFACE_TOKEN"):
+        val = os.getenv(var)
+        if val:
+            return val
+    try:
+        from huggingface_hub import HfFolder
+        cached = HfFolder.get_token()
+        if cached:
+            return cached
+    except Exception:
+        pass
+    return None
 
 
 def parse_args():
@@ -91,7 +134,14 @@ def merge_lora(adapter_dir, base_model, template, export_dir, export_size, dry_r
 
 def upload(folder, repo_id, token, private, dry_run):
     if not token:
-        sys.exit("No HF token: pass --token or set HF_TOKEN / HUGGINGFACE_TOKEN.")
+        sys.exit(
+            "No HF token found. Provide one of:\n"
+            "  --token <tok>\n"
+            "  export HF_TOKEN=<tok>\n"
+            "  export HUGGINGFACE_TOKEN=<tok>\n"
+            "  add HF_TOKEN=<tok> to SFT/.env or SFT/.env.local (install python-dotenv)\n"
+            "  run 'hf auth login' once to cache credentials at ~/.cache/huggingface/token"
+        )
     print(f"[upload] {folder} -> {repo_id} (private={private})")
     if dry_run:
         return
@@ -105,6 +155,9 @@ def upload(folder, repo_id, token, private, dry_run):
 def main():
     args = parse_args()
     script_dir = Path(__file__).resolve().parent
+    loaded = _load_dotenv_files(script_dir)
+    if loaded:
+        print(f"[env] loaded: {', '.join(loaded)}")
 
     if args.merged_dir:
         upload_folder_path = Path(args.merged_dir).resolve()
