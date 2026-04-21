@@ -425,3 +425,4 @@ __pycache__/
 # for regenerating datasets via the scraping pipelines.
 athena_bench/data/processed/
 athena_bench/data/raw/
+SFT/autotrain/llama31-8b-athena-ift/*
