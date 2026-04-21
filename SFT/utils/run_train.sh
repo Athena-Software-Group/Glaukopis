@@ -20,15 +20,15 @@
 #                  [--extra "--flag value --flag2 value2"]
 #                  [--overwrite] [--dry-run]
 #
-# Defaults (tuned for a single-node multi-GPU box; override as needed):
-#   --model        Qwen/Qwen2.5-7B-Instruct
+# Defaults (tuned for a single H100 80GB; override as needed):
+#   --model        meta-llama/Llama-3.1-8B-Instruct
 #   --dataset      ift_data_2026_04_20
-#   --template     qwen
+#   --template     llama3
 #   --finetuning   lora
 #   --epochs       2
 #   --lr           1e-04
-#   --batch        8
-#   --grad-accum   4
+#   --batch        16
+#   --grad-accum   2
 #   --cutoff       2048
 #   --save-steps   500
 #   --max-samples  150000
@@ -36,7 +36,7 @@
 #
 # Examples:
 #   ./run_train.sh                                  # defaults, LoRA, fresh dir
-#   ./run_train.sh --model meta-llama/Llama-3.1-8B-Instruct --template llama3
+#   ./run_train.sh --model Qwen/Qwen2.5-14B-Instruct --template qwen --batch 8 --grad-accum 4
 #   ./run_train.sh --finetuning full --batch 1 --grad-accum 2 --lr 1e-05
 #   ./run_train.sh --dry-run                        # print the CLI, don't run
 
@@ -45,14 +45,14 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SFT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-MODEL="Qwen/Qwen2.5-7B-Instruct"
+MODEL="meta-llama/Llama-3.1-8B-Instruct"
 DATASET="ift_data_2026_04_20"
-TEMPLATE="qwen"
+TEMPLATE="llama3"
 FINETUNING="lora"
 EPOCHS="2"
 LR="1e-04"
-BATCH="8"
-GRAD_ACCUM="4"
+BATCH="16"
+GRAD_ACCUM="2"
 CUTOFF="2048"
 SAVE_STEPS="500"
 MAX_SAMPLES="150000"
