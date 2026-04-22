@@ -117,10 +117,14 @@ if [[ ! -f "${SFT_DIR}/${DS_CONFIG}" ]]; then
 fi
 
 # --include_num_input_tokens_seen is already set by run_train.sh.
-# save_total_limit=3 keeps only the 3 most recent checkpoints (full 8B in
-# fp32 = ~30 GB each; a 3-epoch run at save_steps=500 would otherwise
-# produce 50+ checkpoints and fill the disk).
-EXTRA_DEFAULT="--deepspeed ${DS_CONFIG} --save_total_limit 3"
+# save_total_limit=10 keeps the 10 most recent checkpoints (plus the
+# best-eval one, which the HF Trainer preserves regardless of the limit
+# when load_best_model_at_end=True). At ~48 GB/checkpoint this caps disk
+# use around 480 GB, still comfortably under the 725 GB free on /home.
+# load_best_model_at_end + metric_for_best_model=eval_loss makes the final
+# OUTPUT_DIR (which is what gets pushed to HF) contain the minimum-eval
+# checkpoint, not whatever the last step happened to produce.
+EXTRA_DEFAULT="--deepspeed ${DS_CONFIG} --save_total_limit 10 --load_best_model_at_end True --metric_for_best_model eval_loss --greater_is_better False"
 if [[ -n "${EXTRA_USER}" ]]; then
     EXTRA_ALL="${EXTRA_DEFAULT} ${EXTRA_USER}"
 else
