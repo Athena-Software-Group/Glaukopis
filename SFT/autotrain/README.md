@@ -22,8 +22,9 @@ ATE direction, full TAA/VSP/RCM/RMS coverage).
 
 ## Prerequisites
 
-- Linux box with CUDA and ≥ 2× 80 GB GPUs (H100/H200/A100-80G). Full SFT of
-  an 8B model in bf16 needs DeepSpeed ZeRO-3 sharding across ≥ 2 GPUs.
+- Linux box with CUDA. Recommended: ≥ 2× 80 GB GPUs (H100/H200/A100-80G) for
+  pure ZeRO-3 sharding. Single-GPU hosts are supported via automatic ZeRO-3
+  CPU offload (needs ~100 GB spare CPU RAM; costs ~30–50% throughput).
 - `llm-sft` conda env created by [`../utils/setup.sh`](../utils/setup.sh).
   Single setup script, single env — no separate `autotrain` env.
 - HF credentials in `SFT/.env` (auto-created from `SFT/.env.example` on
@@ -77,14 +78,19 @@ baked in:
 - `per_device_train_batch_size=2`, `gradient_accumulation_steps=4`
   → effective batch 16 on a 2-GPU node
 - `cutoff_len=2048`, `save_steps=500`, `save_total_limit=3`
-- `--deepspeed examples/deepspeed/ds_z3_config.json` (ZeRO-3 sharding,
-  required to fit the 8B model in bf16 on 2× 80 GB)
+- DeepSpeed ZeRO-3 sharding. Config auto-selected by GPU count:
+  - ≥ 2 GPUs: `examples/deepspeed/ds_z3_config.json` (GPU-only sharding)
+  - 1 GPU:   `examples/deepspeed/ds_z3_offload_config.json` (optimizer + params offloaded to CPU)
+  Override with `--offload` (force CPU offload) or `--no-offload` (force
+  GPU-only; will OOM on < 2× 80 GB for 8B full SFT).
 - `--report-to wandb` (override with `--report-to none`)
 - Post-training HF push to `${HF_USERNAME}/athena-cti-sft-llama31-8b-abaligned`
 
 ```bash
 ./run_abaligned_sft.sh [--repo-id USER/NAME] [--output-dir DIR]
-                       [--report-to wandb|none] [--dry-run]
+                       [--report-to wandb|none]
+                       [--offload | --no-offload]
+                       [--dry-run]
                        [--extra "--additional --llamafactory --flags"]
 ```
 
@@ -124,9 +130,13 @@ directly, so `upload_to_hf.py --merged-dir` is used instead of the LoRA
 - **401 on base-model download** — Llama-3.1-8B-Instruct is gated; accept
   the license on huggingface.co using the same account whose token you're
   using, then retry.
-- **OOM at step 0** — you're on < 2× 80 GB. Options: reduce `cutoff_len`
-  (e.g. `--extra "--cutoff_len 1536"`), lower `per_device_train_batch_size`
-  (`--extra "--per_device_train_batch_size 1 --gradient_accumulation_steps 8"`),
+- **OOM at step 0 on a single GPU** — full SFT of 8B with AdamW (fp32 m+v)
+  needs ~96 GB of GPU RAM, which exceeds 1× 80 GB. The launcher auto-enables
+  CPU offload on single-GPU hosts; if you overrode with `--no-offload`,
+  drop that flag. If OOM persists even with offload, lower
+  `per_device_train_batch_size` (`--extra "--per_device_train_batch_size 1 --gradient_accumulation_steps 8"`)
+  or reduce `cutoff_len` (`--extra "--cutoff_len 1536"`).
+- **OOM at step 0 on multi-GPU** — reduce batch size per the previous bullet,
   or fall back to LoRA via `../utils/run_train.sh` directly
   (`--finetuning lora`, which is the default).
 - **Run finishes but no repo on the Hub** — `HF_TOKEN` is read-only or

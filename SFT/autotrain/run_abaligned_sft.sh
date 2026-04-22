@@ -19,12 +19,17 @@
 #
 # Usage:
 #   ./run_abaligned_sft.sh [--repo-id USER/NAME] [--output-dir DIR]
-#                          [--report-to wandb|none] [--dry-run] [--extra "..."]
+#                          [--report-to wandb|none] [--offload | --no-offload]
+#                          [--dry-run] [--extra "..."]
 #
 # Defaults:
 #   --repo-id     ${HF_USERNAME}/athena-cti-sft-llama31-8b-abaligned
 #                 (HF_USERNAME is read from SFT/.env or the caller's environment)
 #   --report-to   wandb    (set to 'none' to skip wandb)
+#   --offload     auto     (enabled on hosts with < 2 GPUs; disabled otherwise)
+#                          Offload moves optimizer + params to CPU RAM so full
+#                          SFT of an 8B model fits on 1 x 80 GB. Costs ~30-50%
+#                          throughput from PCIe traffic.
 
 set -euo pipefail
 
@@ -36,6 +41,7 @@ OUTPUT_DIR=""
 REPORT_TO="wandb"
 EXTRA_USER=""
 DRY_RUN=0
+OFFLOAD="auto"    # auto | on | off
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -44,6 +50,8 @@ while [[ $# -gt 0 ]]; do
         --report-to)  REPORT_TO="$2";   shift 2 ;;
         --extra)      EXTRA_USER="$2";  shift 2 ;;
         --dry-run)    DRY_RUN=1;        shift ;;
+        --offload)    OFFLOAD="on";     shift ;;
+        --no-offload) OFFLOAD="off";    shift ;;
         -h|--help) sed -n '3,27p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "Unknown argument: $1" >&2; exit 1 ;;
     esac
@@ -74,11 +82,35 @@ if [[ ! -f "${DATASET_FILE}" ]]; then
     exit 2
 fi
 
-# ds_z3_config.json lives under SFT/examples/deepspeed/ shipped by
-# LLaMA-Factory. The path must be resolvable relative to the CWD that
-# run_train.sh uses, which it sets to ${SFT_DIR} just before invoking
-# llamafactory-cli train.
-DS_CONFIG="examples/deepspeed/ds_z3_config.json"
+# Full-parameter SFT of an 8B bf16 model + AdamW states (fp32 m, v)
+# needs ~96 GB of GPU RAM before activations, so ZeRO-3 without CPU
+# offload requires at least 2 ranks to shard across. Auto-detect GPU
+# count; if < 2, switch to ds_z3_offload_config.json which offloads
+# optimizer + params to CPU (GPU residency drops to ~30-40 GB at the
+# cost of ~30-50% throughput from PCIe traffic). The user can force
+# either mode with --offload / --no-offload.
+GPU_COUNT="$(python - <<'PY' 2>/dev/null || echo 0
+import torch
+print(torch.cuda.device_count() if torch.cuda.is_available() else 0)
+PY
+)"
+GPU_COUNT="${GPU_COUNT:-0}"
+
+if [[ "${OFFLOAD}" == "auto" ]]; then
+    if [[ "${GPU_COUNT}" -lt 2 ]]; then
+        OFFLOAD="on"
+        echo "[info] detected ${GPU_COUNT} GPU(s); auto-enabling ZeRO-3 CPU offload."
+        echo "       Pass --no-offload to force the on-GPU config (will OOM on <2 x 80GB)."
+    else
+        OFFLOAD="off"
+    fi
+fi
+
+if [[ "${OFFLOAD}" == "on" ]]; then
+    DS_CONFIG="examples/deepspeed/ds_z3_offload_config.json"
+else
+    DS_CONFIG="examples/deepspeed/ds_z3_config.json"
+fi
 if [[ ! -f "${SFT_DIR}/${DS_CONFIG}" ]]; then
     echo "[FAIL] deepspeed config missing: ${SFT_DIR}/${DS_CONFIG}" >&2
     exit 2
@@ -143,7 +175,9 @@ echo "=== AthenaBench-aligned full SFT (LLaMA-Factory + DeepSpeed ZeRO-3) ==="
 echo "  env          : ${CONDA_DEFAULT_ENV:-<unset>}  (expected: llm-sft)"
 echo "  dataset file : ${DATASET_FILE}"
 echo "  hf repo      : ${REPO_ID}"
+echo "  gpus visible : ${GPU_COUNT}"
 echo "  deepspeed    : ${SFT_DIR}/${DS_CONFIG}"
+echo "  cpu offload  : ${OFFLOAD}"
 echo "  launcher     : ${SFT_DIR}/utils/run_train.sh"
 echo "  torchrun     : forced (FORCE_TORCHRUN=1)"
 echo
