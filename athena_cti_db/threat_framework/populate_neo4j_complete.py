@@ -1,6 +1,8 @@
 import csv
+import decimal
 import gzip
 import io
+import ijson
 import json
 import os
 import shutil
@@ -19,6 +21,7 @@ import subprocess
 import re
 import logging
 import base64
+import yaml
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -27,7 +30,10 @@ logger = logging.getLogger(__name__)
 neo4j_url = os.getenv('NEO4J_URL', 'neo4j://127.0.0.1:7687')
 neo4j_user = os.getenv('NEO4J_USER', 'neo4j')
 neo4j_password = os.getenv('NEO4J_PASSWORD', 'athena-cti-db')
-neo4j_db = os.getenv('NEO4J_DB', 'athena-cti-db') # default database is neo4j, changes are required for other databases i.e., athena-threat-db 
+neo4j_db = os.getenv('NEO4J_DB', 'athena-cti-db') # default database is neo4j, changes are required for other databases i.e., athena-threat-db
+
+# NVD API key — with key: 50 req/30s; without: 5 req/30s
+nvd_api_key = os.getenv('NVD_API_KEY', 'a3a68e0f-b241-42e3-927a-e8f1828f2910') 
 
 # Check if using Bolt protocol (neo4j:// or bolt://)
 use_bolt = neo4j_url.startswith('neo4j://') or neo4j_url.startswith('bolt://')
@@ -71,7 +77,11 @@ DATA_SOURCES = {
     "cve": "https://github.com/CVEProject/cvelistV5.git",
     "kev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json",
     "engage": "https://github.com/mitre/engage.git",
-    "epss": "https://epss.cyentia.com/epss_scores-{date}.csv.gz"
+    "epss": "https://epss.cyentia.com/epss_scores-{date}.csv.gz",
+    "nvd": "https://nvd.nist.gov/feeds/json/cve/2.0",
+    "sigma": "https://github.com/SigmaHQ/sigma.git",
+    "exploitdb": "https://gitlab.com/exploit-database/exploitdb.git",
+    "poc_github": "https://github.com/nomi-sec/PoC-in-GitHub.git"
 }
 
 # Configure retry strategy
@@ -299,6 +309,91 @@ def download_and_extract_data():
         subprocess.run(["git", "clone", DATA_SOURCES["engage"], str(engage_dir)], check=True)
     else:
         logger.info("Engage data already exists - skipping download")
+
+    # Download NVD CPE data (one file per year, 2024 onwards)
+    download_nvd_data(data_dir)
+
+    # Clone Sigma rules repository
+    sigma_dir = data_dir / "sigma"
+    sigma_data_exists = (sigma_dir / "rules").exists()
+    if not sigma_data_exists:
+        logger.info("Cloning SigmaHQ sigma repository (sparse: rules/ only)...")
+        subprocess.run(
+            ["git", "clone", "--no-checkout", "--depth=1", "--filter=blob:none",
+             DATA_SOURCES["sigma"], str(sigma_dir)],
+            check=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(sigma_dir), "sparse-checkout", "init", "--cone"],
+            check=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(sigma_dir), "sparse-checkout", "set", "rules"],
+            check=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(sigma_dir), "checkout"],
+            check=True,
+        )
+        logger.info("Sigma rules cloned successfully")
+    else:
+        logger.info("Sigma data already exists - skipping download")
+
+    # Clone ExploitDB (sparse: files_exploits.csv only)
+    exploitdb_dir = data_dir / "exploitdb"
+    exploitdb_csv = exploitdb_dir / "files_exploits.csv"
+    if not exploitdb_csv.exists():
+        logger.info("Cloning ExploitDB repository (sparse: files_exploits.csv only)...")
+        exploitdb_dir.mkdir(exist_ok=True)
+        subprocess.run(
+            ["git", "clone", "--no-checkout", "--depth=1", "--filter=blob:none",
+             DATA_SOURCES["exploitdb"], str(exploitdb_dir)],
+            check=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(exploitdb_dir), "sparse-checkout", "init", "--cone"],
+            check=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(exploitdb_dir), "sparse-checkout", "set", "files_exploits.csv"],
+            check=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(exploitdb_dir), "checkout"],
+            check=True,
+        )
+        logger.info("ExploitDB data cloned successfully")
+    else:
+        logger.info("ExploitDB data already exists - skipping download")
+
+    # Clone poc-in-github (sparse: 2024+ year folders)
+    poc_dir = data_dir / "poc_github"
+    poc_data_exists = any(poc_dir.glob("202*"))
+    if not poc_data_exists:
+        logger.info("Cloning poc-in-github repository (sparse: 2024 onwards)...")
+        current_year = datetime.now().year
+        poc_years = [str(year) for year in range(2024, current_year + 1)]
+        poc_dir.mkdir(exist_ok=True)
+        subprocess.run(
+            ["git", "clone", "--no-checkout", "--depth=1", "--filter=blob:none",
+             DATA_SOURCES["poc_github"], str(poc_dir)],
+            check=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(poc_dir), "sparse-checkout", "init", "--cone"],
+            check=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(poc_dir), "sparse-checkout", "set"] + poc_years,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(poc_dir), "checkout"],
+            check=True,
+        )
+        logger.info(f"poc-in-github data cloned successfully. Years fetched: {', '.join(poc_years)}")
+    else:
+        logger.info("poc-in-github data already exists - skipping download")
 
     return data_dir
 
@@ -1195,10 +1290,56 @@ def process_cwe_data(xml_file: Path) -> List[Dict]:
                 f"{len(observed_examples_seen)} unique Observed_Examples")
     return queries
 
+def _build_nvd_cpe_index(nvd_dir: Path) -> Dict[str, List]:
+    """Load CVE-ID → CPE match list from NVD NDJSON batch files."""
+    nvd_index: Dict[str, List] = {}
+    if not nvd_dir.exists():
+        logger.warning(f"NVD directory not found at {nvd_dir}, CVE nodes will have no cpe_matches data")
+        return nvd_index
+    for year_dir in sorted(nvd_dir.iterdir()):
+        if not year_dir.is_dir():
+            continue
+        for batch_file in sorted(year_dir.glob("batch_*.ndjson")):
+            try:
+                with batch_file.open("r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        entry = json.loads(line)
+                        cve_obj = entry.get("cve", {})
+                        cve_id = cve_obj.get("id")
+                        if not cve_id:
+                            continue
+
+                        matches = [
+                            {k: v for k, v in m.items() if k in (
+                                "criteria", "vulnerable",
+                                "versionStartIncluding", "versionStartExcluding",
+                                "versionEndIncluding", "versionEndExcluding",
+                            )}
+                            for ng in cve_obj.get("configurations", [])
+                            for node in ng.get("nodes", [])
+                            for m in node.get("cpeMatch", [])
+                            if m.get("criteria")
+                        ]
+
+                        if matches:
+                            nvd_index[cve_id] = matches
+            except Exception as e:
+                logger.error(f"Failed to load NVD batch {batch_file}: {e}")
+    logger.info(f"NVD index built: {len(nvd_index)} CVEs with CPE/CVSS data")
+    return nvd_index
+
+
 def process_cve_data(cve_dir: Path) -> List[Dict]:
     """Process CVE data from JSON files - using id (cveId) as key."""
     queries = []
-    
+
+    # Load NVD CPE index from sibling nvd/ directory
+    nvd_dir = cve_dir.parent / "nvd"
+    nvd_index = _build_nvd_cpe_index(nvd_dir)
+
     # Get all JSON files and filter out ignored ones
     all_json_files = list(cve_dir.rglob("*.json"))
     filtered_json_files = filter_cve_files(all_json_files)
@@ -1239,6 +1380,7 @@ def process_cve_data(cve_dir: Path) -> List[Dict]:
                     ]
 
                     # metrics → JSON string + top-level cvssV3_1 scalars
+                    # Fall back to NVD cvssMetricV31 data if fields are missing from CVE 5.0 record
                     metrics_raw = cna.get('metrics', [])
                     metrics = to_json_string(metrics_raw)
                     cvss31 = metrics_raw[0].get('cvssV3_1', {}) if metrics_raw else {}
@@ -1276,6 +1418,7 @@ def process_cve_data(cve_dir: Path) -> List[Dict]:
                         'cvss3_1_vectorString': cvss3_1_vectorString,
                         'workarounds': workarounds,
                         'exploits': exploits,
+                        'cpe_matches': to_json_string(nvd_index.get(cve_id, [])),
                     }
                     queries.append({
                         'statement': create_node_query('CVE', stix_id, properties),
@@ -1333,7 +1476,7 @@ def process_cve_data(cve_dir: Path) -> List[Dict]:
                                 })
                     
                     processed_count += 1
-                    
+
         except Exception as e:
             logger.warning(f"Error processing CVE file {json_file}: {e}")
             continue
@@ -1509,6 +1652,85 @@ def process_epss_data(csv_file: Path) -> List[Dict]:
         traceback.print_exc()
 
     return queries
+
+
+class _DecimalEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, decimal.Decimal):
+            return float(o)
+        return super().default(o)
+
+
+def _write_nvd_batch(out_dir: Path, idx: int, batch: List[Dict]) -> None:
+    out_file = out_dir / f"batch_{idx:05d}.ndjson"
+    with out_file.open("w", encoding="utf-8") as f:
+        for record in batch:
+            f.write(json.dumps(record, ensure_ascii=False, cls=_DecimalEncoder) + "\n")
+
+
+def download_nvd_data(data_dir: Path) -> None:
+    """Download NVD CVE bulk gzip feeds from 2024 onwards.
+
+    Uses the static gzip feed endpoint (no pagination, no rate limiting).
+    Output: threat_data/nvd/{year}/batch_NNNNN.ndjson
+    Past years are skipped if their directory already contains batch files.
+    The current year is always re-downloaded (updated daily by NVD).
+    """
+    nvd_dir = data_dir / "nvd"
+    nvd_dir.mkdir(exist_ok=True)
+
+    current_year = datetime.now().year
+
+    nvd_session = requests.Session()
+    nvd_session.mount("https://", HTTPAdapter(max_retries=retry_strategy))
+    nvd_session.headers.update({
+        "User-Agent": "nvd-feed-downloader/1.0",
+        "Accept": "*/*",
+    })
+    if nvd_api_key:
+        nvd_session.headers.update({"apiKey": nvd_api_key})
+
+    batch_size = 5000
+
+    for year in range(2024, current_year + 1):
+        year_dir = nvd_dir / str(year)
+        is_current_year = (year == current_year)
+
+        if year_dir.exists() and any(year_dir.glob("batch_*.ndjson")) and not is_current_year:
+            logger.info(f"NVD {year} data already exists - skipping download")
+            continue
+
+        year_dir.mkdir(exist_ok=True)
+        for old_file in year_dir.glob("batch_*.ndjson"):
+            old_file.unlink()
+
+        url = f"{DATA_SOURCES['nvd']}/nvdcve-2.0-{year}.json.gz"
+        logger.info(f"Downloading NVD feed: {url}")
+
+        try:
+            with nvd_session.get(url, stream=True, timeout=300) as resp:
+                resp.raise_for_status()
+                total = 0
+                batch_idx = 1
+                batch: List[Dict] = []
+
+                with gzip.GzipFile(fileobj=resp.raw) as gz:
+                    for vuln in ijson.items(gz, "vulnerabilities.item"):
+                        batch.append(vuln)
+                        total += 1
+                        if len(batch) >= batch_size:
+                            _write_nvd_batch(year_dir, batch_idx, batch)
+                            batch_idx += 1
+                            batch = []
+
+                if batch:
+                    _write_nvd_batch(year_dir, batch_idx, batch)
+
+            logger.info(f"NVD {year} saved to {year_dir} ({total} records, {batch_idx} batch files)")
+        except requests.RequestException as e:
+            logger.error(f"Failed to download NVD feed for {year}: {e}")
+
+
 
 
 def process_engage_data(engage_dir: Path) -> List[Dict]:
@@ -2343,6 +2565,264 @@ def create_custom_attack_relationships(cti_dir: Path) -> List[Dict]:
                 f"(requires_data, implemented_by)")
     return queries
 
+def process_sigma_data(sigma_dir: Path) -> List[Dict]:
+    """Process Sigma detection rules — creates SigmaRule nodes and DETECTS relationships to ATT&CK techniques.
+
+    Each YAML rule's `tags` list is scanned for entries matching `attack.tXXXX` / `attack.tXXXX.YYY`
+    which are normalised to uppercase ATT&CK IDs (e.g. T1059, T1059.001) and linked to existing
+    `attack-pattern` nodes via a [:detects] relationship (same type as ATT&CK data-component detects).
+    """
+    queries: List[Dict] = []
+    rules_dir = sigma_dir / "rules"
+
+    if not rules_dir.exists():
+        logger.warning(f"Sigma rules directory not found: {rules_dir}")
+        return queries
+
+    rule_count = 0
+    rel_count = 0
+    error_count = 0
+
+    for yml_file in rules_dir.rglob("*.yml"):
+        try:
+            with yml_file.open("r", encoding="utf-8") as f:
+                rule = yaml.safe_load(f)
+
+            if not isinstance(rule, dict):
+                continue
+
+            rule_id = rule.get("id", "")
+            if not rule_id:
+                continue
+
+            title = rule.get("title", "N/A")
+            status = rule.get("status", "N/A")
+            level = rule.get("level", "N/A")
+            description = rule.get("description", "N/A") or "N/A"
+            author = rule.get("author", "N/A") or "N/A"
+
+            logsource = rule.get("logsource", {}) or {}
+            logsource_product = logsource.get("product", "N/A") or "N/A"
+            logsource_category = logsource.get("category", "N/A") or "N/A"
+            logsource_service = logsource.get("service", "N/A") or "N/A"
+
+            detection = to_json_string(rule.get("detection", {}))
+            falsepositives = rule.get("falsepositives", []) or []
+            if isinstance(falsepositives, str):
+                falsepositives = [falsepositives]
+
+            tags = rule.get("tags", []) or []
+            if isinstance(tags, str):
+                tags = [tags]
+
+            # Extract ATT&CK technique IDs from tags (e.g. attack.t1059.001 → T1059.001)
+            technique_ids = []
+            for tag in tags:
+                tag_lower = str(tag).lower()
+                if tag_lower.startswith("attack.t"):
+                    raw = tag_lower[len("attack."):]          # e.g. "t1059.001"
+                    parts = raw.split(".")
+                    if len(parts) == 1:
+                        tid = parts[0].upper()               # "T1059"
+                    else:
+                        tid = f"{parts[0].upper()}.{parts[1].zfill(3)}"  # "T1059.001"
+                    technique_ids.append(tid)
+
+            stix_id = generate_stix_id("sigma", rule_id)
+            properties = {
+                "id": rule_id,
+                "title": title,
+                "status": status,
+                "level": level,
+                "description": str(description)[:2000],
+                "author": str(author)[:500],
+                "logsource_product": logsource_product,
+                "logsource_category": logsource_category,
+                "logsource_service": logsource_service,
+                "detection": detection,
+                "falsepositives": falsepositives,
+                "tags": [str(t) for t in tags],
+            }
+            queries.append({
+                "statement": create_node_query("SigmaRule", stix_id, properties),
+                "parameters": {**properties, "stix_id": stix_id},
+            })
+            rule_count += 1
+
+            # SigmaRule -[:detects]-> attack-pattern (same type as ATT&CK data-component detects)
+            for tid in technique_ids:
+                queries.append({
+                    "statement": (
+                        "MATCH (s:SigmaRule {stix_id: $stix_id}) "
+                        "MATCH (ap:`attack-pattern` {mitre_id: $mitre_id}) "
+                        "MERGE (s)-[:detects]->(ap)"
+                    ),
+                    "parameters": {"stix_id": stix_id, "mitre_id": tid},
+                })
+                rel_count += 1
+
+        except Exception as e:
+            logger.warning(f"Error processing Sigma rule {yml_file}: {e}")
+            error_count += 1
+            continue
+
+    logger.info(
+        f"Processed {rule_count} Sigma rules, {rel_count} detects relationships "
+        f"({error_count} files skipped due to errors)"
+    )
+    return queries
+
+
+def process_exploitdb_data(exploitdb_dir: Path) -> List[Dict]:
+    """Process ExploitDB files_exploits.csv — creates ExploitDBEntry nodes linked to CVE nodes."""
+    queries: List[Dict] = []
+    csv_file = exploitdb_dir / "files_exploits.csv"
+
+    if not csv_file.exists():
+        logger.warning(f"ExploitDB CSV not found: {csv_file}")
+        return queries
+
+    node_count = 0
+    rel_count = 0
+    skipped = 0
+
+    try:
+        with open(csv_file, "r", encoding="utf-8", errors="replace") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                raw_cves = row.get("codes", "").strip()
+                if not raw_cves:
+                    skipped += 1
+                    continue
+
+                # Normalize multi-CVE field — values may be "CVE-X;CVE-Y" or "CVE-X,CVE-Y"
+                cve_ids = [
+                    c.strip()
+                    for c in re.split(r"[;,]", raw_cves)
+                    if c.strip().upper().startswith("CVE-")
+                ]
+                if not cve_ids:
+                    skipped += 1
+                    continue
+
+                # Only process CVE-2024+
+                cve_ids = [
+                    c for c in cve_ids
+                    if len(c.split("-")) > 1 and c.split("-")[1].isdigit() and int(c.split("-")[1]) >= 2024
+                ]
+                if not cve_ids:
+                    skipped += 1
+                    continue
+
+                edb_id = row.get("id", "").strip()
+                if not edb_id:
+                    skipped += 1
+                    continue
+
+                node_id = f"EDB-{edb_id}"
+                stix_id = generate_stix_id("exploitdbentry", node_id)
+                published = to_neo4j_datetime(row.get("date_published", "").strip() or None)
+                properties = {
+                    "id": node_id,
+                    "url": f"https://www.exploit-db.com/exploits/{edb_id}",
+                    "title": row.get("description", "N/A").strip()[:500],
+                    "type": row.get("type", "N/A").strip(),
+                    "platform": row.get("platform", "N/A").strip(),
+                    "published": published,
+                }
+                queries.append({
+                    "statement": create_node_query("ExploitDBEntry", stix_id, properties),
+                    "parameters": {**properties, "stix_id": stix_id},
+                })
+                node_count += 1
+
+                for cve_id in cve_ids:
+                    queries.append({
+                        "statement": (
+                            "MATCH (e:ExploitDBEntry {stix_id: $stix_id}) "
+                            "MATCH (c:CVE {id: $cve_id}) "
+                            "MERGE (c)-[:has_weaponized_exploit]->(e)"
+                        ),
+                        "parameters": {"stix_id": stix_id, "cve_id": cve_id},
+                    })
+                    rel_count += 1
+
+    except Exception as ex:
+        logger.error(f"Error processing ExploitDB CSV: {ex}")
+
+    logger.info(
+        f"ExploitDB: {node_count} ExploitDBEntry nodes, {rel_count} has_weaponized_exploit relationships "
+        f"({skipped} rows skipped)"
+    )
+    return queries
+
+
+def process_poc_github_data(poc_dir: Path) -> List[Dict]:
+    """Process poc-in-github JSON files — creates GithubPoC nodes linked to CVE nodes."""
+    queries: List[Dict] = []
+
+    if not poc_dir.exists():
+        logger.warning(f"poc-in-github directory not found: {poc_dir}")
+        return queries
+
+    node_count = 0
+    rel_count = 0
+    error_count = 0
+
+    for json_file in sorted(poc_dir.rglob("CVE-*.json")):
+        try:
+            cve_id = json_file.stem  # e.g. "CVE-2024-12345"
+            parts = cve_id.split("-")
+            if len(parts) < 2 or not parts[1].isdigit() or int(parts[1]) < 2024:
+                continue
+
+            repos = load_json_file(str(json_file))
+            if not isinstance(repos, list):
+                continue
+
+            for repo in repos:
+                html_url = repo.get("html_url", "").strip()
+                if not html_url:
+                    continue
+
+                full_name = repo.get("full_name", html_url).strip()
+                node_id = f"POC-{full_name.replace('/', '-')}"
+                stix_id = generate_stix_id("githubpoc", node_id)
+                published = to_neo4j_datetime(repo.get("created_at", "").strip() or None)
+                properties = {
+                    "id": node_id,
+                    "url": html_url,
+                    "title": (repo.get("description") or "N/A")[:500],
+                    "published": published,
+                }
+                queries.append({
+                    "statement": create_node_query("GithubPoC", stix_id, properties),
+                    "parameters": {**properties, "stix_id": stix_id},
+                })
+                node_count += 1
+
+                queries.append({
+                    "statement": (
+                        "MATCH (e:GithubPoC {stix_id: $stix_id}) "
+                        "MATCH (c:CVE {id: $cve_id}) "
+                        "MERGE (c)-[:has_poc]->(e)"
+                    ),
+                    "parameters": {"stix_id": stix_id, "cve_id": cve_id},
+                })
+                rel_count += 1
+
+        except Exception as ex:
+            logger.warning(f"Error processing poc-in-github file {json_file}: {ex}")
+            error_count += 1
+            continue
+
+    logger.info(
+        f"poc-in-github: {node_count} GithubPoC nodes, {rel_count} has_poc relationships "
+        f"({error_count} files skipped)"
+    )
+    return queries
+
+
 def create_constraints():
     """Create Neo4j constraints for better performance - TARGET SCHEMA."""
     constraints = [
@@ -2387,7 +2867,19 @@ def create_constraints():
         "CREATE CONSTRAINT stix_id_engage_vulnerability IF NOT EXISTS FOR (n:vulnerability) REQUIRE n.stix_id IS UNIQUE",
         "CREATE CONSTRAINT stix_id_engage_attack_technique IF NOT EXISTS FOR (n:attack_technique) REQUIRE n.stix_id IS UNIQUE",
         "CREATE CONSTRAINT stix_id_engage_attack_tactic IF NOT EXISTS FOR (n:attack_tactic) REQUIRE n.stix_id IS UNIQUE",
-        "CREATE CONSTRAINT stix_id_engage_reference IF NOT EXISTS FOR (n:reference) REQUIRE n.stix_id IS UNIQUE"
+        "CREATE CONSTRAINT stix_id_engage_reference IF NOT EXISTS FOR (n:reference) REQUIRE n.stix_id IS UNIQUE",
+
+        # Sigma rules
+        "CREATE CONSTRAINT stix_id_sigma_rule IF NOT EXISTS FOR (n:SigmaRule) REQUIRE n.stix_id IS UNIQUE",
+        "CREATE CONSTRAINT sigma_rule_id IF NOT EXISTS FOR (n:SigmaRule) REQUIRE n.id IS UNIQUE",
+
+        # ExploitDBEntry node (curated exploits from Exploit-DB)
+        "CREATE CONSTRAINT stix_id_exploitdb_entry IF NOT EXISTS FOR (n:ExploitDBEntry) REQUIRE n.stix_id IS UNIQUE",
+        "CREATE CONSTRAINT exploitdb_entry_id IF NOT EXISTS FOR (n:ExploitDBEntry) REQUIRE n.id IS UNIQUE",
+
+        # GithubPoC node (community PoC repos from nomi-sec/PoC-in-GitHub)
+        "CREATE CONSTRAINT stix_id_github_poc IF NOT EXISTS FOR (n:GithubPoC) REQUIRE n.stix_id IS UNIQUE",
+        "CREATE CONSTRAINT github_poc_id IF NOT EXISTS FOR (n:GithubPoC) REQUIRE n.id IS UNIQUE"
     ]
     
     logger.info("Creating constraints...")
@@ -2554,6 +3046,20 @@ def import_all_data(data_dir: Optional[Path] = None):
         execute_queries(epss_queries)
     else:
         logger.warning("EPSS CSV not found after download, skipping EPSS processing")
+
+    # 16. Sigma rules nodes + detects edges (ATT&CK attack-pattern nodes must exist)
+    logger.info("Processing Sigma detection rules...")
+    sigma_queries = process_sigma_data(data_dir / "sigma")
+    execute_queries(sigma_queries)
+
+    # 17. ExploitDBEntry + GithubPoC nodes (CVE nodes must exist)
+    logger.info("Processing ExploitDB entries...")
+    exploitdb_queries = process_exploitdb_data(data_dir / "exploitdb")
+    execute_queries(exploitdb_queries)
+
+    logger.info("Processing poc-in-github PoCs...")
+    poc_queries = process_poc_github_data(data_dir / "poc_github")
+    execute_queries(poc_queries)
 
     logger.info("="*60)
     logger.info("Import completed successfully!")

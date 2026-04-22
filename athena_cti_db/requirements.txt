@@ -25,3 +25,7 @@ stix2>=3.0.0
 # Note: Most imports are from Python standard library (json, os, xml.etree.ElementTree, 
 # zipfile, tempfile, shutil, uuid, pathlib, time, subprocess, re, logging)
 # Only external dependencies are requests, urllib3, and typing-extensions (already listed above) 
+
+ijson>=3.5.0
+
+pyyaml>=6.0
