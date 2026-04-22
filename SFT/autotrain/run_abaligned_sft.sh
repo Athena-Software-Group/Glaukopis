@@ -118,12 +118,22 @@ if [[ ${DRY_RUN} -eq 1 ]]; then
     RUN_TRAIN_ARGS+=( --dry-run )
 fi
 
+# LLaMA-Factory refuses to start DeepSpeed training unless it is already
+# running under torch.distributed. Its launcher only auto-sets
+# FORCE_TORCHRUN when it detects >1 CUDA device *before* the DeepSpeed
+# config is parsed, which is flaky (nvidia-smi ordering, CUDA_VISIBLE_DEVICES,
+# container masking). Since this launcher is DeepSpeed-only, always
+# force torchrun. Safe on single-GPU too (ZeRO-3 on 1 GPU is valid, just
+# wasteful).
+export FORCE_TORCHRUN=1
+
 echo "=== AthenaBench-aligned full SFT (LLaMA-Factory + DeepSpeed ZeRO-3) ==="
 echo "  env          : ${CONDA_DEFAULT_ENV:-<unset>}  (expected: llm-sft)"
 echo "  dataset file : ${DATASET_FILE}"
 echo "  hf repo      : ${REPO_ID}"
 echo "  deepspeed    : ${SFT_DIR}/${DS_CONFIG}"
 echo "  launcher     : ${SFT_DIR}/utils/run_train.sh"
+echo "  torchrun     : forced (FORCE_TORCHRUN=1)"
 echo
 
 exec bash "${SFT_DIR}/utils/run_train.sh" "${RUN_TRAIN_ARGS[@]}"
