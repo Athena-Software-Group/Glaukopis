@@ -113,8 +113,10 @@ done
 # 6. Training/experiment tooling ---------------------------------------------
 # python-dotenv: upload_to_hf.py reads HF_TOKEN / HUGGINGFACE_TOKEN from .env
 # files at SFT/ (and repo root) as one of its credential sources.
-echo "=== Installing wandb + huggingface_hub + python-dotenv ==="
-pip install wandb huggingface_hub python-dotenv
+# ninja + packaging: accelerate deepspeed's first-run op compilation
+# (parallel builds vs serial) and are required by deepspeed's setup.
+echo "=== Installing wandb + huggingface_hub + python-dotenv + ninja ==="
+pip install wandb huggingface_hub python-dotenv packaging ninja
 
 # 7. flash-attn (optional) ----------------------------------------------------
 # flash-attn is installed opportunistically: training configs can use it when
@@ -215,6 +217,23 @@ if [[ ${RUN_CONDA_INIT} -eq 1 ]]; then
     esac
 fi
 
+# 10. .env bootstrap ----------------------------------------------------------
+# Copy SFT/.env.example -> SFT/.env on first run so the user has a single
+# place to drop HF / wandb credentials. upload_to_hf.py, run_train.sh, and
+# autotrain/run_abaligned_sft.sh all auto-source this file.
+ENV_FILE="${SFT_DIR}/.env"
+ENV_EXAMPLE="${SFT_DIR}/.env.example"
+NEEDS_ENV_EDIT=0
+if [[ ! -f "${ENV_FILE}" && -f "${ENV_EXAMPLE}" ]]; then
+    cp "${ENV_EXAMPLE}" "${ENV_FILE}"
+    chmod 600 "${ENV_FILE}" 2>/dev/null || true
+    NEEDS_ENV_EDIT=1
+    echo
+    echo "=== Bootstrapped ${ENV_FILE} from .env.example ==="
+elif [[ -f "${ENV_FILE}" ]] && grep -q 'hf_xxx_replace_me\|your-hf-username' "${ENV_FILE}"; then
+    NEEDS_ENV_EDIT=1
+fi
+
 echo
 echo "=== Setup complete ==="
 if [[ ${RUN_CONDA_INIT} -eq 1 && -n "${target_shell:-}" ]]; then
@@ -225,12 +244,20 @@ else
 fi
 echo "    conda activate ${ENV_NAME}"
 echo
-echo "Authenticate before training:"
+if [[ ${NEEDS_ENV_EDIT} -eq 1 ]]; then
+    echo "Fill in HF / wandb credentials (placeholders still present):"
+    echo "    \$EDITOR ${ENV_FILE}"
+    echo "    # set HF_TOKEN (write-scope) and HF_USERNAME at minimum"
+else
+    echo "Credentials file: ${ENV_FILE}  (already populated)"
+fi
+echo
+echo "Alternative to editing .env: run the interactive CLIs once:"
 echo "    hf auth login            # REQUIRED (Llama-3.1-8B-Instruct is a gated model)"
 echo "    wandb login              # optional, only needed if passing --report-to wandb"
 echo
-echo "Alternatively, put HF_TOKEN=... (or HUGGINGFACE_TOKEN=...) in ${SFT_DIR}/.env."
-echo "utils/run_train.sh --push-to-hf and upload_to_hf.py read it from there."
+echo "run_train.sh, upload_to_hf.py, and autotrain/run_abaligned_sft.sh all"
+echo "auto-source ${SFT_DIR}/.env -- no manual 'export' needed."
 echo
 echo "Then launch training (defaults: Llama-3.1-8B-Instruct LoRA on ift_data_2026_04_20):"
 echo "    cd ${SFT_DIR}"

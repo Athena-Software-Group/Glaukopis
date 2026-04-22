@@ -1,163 +1,103 @@
-# SFT via HuggingFace AutoTrain
+# AthenaBench-aligned SFT
 
-End-to-end automation for fine-tuning a base LLM (default
-`meta-llama/Llama-3.1-8B-Instruct`) on the internal instruction-following
-dataset (`SFT/data/ift_data.json`) via
-[HuggingFace AutoTrain Advanced](https://github.com/huggingface/autotrain-advanced),
-pushing the resulting full-weight model to the HF Hub, and benchmarking it
-against [`athena_bench`](../../athena_bench).
+Single-command launcher for the AthenaBench-aligned full-parameter SFT of
+`meta-llama/Llama-3.1-8B-Instruct` on `ift_data_2026_04_22` (138,343 rows
+from the `04222026/` template family: native MCQ shuffling, Description→ID
+ATE direction, full TAA/VSP/RCM/RMS coverage).
 
-This pipeline is intentionally kept separate from the LLaMA-Factory flow
-under [`SFT/utils/`](../utils/): use AutoTrain when you want a hosted-friendly,
-low-config full-parameter SFT; use LLaMA-Factory when you need fine-grained
-control (LoRA, DPO, GPTQ merge, etc.).
+> **Historical note.** This directory previously wrapped
+> [HuggingFace AutoTrain Advanced](https://github.com/huggingface/autotrain-advanced).
+> AutoTrain is unmaintained (last release 0.8.36, 2025-01) and pins
+> `transformers==4.48.0`, which conflicts with LLaMA-Factory's `>=4.55.0`.
+> The pipeline has been migrated to LLaMA-Factory + DeepSpeed ZeRO-3
+> inside the unified `llm-sft` conda env. The directory name is kept for
+> continuity with existing logs and model aliases.
 
 ## Layout
 
 | File | Purpose |
 |---|---|
-| `setup.sh` | Create an isolated `autotrain` conda env and install `autotrain-advanced`. |
-| `prepare_dataset.sh` | Convert `ift_data.json` into a chat-templated JSONL and upload it as an HF dataset repo. |
-| `autotrain_llama3_8b_sft.yml` | **Full-parameter SFT, conservative** — bf16, cosine, 3 epochs, `batch_size: 1 × grad_accum: 8`, `gradient_checkpointing: true`. Fits on 1× 80 GB or 2× 40 GB. |
-| `autotrain_llama3_8b_sft_fast.yml` | **Full-parameter SFT, high-throughput** — same schedule, but `batch_size: 8 × grad_accum: 1`, `gradient_checkpointing: false`. ~3-4× faster than the conservative config; needs ≥ 120 GB per GPU (2× H200, 2× H100 NVL, MI300X). |
-| `autotrain_llama3_8b_sft_fast_abaligned.yml` | **Full-parameter SFT on the AthenaBench-aligned 2026-04-22 dataset.** Clone of `_sft_fast.yml` with `project_name: athena-cti-sft-llama31-8b-abaligned` and `data.path: ${HF_USERNAME}/athena-ift-abaligned`. Training set is 138,343 rows from the `04222026/` template family (native MCQ shuffling, Description→ID ATE direction, full TAA/VSP/RCM/RMS coverage). |
-| `autotrain_llama3_8b_lora.yml` | **LoRA + int4** — rank 16, `all-linear`, `merge_adapter: true`. Fits on 1× or 2× 24 GB GPUs. |
-| `train.sh` | Launch `autotrain --config <yaml>` with logging, optional `--nohup` detach, `--cuda-devices` pinning, and a VRAM pre-flight. Defaults to the conservative full-SFT YAML; pass `--config` to select another. Prints effective batch size (`per-GPU × grad_accum × num_GPUs`) at launch. |
-| `run_athenabench.sh` | Register the trained model in `athena_bench/pipelines/models.py` (idempotent), run a smoke test, then the full sweep. |
+| `run_abaligned_sft.sh` | Launch full-parameter SFT on `ift_data_2026_04_22` via `../utils/run_train.sh` with DeepSpeed ZeRO-3. Pushes the merged model to `${HF_USERNAME}/athena-cti-sft-llama31-8b-abaligned` on success. |
+| `run_athenabench.sh` | Register the trained+pushed model in `athena_bench/pipelines/models.py` (idempotent), run a smoke test, then the full 6-task sweep. |
 
 ## Prerequisites
 
-- A Linux box with CUDA and enough VRAM for your chosen config:
-  - **Full SFT** (`autotrain_llama3_8b_sft.yml`): ≥ 80 GB effective
-    (1× A100-80G, 1× H100-80G, or 2× A100-40G sharded).
-  - **LoRA + int4** (`autotrain_llama3_8b_lora.yml`): 1× or 2× 24 GB
-    (L4, A10, RTX 4090, RTX 3090, …).
-- Conda (`setup.sh` assumes `conda` is on `PATH`; run
-  [`SFT/utils/setup.sh`](../utils/setup.sh) or install Miniconda first).
-- HF credentials in `SFT/autotrain/.env` (a gitignored file auto-created
-  from `.env.example` on first `setup.sh` run). You need a write-scope
-  token for `HF_TOKEN` and your namespace for `HF_USERNAME`. All three
-  runtime scripts (`prepare_dataset.sh`, `train.sh`, `run_athenabench.sh`)
-  auto-source this file — no manual `export` required.
-- License acceptance for the base model
-  (`meta-llama/Llama-3.1-8B-Instruct` is gated — visit the model page once
-  with the same account whose token you're using).
+- Linux box with CUDA and ≥ 2× 80 GB GPUs (H100/H200/A100-80G). Full SFT of
+  an 8B model in bf16 needs DeepSpeed ZeRO-3 sharding across ≥ 2 GPUs.
+- `llm-sft` conda env created by [`../utils/setup.sh`](../utils/setup.sh).
+  Single setup script, single env — no separate `autotrain` env.
+- HF credentials in `SFT/.env` (auto-created from `SFT/.env.example` on
+  first `setup.sh` run; also honours `SFT/.env.local` and the legacy
+  `SFT/autotrain/.env`). Required keys: `HF_TOKEN` (write scope),
+  `HF_USERNAME`.
+- License acceptance for `meta-llama/Llama-3.1-8B-Instruct` on huggingface.co
+  using the same account whose token you're using.
+- The training file `SFT/data/ift_data_2026_04_22.json` (144 MB, gitignored)
+  must be present on the training host. Transfer it out-of-band from the
+  workstation where it was generated:
+  ```bash
+  rsync -avP workstation:Glaukopis/SFT/data/ift_data_2026_04_22.json \
+        ~/Glaukopis/SFT/data/
+  ```
+  LLaMA-Factory reads it directly via `SFT/data/dataset_info.json` — there
+  is no HF-dataset-repo round-trip.
 
 ## Quick start
 
 ```bash
-# 1. Create the autotrain conda env (isolated from llm-sft).
-#    Also copies .env.example -> .env on first run so step 2 has a file to edit.
-./setup.sh
-conda activate autotrain
+# 1. One-time: env + credentials (on the training host)
+cd ~/Glaukopis/SFT
+./utils/setup.sh              # creates llm-sft env, bootstraps SFT/.env
+$EDITOR .env                  # fill in HF_TOKEN, HF_USERNAME
+conda activate llm-sft
 
-# 2. Fill in HF credentials ONCE in .env (gitignored).
-#    Replace HF_TOKEN=hf_xxx_replace_me and HF_USERNAME=your-hf-username:
-$EDITOR SFT/autotrain/.env
-chmod 600 SFT/autotrain/.env        # recommended
-# Every script below automatically sources this file; no 'export' needed.
+# 2. Ensure the training data is present (144 MB, not in git)
+ls -lh data/ift_data_2026_04_22.json || \
+    rsync -avP workstation:Glaukopis/SFT/data/ift_data_2026_04_22.json data/
 
-# 3. Convert + upload the training dataset -> hf://datasets/${HF_USERNAME}/athena-ift
-./prepare_dataset.sh
+# 3. Launch full-parameter SFT (writes to SFT/saves/..., pushes to HF on exit 0)
+cd autotrain
+./run_abaligned_sft.sh
 
-# 4. Train (foreground). Defaults to FULL-parameter SFT and requires ~80 GB
-#    aggregate VRAM; train.sh pre-flight-checks this and refuses to launch
-#    on an undersized box. On success AutoTrain pushes the model to
-#    hf://${HF_USERNAME}/athena-cti-sft-llama31-8b
-./train.sh
-# or, to detach:
-./train.sh --nohup
-
-# ...if the box is smaller (< 72 GB), use the LoRA + int4 variant instead:
-./train.sh --config autotrain_llama3_8b_lora.yml
-
-# 5. Register the model in athena_bench and benchmark it
-./run_athenabench.sh                                # default: athena-cti-sft-llama31-8b
-# for the LoRA variant:
-./run_athenabench.sh --alias athena-cti-sft-llama31-8b-lora
-```
-
-### Variant: AthenaBench-aligned training set (2026-04-22)
-
-To train against the AthenaBench-aligned dataset (new `04222026/` template
-family, 138,343 rows; see `tmpl_gen/templates/04222026/`) run:
-
-```bash
-# 1. Push the new dataset to a dedicated HF repo (keeps it separate from the
-#    original athena-ift repo used by the baseline and -mcqfixed runs).
-./prepare_dataset.sh \
-    --src ../data/ift_data_2026_04_22.json \
-    --dataset-repo "${HF_USERNAME}/athena-ift-abaligned" \
-    --overwrite
-
-# 2. Train with the ab-aligned config; pushes to
-#    hf://${HF_USERNAME}/athena-cti-sft-llama31-8b-abaligned
-./train.sh --config autotrain_llama3_8b_sft_fast_abaligned.yml --nohup
-
-# 3. Smoke + full AthenaBench sweep
+# 4. After training pushes the model, benchmark it
 ./run_athenabench.sh --alias athena-cti-sft-llama31-8b-abaligned
 ```
 
-`SFT/data/ift_data_2026_04_22.json` is gitignored (144 MB, exceeds GitHub's
-100 MB push limit). Regenerate it locally via the `tmpl_gen` pipeline or copy
-it from the workstation where it was produced before running step 1; the
-H100 does not need the raw JSON, only the HF dataset repo.
+## `run_abaligned_sft.sh`
 
-## Script reference
+Thin wrapper around `../utils/run_train.sh` with the ab-aligned defaults
+baked in:
 
-### `setup.sh`
-
-Creates `conda env autotrain` (python 3.11) and installs
-`autotrain-advanced==0.8.36` (the latest stable on PyPI). AutoTrain pins
-its entire dependency tree exactly (`transformers==4.48.0`,
-`huggingface-hub==0.27.0`, `accelerate==1.2.1`, …); the script installs
-it in a single pass and does not upgrade anything afterwards. Safe to
-rerun; pass `--recreate` to nuke and rebuild the env from scratch.
-
-```bash
-./setup.sh [--env-name NAME] [--python VERSION]
-           [--autotrain-version SPEC]
-           [--recreate] [--no-conda-init]
-```
-
-### `prepare_dataset.sh`
-
-Applies the base model's chat template to each row of `ift_data.json`
-(`instruction` → system, `input` → user, `output` → assistant) and writes
-the result as a single-column JSONL with a `text` field — the shape
-AutoTrain expects when `chat_template: null`. Then it creates (or reuses)
-an HF dataset repo and uploads `<split>.jsonl`.
+- Base model: `meta-llama/Llama-3.1-8B-Instruct`
+- Dataset: `ift_data_2026_04_22,alpaca_en_demo` (the alpaca mix-in is
+  anti-forgetting regularization; see `alpaca_en_demo` in
+  `../data/dataset_info.json`)
+- `--finetuning full` (full-parameter SFT, all weights trainable)
+- 3 epochs, lr=1e-5 cosine, 5 % warmup, bf16
+- `per_device_train_batch_size=2`, `gradient_accumulation_steps=4`
+  → effective batch 16 on a 2-GPU node
+- `cutoff_len=2048`, `save_steps=500`, `save_total_limit=3`
+- `--deepspeed examples/deepspeed/ds_z3_config.json` (ZeRO-3 sharding,
+  required to fit the 8B model in bf16 on 2× 80 GB)
+- `--report-to wandb` (override with `--report-to none`)
+- Post-training HF push to `${HF_USERNAME}/athena-cti-sft-llama31-8b-abaligned`
 
 ```bash
-./prepare_dataset.sh [--src PATH] [--base-model HF_ID]
-                     [--dataset-repo USER/NAME] [--split-name train]
-                     [--private] [--overwrite]
+./run_abaligned_sft.sh [--repo-id USER/NAME] [--output-dir DIR]
+                       [--report-to wandb|none] [--dry-run]
+                       [--extra "--additional --llamafactory --flags"]
 ```
 
-### `autotrain_llama3_8b_sft.yml`
+`--dry-run` prints the `llamafactory-cli train` invocation and the HF push
+command without executing anything.
 
-Default training config. Key settings:
+The underlying launcher (`../utils/run_train.sh`) handles timestamped
+output dirs, git-sha snapshotting into `train_config.json`, tee'd logs at
+`train.log`, and the merge-free upload (full SFT saves a merged model
+directly, so `upload_to_hf.py --merged-dir` is used instead of the LoRA
+`--adapter-dir` path).
 
-- `peft: false`, `quantization: null` — full-parameter SFT, all weights trainable.
-- `block_size: 2048`, `model_max_length: 8192`, `epochs: 3`.
-- `batch_size: 1`, `gradient_accumulation: 8` (effective batch 8).
-- `lr: 1.0e-5`, cosine scheduler, 5 % warmup.
-- `mixed_precision: bf16`, `gradient_checkpointing: true`.
-- `hub.push_to_hub: true` — pushes to `${HF_USERNAME}/llama3.1-8b-athena-ift`.
-
-To run a different base model or dataset, copy the file and point `train.sh`
-at it via `--config`.
-
-### `train.sh`
-
-Thin wrapper around `autotrain --config <yaml>`. Logs to
-`<project_name>_<UTC-timestamp>.log` next to the script.
-
-```bash
-./train.sh [--config PATH] [--cuda-devices LIST] [--nohup]
-```
-
-### `run_athenabench.sh`
+## `run_athenabench.sh`
 
 1. Verifies the pushed HF model repo is readable.
 2. Patches `athena_bench/pipelines/models.py` with the new alias
@@ -166,7 +106,7 @@ Thin wrapper around `autotrain --config <yaml>`. Logs to
 3. Activates the `ctibench` conda env.
 4. Runs a 2-row smoke test on `athena-mcq` (version 99, disposable).
 5. If the smoke test passes, runs the full 6-task benchmark sweep via
-   [`athena_bench/utils/run_benchmark.sh`](../../athena_bench/utils/run_benchmark.sh).
+   [`../../athena_bench/utils/run_benchmark.sh`](../../athena_bench/utils/run_benchmark.sh).
 
 ```bash
 ./run_athenabench.sh [--repo-id USER/NAME] [--alias NAME]
@@ -177,18 +117,21 @@ Thin wrapper around `autotrain --config <yaml>`. Logs to
 
 ## Troubleshooting
 
-- **`autotrain: command not found`** — You forgot `conda activate autotrain`
-  after `setup.sh`.
-- **401 on tokenizer download in `prepare_dataset.sh`** — The base model is
-  gated; accept its license on huggingface.co using the same account whose
-  token you're using, then retry.
-- **OOM at step 0** — You're likely on < 80 GB VRAM. Either shard across
-  GPUs (set `--cuda-devices "0,1"` and let Accelerate split) or switch the
-  YAML to LoRA + int4 (`peft: true`, `quantization: int4`,
-  `target_modules: all-linear`).
-- **Run finishes but no repo on the Hub** — `HF_TOKEN` is read-only or the
-  `hub:` block in the YAML lost its env substitution; re-export `HF_TOKEN`
-  with write scope and rerun `train.sh`.
-- **Alias conflict in `run_athenabench.sh`** — The registry already has a
+- **`llamafactory-cli: command not found`** — activate the env first:
+  `conda activate llm-sft`.
+- **`training dataset not found: .../ift_data_2026_04_22.json`** — the 144
+  MB dataset is gitignored; transfer it via rsync (see Prerequisites).
+- **401 on base-model download** — Llama-3.1-8B-Instruct is gated; accept
+  the license on huggingface.co using the same account whose token you're
+  using, then retry.
+- **OOM at step 0** — you're on < 2× 80 GB. Options: reduce `cutoff_len`
+  (e.g. `--extra "--cutoff_len 1536"`), lower `per_device_train_batch_size`
+  (`--extra "--per_device_train_batch_size 1 --gradient_accumulation_steps 8"`),
+  or fall back to LoRA via `../utils/run_train.sh` directly
+  (`--finetuning lora`, which is the default).
+- **Run finishes but no repo on the Hub** — `HF_TOKEN` is read-only or
+  missing; fix it in `SFT/.env` and rerun `upload_to_hf.py --merged-dir <output_dir>`
+  manually (training output is preserved under `SFT/saves/`).
+- **Alias conflict in `run_athenabench.sh`** — the registry already has a
   different repo under that alias; pass `--alias <unique-name>` or edit
   `athena_bench/pipelines/models.py` manually.

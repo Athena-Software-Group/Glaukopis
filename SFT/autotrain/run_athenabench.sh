@@ -29,6 +29,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SFT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 MODELS_PY="${REPO_ROOT}/athena_bench/pipelines/models.py"
 BENCH_SCRIPT="${REPO_ROOT}/athena_bench/utils/run_benchmark.sh"
@@ -55,13 +56,18 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-if [[ -f "${SCRIPT_DIR}/.env" ]]; then
-    # shellcheck disable=SC1091
-    source "${SCRIPT_DIR}/.env"
-fi
+# Source credentials from the canonical SFT/.env (populated by
+# SFT/utils/setup.sh). Legacy SFT/autotrain/.env is still honoured for
+# backwards compatibility but no longer bootstrapped anywhere.
+for env_file in "${SFT_DIR}/.env" "${SFT_DIR}/.env.local" "${SCRIPT_DIR}/.env"; do
+    if [[ -f "${env_file}" ]]; then
+        # shellcheck disable=SC1090
+        set -a; source "${env_file}"; set +a
+    fi
+done
 
 if [[ -z "${REPO_ID}" ]]; then
-    : "${HF_USERNAME:?Set HF_USERNAME in SFT/autotrain/.env or pass --repo-id}"
+    : "${HF_USERNAME:?Set HF_USERNAME in SFT/.env or pass --repo-id}"
     REPO_ID="${HF_USERNAME}/${ALIAS}"
 fi
 

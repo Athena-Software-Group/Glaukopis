@@ -289,9 +289,14 @@ if [[ ${DRY_RUN} -eq 1 ]]; then
     if [[ -n "${PUSH_TO_HF}" ]]; then
         echo
         echo "[dry-run] post-training HF push:"
-        echo "  python ${SFT_DIR}/upload_to_hf.py --adapter-dir ${OUTPUT_DIR} \\"
-        echo "      --base-model ${MODEL} --template ${TEMPLATE} \\"
-        echo "      --repo-id ${PUSH_TO_HF}$([[ ${HF_PUBLIC} -eq 1 ]] && echo ' --public')"
+        if [[ "${FINETUNING}" == "lora" ]]; then
+            echo "  python ${SFT_DIR}/upload_to_hf.py --adapter-dir ${OUTPUT_DIR} \\"
+            echo "      --base-model ${MODEL} --template ${TEMPLATE} \\"
+            echo "      --repo-id ${PUSH_TO_HF}$([[ ${HF_PUBLIC} -eq 1 ]] && echo ' --public')"
+        else
+            echo "  python ${SFT_DIR}/upload_to_hf.py --merged-dir ${OUTPUT_DIR} \\"
+            echo "      --repo-id ${PUSH_TO_HF}$([[ ${HF_PUBLIC} -eq 1 ]] && echo ' --public')"
+        fi
     fi
     exit 0
 fi
@@ -322,12 +327,7 @@ fi
         echo
         echo "=== HF push ==="
         echo "  repo     : ${PUSH_TO_HF} ($([[ ${HF_PUBLIC} -eq 1 ]] && echo public || echo private))"
-        if [[ "${FINETUNING}" != "lora" ]]; then
-            echo "  [WARN] --push-to-hf with --finetuning ${FINETUNING}: uploading the"
-            echo "         output dir directly; upload_to_hf.py will not run a merge step"
-            echo "         for non-LoRA runs. Use --merged-dir manually if needed."
-            status=1
-        else
+        if [[ "${FINETUNING}" == "lora" ]]; then
             PUSH_ARGS=(
                 --adapter-dir "${OUTPUT_DIR}"
                 --base-model  "${MODEL}"
@@ -337,18 +337,27 @@ fi
             if [[ -n "${HF_EXPORT_DIR}" ]]; then
                 PUSH_ARGS+=( --export-dir "${HF_EXPORT_DIR}" )
             fi
-            if [[ ${HF_PUBLIC} -eq 1 ]]; then
-                PUSH_ARGS+=( --public )
-            fi
-            set +e
-            python "${SFT_DIR}/upload_to_hf.py" "${PUSH_ARGS[@]}"
-            push_status=$?
-            set -e
-            echo "  finished: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-            echo "  exit    : ${push_status}"
-            if [[ ${push_status} -ne 0 ]]; then
-                status=${push_status}
-            fi
+        else
+            # Full-parameter SFT: the output dir is already a merged model
+            # (no adapter), so skip llamafactory-cli export and upload the
+            # directory as-is. --export-dir / --base-model / --template are
+            # not applicable in this path.
+            PUSH_ARGS=(
+                --merged-dir "${OUTPUT_DIR}"
+                --repo-id    "${PUSH_TO_HF}"
+            )
+        fi
+        if [[ ${HF_PUBLIC} -eq 1 ]]; then
+            PUSH_ARGS+=( --public )
+        fi
+        set +e
+        python "${SFT_DIR}/upload_to_hf.py" "${PUSH_ARGS[@]}"
+        push_status=$?
+        set -e
+        echo "  finished: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+        echo "  exit    : ${push_status}"
+        if [[ ${push_status} -ne 0 ]]; then
+            status=${push_status}
         fi
     elif [[ ${status} -ne 0 && -n "${PUSH_TO_HF}" ]]; then
         echo
