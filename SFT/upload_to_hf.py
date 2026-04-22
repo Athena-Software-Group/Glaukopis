@@ -105,6 +105,9 @@ def parse_args():
                    help="Reuse an existing --export-dir instead of re-running the merge.")
     p.add_argument("--skip-upload", action="store_true", help="Merge only; do not push.")
     p.add_argument("--token", default=None, help="HF token (default: $HF_TOKEN or $HUGGINGFACE_TOKEN).")
+    p.add_argument("--include-checkpoints", action="store_true",
+                   help="Upload intermediate checkpoint-* and global_step* dirs too "
+                        "(default: filtered out to keep repo size ~model-weights only).")
     p.add_argument("--dry-run", action="store_true", help="Print commands without executing.")
     return p.parse_args()
 
@@ -132,7 +135,18 @@ def merge_lora(adapter_dir, base_model, template, export_dir, export_size, dry_r
     subprocess.check_call(cmd)
 
 
-def upload(folder, repo_id, token, private, dry_run):
+DEFAULT_IGNORE_PATTERNS = [
+    "checkpoint-*",
+    "checkpoint-*/**",
+    "global_step*",
+    "global_step*/**",
+    "*.log",
+    "runs/**",
+    "wandb/**",
+]
+
+
+def upload(folder, repo_id, token, private, dry_run, ignore_patterns=None):
     if not token:
         sys.exit(
             "No HF token found. Provide one of:\n"
@@ -142,14 +156,22 @@ def upload(folder, repo_id, token, private, dry_run):
             "  add HF_TOKEN=<tok> to SFT/.env or SFT/.env.local (install python-dotenv)\n"
             "  run 'hf auth login' once to cache credentials at ~/.cache/huggingface/token"
         )
+    patterns = ignore_patterns if ignore_patterns is not None else list(DEFAULT_IGNORE_PATTERNS)
     print(f"[upload] {folder} -> {repo_id} (private={private})")
+    if patterns:
+        print(f"[upload] ignore_patterns={patterns}")
     if dry_run:
         return
     from huggingface_hub import HfApi, login
     login(token=token)
     api = HfApi()
     api.create_repo(repo_id=repo_id, repo_type="model", private=private, exist_ok=True)
-    api.upload_folder(folder_path=str(folder), repo_id=repo_id, repo_type="model")
+    api.upload_folder(
+        folder_path=str(folder),
+        repo_id=repo_id,
+        repo_type="model",
+        ignore_patterns=patterns or None,
+    )
 
 
 def main():
@@ -189,7 +211,9 @@ def main():
         return
 
     token = _resolve_token(args.token)
-    upload(upload_folder_path, args.repo_id, token, private=not args.public, dry_run=args.dry_run)
+    ignore_patterns = [] if args.include_checkpoints else None
+    upload(upload_folder_path, args.repo_id, token, private=not args.public,
+           dry_run=args.dry_run, ignore_patterns=ignore_patterns)
     print(f"[done] https://huggingface.co/{args.repo_id}")
 
 
