@@ -14,8 +14,14 @@
 #
 # Hyperparameters mirror the retired autotrain_llama3_8b_sft_fast_abaligned.yml
 # so the run is apples-to-apples comparable with the prior baselines:
-#   epochs=3, lr=1e-5 cosine, warmup=0.05, bf16, per-GPU batch=2, grad_accum=4
-#   (effective batch = 2 * 4 * num_gpus -> 16 on a 2xH100 box).
+#   epochs=3, lr=1e-5 cosine, warmup=0.05, bf16
+# Per-GPU batch + grad_accum are auto-scaled to keep the global effective
+# batch at 16 regardless of GPU count:
+#   1-2 GPUs: batch=2, grad_accum=4  (2 GPUs -> 2*4*2 = 16)
+#     4 GPUs: batch=4, grad_accum=1  (4 GPUs -> 4*1*4 = 16)
+# On >=4 GPUs we also default save_only_model=True to shrink each
+# checkpoint from ~48 GB to ~16 GB (save_total_limit=10 x 16 GB = ~160 GB).
+# Override either knob via --extra "--per_device_train_batch_size N ...".
 #
 # Usage:
 #   ./run_abaligned_sft.sh [--repo-id USER/NAME] [--output-dir DIR]
@@ -116,6 +122,19 @@ if [[ ! -f "${SFT_DIR}/${DS_CONFIG}" ]]; then
     exit 2
 fi
 
+# Auto-scale per-GPU batch + grad_accum to keep the global effective
+# batch at 16 regardless of GPU count. 4+ GPU hosts get batch=4,
+# grad_accum=1 (fewer optimizer steps, fewer all-reduces, faster epoch);
+# smaller hosts keep the original batch=2, grad_accum=4.
+if [[ "${GPU_COUNT}" -ge 4 ]]; then
+    BATCH_DEFAULT="4"
+    GRAD_ACCUM_DEFAULT="1"
+else
+    BATCH_DEFAULT="2"
+    GRAD_ACCUM_DEFAULT="4"
+fi
+EFFECTIVE_BATCH=$(( BATCH_DEFAULT * GRAD_ACCUM_DEFAULT * (GPU_COUNT > 0 ? GPU_COUNT : 1) ))
+
 # --include_num_input_tokens_seen is already set by run_train.sh.
 # save_total_limit=10 keeps the 10 most recent checkpoints (plus the
 # best-eval one, which the HF Trainer preserves regardless of the limit
@@ -125,6 +144,15 @@ fi
 # OUTPUT_DIR (which is what gets pushed to HF) contain the minimum-eval
 # checkpoint, not whatever the last step happened to produce.
 EXTRA_DEFAULT="--deepspeed ${DS_CONFIG} --save_total_limit 10 --load_best_model_at_end True --metric_for_best_model eval_loss --greater_is_better False"
+
+# On 4+ GPU hosts, also drop optimizer states from saved checkpoints.
+# Shrinks each checkpoint from ~48 GB to ~16 GB, so save_total_limit=10
+# costs ~160 GB instead of ~480 GB. Trade-off: cannot resume mid-run,
+# but load_best_model_at_end makes resume largely moot anyway.
+if [[ "${GPU_COUNT}" -ge 4 ]]; then
+    EXTRA_DEFAULT="${EXTRA_DEFAULT} --save_only_model True"
+fi
+
 if [[ -n "${EXTRA_USER}" ]]; then
     EXTRA_ALL="${EXTRA_DEFAULT} ${EXTRA_USER}"
 else
@@ -138,8 +166,8 @@ RUN_TRAIN_ARGS=(
     --finetuning   "full"
     --epochs       "3"
     --lr           "1e-05"
-    --batch        "2"
-    --grad-accum   "4"
+    --batch        "${BATCH_DEFAULT}"
+    --grad-accum   "${GRAD_ACCUM_DEFAULT}"
     --cutoff       "2048"
     --save-steps   "500"
     --max-samples  "200000"
@@ -180,6 +208,7 @@ echo "  env          : ${CONDA_DEFAULT_ENV:-<unset>}  (expected: llm-sft)"
 echo "  dataset file : ${DATASET_FILE}"
 echo "  hf repo      : ${REPO_ID}"
 echo "  gpus visible : ${GPU_COUNT}"
+echo "  per-gpu batch: ${BATCH_DEFAULT}  grad_accum: ${GRAD_ACCUM_DEFAULT}  (effective batch ~= ${EFFECTIVE_BATCH})"
 echo "  deepspeed    : ${SFT_DIR}/${DS_CONFIG}"
 echo "  cpu offload  : ${OFFLOAD}"
 echo "  launcher     : ${SFT_DIR}/utils/run_train.sh"
