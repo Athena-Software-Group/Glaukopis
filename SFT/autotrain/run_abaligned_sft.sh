@@ -127,6 +127,18 @@ fi
 # wasteful).
 export FORCE_TORCHRUN=1
 
+# Sanitize torchrun env vars: some containers (Docker ENV, k8s pod specs)
+# export these as empty strings rather than leaving them unset, which
+# defeats LLaMA-Factory's `os.getenv(VAR, default)` fallback and crashes
+# its launcher with `invalid literal for int() with base 10: ''` on
+# `int(nnodes)`. Unset them here so the defaults ("1", "0", auto-detect,
+# 127.0.0.1, random port) actually take effect.
+for var in NNODES NODE_RANK NPROC_PER_NODE MASTER_ADDR MASTER_PORT RDZV_ID MIN_NNODES MAX_NNODES; do
+    if [[ -z "${!var:-}" ]]; then
+        unset "${var}"
+    fi
+done
+
 echo "=== AthenaBench-aligned full SFT (LLaMA-Factory + DeepSpeed ZeRO-3) ==="
 echo "  env          : ${CONDA_DEFAULT_ENV:-<unset>}  (expected: llm-sft)"
 echo "  dataset file : ${DATASET_FILE}"
