@@ -2725,9 +2725,9 @@ def process_exploitdb_data(exploitdb_dir: Path) -> List[Dict]:
                 properties = {
                     "id": node_id,
                     "url": f"https://www.exploit-db.com/exploits/{edb_id}",
-                    "title": row.get("description", "N/A").strip()[:500],
-                    "type": row.get("type", "N/A").strip(),
-                    "platform": row.get("platform", "N/A").strip(),
+                    "title": (row.get("description", "").strip() or "N/A")[:500],
+                    "type": row.get("type", "").strip() or "N/A",
+                    "platform": row.get("platform", "").strip() or "N/A",
                     "published": published,
                 }
                 queries.append({
