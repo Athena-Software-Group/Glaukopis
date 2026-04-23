@@ -13,7 +13,7 @@ Within this repository, the pipeline covers:
 1. Building a CTI knowledge graph from public threat-intelligence sources (`athena_cti_db`).
 2. Generating Instruction Fine-Tuning (IFT) data from the graph using text templates (`tmpl_gen`).
 3. Supervised fine-tuning of base LLMs on the IFT data with LoRA (`SFT`).
-4. Benchmarking the resulting models on CTI and general-reasoning tasks (`athena_bench`).
+4. Benchmarking the resulting models on CTI and general-reasoning tasks (`SFT/test`).
 
 ---
 
@@ -23,8 +23,8 @@ Within this repository, the pipeline covers:
 |-----------|---------|-----------------|
 | [`athena_cti_db/`](athena_cti_db/) | Populates a Neo4j graph database with CTI data from MITRE ATT&CK, CAPEC, CWE, CVE, CISA KEV, FIRST EPSS, and MITRE ENGAGE. Produces the graph that feeds `tmpl_gen`. | [`athena_cti_db/README.md`](athena_cti_db/README.md) |
 | [`tmpl_gen/`](tmpl_gen/) | Generates structured text (IFT Alpaca-format triples) from graph-based Sophia CTI templates over the Neo4j CTI DB. Produces training data for `SFT`. | [`tmpl_gen/README.md`](tmpl_gen/README.md) |
-| [`SFT/`](SFT/) | LlamaFactory-based SFT / LoRA training pipeline for Qwen2.5-14B-Instruct and Llama-3.1-8B-Instruct on the IFT dataset. Produces fine-tuned models for `athena_bench`. | [`SFT/README.md`](SFT/README.md) |
-| [`athena_bench/`](athena_bench/) | Benchmarking framework for evaluating LLMs on CTI tasks (ATHENA-RCM/VSP/ATE/TAA/RMS/MCQ) and general NLP tasks (GLUE, SuperGLUE, MMLU, CyberMetric, URLhaus, NVD CVE). | [`athena_bench/README.md`](athena_bench/README.md) |
+| [`SFT/`](SFT/) | LlamaFactory-based SFT / LoRA training pipeline for Qwen2.5-14B-Instruct and Llama-3.1-8B-Instruct on the IFT dataset, plus the `SFT/test/` benchmarking suite. | [`SFT/README.md`](SFT/README.md) |
+| [`SFT/test/`](SFT/test/) | Benchmarking framework for evaluating LLMs on CTI tasks (ATHENA-RCM/VSP/ATE/TAA/RMS/MCQ) and general NLP tasks (GLUE, SuperGLUE, MMLU, CyberMetric, URLhaus, NVD CVE). | [`SFT/test/README.md`](SFT/test/README.md) |
 
 ---
 
@@ -73,10 +73,10 @@ bash ift_training_qwen_2.5_14b.sh      # or ift_training_llama3_8b.sh
 
 After training, merge the LoRA adapters into a standalone model with `llamafactory-cli export`.
 
-### 4. Benchmark the fine-tuned model (`athena_bench`)
+### 4. Benchmark the fine-tuned model (`SFT/test`)
 
 ```bash
-cd athena_bench/
+cd SFT/test/
 conda create -n ctibench python=3.11 -y && conda activate ctibench
 pip install -r requirements.txt
 pip install flash-attn --no-build-isolation
@@ -86,7 +86,7 @@ python inference.py athena-mcq <model_name> --batch 5 --version 1 \
     --data_path benchmark_data/athena_bench/athena-mcq.tsv
 ```
 
-Results and metrics are written to `athena_bench/responses/<model_name>/<task>/`.
+Results and metrics are written to `SFT/test/responses/<model_name>/<task>/`.
 
 ---
 
@@ -97,7 +97,7 @@ Results and metrics are written to `athena_bench/responses/<model_name>/<task>/`
 | `athena_cti_db` | Python 3.8+, Neo4j 5.x Desktop with APOC, ~20 GB disk |
 | `tmpl_gen` | Python (editable install of `tmpl_gen`), running Neo4j CTI DB |
 | `SFT` | Python 3.11+, CUDA 12.4-compatible NVIDIA GPU (A100 80 GB recommended for 14B), WandB + Hugging Face tokens |
-| `athena_bench` | Python 3.11+, Git LFS, GPU for local HF models, API keys for hosted models (OpenAI / Google / etc.) |
+| `SFT/test` | Python 3.11+, Git LFS, GPU for local HF models, API keys for hosted models (OpenAI / Google / etc.) |
 
 ---
 

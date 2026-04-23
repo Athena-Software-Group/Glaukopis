@@ -20,9 +20,9 @@
 # every PROGRESS_INTERVAL seconds (default 15), e.g.:
 #   [progress  45s] s0:12/750 s1:11/750 s2:12/750 s3:11/750 | total 46/3000 (1%) eta 48m20s
 #
-# Log:     athena_bench/utils/<safe-model-name>_parallel.log
-#          athena_bench/utils/<safe-model-name>_parallel.<task>.shard<i>.log
-# Summary: athena_bench/utils/<safe-model-name>_parallel.summary.json
+# Log:     SFT/test/utils/<safe-model-name>_parallel.log
+#          SFT/test/utils/<safe-model-name>_parallel.<task>.shard<i>.log
+# Summary: SFT/test/utils/<safe-model-name>_parallel.summary.json
 #          (aggregate per-task metrics + timings, written at end of sweep)
 
 set -u

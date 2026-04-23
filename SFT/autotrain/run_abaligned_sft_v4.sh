@@ -24,7 +24,7 @@
 #   - No DeepSpeed: LoRA trainable params are tiny, plain DDP is fine
 #   - Final merged model is pushed to
 #     hf://${HF_USERNAME}/athena-cti-sft-llama31-8b-abaligned-v4
-#     (upload_to_hf.py merges the adapter before upload, so athena_bench
+#     (upload_to_hf.py merges the adapter before upload, so SFT/test
 #      eval pulls a full merged model and needs no change).
 #
 # Usage:

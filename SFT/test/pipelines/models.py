@@ -602,7 +602,7 @@ def cleanup_model_cache(model_name=None):
 # wall-clock scales with `max_new_tokens` for any prompt where the model
 # fails to emit EOS (rambling, repetition, formatting drift). Keeping MCQ
 # at 128 trims 5-10x off runs on abaligned Llama-3.1-8B and has no observed
-# accuracy impact for the athena_bench post-processors, which only care
+# accuracy impact for the SFT/test post-processors, which only care
 # about the first answer letter / tail of the response.
 TASK_MAX_NEW_TOKENS: dict[str, int] = {
     # MCQ-style: one letter + optional "Therefore, X." tail

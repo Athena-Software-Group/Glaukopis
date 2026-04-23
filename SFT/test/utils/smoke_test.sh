@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Smoke test for an athena_bench install.
+# Smoke test for an SFT/test install.
 #
 # Verifies — without needing API keys or downloading any HF model weights — that:
 #   1. python / pip are on PATH and point at the expected env
 #   2. PyTorch is importable and (optionally) has CUDA
-#   3. Core athena_bench Python packages import cleanly
+#   3. Core SFT/test Python packages import cleanly
 #   4. The inference.py CLI parses its arguments (--help exits 0)
 #   5. Benchmark data files exist (LFS pulled) for the standard Athena tasks
 #
@@ -41,7 +41,7 @@ pass() { echo "  [ OK ] $1"; }
 fail() { echo "  [FAIL] $1" >&2; exit 1; }
 warn() { echo "  [WARN] $1"; }
 
-echo "=== athena_bench smoke test ==="
+echo "=== SFT/test smoke test ==="
 echo "  bench dir : ${BENCH_DIR}"
 echo "  python    : $(command -v python || echo '(none)')"
 echo "  env       : ${CONDA_DEFAULT_ENV:-<none>}"
@@ -101,8 +101,8 @@ for name in targets:
     importlib.import_module(name)
 print("imports ok")
 PY
-) >/dev/null 2>&1 && pass "athena_bench modules import" \
-                  || fail "athena_bench module import failed (run manually from ${BENCH_DIR} to see trace)"
+) >/dev/null 2>&1 && pass "SFT/test modules import" \
+                  || fail "SFT/test module import failed (run manually from ${BENCH_DIR} to see trace)"
 
 # 4. inference.py CLI ---------------------------------------------------------
 (cd "${BENCH_DIR}" && python inference.py --help >/dev/null 2>&1) \

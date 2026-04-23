@@ -40,7 +40,7 @@ The recommended path on a Linux CUDA host is the scripted installer under
 [`utils/`](utils/):
 
 ```bash
-cd athena_bench/utils
+cd SFT/utils
 ./setup.sh                          # defaults: CUDA 12.4, env=ctibench, python=3.11
 ./setup.sh --cuda cu121             # target a different CUDA toolkit
 ./setup.sh --env-name ctibench-dev  # use a custom conda env name
@@ -213,7 +213,7 @@ Put the token in the usual `.env` file the rest of the framework already
 reads (or export it in the shell):
 
 ```bash
-# athena_bench/.env
+# SFT/test/.env
 HUGGINGFACE_TOKEN=hf_xxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 

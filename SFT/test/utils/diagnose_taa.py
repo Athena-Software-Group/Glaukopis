@@ -19,7 +19,7 @@ last line. Stdlib-only; no conda env activation required.
 
 Usage (run on the inference host where responses live):
 
-  cd ~/Glaukopis/athena_bench
+  cd ~/Glaukopis/SFT/test
   python utils/diagnose_taa.py \\
       --response-file responses/<model_dir>/athena-taa/<file>_response.jsonl \\
       --alias-csv  benchmark_data/athena_bench/athena_taa/aliases.csv \\
@@ -147,7 +147,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--response-file", required=True, type=Path,
-                    help="path to *_response.jsonl from athena_bench/inference.py")
+                    help="path to *_response.jsonl from SFT/test/inference.py")
     ap.add_argument("--alias-csv", type=Path,
                     default=Path("benchmark_data/athena_bench/athena_taa/aliases.csv"))
     ap.add_argument("--related-csv", type=Path,

@@ -21,7 +21,7 @@ for the full rationale).
 | File | Purpose |
 |---|---|
 | `run_abaligned_sft.sh` | Launch full-parameter SFT on `ift_data_2026_04_23_trimmed_v3` via `../utils/run_train.sh` with DeepSpeed ZeRO-3. Pushes the merged model to `${HF_USERNAME}/athena-cti-sft-llama31-8b-abaligned-v3` on success. |
-| `run_athenabench.sh` | Register the trained+pushed model in `athena_bench/pipelines/models.py` (idempotent), run a smoke test, then the full 6-task sweep. |
+| `run_athenabench.sh` | Register the trained+pushed model in `SFT/test/pipelines/models.py` (idempotent), run a smoke test, then the full 6-task sweep. |
 
 ## Prerequisites
 
@@ -109,13 +109,13 @@ directly, so `upload_to_hf.py --merged-dir` is used instead of the LoRA
 ## `run_athenabench.sh`
 
 1. Verifies the pushed HF model repo is readable.
-2. Patches `athena_bench/pipelines/models.py` with the new alias
+2. Patches `SFT/test/pipelines/models.py` with the new alias
    (idempotent: exits 0 if the alias already maps to the same repo, fails
    loudly if it maps to a different one).
 3. Activates the `ctibench` conda env.
 4. Runs a 2-row smoke test on `athena-mcq` (version 99, disposable).
 5. If the smoke test passes, runs the full 6-task benchmark sweep via
-   [`../../athena_bench/utils/run_benchmark.sh`](../../athena_bench/utils/run_benchmark.sh).
+   [`../test/utils/run_benchmark.sh`](../test/utils/run_benchmark.sh).
 
 ```bash
 ./run_athenabench.sh [--repo-id USER/NAME] [--alias NAME]
@@ -147,4 +147,4 @@ directly, so `upload_to_hf.py --merged-dir` is used instead of the LoRA
   manually (training output is preserved under `SFT/saves/`).
 - **Alias conflict in `run_athenabench.sh`** — the registry already has a
   different repo under that alias; pass `--alias <unique-name>` or edit
-  `athena_bench/pipelines/models.py` manually.
+  `SFT/test/pipelines/models.py` manually.

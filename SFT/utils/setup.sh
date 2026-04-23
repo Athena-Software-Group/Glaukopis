@@ -1,55 +1,89 @@
 #!/bin/bash
 
-# End-to-end setup script for the SFT (LlamaFactory) pipeline on a Linux CUDA
-# machine.
+# End-to-end setup script for the SFT pipeline on a Linux CUDA machine.
+# Installs both the LlamaFactory training stack and the SFT/test benchmarking
+# stack into a single Python 3.11 conda env by default. Use --mode to install
+# only one side, or --split-envs to preserve the legacy two-env layout
+# (llm-sft for training, ctibench for testing).
 #
 # Installs (as needed):
 #   1. Miniconda (if `conda` is not on PATH)
-#   2. A conda environment with Python 3.11
+#   2. Conda env(s) with Python 3.11
 #   3. PyTorch matched to the requested CUDA version
-#   4. LlamaFactory (editable install of this directory)
-#   5. Optional extras: metrics, deepspeed, vllm (opt-in via --extras)
-#   6. wandb + huggingface_hub
-#   7. flash-attn (optional, non-fatal; skipped with --no-flash-attn)
+#   4. [train] LlamaFactory (editable install of SFT/) + training extras
+#              (metrics, deepspeed) + wandb + huggingface_hub + python-dotenv
+#   5. [test]  SFT/test requirements + git-lfs
+#   6. flash-attn (optional, non-fatal; skipped with --no-flash-attn)
+#   7. Bootstraps SFT/.env from SFT/.env.example on first run
 #
 # Usage:
-#   ./setup.sh [--cuda cu124|cu121|cu118|cpu] [--env-name NAME] [--python VERSION]
-#              [--extras "metrics deepspeed"] [--no-flash-attn] [--no-conda-init]
+#   ./setup.sh [--mode all|train|test] [--cuda cu124|cu121|cu118|cpu]
+#              [--env-name NAME] [--python VERSION]
+#              [--extras "metrics deepspeed"] [--no-flash-attn]
+#              [--lfs-pull] [--split-envs] [--no-conda-init]
 #
 # Defaults:
+#   --mode all           (install both training + test stacks in one env)
 #   --cuda cu124
-#   --env-name llm-sft
+#   --env-name llm-sft   (ctibench when --mode test alone)
 #   --python 3.11
 #   --extras "metrics deepspeed"
 #   (conda init runs by default for your shell; use --no-conda-init to skip)
+#
+# Dependency note:
+#   LlamaFactory pins datasets<=4.0.0 and transformers<=5.2.0; SFT/test asks
+#   for datasets>=4.0.0 and transformers>=4.56.2. The joint solution is
+#   datasets==4.0.0 and transformers 4.56.2..5.2.0, which pip resolves cleanly
+#   when LlamaFactory is installed first (the order used below).
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SFT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+TEST_DIR="${SFT_DIR}/test"
 
+MODE="all"
 CUDA_TAG="cu124"
-ENV_NAME="llm-sft"
+ENV_NAME=""
 PYTHON_VERSION="3.11"
 EXTRAS="metrics deepspeed"
 INSTALL_FLASH_ATTN=1
+RUN_LFS_PULL=0
+SPLIT_ENVS=0
 RUN_CONDA_INIT=1
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --mode)           MODE="$2"; shift 2 ;;
         --cuda)           CUDA_TAG="$2"; shift 2 ;;
         --env-name)       ENV_NAME="$2"; shift 2 ;;
         --python)         PYTHON_VERSION="$2"; shift 2 ;;
         --extras)         EXTRAS="$2"; shift 2 ;;
         --no-flash-attn)  INSTALL_FLASH_ATTN=0; shift ;;
+        --lfs-pull)       RUN_LFS_PULL=1; shift ;;
+        --split-envs)     SPLIT_ENVS=1; shift ;;
         --no-conda-init)  RUN_CONDA_INIT=0; shift ;;
         -h|--help)
-            sed -n '3,25p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+            sed -n '3,33p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
             exit 0
             ;;
         *) echo "Unknown argument: $1"; exit 1 ;;
     esac
 done
+
+case "${MODE}" in
+    all|train|test) ;;
+    *) echo "Unsupported --mode value: ${MODE} (expected all|train|test)"; exit 1 ;;
+esac
+
+# Default env names. --split-envs overrides ENV_NAME entirely (it runs two
+# passes, one per stack) so it's checked in the dispatch block further down.
+if [[ -z "${ENV_NAME}" ]]; then
+    case "${MODE}" in
+        test) ENV_NAME="ctibench" ;;
+        *)    ENV_NAME="llm-sft" ;;
+    esac
+fi
 
 case "${CUDA_TAG}" in
     cu124|cu121|cu118) TORCH_INDEX_URL="https://download.pytorch.org/whl/${CUDA_TAG}" ;;
@@ -57,13 +91,16 @@ case "${CUDA_TAG}" in
     *) echo "Unsupported --cuda value: ${CUDA_TAG} (expected cu124|cu121|cu118|cpu)"; exit 1 ;;
 esac
 
-echo "=== SFT (LlamaFactory) setup ==="
+echo "=== SFT unified setup ==="
 echo "  sft dir   : ${SFT_DIR}"
-echo "  env name  : ${ENV_NAME}"
+echo "  test dir  : ${TEST_DIR}"
+echo "  mode      : ${MODE}$([[ ${SPLIT_ENVS} -eq 1 ]] && echo ' (split-envs)')"
+echo "  env name  : ${ENV_NAME}$([[ ${SPLIT_ENVS} -eq 1 ]] && echo ' (ignored: split-envs uses llm-sft + ctibench)')"
 echo "  python    : ${PYTHON_VERSION}"
 echo "  cuda tag  : ${CUDA_TAG}"
 echo "  extras    : ${EXTRAS:-<none>}"
 echo "  flash-attn: $([[ ${INSTALL_FLASH_ATTN} -eq 1 ]] && echo yes || echo no)"
+echo "  git lfs   : $([[ ${RUN_LFS_PULL} -eq 1 ]] && echo yes || echo no)"
 echo
 
 # 1. Miniconda bootstrap ------------------------------------------------------
@@ -80,51 +117,129 @@ fi
 # shellcheck disable=SC1091
 source "$(conda info --base)/etc/profile.d/conda.sh"
 
-# 2. Conda environment --------------------------------------------------------
-if conda env list | awk '{print $1}' | grep -qx "${ENV_NAME}"; then
-    echo "=== Reusing existing conda env: ${ENV_NAME} ==="
-else
-    echo "=== Creating conda env: ${ENV_NAME} (python=${PYTHON_VERSION}) ==="
-    conda create -n "${ENV_NAME}" "python=${PYTHON_VERSION}" -y
-fi
-conda activate "${ENV_NAME}"
+# Install one stack ({train|test|all}) into a named conda env. Caller is
+# responsible for passing a valid stack string; env is created on first use
+# and reused on subsequent runs. Ordered so LlamaFactory's explicit version
+# pins are resolved first, then relaxed (>=) test requirements fit on top.
+install_stack() {
+    local env="$1"
+    local stack="$2"
 
-python -m pip install --upgrade pip wheel setuptools
-
-# 3. PyTorch ------------------------------------------------------------------
-echo "=== Installing PyTorch (${CUDA_TAG}) ==="
-pip install --index-url "${TORCH_INDEX_URL}" torch torchvision torchaudio
-
-# 4. LlamaFactory (editable) --------------------------------------------------
-echo "=== Installing LlamaFactory in editable mode ==="
-pip install -e "${SFT_DIR}"
-
-# 5. Optional extras ----------------------------------------------------------
-for extra in ${EXTRAS}; do
-    req_file="${SFT_DIR}/requirements/${extra}.txt"
-    if [[ -f "${req_file}" ]]; then
-        echo "=== Installing extras: ${extra} ==="
-        pip install -r "${req_file}"
+    if conda env list | awk '{print $1}' | grep -qx "${env}"; then
+        echo "=== Reusing existing conda env: ${env} ==="
     else
-        echo "  [WARN] requirements/${extra}.txt not found — skipping"
+        echo "=== Creating conda env: ${env} (python=${PYTHON_VERSION}) ==="
+        conda create -n "${env}" "python=${PYTHON_VERSION}" -y
     fi
-done
+    conda activate "${env}"
 
-# 6. Training/experiment tooling ---------------------------------------------
-# python-dotenv: upload_to_hf.py reads HF_TOKEN / HUGGINGFACE_TOKEN from .env
-# files at SFT/ (and repo root) as one of its credential sources.
-# ninja + packaging: accelerate deepspeed's first-run op compilation
-# (parallel builds vs serial) and are required by deepspeed's setup.
-echo "=== Installing wandb + huggingface_hub + python-dotenv + ninja ==="
-pip install wandb huggingface_hub python-dotenv packaging ninja
+    python -m pip install --upgrade pip wheel setuptools
 
-# 7. flash-attn (optional) ----------------------------------------------------
+    echo "=== Installing PyTorch (${CUDA_TAG}) into ${env} ==="
+    pip install --index-url "${TORCH_INDEX_URL}" torch torchvision torchaudio
+
+    if [[ "${stack}" == "train" || "${stack}" == "all" ]]; then
+        echo "=== Installing LlamaFactory in editable mode into ${env} ==="
+        pip install -e "${SFT_DIR}"
+
+        for extra in ${EXTRAS}; do
+            req_file="${SFT_DIR}/requirements/${extra}.txt"
+            if [[ -f "${req_file}" ]]; then
+                echo "=== Installing extras: ${extra} ==="
+                pip install -r "${req_file}"
+            else
+                echo "  [WARN] requirements/${extra}.txt not found — skipping"
+            fi
+        done
+
+        # python-dotenv: upload_to_hf.py reads HF_TOKEN / HUGGINGFACE_TOKEN
+        # from .env files at SFT/ (and repo root) as one of its credential
+        # sources. ninja + packaging: accelerate deepspeed's first-run op
+        # compilation (parallel builds) and are required by deepspeed setup.
+        echo "=== Installing wandb + huggingface_hub + python-dotenv + ninja ==="
+        pip install wandb huggingface_hub python-dotenv packaging ninja
+    fi
+
+    if [[ "${stack}" == "test" || "${stack}" == "all" ]]; then
+        echo "=== Installing SFT/test requirements into ${env} ==="
+        pip install -r "${TEST_DIR}/requirements.txt"
+    fi
+
+    if [[ ${INSTALL_FLASH_ATTN} -eq 1 && "${CUDA_TAG}" != "cpu" ]]; then
+        echo "=== Installing flash-attn (v${FLASH_ATTN_VERSION}) — optional, non-fatal ==="
+        set +e
+        install_flash_attn
+        local fa_status=$?
+        set -e
+        if [[ ${fa_status} -ne 0 ]]; then
+            echo "  [WARN] flash-attn install failed (exit ${fa_status}); continuing without it."
+            echo "         The benchmark runner defaults to SDPA; trainer configs that"
+            echo "         request flash-attn must be adjusted or this install repaired."
+        fi
+    elif [[ "${CUDA_TAG}" == "cpu" ]]; then
+        echo "=== Skipping flash-attn (CPU build) ==="
+    fi
+
+    if [[ "${stack}" == "test" || "${stack}" == "all" ]]; then
+        if ! command -v git-lfs >/dev/null 2>&1; then
+            echo "=== Installing git-lfs via conda-forge into ${env} ==="
+            conda install -n "${env}" -c conda-forge git-lfs -y
+        fi
+        git lfs install
+
+        if [[ ${RUN_LFS_PULL} -eq 1 ]]; then
+            echo "=== Running 'git lfs pull' in ${TEST_DIR} (requested via --lfs-pull) ==="
+            if ! (cd "${TEST_DIR}" && git lfs pull); then
+                echo "  [WARN] 'git lfs pull' reported errors."
+                echo "         Many LFS objects under data/ are missing from the server;"
+                echo "         benchmark runs do not depend on data/."
+            fi
+        else
+            echo "=== Skipping 'git lfs pull' (default; pass --lfs-pull to opt in) ==="
+        fi
+    fi
+
+    local verify_label="PyTorch / CUDA"
+    if [[ "${stack}" != "test" ]]; then
+        verify_label="${verify_label} / LlamaFactory"
+    fi
+    echo
+    echo "=== Verifying ${verify_label} in ${env} ==="
+    python - "${stack}" <<'PY'
+import sys
+stack = sys.argv[1]
+import torch
+print("torch version     :", torch.__version__)
+print("torch cuda build  :", torch.version.cuda)
+print("cuda available    :", torch.cuda.is_available())
+if torch.cuda.is_available():
+    print("device            :", torch.cuda.get_device_name(0))
+    print("bf16 supported    :", torch.cuda.is_bf16_supported())
+if stack in ("train", "all"):
+    try:
+        import llamafactory
+        print("llamafactory      :", getattr(llamafactory, "__version__", "installed"))
+    except Exception as e:
+        print("llamafactory import failed:", e)
+PY
+
+    if [[ "${stack}" == "train" || "${stack}" == "all" ]]; then
+        if command -v llamafactory-cli >/dev/null 2>&1; then
+            echo "llamafactory-cli  : $(command -v llamafactory-cli)"
+        else
+            echo "  [WARN] llamafactory-cli not on PATH after install"
+        fi
+    fi
+}
+
+# flash-attn helper ----------------------------------------------------------
 # flash-attn is installed opportunistically: training configs can use it when
 # available, but failures are non-fatal because the prebuilt wheels are pinned
 # to a specific torch x cuda x python combo and often ABI-mismatch against the
 # version pip resolves. flash-attn's setup.py also has an EXDEV bug when
 # $CONDA_PREFIX and $PIP_CACHE_DIR live on different filesystems (e.g. RunPod:
-# /root vs /home), which is why we try a prebuilt wheel first.
+# /root vs /home), which is why we try a prebuilt wheel first. The runtime
+# defaults to SDPA when flash-attn is absent, so this is best-effort.
 FLASH_ATTN_VERSION="${FLASH_ATTN_VERSION:-2.8.3}"
 
 install_flash_attn() {
@@ -158,46 +273,20 @@ PY
     pip install "flash-attn==${FLASH_ATTN_VERSION}" --no-build-isolation
 }
 
-if [[ ${INSTALL_FLASH_ATTN} -eq 1 && "${CUDA_TAG}" != "cpu" ]]; then
-    echo "=== Installing flash-attn (v${FLASH_ATTN_VERSION}) — optional, non-fatal ==="
-    set +e
-    install_flash_attn
-    fa_status=$?
-    set -e
-    if [[ ${fa_status} -ne 0 ]]; then
-        echo "  [WARN] flash-attn install failed (exit ${fa_status}); continuing without it."
-        echo "         Trainer configs that request flash-attn must be adjusted or"
-        echo "         this install must be repaired to match the local torch ABI."
-    fi
-elif [[ "${CUDA_TAG}" == "cpu" ]]; then
-    echo "=== Skipping flash-attn (CPU build) ==="
-fi
-
-# 8. Verification -------------------------------------------------------------
-echo
-echo "=== Verifying PyTorch / CUDA / LlamaFactory ==="
-python - <<'PY'
-import torch
-print("torch version     :", torch.__version__)
-print("torch cuda build  :", torch.version.cuda)
-print("cuda available    :", torch.cuda.is_available())
-if torch.cuda.is_available():
-    print("device            :", torch.cuda.get_device_name(0))
-    print("bf16 supported    :", torch.cuda.is_bf16_supported())
-try:
-    import llamafactory
-    print("llamafactory      :", getattr(llamafactory, "__version__", "installed"))
-except Exception as e:
-    print("llamafactory import failed:", e)
-PY
-
-if command -v llamafactory-cli >/dev/null 2>&1; then
-    echo "llamafactory-cli  : $(command -v llamafactory-cli)"
+# Dispatch: run install_stack for each requested env/stack pair ---------------
+# --split-envs ignores MODE and always runs both stacks in two separate envs
+# (llm-sft for training, ctibench for testing), preserving the legacy layout.
+INSTALLED_ENVS=()
+if [[ ${SPLIT_ENVS} -eq 1 ]]; then
+    install_stack "llm-sft"  "train"
+    install_stack "ctibench" "test"
+    INSTALLED_ENVS=("llm-sft" "ctibench")
 else
-    echo "  [WARN] llamafactory-cli not on PATH after install"
+    install_stack "${ENV_NAME}" "${MODE}"
+    INSTALLED_ENVS=("${ENV_NAME}")
 fi
 
-# 9. Shell integration --------------------------------------------------------
+# Shell integration -----------------------------------------------------------
 # In a fresh interactive shell, `conda activate` fails with
 #   "Run 'conda init' before 'conda activate'"
 # unless the conda shell hook has been installed into the user's rc file.
@@ -217,38 +306,43 @@ if [[ ${RUN_CONDA_INIT} -eq 1 ]]; then
     esac
 fi
 
-# 10. .env bootstrap ----------------------------------------------------------
+# .env bootstrap --------------------------------------------------------------
 # Copy SFT/.env.example -> SFT/.env on first run so the user has a single
 # place to drop HF / wandb credentials. upload_to_hf.py, run_train.sh, and
-# autotrain/run_abaligned_sft.sh all auto-source this file.
-ENV_FILE="${SFT_DIR}/.env"
-ENV_EXAMPLE="${SFT_DIR}/.env.example"
+# autotrain/run_abaligned_sft.sh all auto-source this file. Skipped in test-
+# only mode since those tooling hooks aren't exercised there.
 NEEDS_ENV_EDIT=0
-if [[ ! -f "${ENV_FILE}" && -f "${ENV_EXAMPLE}" ]]; then
-    cp "${ENV_EXAMPLE}" "${ENV_FILE}"
-    chmod 600 "${ENV_FILE}" 2>/dev/null || true
-    NEEDS_ENV_EDIT=1
-    echo
-    echo "=== Bootstrapped ${ENV_FILE} from .env.example ==="
-elif [[ -f "${ENV_FILE}" ]] && grep -q 'hf_xxx_replace_me\|your-hf-username' "${ENV_FILE}"; then
-    NEEDS_ENV_EDIT=1
+if [[ "${MODE}" != "test" || ${SPLIT_ENVS} -eq 1 ]]; then
+    ENV_FILE="${SFT_DIR}/.env"
+    ENV_EXAMPLE="${SFT_DIR}/.env.example"
+    if [[ ! -f "${ENV_FILE}" && -f "${ENV_EXAMPLE}" ]]; then
+        cp "${ENV_EXAMPLE}" "${ENV_FILE}"
+        chmod 600 "${ENV_FILE}" 2>/dev/null || true
+        NEEDS_ENV_EDIT=1
+        echo
+        echo "=== Bootstrapped ${ENV_FILE} from .env.example ==="
+    elif [[ -f "${ENV_FILE}" ]] && grep -q 'hf_xxx_replace_me\|your-hf-username' "${ENV_FILE}"; then
+        NEEDS_ENV_EDIT=1
+    fi
 fi
 
 echo
 echo "=== Setup complete ==="
 if [[ ${RUN_CONDA_INIT} -eq 1 && -n "${target_shell:-}" ]]; then
     echo "Start a new shell (or run 'exec ${target_shell}') to pick up the conda hook,"
-    echo "then activate the environment with:"
+    echo "then activate one of the environments:"
 else
-    echo "Activate the environment with:"
+    echo "Activate one of the environments:"
 fi
-echo "    conda activate ${ENV_NAME}"
+for env in "${INSTALLED_ENVS[@]}"; do
+    echo "    conda activate ${env}"
+done
 echo
 if [[ ${NEEDS_ENV_EDIT} -eq 1 ]]; then
     echo "Fill in HF / wandb credentials (placeholders still present):"
     echo "    \$EDITOR ${ENV_FILE}"
     echo "    # set HF_TOKEN (write-scope) and HF_USERNAME at minimum"
-else
+elif [[ "${MODE}" != "test" || ${SPLIT_ENVS} -eq 1 ]]; then
     echo "Credentials file: ${ENV_FILE}  (already populated)"
 fi
 echo
@@ -256,14 +350,19 @@ echo "Alternative to editing .env: run the interactive CLIs once:"
 echo "    hf auth login            # REQUIRED (Llama-3.1-8B-Instruct is a gated model)"
 echo "    wandb login              # optional, only needed if passing --report-to wandb"
 echo
-echo "run_train.sh, upload_to_hf.py, and autotrain/run_abaligned_sft.sh all"
-echo "auto-source ${SFT_DIR}/.env -- no manual 'export' needed."
-echo
-echo "Then launch training (defaults: Llama-3.1-8B-Instruct LoRA on ift_data_2026_04_20):"
-echo "    cd ${SFT_DIR}"
-echo "    bash utils/run_train.sh --dry-run   # inspect the command, no training"
-echo "    bash utils/run_train.sh             # kick off the real run"
-echo
-echo "Override defaults as needed, e.g.:"
-echo "    bash utils/run_train.sh --epochs 1 --lr 5e-5 --report-to wandb \\"
-echo "        --extra \"--lora_rank 16 --lora_alpha 32 --lora_dropout 0.1 --eval_steps 100\""
+if [[ "${MODE}" == "train" || "${MODE}" == "all" || ${SPLIT_ENVS} -eq 1 ]]; then
+    echo "run_train.sh, upload_to_hf.py, and autotrain/run_abaligned_sft.sh all"
+    echo "auto-source ${SFT_DIR}/.env -- no manual 'export' needed."
+    echo
+    echo "Launch training (defaults: Llama-3.1-8B-Instruct LoRA on ift_data_2026_04_20):"
+    echo "    cd ${SFT_DIR}"
+    echo "    bash utils/run_train.sh --dry-run   # inspect the command, no training"
+    echo "    bash utils/run_train.sh             # kick off the real run"
+    echo
+fi
+if [[ "${MODE}" == "test" || "${MODE}" == "all" || ${SPLIT_ENVS} -eq 1 ]]; then
+    echo "Launch a benchmark (e.g. Athena MCQ):"
+    echo "    cd ${TEST_DIR}"
+    echo "    python inference.py athena-mcq <model_name> --batch 5 --version 1 \\"
+    echo "        --data_path benchmark_data/athena_bench/athena-mcq.tsv"
+fi

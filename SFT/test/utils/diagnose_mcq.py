@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Diagnose athena-mcq parsing issues against ground truth.
 
-Reads a *_response.jsonl written by athena_bench/inference.py and
+Reads a *_response.jsonl written by SFT/test/inference.py and
 re-evaluates every row against three questions:
 
   1. Did GT normalization succeed (row has a non-empty A-E letter)?
@@ -18,7 +18,7 @@ activation required.
 
 Usage (run on the inference host where responses live):
 
-  cd ~/Glaukopis/athena_bench
+  cd ~/Glaukopis/SFT/test
   python utils/diagnose_mcq.py \\
       --response-file responses/asg-ai_athena-cti-sft-llama31-8b-abaligned/athena-mcq/athena-mcq_all_v1_asg-ai_athena-cti-sft-llama31-8b-abaligned_response.jsonl \\
       --benchmark-file benchmark_data/athena_bench/athena-cti-mcq-3k.jsonl \\
@@ -170,7 +170,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--response-file", required=True, type=Path,
-                    help="path to *_response.jsonl from athena_bench/inference.py")
+                    help="path to *_response.jsonl from SFT/test/inference.py")
     ap.add_argument("--benchmark-file", type=Path, default=None,
                     help="benchmark jsonl (optional; enables option-text match heuristic "
                          "and recovery of GT when the response file's 'answer' field is empty)")

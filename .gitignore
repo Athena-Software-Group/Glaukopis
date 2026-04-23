@@ -423,8 +423,8 @@ __pycache__/
 # backing LFS objects are missing from the server (404 on 'git lfs pull').
 # The benchmark runner does not depend on this directory; it is only used
 # for regenerating datasets via the scraping pipelines.
-athena_bench/data/processed/
-athena_bench/data/raw/
+SFT/test/data/processed/
+SFT/test/data/raw/
 # Oversized SFT datasets (exceed GitHub's 100 MB push limit) and all
 # generated Alpaca-format training files.
 # LLaMA-Factory reads these directly from SFT/data/ via dataset_info.json;
@@ -441,7 +441,7 @@ tmpl_gen/utils/_db_schema.json
 
 tmpl_gen/data_generation/
 
-athena_bench/responses/
+SFT/test/responses/
 
 *.safetensors
 
