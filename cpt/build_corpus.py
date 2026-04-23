@@ -38,10 +38,12 @@ def build(args: argparse.Namespace) -> int:
     sources = cfg.get("sources", {})
 
     if args.source:
-        targets = {args.source: sources[args.source]} if args.source in sources else {}
-        if not targets:
-            print(f"[build] unknown source: {args.source}", file=sys.stderr)
+        requested = [s.strip() for s in args.source.split(",") if s.strip()]
+        unknown = [s for s in requested if s not in sources]
+        if unknown:
+            print(f"[build] unknown source(s): {', '.join(unknown)}", file=sys.stderr)
             return 2
+        targets = {n: sources[n] for n in requested}
     else:
         targets = {n: s for n, s in sources.items() if s.get("enabled", False)}
 
@@ -61,14 +63,30 @@ def build(args: argparse.Namespace) -> int:
             continue
 
         parsed_path = PARSED_DIR / f"{name}.jsonl"
+        # Per-source leak policy stamped onto each doc's meta so process.py
+        # can vary behavior without re-reading sources.yaml (cve-family: true,
+        # structural taxonomies: false, inherit top-level default otherwise).
+        drop_policy = spec.get("drop_on_exact_id", None)
         count = 0
+        dropped_since = 0
         with parsed_path.open("w", encoding="utf-8") as out:
             for doc in parse.parse_source(name, spec, raw_paths):
+                if drop_policy is not None:
+                    doc.setdefault("meta", {})["drop_on_exact_id"] = bool(drop_policy)
+                # Recency cutoff: skip docs whose dated content almost certainly
+                # already exists in the base model's pretrain. Only dated docs
+                # are eligible for filtering; undated (HTML/Sigma) pass through.
+                if args.since:
+                    d = (doc.get("meta") or {}).get("date", "")
+                    if d and d < args.since:
+                        dropped_since += 1
+                        continue
                 out.write(json.dumps(doc, ensure_ascii=False) + "\n")
                 count += 1
         per_source_docs[name] = count
         parsed_files.append(parsed_path)
-        print(f"[build:{name}] parsed {count} docs -> {parsed_path}")
+        extra = f" (dropped {dropped_since} pre-{args.since})" if args.since else ""
+        print(f"[build:{name}] parsed {count} docs -> {parsed_path}{extra}")
 
     if args.fetch_parse_only:
         print("\n[build] --fetch-parse-only: stopping before processing")
@@ -107,10 +125,15 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--config", default=str(SCRIPT_DIR / "sources.yaml"))
     p.add_argument("--out", default=str(DEFAULT_CORPUS_DIR), help="Output dir for the final corpus JSONL")
     p.add_argument("--name", default="cti_corpus_v1", help="Corpus name (filename stem)")
-    p.add_argument("--source", default="", help="Build only this single source")
+    p.add_argument("--source", default="",
+                   help="Build only the named source(s); comma-separated for multiple")
     p.add_argument("--force", action="store_true", help="Re-fetch even if cached")
     p.add_argument("--fetch-parse-only", action="store_true",
                    help="Stop after parse (skip dedupe/leak filter); useful for incremental builds")
+    p.add_argument("--since", default="",
+                   help="Drop dated docs older than YYYY-MM-DD (reduces overlap with "
+                        "the base model's pretrain; undated docs are unaffected). "
+                        "E.g. '2023-10-01' for Llama-3.1 cutoff")
     args = p.parse_args(argv)
     return build(args)
 

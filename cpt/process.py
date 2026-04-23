@@ -45,17 +45,22 @@ def extract_ids(text: str) -> set[str]:
     return {m.group(0).upper() for m in _ID_PATTERNS.finditer(text)}
 
 
-def quality_ok(text: str, min_chars: int = 200, max_chars: int = 200_000) -> bool:
+def quality_ok(
+    text: str,
+    min_chars: int = 100,
+    max_chars: int = 200_000,
+    min_words: int = 15,
+) -> bool:
     n = len(text)
     if n < min_chars or n > max_chars:
         return False
-    # cheap language heuristic: at least 60% ascii letters / whitespace / punctuation
+    # cheap language heuristic: >=85% ascii
     ascii_chars = sum(1 for c in text if ord(c) < 128)
     if ascii_chars / n < 0.85:
         return False
-    # word-like token density
+    # word-like token density; lower than 20 is usually a stub header
     words = re.findall(r"[A-Za-z]{2,}", text)
-    if len(words) < 40:
+    if len(words) < min_words:
         return False
     return True
 
@@ -179,6 +184,7 @@ def process(
     lp = config.get("leak_protection", {}) or {}
     ngram = int(lp.get("ngram", 13))
     near_dup_threshold = float(lp.get("near_dup_threshold", 0.8))
+    default_drop_on_exact_id = bool(lp.get("drop_on_exact_id", False))
 
     exact_ids, leak_lsh = build_leak_index(config)
 
@@ -195,15 +201,22 @@ def process(
         for doc in read_jsonl(inputs):
             counters["total"] += 1
             text = doc.get("text", "")
-            source = (doc.get("meta") or {}).get("source", "unknown")
+            meta = doc.get("meta") or {}
+            source = meta.get("source", "unknown")
+            # per-source policy (stamped by build_corpus.py from sources.yaml);
+            # fall back to the leak_protection default for standalone use.
+            drop_on_exact_id = meta.get("drop_on_exact_id", default_drop_on_exact_id)
             if not quality_ok(text):
                 counters["dropped_quality"] += 1
                 continue
-            # exact-id leak
-            ids = extract_ids(text)
-            if ids & exact_ids:
-                counters["dropped_leak_exact"] += 1
-                continue
+            # exact-id leak (opt-in per source: false for structural taxonomies
+            # like ATT&CK where id mentions in training are the point; true for
+            # CVE records where the answer to CTIBench-VSP is embedded verbatim)
+            if drop_on_exact_id:
+                ids = extract_ids(text)
+                if ids & exact_ids:
+                    counters["dropped_leak_exact"] += 1
+                    continue
             # near-dup leak (benchmark)
             mh = _minhash(text, n=ngram)
             if len(mh.digest()) > 0 and leak_lsh.query(mh):

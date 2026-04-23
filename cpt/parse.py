@@ -44,9 +44,18 @@ def parse_stix(paths: list[Path], source: str) -> Iterator[dict]:
                 text, meta_id = _stix_render(obj)
                 if not text:
                     continue
+                # STIX dates are ISO 8601; 'modified' is the last semantic
+                # change to the object, which is the best proxy for "when
+                # did this entry reach its current content" for CPT freshness.
+                date = (obj.get("modified") or obj.get("created") or "")[:10]
                 yield {
                     "text": text,
-                    "meta": {"source": source, "id": meta_id, "type": obj.get("type", "")},
+                    "meta": {
+                        "source": source,
+                        "id": meta_id,
+                        "type": obj.get("type", ""),
+                        "date": date,
+                    },
                 }
         except Exception as e:  # noqa: BLE001
             print(f"[parse:stix] {path}: {e}", file=sys.stderr)
@@ -139,9 +148,10 @@ def parse_cve_nvd(paths: list[Path], source: str) -> Iterator[dict]:
                 header += f" | {', '.join(cwes)}"
             if cvss_parts:
                 header += f" | {'; '.join(cvss_parts)}"
+            date = (cve.get("published") or cve.get("lastModified") or "")[:10]
             yield {
                 "text": f"{header}\n\n{desc}\n",
-                "meta": {"source": source, "id": cid, "type": "cve"},
+                "meta": {"source": source, "id": cid, "type": "cve", "date": date},
             }
 
 
@@ -177,7 +187,11 @@ def parse_kev(paths: list[Path], source: str) -> Iterator[dict]:
                 f"{desc}\n\nRequired mitigation: {action}\n"
                 f"Known ransomware association: {ransomware}\n"
             )
-            yield {"text": text, "meta": {"source": source, "id": cve, "type": "kev"}}
+            date = (v.get("dateAdded") or "")[:10]
+            yield {
+                "text": text,
+                "meta": {"source": source, "id": cve, "type": "kev", "date": date},
+            }
 
 
 # ---------- CWE XML ----------

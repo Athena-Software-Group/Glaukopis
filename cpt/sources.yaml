@@ -18,17 +18,26 @@
 
 leak_protection:
   # 13-gram minhash near-dup; drop docs with Jaccard >= threshold against
-  # any row in the listed benchmark test splits.
+  # any row in the listed benchmark test splits. This is the primary
+  # contamination guard (catches verbatim answer-in-training text).
   jaccard_threshold: 0.30
   ngram: 13
+  # Exact-id leak: drop any training doc mentioning a CVE/CWE/CAPEC/T-id
+  # that also appears in a benchmark row. DEFAULT FALSE because for
+  # structural taxonomies (ATT&CK, CAPEC) the id in training is the intended
+  # signal, not leakage. Individual sources opt in below (e.g. NVD, where
+  # a CVE record embeds the literal CVSS-vector answer to CTIBench-VSP).
+  drop_on_exact_id: false
   benchmarks:
-    - SFT/test/data/cti-mcq.tsv
-    - SFT/test/data/cti-rcm.tsv
-    - SFT/test/data/cti-vsp.tsv
-    - SFT/test/data/cti-ate.tsv
-    - SFT/test/data/cti-taa.tsv
+    - SFT/test/benchmark_data/cti_bench/cti-mcq.tsv
+    - SFT/test/benchmark_data/cti_bench/cti-rcm.tsv
+    - SFT/test/benchmark_data/cti_bench/cti-rcm-2021.tsv
+    - SFT/test/benchmark_data/cti_bench/cti-vsp.tsv
+    - SFT/test/benchmark_data/cti_bench/cti-ate.tsv
+    - SFT/test/benchmark_data/cti_bench/cti_taa/cti-taa.tsv
+    - SFT/test/benchmark_data/athena_bench/mcq-patch.tsv
   athena_dirs:
-    - SFT/test/benchmark_data
+    - SFT/test/benchmark_data/athena_bench
     - SFT/test/benchmark_data_mini
 
 sources:
@@ -75,42 +84,52 @@ sources:
   # NVD 2.0 JSON feeds by year. Keep last 5-6 years by default to stay
   # under ~100 MB raw; flip older years on for a heavier corpus.
 
+  # NVD sources opt into drop_on_exact_id: each CVE record literally contains
+  # the CVSS vector that CTIBench-VSP expects the model to predict from the
+  # description alone. Any CVE id appearing in a benchmark row gets its full
+  # NVD record excluded to prevent answer memorization.
   nvd_2025:
     fetcher: http_json
     parser: cve_nvd
     url: https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-2025.json.gz
     license: public
     enabled: true
+    drop_on_exact_id: true
   nvd_2024:
     fetcher: http_json
     parser: cve_nvd
     url: https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-2024.json.gz
     license: public
     enabled: true
+    drop_on_exact_id: true
   nvd_2023:
     fetcher: http_json
     parser: cve_nvd
     url: https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-2023.json.gz
     license: public
     enabled: true
+    drop_on_exact_id: true
   nvd_2022:
     fetcher: http_json
     parser: cve_nvd
     url: https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-2022.json.gz
     license: public
     enabled: true
+    drop_on_exact_id: true
   nvd_2021:
     fetcher: http_json
     parser: cve_nvd
     url: https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-2021.json.gz
     license: public
     enabled: true
+    drop_on_exact_id: true
   nvd_2020:
     fetcher: http_json
     parser: cve_nvd
     url: https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-2020.json.gz
     license: public
     enabled: true
+    drop_on_exact_id: true
 
   # --- CISA (KEV + advisories) ---
 
