@@ -98,13 +98,20 @@ else
 fi
 EFFECTIVE_BATCH=$(( BATCH_DEFAULT * GRAD_ACCUM_DEFAULT * (GPU_COUNT > 0 ? GPU_COUNT : 1) ))
 
-# LoRA hyperparameters (override the r=64/a=128 defaults in run_train.sh):
-#   rank 16, alpha 32, dropout 0.05, target all linear layers.
+# LoRA hyperparameters: override the r=64/a=128 defaults in run_train.sh
+# via env vars (not --extra) so the llamafactory-cli command line and
+# train_config.json snapshot each have a single unambiguous value per flag.
+# rank 16, alpha 32, dropout 0.05, target all linear layers.
+export LORA_RANK_DEFAULT=16
+export LORA_ALPHA_DEFAULT=32
+export LORA_DROPOUT_DEFAULT=0.05
+export LORA_TARGET_DEFAULT=all
+
 # save_only_model=True keeps adapters small and avoids the end-of-train
 # optimizer reload OOM pattern seen under ZeRO-3 (not an issue here, but
 # cheap to keep on). load_best_model_at_end=True so the output dir ends
 # up pointing at the minimum-eval checkpoint when we push to HF.
-EXTRA_DEFAULT="--lora_rank 16 --lora_alpha 32 --lora_dropout 0.05 --lora_target all --save_total_limit 5 --load_best_model_at_end True --metric_for_best_model eval_loss --greater_is_better False --save_only_model True"
+EXTRA_DEFAULT="--save_total_limit 5 --load_best_model_at_end True --metric_for_best_model eval_loss --greater_is_better False --save_only_model True"
 
 if [[ -n "${EXTRA_USER}" ]]; then
     EXTRA_ALL="${EXTRA_DEFAULT} ${EXTRA_USER}"

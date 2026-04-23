@@ -138,15 +138,22 @@ LOG_FILE="${OUTPUT_DIR}/train.log"
 CONFIG_FILE="${OUTPUT_DIR}/train_config.json"
 
 # LoRA vs full-parameter flags. LoRA adds four extra switches; full adds none.
+# The four LoRA hyperparameters are env-var overridable so higher-level
+# launchers (e.g. autotrain/run_abaligned_sft_v4.sh) can set them without
+# duplicating the switches via --extra (which would leave both the default
+# and the override on the llamafactory-cli command line and in
+# train_config.json, making the effective value unclear to a later reader).
 LORA_ARGS=()
-LORA_RANK_DEFAULT="64"
-LORA_ALPHA_DEFAULT="128"
+LORA_RANK_DEFAULT="${LORA_RANK_DEFAULT:-64}"
+LORA_ALPHA_DEFAULT="${LORA_ALPHA_DEFAULT:-128}"
+LORA_DROPOUT_DEFAULT="${LORA_DROPOUT_DEFAULT:-0.05}"
+LORA_TARGET_DEFAULT="${LORA_TARGET_DEFAULT:-all}"
 if [[ "${FINETUNING}" == "lora" ]]; then
     LORA_ARGS=(
         --lora_rank "${LORA_RANK_DEFAULT}"
         --lora_alpha "${LORA_ALPHA_DEFAULT}"
-        --lora_dropout 0.05
-        --lora_target all
+        --lora_dropout "${LORA_DROPOUT_DEFAULT}"
+        --lora_target "${LORA_TARGET_DEFAULT}"
     )
 fi
 
