@@ -440,3 +440,4 @@ tmpl_gen/utils/output-*/
 tmpl_gen/utils/_db_schema.json
 tmpl_gen/data_generation/results_dir_*/
 tmpl_gen/data_generation/Sophia-CTI-Templates-*.json
+athena_bench/responses/
