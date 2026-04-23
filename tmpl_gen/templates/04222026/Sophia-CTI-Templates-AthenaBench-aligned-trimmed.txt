@@ -36,14 +36,20 @@ What was removed vs Sophia-CTI-Templates-AthenaBench-aligned.txt:
   - AB.MCQ.6   : CAPEC-to-ATT&CK. Dropped for the same reason as MCQ.2
                  (all 170 rows collapsed onto CWE-120/CAPEC->AP anchor
                  in the trimmed run).
+  - AB.MCQ.4   : CWE-to-CAPEC. Dropped after the v2 trimmed run again
+                 produced all 170 rows off a single anchor (CWE-1252).
+                 The graph contains only one Weakness node satisfying
+                 the `cwe.related_attack_pattern>CAPEC.id` sample
+                 constraint, so Sample: cwe deterministically reuses
+                 that anchor -- same pathology as MCQ.2/6.
 
 What was kept:
 
-  - AB.MCQ.1,3,4,5 : four diverse-anchor sub-templates retained for
-                 coverage breadth, each capped at Count: 170 (~680 total
+  - AB.MCQ.1,3,5 : three diverse-anchor sub-templates retained for
+                 coverage breadth, each capped at Count: 170 (~510 total
                  MCQ rows after shuffler balances the correct-letter
                  distribution uniformly across A-E). MCQ.1 alone binds
-                 ~105 distinct techniques over 170 rows.
+                 ~95 distinct techniques over 170 rows.
   - AB.RCM.1-2 : 2 distinct CVE->CWE variants (description-only, full record).
   - AB.VSP.1,3 : headline score+vector + per-metric reasoning variants.
   - AB.ATE.1,3,5 : raw description, group-attributed narrative, telemetry-
@@ -63,8 +69,8 @@ MCQ position-bias control:
 
 Expected dataset effect:
 
-  - Templates drop 25 -> 13 (a ~48% reduction in template count).
-  - Row count target: ~15k non-MCQ + ~680 MCQ = ~15.7k total.
+  - Templates drop 25 -> 12 (a ~52% reduction in template count).
+  - Row count target: ~15k non-MCQ + ~510 MCQ = ~15.6k total.
   - SFT wall-clock on 4xH100 with batch=4 grad_accum=1: target ~3-4h
     (down from ~8.5h on the full 138k-row slate).
 
@@ -114,28 +120,6 @@ Answer: The CVE description matches the pattern defined by {cwe.id} ({cwe.name})
 {force negw2.id != negw4.id}
 {force negw3.id != negw4.id}
 Sample: cve
-Shuffle: mcq
-Count: 170
-
-AB.MCQ.4 Instruction: You are a CTI analyst at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult the MITRE CWE and CAPEC knowledge bases, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
-Question: Which CAPEC attack pattern primarily exploits {cwe:Weakness.id} ({cwe.name})? Weakness description: {cwe.description}
-A) CAPEC-{cap:cwe.related_attack_pattern>CAPEC.id} ({cap.name})
-B) CAPEC-{negcap1:CAPEC.id} ({negcap1.name})
-C) CAPEC-{negcap2:CAPEC.id} ({negcap2.name})
-D) CAPEC-{negcap3:CAPEC.id} ({negcap3.name})
-E) CAPEC-{negcap4:CAPEC.id} ({negcap4.name})
-Answer: MITRE CAPEC records CAPEC-{cap.id} ({cap.name}) as the attack pattern exploiting {cwe.id} ({cwe.name}): {cap.description}. Therefore, A.
-{force negcap1.id != cap.id}
-{force negcap2.id != cap.id}
-{force negcap3.id != cap.id}
-{force negcap4.id != cap.id}
-{force negcap1.id != negcap2.id}
-{force negcap1.id != negcap3.id}
-{force negcap1.id != negcap4.id}
-{force negcap2.id != negcap3.id}
-{force negcap2.id != negcap4.id}
-{force negcap3.id != negcap4.id}
-Sample: cwe
 Shuffle: mcq
 Count: 170
 
