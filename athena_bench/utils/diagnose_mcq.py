@@ -20,7 +20,7 @@ Usage (run on the inference host where responses live):
 
   cd ~/Glaukopis/athena_bench
   python utils/diagnose_mcq.py \\
-      --response-file responses/pworth1971_athena-cti-sft-llama31-8b-abaligned/athena-mcq/athena-mcq_all_v1_pworth1971_athena-cti-sft-llama31-8b-abaligned_response.jsonl \\
+      --response-file responses/asg-ai_athena-cti-sft-llama31-8b-abaligned/athena-mcq/athena-mcq_all_v1_asg-ai_athena-cti-sft-llama31-8b-abaligned_response.jsonl \\
       --benchmark-file benchmark_data/athena_bench/athena-cti-mcq-3k.jsonl \\
       --out-mismatches /tmp/mcq_mismatches.jsonl
 """

@@ -22,14 +22,14 @@ Examples:
         --adapter-dir saves/meta-llama_Llama-3.1-8B-Instruct/lora/train_2026-04-21-08-33-05 \\
         --base-model meta-llama/Llama-3.1-8B-Instruct \\
         --template llama3 \\
-        --repo-id pworth1971/athena-cti-sft-llama31-8b
+        --repo-id asg-ai/athena-cti-sft-llama31-8b
 
     # merge only, no upload (useful for local inspection)
     python upload_to_hf.py --adapter-dir <dir> --base-model <id> --repo-id x/y --skip-upload
 
     # upload a pre-merged folder
     python upload_to_hf.py --merged-dir merged/athena-cti-sft-llama31-8b \\
-                           --repo-id pworth1971/athena-cti-sft-llama31-8b
+                           --repo-id asg-ai/athena-cti-sft-llama31-8b
 """
 import argparse
 import os

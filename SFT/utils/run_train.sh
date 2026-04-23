@@ -53,7 +53,7 @@
 #   ./run_train.sh --dry-run                        # print the CLI, don't run
 #   ./run_train.sh --epochs 1 --lr 5e-5 --report-to wandb \
 #                  --extra "--lora_rank 16 --lora_alpha 32 --lora_dropout 0.1" \
-#                  --push-to-hf pworth1971/athena-cti-sft-llama31-8b
+#                  --push-to-hf asg-ai/athena-cti-sft-llama31-8b
 
 set -euo pipefail
 
