@@ -56,15 +56,51 @@ Why MCQ is omitted from this SFT iteration:
 
 Why TAA remains omitted from this SFT iteration:
 
-  - Same rationale as 04222026 parent revision: the prior 0% TAA score
-    was an evaluation bug (exact-string match against canonical group
-    name), now fixed in athena_cti_eval.py via _resolve_actor_in_text.
-    The six TAA templates also bind under-determined technique->group
-    questions that risk teaching over-confident attribution. Holding
-    TAA training coverage until the re-score of the v3 checkpoint has
-    produced a defensible baseline and the templates have been
-    redesigned to bind only uniquely-distinguishing technique sets
-    (or to accept "insufficient evidence" as a valid answer).
+  (1) Diagnostic evidence (athena_bench/utils/diagnose_taa.py run
+      against the v3 checkpoint, 100 athena-taa rows) shows the same
+      output-distribution collapse as MCQ, even though TAA was not
+      present in v3 training:
+
+        correct (alias cluster) :  15%
+        plausible (related)     :  71%
+        incorrect               :  14%
+        parse_failed            :   0%
+        upper-bound (full scan) :  15%  (no parser recovery available)
+
+      The parser is not at fault (0 recoverable). The model mode-
+      collapses onto "Lazarus" for a dominant majority of TAA queries
+      regardless of the TTPs described, even when it correctly
+      identifies the nation-state nexus in the same response (e.g.
+      "China-nexus ... Therefore, Lazarus"; "Iran-aligned ...
+      Therefore, Lazarus"). The 71% plausible rate is graph-inflated,
+      not meaningful attribution: the Lazarus alias/related cluster is
+      large (DPRK umbrella, financial/crypto-crime overlap), so BFS
+      reports "related" on most Lazarus-vs-actual-actor pairs.
+
+  (2) Because the collapse occurred on a task that was NOT in v3
+      training, the cause is the SFT procedure itself degrading base-
+      model world knowledge of threat actors, not memorisation of any
+      TAA-specific training bag. Adding TAA training data to the next
+      run without first changing the SFT procedure (epochs, mixins,
+      LR, full-param vs LoRA) is likely to make the collapse worse,
+      not better: the model would be given a second axis along which
+      to concentrate probability mass.
+
+  (3) The structural issue inherited from the 04222026 parent still
+      applies and compounds (1)-(2): the six TAA templates bind
+      under-determined technique->group questions (most groups share
+      a small core of very common techniques), so the supervised
+      signal itself rewards confident attribution from weak evidence
+      -- the exact behaviour (1) shows the model has already acquired
+      from the broader SFT procedure.
+
+  (4) Decision: hold TAA training coverage until (a) the next SFT run
+      demonstrates the mode collapse is mitigated on MCQ (the only
+      task we have pre/post numbers for) with the procedure changes,
+      and (b) the TAA templates are redesigned to bind only uniquely-
+      distinguishing technique sets or to accept "insufficient
+      evidence" as a valid answer. athena-taa remains an active
+      benchmark task; it has NOT been retired.
 
 AthenaBench task alignment (noMCQ slate):
 
