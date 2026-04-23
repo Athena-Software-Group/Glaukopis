@@ -1,9 +1,12 @@
 # AthenaBench-aligned SFT
 
 Single-command launcher for the AthenaBench-aligned full-parameter SFT of
-`meta-llama/Llama-3.1-8B-Instruct` on `ift_data_2026_04_22` (138,343 rows
-from the `04222026/` template family: native MCQ shuffling, Description→ID
-ATE direction, full TAA/VSP/RCM/RMS coverage).
+`meta-llama/Llama-3.1-8B-Instruct` on `ift_data_2026_04_23_trimmed_v3`
+(15,625 rows from the `04222026/` trimmed template family: 12 templates
+across MCQ/RCM/VSP/ATE/RMS, TAA training coverage deferred pending
+re-score of the prior checkpoint with the fixed actor-resolution logic
+— see `tmpl_gen/templates/04222026/Sophia-CTI-Templates-AthenaBench-aligned-trimmed.txt`
+for the full rationale).
 
 > **Historical note.** This directory previously wrapped
 > [HuggingFace AutoTrain Advanced](https://github.com/huggingface/autotrain-advanced).
@@ -17,7 +20,7 @@ ATE direction, full TAA/VSP/RCM/RMS coverage).
 
 | File | Purpose |
 |---|---|
-| `run_abaligned_sft.sh` | Launch full-parameter SFT on `ift_data_2026_04_22` via `../utils/run_train.sh` with DeepSpeed ZeRO-3. Pushes the merged model to `${HF_USERNAME}/athena-cti-sft-llama31-8b-abaligned` on success. |
+| `run_abaligned_sft.sh` | Launch full-parameter SFT on `ift_data_2026_04_23_trimmed_v3` via `../utils/run_train.sh` with DeepSpeed ZeRO-3. Pushes the merged model to `${HF_USERNAME}/athena-cti-sft-llama31-8b-abaligned-v3` on success. |
 | `run_athenabench.sh` | Register the trained+pushed model in `athena_bench/pipelines/models.py` (idempotent), run a smoke test, then the full 6-task sweep. |
 
 ## Prerequisites
@@ -33,11 +36,11 @@ ATE direction, full TAA/VSP/RCM/RMS coverage).
   `HF_USERNAME`.
 - License acceptance for `meta-llama/Llama-3.1-8B-Instruct` on huggingface.co
   using the same account whose token you're using.
-- The training file `SFT/data/ift_data_2026_04_22.json` (144 MB, gitignored)
-  must be present on the training host. Transfer it out-of-band from the
-  workstation where it was generated:
+- The training file `SFT/data/ift_data_2026_04_23_trimmed_v3.json` (37 MB,
+  gitignored) must be present on the training host. Transfer it out-of-band
+  from the workstation where it was generated:
   ```bash
-  rsync -avP workstation:Glaukopis/SFT/data/ift_data_2026_04_22.json \
+  rsync -avP workstation:Glaukopis/SFT/data/ift_data_2026_04_23_trimmed_v3.json \
         ~/Glaukopis/SFT/data/
   ```
   LLaMA-Factory reads it directly via `SFT/data/dataset_info.json` — there
@@ -52,16 +55,16 @@ cd ~/Glaukopis/SFT
 $EDITOR .env                  # fill in HF_TOKEN, HF_USERNAME
 conda activate llm-sft
 
-# 2. Ensure the training data is present (144 MB, not in git)
-ls -lh data/ift_data_2026_04_22.json || \
-    rsync -avP workstation:Glaukopis/SFT/data/ift_data_2026_04_22.json data/
+# 2. Ensure the training data is present (37 MB, not in git)
+ls -lh data/ift_data_2026_04_23_trimmed_v3.json || \
+    rsync -avP workstation:Glaukopis/SFT/data/ift_data_2026_04_23_trimmed_v3.json data/
 
 # 3. Launch full-parameter SFT (writes to SFT/saves/..., pushes to HF on exit 0)
 cd autotrain
 ./run_abaligned_sft.sh
 
 # 4. After training pushes the model, benchmark it
-./run_athenabench.sh --alias athena-cti-sft-llama31-8b-abaligned
+./run_athenabench.sh --alias athena-cti-sft-llama31-8b-abaligned-v3
 ```
 
 ## `run_abaligned_sft.sh`
@@ -70,8 +73,8 @@ Thin wrapper around `../utils/run_train.sh` with the ab-aligned defaults
 baked in:
 
 - Base model: `meta-llama/Llama-3.1-8B-Instruct`
-- Dataset: `ift_data_2026_04_22,alpaca_en_demo` (the alpaca mix-in is
-  anti-forgetting regularization; see `alpaca_en_demo` in
+- Dataset: `ift_data_2026_04_23_trimmed_v3,alpaca_en_demo` (the alpaca
+  mix-in is anti-forgetting regularization; see `alpaca_en_demo` in
   `../data/dataset_info.json`)
 - `--finetuning full` (full-parameter SFT, all weights trainable)
 - 3 epochs, lr=1e-5 cosine, 5 % warmup, bf16
@@ -84,7 +87,7 @@ baked in:
   Override with `--offload` (force CPU offload) or `--no-offload` (force
   GPU-only; will OOM on < 2× 80 GB for 8B full SFT).
 - `--report-to wandb` (override with `--report-to none`)
-- Post-training HF push to `${HF_USERNAME}/athena-cti-sft-llama31-8b-abaligned`
+- Post-training HF push to `${HF_USERNAME}/athena-cti-sft-llama31-8b-abaligned-v3`
 
 ```bash
 ./run_abaligned_sft.sh [--repo-id USER/NAME] [--output-dir DIR]
@@ -125,8 +128,8 @@ directly, so `upload_to_hf.py --merged-dir` is used instead of the LoRA
 
 - **`llamafactory-cli: command not found`** — activate the env first:
   `conda activate llm-sft`.
-- **`training dataset not found: .../ift_data_2026_04_22.json`** — the 144
-  MB dataset is gitignored; transfer it via rsync (see Prerequisites).
+- **`training dataset not found: .../ift_data_2026_04_23_trimmed_v3.json`**
+  — the 37 MB dataset is gitignored; transfer it via rsync (see Prerequisites).
 - **401 on base-model download** — Llama-3.1-8B-Instruct is gated; accept
   the license on huggingface.co using the same account whose token you're
   using, then retry.

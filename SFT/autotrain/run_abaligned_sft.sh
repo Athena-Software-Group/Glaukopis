@@ -1,16 +1,18 @@
 #!/bin/bash
 
 # Launch full-parameter SFT of Llama-3.1-8B-Instruct on the AthenaBench-aligned
-# 2026-04-22 ift dataset via LLaMA-Factory + DeepSpeed ZeRO-3. Replaces the
-# retired autotrain-advanced pipeline (autotrain-advanced is unmaintained and
-# pins transformers==4.48.0, which conflicts with LLaMA-Factory's >=4.55.0).
+# 2026-04-23 trimmed-v3 ift dataset via LLaMA-Factory + DeepSpeed ZeRO-3.
+# Replaces the retired autotrain-advanced pipeline (autotrain-advanced is
+# unmaintained and pins transformers==4.48.0, which conflicts with
+# LLaMA-Factory's >=4.55.0).
 #
 # Runs in the unified `llm-sft` conda env created by SFT/utils/setup.sh. No
 # second env, no autotrain CLI, no HF dataset-repo round-trip -- the trainer
-# reads SFT/data/ift_data_2026_04_22.json directly via dataset_info.json.
+# reads SFT/data/ift_data_2026_04_23_trimmed_v3.json directly via
+# dataset_info.json.
 #
 # On success the merged full-weight model is pushed to
-#   hf://${HF_USERNAME}/athena-cti-sft-llama31-8b-abaligned
+#   hf://${HF_USERNAME}/athena-cti-sft-llama31-8b-abaligned-v3
 #
 # Hyperparameters mirror the retired autotrain_llama3_8b_sft_fast_abaligned.yml
 # so the run is apples-to-apples comparable with the prior baselines:
@@ -75,15 +77,16 @@ done
 
 if [[ -z "${REPO_ID}" ]]; then
     : "${HF_USERNAME:?Set HF_USERNAME in SFT/.env (or pass --repo-id USER/NAME)}"
-    REPO_ID="${HF_USERNAME}/athena-cti-sft-llama31-8b-abaligned"
+    REPO_ID="${HF_USERNAME}/athena-cti-sft-llama31-8b-abaligned-v3"
 fi
 
-DATASET_FILE="${SFT_DIR}/data/ift_data_2026_04_22.json"
+DATASET_NAME="ift_data_2026_04_23_trimmed_v3"
+DATASET_FILE="${SFT_DIR}/data/${DATASET_NAME}.json"
 if [[ ! -f "${DATASET_FILE}" ]]; then
     echo "[FAIL] training dataset not found: ${DATASET_FILE}" >&2
-    echo "       This file is gitignored (144MB, exceeds GitHub's push limit)." >&2
-    echo "       Transfer it to this host before running, e.g.:" >&2
-    echo "         rsync -avP workstation:Glaukopis/SFT/data/ift_data_2026_04_22.json \\" >&2
+    echo "       This file is gitignored (37MB). Transfer it to this host" >&2
+    echo "       before running, e.g.:" >&2
+    echo "         rsync -avP workstation:Glaukopis/SFT/data/${DATASET_NAME}.json \\" >&2
     echo "               ${SFT_DIR}/data/" >&2
     exit 2
 fi
@@ -161,7 +164,7 @@ fi
 
 RUN_TRAIN_ARGS=(
     --model        "meta-llama/Llama-3.1-8B-Instruct"
-    --dataset      "ift_data_2026_04_22,alpaca_en_demo"
+    --dataset      "${DATASET_NAME},alpaca_en_demo"
     --template     "llama3"
     --finetuning   "full"
     --epochs       "3"

@@ -1,12 +1,57 @@
 AthenaBench-Aligned CTI Templates -- Trimmed (derived from Sophia-CTI-Templates-AthenaBench-aligned.txt)
 
-Revision 04222026-trimmed: drops TAA coverage (athena-taa retired from
-benchmark), thins the remaining sections by removing paraphrastic template
-variants, and caps MCQ fanout to keep the balanced MCQ signal in the
-training set without letting it dominate. Targets ~680 MCQ rows (down
-from ~20k in the parent) so the model learns the answer format without
-collapsing onto a position-A prior or overfitting on single-anchor
-sub-templates.
+Revision 04222026-trimmed: drops TAA training coverage for this SFT
+iteration (see rationale below), thins the remaining sections by
+removing paraphrastic template variants, and caps MCQ fanout to keep
+the balanced MCQ signal in the training set without letting it
+dominate. Targets ~510 MCQ rows (down from ~20k in the parent) so the
+model learns the answer format without collapsing onto a position-A
+prior or overfitting on single-anchor sub-templates.
+
+Why TAA is omitted from this SFT iteration:
+
+  (1) athena-taa scored 0% on the prior SFT run, which triggered the
+      investigation that produced this trimmed slate. Root cause turned
+      out to be an *evaluation* bug, not a *training* bug: the scorer
+      was doing exact-string match against the canonical group name
+      and failing because the model was emitting correct-but-
+      conversational answers ("tradecraft is consistent with APT29
+      (Cozy Bear)..."). Fixed in
+      athena_bench/pipelines/evaluation/athena_cti_eval.py by adding
+      _resolve_actor_in_text (longest-alias substring match against
+      the full response). After that fix, re-scoring the existing
+      fine-tuned checkpoint is expected to produce meaningful TAA
+      numbers without any retraining.
+
+  (2) Even setting the scoring bug aside, the six TAA templates share
+      a structural problem. The question form is "given a bag of
+      techniques (+ maybe a malware family), name the group", but in
+      the Neo4j graph the (group)-[:uses]->(technique|software) edge
+      structure is extremely narrow at the tails: most groups are
+      characterised by a handful of very common techniques (T1059,
+      T1071, T1027, ...) that dozens of other groups also use. A
+      non-trivial fraction of TAA rows produce attribution questions
+      that are under-determined on the graph's own evidence -- the
+      observed technique bag is equally consistent with several
+      documented groups, yet the template forces a single named
+      answer. Training on that data teaches the model to *hallucinate
+      confident attributions from weak evidence*, the exact opposite
+      of the behaviour wanted from a CTI model.
+
+  (3) Given (1) and (2), the decision was to NOT regenerate TAA
+      triples for this SFT iteration and instead rely on the fixed
+      scorer to re-score the existing checkpoint against athena-taa.
+      If those re-scored numbers are acceptable, TAA training data
+      is unnecessary. If not, the next iteration should add TAA
+      training data with redesigned templates that either (a) bind
+      only groups whose technique-set is uniquely distinguishing in
+      the graph, or (b) accept "insufficient evidence" as a valid
+      answer.
+
+  (4) Note: athena-taa remains an active benchmark task -- it has not
+      been retired. What has been retired is TAA training coverage in
+      this specific iteration, pending the re-score of the existing
+      model with the fixed actor-resolution logic.
 
 AthenaBench task alignment (trimmed slate):
 
@@ -18,7 +63,13 @@ AthenaBench task alignment (trimmed slate):
 
 What was removed vs Sophia-CTI-Templates-AthenaBench-aligned.txt:
 
-  - AB.TAA.1-6 : entire section dropped (athena-taa retired from benchmark).
+  - AB.TAA.1-6 : entire section omitted from this SFT iteration (see
+                 "Why TAA is omitted from this SFT iteration" above --
+                 the 0% prior score was an eval-side exact-match bug
+                 (now fixed), and the templates themselves have a
+                 graph under-determination problem that risks teaching
+                 over-confident attribution). athena-taa remains an
+                 active benchmark task; it has NOT been retired.
   - AB.VSP.2   : paraphrase of AB.VSP.1 (record-framed wording, same CVSS
                  derivation) -- dropped.
   - AB.VSP.4   : paraphrase of AB.VSP.3 (same per-metric reasoning, record
