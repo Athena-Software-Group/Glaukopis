@@ -21,9 +21,11 @@
 # batch at 16 regardless of GPU count:
 #   1-2 GPUs: batch=2, grad_accum=4  (2 GPUs -> 2*4*2 = 16)
 #     4 GPUs: batch=4, grad_accum=1  (4 GPUs -> 4*1*4 = 16)
-# On >=4 GPUs we also default save_only_model=True to shrink each
-# checkpoint from ~48 GB to ~16 GB (save_total_limit=10 x 16 GB = ~160 GB).
-# Override either knob via --extra "--per_device_train_batch_size N ...".
+# save_only_model=True is set unconditionally: (a) it shrinks each
+# checkpoint from ~48 GB to ~16 GB, and (b) it avoids the post-train OOM
+# where Trainer._load_best_model reloads the ~32 GB fp32 AdamW state on
+# top of an already-full GPU under ZeRO-3. Override via
+# --extra "--per_device_train_batch_size N ...".
 #
 # Usage:
 #   ./run_abaligned_sft.sh [--repo-id USER/NAME] [--output-dir DIR]
@@ -141,20 +143,18 @@ EFFECTIVE_BATCH=$(( BATCH_DEFAULT * GRAD_ACCUM_DEFAULT * (GPU_COUNT > 0 ? GPU_CO
 # --include_num_input_tokens_seen is already set by run_train.sh.
 # save_total_limit=10 keeps the 10 most recent checkpoints (plus the
 # best-eval one, which the HF Trainer preserves regardless of the limit
-# when load_best_model_at_end=True). At ~48 GB/checkpoint this caps disk
-# use around 480 GB, still comfortably under the 725 GB free on /home.
+# when load_best_model_at_end=True). With save_only_model=True each
+# checkpoint is ~16 GB, so save_total_limit=10 costs ~160 GB.
 # load_best_model_at_end + metric_for_best_model=eval_loss makes the final
 # OUTPUT_DIR (which is what gets pushed to HF) contain the minimum-eval
 # checkpoint, not whatever the last step happened to produce.
-EXTRA_DEFAULT="--deepspeed ${DS_CONFIG} --save_total_limit 10 --load_best_model_at_end True --metric_for_best_model eval_loss --greater_is_better False"
-
-# On 4+ GPU hosts, also drop optimizer states from saved checkpoints.
-# Shrinks each checkpoint from ~48 GB to ~16 GB, so save_total_limit=10
-# costs ~160 GB instead of ~480 GB. Trade-off: cannot resume mid-run,
-# but load_best_model_at_end makes resume largely moot anyway.
-if [[ "${GPU_COUNT}" -ge 4 ]]; then
-    EXTRA_DEFAULT="${EXTRA_DEFAULT} --save_only_model True"
-fi
+# save_only_model=True is required under ZeRO-3 + load_best_model_at_end:
+# without it, Trainer._load_best_model reloads the fp32 optimizer state
+# (~32 GB / rank for an 8B model) at end-of-train on top of the still-
+# resident training state, which OOMs even on 2x80GB H100s. Dropping the
+# optimizer state from checkpoints also forfeits mid-run resume, but
+# load_best_model_at_end makes resume largely moot anyway.
+EXTRA_DEFAULT="--deepspeed ${DS_CONFIG} --save_total_limit 10 --load_best_model_at_end True --metric_for_best_model eval_loss --greater_is_better False --save_only_model True"
 
 if [[ -n "${EXTRA_USER}" ]]; then
     EXTRA_ALL="${EXTRA_DEFAULT} ${EXTRA_USER}"
