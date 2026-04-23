@@ -1,0 +1,157 @@
+AthenaBench-Aligned CTI Templates -- MCQ-only (derived from Sophia-CTI-Templates-AthenaBench-aligned.txt)
+
+Revision 04232026-mcq-only: MCQ-focused training slate used to teach the
+model the MCQ response FORMAT (not the content). The full abaligned SFT
+run exhibited a collapse-to-A failure (predicted A on ~75% of rows) because
+the shuffler bug left 60% of training MCQ rows ending in "Therefore, A."
+This file targets ~1000 MCQ rows with a uniform A-E answer distribution.
+
+Position-bias control:
+
+  - Each MCQ template declares "Shuffle: mcq" so iftgen randomises option
+    labels per row and rewrites the final "Therefore, X." letter. This
+    relies on the tail-anchored _shuffle_mcq_options in tmpl_parser.py
+    (commit 7f6dbd0+); the previous global-match shuffler silently bailed
+    on ~50% of rows when CTI descriptions contained incidental "A) ..."
+    bullet markers.
+  - Each template declares "Count: 167" (6 * 167 = 1002 rows target).
+  - After generation, validate A-E spread with a trailing count over the
+    "Therefore, X." tail across the Alpaca output field. Expect a
+    distribution close to 20% per letter.
+
+Template IDs retain their original numbering (AB.MCQ.1..6) so the
+generated rows are interchangeable with the parent slate.
+
+Section 1 - AB.MCQ.* Multiple-Choice Questions (athena-mcq)
+
+AB.MCQ.1 Instruction: You are a cybersecurity analyst at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult MITRE ATT&CK, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
+Question: Which MITRE ATT&CK tactic does technique {ap:attack-pattern.mitre_id} ({ap.name}) achieve? Technique description: {ap.description}
+A) {ta:ap.achieves>x-mitre-tactic.name}
+B) {negtac1:x-mitre-tactic.name}
+C) {negtac2:x-mitre-tactic.name}
+D) {negtac3:x-mitre-tactic.name}
+E) {negtac4:x-mitre-tactic.name}
+Answer: MITRE ATT&CK classifies technique {ap.mitre_id} ({ap.name}) under the {ta.name} tactic, which covers {ta.description}. Therefore, A.
+{force negtac1.mitre_id != ta.mitre_id}
+{force negtac2.mitre_id != ta.mitre_id}
+{force negtac3.mitre_id != ta.mitre_id}
+{force negtac4.mitre_id != ta.mitre_id}
+{force negtac1.mitre_id != negtac2.mitre_id}
+{force negtac1.mitre_id != negtac3.mitre_id}
+{force negtac1.mitre_id != negtac4.mitre_id}
+{force negtac2.mitre_id != negtac3.mitre_id}
+{force negtac2.mitre_id != negtac4.mitre_id}
+{force negtac3.mitre_id != negtac4.mitre_id}
+Sample: ap
+Shuffle: mcq
+Count: 167
+
+AB.MCQ.2 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult MITRE ATT&CK, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
+Question: Which MITRE ATT&CK mitigation addresses technique {ap:attack-pattern.mitre_id} ({ap.name})? Technique description: {ap.description}
+A) {coa:ap.mitigates<course-of-action.mitre_id} ({coa.name})
+B) {negcoa1:course-of-action.mitre_id} ({negcoa1.name})
+C) {negcoa2:course-of-action.mitre_id} ({negcoa2.name})
+D) {negcoa3:course-of-action.mitre_id} ({negcoa3.name})
+E) {negcoa4:course-of-action.mitre_id} ({negcoa4.name})
+Answer: MITRE ATT&CK records mitigation {coa.mitre_id} ({coa.name}) as addressing technique {ap.mitre_id}: {coa.description}. Therefore, A.
+{force negcoa1.mitre_id != coa.mitre_id}
+{force negcoa2.mitre_id != coa.mitre_id}
+{force negcoa3.mitre_id != coa.mitre_id}
+{force negcoa4.mitre_id != coa.mitre_id}
+{force negcoa1.mitre_id != negcoa2.mitre_id}
+{force negcoa1.mitre_id != negcoa3.mitre_id}
+{force negcoa1.mitre_id != negcoa4.mitre_id}
+{force negcoa2.mitre_id != negcoa3.mitre_id}
+{force negcoa2.mitre_id != negcoa4.mitre_id}
+{force negcoa3.mitre_id != negcoa4.mitre_id}
+Sample: ap
+Shuffle: mcq
+Count: 167
+
+AB.MCQ.3 Instruction: You are a CTI analyst at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult the MITRE CVE and CWE knowledge bases, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
+Question: What is the root-cause CWE of the following vulnerability? {cve:CVE.id}: {cve.descriptions}
+A) {cwe:cve.problemType>Weakness.id} ({cwe.name})
+B) {negw1:Weakness.id} ({negw1.name})
+C) {negw2:Weakness.id} ({negw2.name})
+D) {negw3:Weakness.id} ({negw3.name})
+E) {negw4:Weakness.id} ({negw4.name})
+Answer: The CVE description matches the pattern defined by {cwe.id} ({cwe.name}): {cwe.description}. Therefore, A.
+{force negw1.id != cwe.id}
+{force negw2.id != cwe.id}
+{force negw3.id != cwe.id}
+{force negw4.id != cwe.id}
+{force negw1.id != negw2.id}
+{force negw1.id != negw3.id}
+{force negw1.id != negw4.id}
+{force negw2.id != negw3.id}
+{force negw2.id != negw4.id}
+{force negw3.id != negw4.id}
+Sample: cve
+Shuffle: mcq
+Count: 167
+
+AB.MCQ.4 Instruction: You are a CTI analyst at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult the MITRE CWE and CAPEC knowledge bases, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
+Question: Which CAPEC attack pattern primarily exploits {cwe:Weakness.id} ({cwe.name})? Weakness description: {cwe.description}
+A) CAPEC-{cap:cwe.related_attack_pattern>CAPEC.id} ({cap.name})
+B) CAPEC-{negcap1:CAPEC.id} ({negcap1.name})
+C) CAPEC-{negcap2:CAPEC.id} ({negcap2.name})
+D) CAPEC-{negcap3:CAPEC.id} ({negcap3.name})
+E) CAPEC-{negcap4:CAPEC.id} ({negcap4.name})
+Answer: MITRE CAPEC records CAPEC-{cap.id} ({cap.name}) as the attack pattern exploiting {cwe.id} ({cwe.name}): {cap.description}. Therefore, A.
+{force negcap1.id != cap.id}
+{force negcap2.id != cap.id}
+{force negcap3.id != cap.id}
+{force negcap4.id != cap.id}
+{force negcap1.id != negcap2.id}
+{force negcap1.id != negcap3.id}
+{force negcap1.id != negcap4.id}
+{force negcap2.id != negcap3.id}
+{force negcap2.id != negcap4.id}
+{force negcap3.id != negcap4.id}
+Sample: cwe
+Shuffle: mcq
+Count: 167
+
+AB.MCQ.5 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult MITRE ATT&CK, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
+Question: Which MITRE ATT&CK technique is threat group {grp:intrusion-set.name} ({grp.mitre_id}) documented as using? Group description: {grp.description}
+A) {ap:grp.uses>attack-pattern.mitre_id} ({ap.name})
+B) {negack1:attack-pattern.mitre_id} ({negack1.name})
+C) {negack2:attack-pattern.mitre_id} ({negack2.name})
+D) {negack3:attack-pattern.mitre_id} ({negack3.name})
+E) {negack4:attack-pattern.mitre_id} ({negack4.name})
+Answer: MITRE ATT&CK documents {grp.name} ({grp.mitre_id}) as using technique {ap.mitre_id} ({ap.name}): {ap.description}. Therefore, A.
+{force negack1.mitre_id != ap.mitre_id}
+{force negack2.mitre_id != ap.mitre_id}
+{force negack3.mitre_id != ap.mitre_id}
+{force negack4.mitre_id != ap.mitre_id}
+{force negack1.mitre_id != negack2.mitre_id}
+{force negack1.mitre_id != negack3.mitre_id}
+{force negack1.mitre_id != negack4.mitre_id}
+{force negack2.mitre_id != negack3.mitre_id}
+{force negack2.mitre_id != negack4.mitre_id}
+{force negack3.mitre_id != negack4.mitre_id}
+Sample: grp
+Shuffle: mcq
+Count: 167
+
+AB.MCQ.6 Instruction: You are a CTI analyst at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult the MITRE CAPEC and ATT&CK knowledge bases, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
+Question: Which MITRE ATT&CK technique corresponds to CAPEC-{cap:CAPEC.id} ({cap.name})? Attack pattern description: {cap.description}
+A) {ap:cap.map_ap>attack-pattern.mitre_id} ({ap.name})
+B) {negack1:attack-pattern.mitre_id} ({negack1.name})
+C) {negack2:attack-pattern.mitre_id} ({negack2.name})
+D) {negack3:attack-pattern.mitre_id} ({negack3.name})
+E) {negack4:attack-pattern.mitre_id} ({negack4.name})
+Answer: CAPEC-{cap.id} aligns with MITRE ATT&CK technique {ap.mitre_id} ({ap.name}); both describe the same adversary behaviour. Therefore, A.
+{force negack1.mitre_id != ap.mitre_id}
+{force negack2.mitre_id != ap.mitre_id}
+{force negack3.mitre_id != ap.mitre_id}
+{force negack4.mitre_id != ap.mitre_id}
+{force negack1.mitre_id != negack2.mitre_id}
+{force negack1.mitre_id != negack3.mitre_id}
+{force negack1.mitre_id != negack4.mitre_id}
+{force negack2.mitre_id != negack3.mitre_id}
+{force negack2.mitre_id != negack4.mitre_id}
+{force negack3.mitre_id != negack4.mitre_id}
+Sample: cap
+Shuffle: mcq
+Count: 167
