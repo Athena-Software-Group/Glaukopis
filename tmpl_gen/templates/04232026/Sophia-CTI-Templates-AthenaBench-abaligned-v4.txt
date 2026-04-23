@@ -1,0 +1,150 @@
+AthenaBench-Aligned CTI Templates -- No-MCQ (derived from 04222026/Sophia-CTI-Templates-AthenaBench-aligned-trimmed.txt)
+
+Revision 04232026-noMCQ: drops the AB.MCQ.* section entirely for this SFT
+iteration on top of the trimmed 04222026 slate. TAA training coverage
+remains deferred (same rationale as the parent revision); the remaining
+sections (RCM, VSP, ATE, RMS) are retained unchanged. Target: strip any
+MCQ-format training signal from the SFT mixture so the next checkpoint's
+athena-mcq performance is driven by the base Llama-3.1-8B-Instruct
+multiple-choice reasoning rather than by the fine-tuned MCQ distribution.
+
+Why MCQ is omitted from this SFT iteration:
+
+  (1) The v3 checkpoint (trained on the 04222026 trimmed slate with ~510
+      balanced-letter AB.MCQ.{1,3,5} rows) regressed on athena-mcq to
+      55.3% after parser-accurate re-scoring of 64.8% vs a measured
+      Llama-3.1-8B-Instruct baseline of 71.8%. Diagnosis in
+      athena_bench/utils/diagnose_mcq.py showed the bulk of the loss is
+      not parser drift but a pronounced position-A bias: the v3 model
+      selects option A on ~37% of rows versus the balanced ground-truth
+      15%, picking A at ~2.4x the expected rate while under-selecting
+      B and C. The parsed letter distribution is distorted even though
+      the iftgen MCQ shuffler balances correct-letter placement across
+      A-E in training.
+
+  (2) Two plausible upstream causes for the A-bias were identified:
+      (a) the alpaca_en_demo mixin added to the SFT data loader may
+      contain MCQ-shaped instructions with a skewed correct-letter
+      prior, and (b) three epochs on 15,625 rows at final loss ~0.0072
+      is deep overfit territory on the balanced MCQ subset, collapsing
+      the model onto an A-anchored completion pattern. Without an
+      isolated ablation, the relative contribution of (a) vs (b) is
+      unknown.
+
+  (3) Given (1) and (2), the decision for this iteration is to remove
+      MCQ training coverage entirely and compare the resulting
+      checkpoint's athena-mcq accuracy to both v3 (55.3% / 64.8%
+      upper-bound) and the Instruct baseline (71.8%). Three outcomes
+      and their implications:
+
+        - athena-mcq recovers toward the Instruct baseline -> the SFT
+          MCQ mixture (alpaca_en_demo + our balanced AB.MCQ.*) was
+          actively degrading the base model's MCQ reasoning. The next
+          iteration should either drop the alpaca mixin, drop our MCQ
+          templates, or rebalance both.
+        - athena-mcq stays at v3 levels -> the regression is not
+          MCQ-format-specific; likely caused by epoch count, LR
+          schedule, or the Instruct-chat-template handling in training.
+          The next iteration should reduce epochs or switch to LoRA.
+        - athena-mcq falls further -> the base Instruct model's MCQ
+          competence depends on the SFT mixture containing some MCQ
+          signal at all; re-introduce a small balanced MCQ subset
+          without the alpaca_en_demo mixin.
+
+  (4) Note: athena-mcq remains an active benchmark task. What is
+      removed is MCQ training coverage in this specific iteration.
+
+Why TAA remains omitted from this SFT iteration:
+
+  - Same rationale as 04222026 parent revision: the prior 0% TAA score
+    was an evaluation bug (exact-string match against canonical group
+    name), now fixed in athena_cti_eval.py via _resolve_actor_in_text.
+    The six TAA templates also bind under-determined technique->group
+    questions that risk teaching over-confident attribution. Holding
+    TAA training coverage until the re-score of the v3 checkpoint has
+    produced a defensible baseline and the templates have been
+    redesigned to bind only uniquely-distinguishing technique sets
+    (or to accept "insufficient evidence" as a valid answer).
+
+AthenaBench task alignment (noMCQ slate):
+
+  Section 1 - AB.RCM.* : CVE description -> CWE-####            -> athena-rcm
+  Section 2 - AB.VSP.* : CVE description -> CVSS:3.1/... vector -> athena-vsp
+  Section 3 - AB.ATE.* : attack scenario -> T####               -> athena-ate
+  Section 4 - AB.RMS.* : attack scenario -> M10xx (list)        -> athena-rms
+
+What was removed vs 04222026/Sophia-CTI-Templates-AthenaBench-aligned-trimmed.txt:
+
+  - AB.MCQ.1,3,5 : entire section omitted from this SFT iteration (see
+                   "Why MCQ is omitted from this SFT iteration" above --
+                   v3 regressed to 55.3% real / 64.8% upper-bound on
+                   athena-mcq versus a 71.8% Instruct baseline, with a
+                   pronounced position-A bias (~37% A-picks vs 15%
+                   ground-truth). athena-mcq remains an active benchmark
+                   task; it has NOT been retired.
+  - AB.TAA.1-6   : inherited omission from 04222026 parent (eval bug
+                   + graph under-determination). Unchanged vs parent.
+
+What was kept (unchanged from 04222026 parent):
+
+  - AB.RCM.1-2   : 2 distinct CVE->CWE variants (description-only, full record).
+  - AB.VSP.1,3   : headline score+vector + per-metric reasoning variants.
+  - AB.ATE.1,3,5 : raw description, group-attributed narrative, telemetry-
+                   framed. Each binds a meaningfully different graph path.
+  - AB.RMS.1-2   : multi-mitigation list and single-primary-mitigation.
+
+Expected dataset effect:
+
+  - Templates drop 12 -> 9 (a 25% reduction vs 04222026 trimmed).
+  - Row count target: ~15.0k non-MCQ (no ~510 MCQ rows) = ~15.0k total.
+  - SFT wall-clock on 4xH100 with batch=4 grad_accum=1: target ~3.5-4h
+    (comparable to 04222026 trimmed since MCQ rows were only ~3% of
+    the slate by count).
+
+Template IDs retain their original numbering (AB.VSP.3, AB.ATE.5, etc.)
+so diff-vs-parent traceability is preserved; there is no renumbering.
+
+Section 1 - AB.RCM.* Root-Cause Mapping (athena-rcm)
+
+AB.RCM.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center performing root-cause mapping. Analyse the following CVE description and identify the most appropriate Common Weakness Enumeration (CWE) that represents the root cause of the vulnerability. Consult the MITRE CVE and CWE knowledge bases, reason step by step about the weakness pattern present in the description, and then state the CWE identifier.
+Question: {cve:CVE.descriptions}
+Answer: The description indicates the class of weakness captured by {cwe:cve.problemType>Weakness.name}: {cwe.description}. Therefore, the root cause is {cwe.id}.
+
+AB.RCM.2 Instruction: You are a vulnerability analyst at an enterprise Security Operations Center performing root-cause mapping for a newly disclosed CVE. Analyse the vulnerability record below and identify the most appropriate CWE. Consult the MITRE CVE and CWE knowledge bases, reason about the underlying weakness before committing to a label, and then state the CWE identifier.
+Question: Vulnerability record for {cve:CVE.id}: {cve.descriptions}
+Answer: The record describes {cwe:cve.problemType>Weakness.name}, whose defining characteristic is {cwe.description}. Therefore, the root cause is {cwe.id}.
+
+Section 2 - AB.VSP.* Vulnerability Severity Prediction (athena-vsp)
+
+AB.VSP.1 Instruction: You are a vulnerability risk analyst at an enterprise Security Operations Center computing CVSS v3.1 Base metrics. Analyse the following CVE description and derive the values for each base metric (AV, AC, PR, UI, S, C, I, A). Consult the CVSS v3.1 specification, reason about each metric in turn, and then state the resulting CVSS:3.1 vector.
+Question: {cve:CVE.descriptions}
+Answer: The exploit preconditions and impact implied by the description correspond to a CVSS v3.1 base score of {cve.cvss3_1_baseScore}. Therefore, the CVSS v3.1 vector is {cve.cvss3_1_vectorString}. <*{force cve.cvss3_1_vectorString = cve.cvss3_1_vectorString}*>
+
+AB.VSP.3 Instruction: You are a vulnerability risk analyst at an enterprise Security Operations Center producing a CVSS v3.1 Base vector with per-metric justification. Analyse the following CVE description, reason explicitly about each of the eight base metrics (Attack Vector, Attack Complexity, Privileges Required, User Interaction, Scope, Confidentiality, Integrity, Availability), and then state the resulting CVSS:3.1 vector.
+Question: {cve:CVE.descriptions}
+Answer: Reasoning through each base metric: Attack Vector of {cve.cvss3_1_attackVector} is indicated by how the attacker reaches the vulnerable component; Attack Complexity is implied by the conditions required to weaponise the flaw; Privileges Required and User Interaction follow from whether authentication or victim action is needed; Scope, Confidentiality, Integrity, and Availability follow from the impact described. The resulting CVSS v3.1 base score is {cve.cvss3_1_baseScore}. Therefore, the CVSS v3.1 vector is {cve.cvss3_1_vectorString}. <*{force cve.cvss3_1_vectorString = cve.cvss3_1_vectorString}*>
+
+Section 3 - AB.ATE.* Attack Technique Enumeration (athena-ate)
+
+AB.ATE.1 Instruction: You are a threat hunter at an enterprise Security Operations Center performing attack technique enumeration. Analyse the following attack scenario and identify the single MITRE ATT&CK technique (ID format: T####) that best matches the behaviour described. Consult MITRE ATT&CK, reason about observable indicators in the scenario, and then state the technique identifier.
+Question: {ap:attack-pattern.description}
+Answer: The described behaviour matches {ap.name}, which MITRE ATT&CK documents on platforms {ap.x_mitre_platforms} with detection guidance: {ap.x_mitre_detection}. Therefore, the technique is {ap.mitre_id}.
+
+AB.ATE.3 Instruction: You are an incident responder at an enterprise Security Operations Center correlating attacker activity to MITRE ATT&CK. Analyse the following incident narrative, which reflects adversary tradecraft attributed to a documented threat group. Consult MITRE ATT&CK, reason about which technique underpins the observed behaviour, and then state the technique identifier (ID format: T####).
+Question: During an engagement attributed to {grp:intrusion-set.name} ({grp.mitre_id}), analysts observed the following adversary behaviour: {ap:grp.uses>attack-pattern.description}
+Answer: The observed behaviour is the documented pattern for {ap.name}, which MITRE ATT&CK records {grp.name} as using. Therefore, the technique is {ap.mitre_id}.
+
+AB.ATE.5 Instruction: You are a detection engineer at an enterprise Security Operations Center mapping a telemetry-driven behaviour to MITRE ATT&CK. Analyse the following data-source-framed behaviour description and identify the single MITRE ATT&CK technique (ID format: T####) that best matches. Reason about which technique the telemetry reveals, and then state the technique identifier.
+Question: Based on observations collected from data sources {ap:attack-pattern.x_mitre_data_sources}, the following behaviour was recorded: {ap.description}
+Answer: The telemetry pattern matches {ap.name}, whose defining behaviour is captured by those data sources. Therefore, the technique is {ap.mitre_id}.
+
+Section 4 - AB.RMS.* Risk Mitigation Strategy (athena-rms)
+
+AB.RMS.1 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend multiple MITRE ATT&CK mitigation identifiers (format: M10xx) that together address the adversary behaviour. Consult MITRE ATT&CK, reason about which defensive controls apply, and then state the mitigation identifiers as a comma-separated list.
+Question: {ap:attack-pattern.description}
+Answer: Effective controls against {ap.name} include {coa1:ap.mitigates<course-of-action.mitre_id} ({coa1.name}), which {coa1.description}, and {coa2:ap.mitigates<course-of-action.mitre_id} ({coa2.name}), which {coa2.description}. Therefore, the recommended mitigations are {coa1.mitre_id}, {coa2.mitre_id}.
+{force coa1.mitre_id != coa2.mitre_id}
+
+AB.RMS.2 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending a primary risk mitigation strategy. Analyse the following attack scenario and recommend the single most appropriate MITRE ATT&CK mitigation identifier (format: M10xx) that addresses the adversary behaviour. Consult MITRE ATT&CK, reason about which defensive control is most directly relevant, and then state the mitigation identifier.
+Question: {ap:attack-pattern.description}
+Answer: The most direct control for {ap.name} is {coa:ap.mitigates<course-of-action.mitre_id} ({coa.name}): {coa.description}. Therefore, the recommended mitigation is {coa.mitre_id}.
