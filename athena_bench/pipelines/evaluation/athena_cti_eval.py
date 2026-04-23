@@ -87,6 +87,31 @@ class ATHENAEvaluate:
                     queue.append(nxt)
         return False
 
+    def _resolve_actor_in_text(
+        self, pred: str, alias_dict: Dict[str, List[str]]
+    ) -> str:
+        """Normalise a TAA prediction to a bare alias-dict key.
+
+        The TAA extractor (r"(.+)") returns the whole trained conclusion
+        sentence, e.g. "therefore, the adversary is apt29.". The alias BFS
+        expects a bare key ("apt29"), so if *pred* is not itself a key we
+        search it for the longest alias-dict key occurring as a whole word
+        and return that; if nothing matches, fall back to *pred* unchanged.
+        """
+        t = pred.strip().lower()
+        if not t or t in alias_dict:
+            return t
+        candidates = []
+        for k in alias_dict:
+            if not k or len(k) < 3:
+                continue
+            if re.search(r"(?:^|[^a-z0-9])" + re.escape(k) + r"(?:$|[^a-z0-9])", t):
+                candidates.append(k)
+        if not candidates:
+            return t
+        candidates.sort(key=lambda k: (-len(k), t.find(k)))
+        return candidates[0]
+
     def threat_actor_connection(
         self,
         actor1: str,
@@ -95,7 +120,9 @@ class ATHENAEvaluate:
         related_dict: Dict[str, List[str]],
     ) -> str:
         actor1 = actor1.strip().lower()
-        actor2 = actor2.strip().lower()
+        actor2 = self._resolve_actor_in_text(actor2, alias_dict)
+        if not actor2:
+            return "I"
         if self.is_alias_connected(actor1, actor2, alias_dict):
             return "C"
         if self.is_related_connected(actor1, actor2, alias_dict, related_dict):

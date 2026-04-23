@@ -61,7 +61,11 @@ class athena_cti_postprocessing:
         return self._extract_from_lines(text, r"(CWE-\d+)", lambda s: s.upper())
 
     def athena_vsp_answer(self, text: str) -> str:
-        return self._extract_from_lines(text, r"(CVSS:3\.1/[^\s]+)", lambda s: s.strip())
+        # Character class restricts to legal CVSS v3.1 vector chars so a
+        # trailing period / punctuation from the trained conclusion tail
+        # ("... is CVSS:3.1/AV:N/.../A:H.") is not captured by the greedy
+        # match and therefore does not break the CVSS3(...) parse downstream.
+        return self._extract_from_lines(text, r"(CVSS:3\.1/[A-Z:/]+)", lambda s: s.strip())
 
     def athena_taa_answer(self, text: str) -> str:
         return self._extract_from_lines(text, r"(.+)", self._clean_freeform)
