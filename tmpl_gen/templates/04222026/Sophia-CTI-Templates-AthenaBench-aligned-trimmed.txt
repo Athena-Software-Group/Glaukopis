@@ -3,9 +3,10 @@ AthenaBench-Aligned CTI Templates -- Trimmed (derived from Sophia-CTI-Templates-
 Revision 04222026-trimmed: drops TAA coverage (athena-taa retired from
 benchmark), thins the remaining sections by removing paraphrastic template
 variants, and caps MCQ fanout to keep the balanced MCQ signal in the
-training set without letting it dominate. Targets ~1k MCQ rows (down
+training set without letting it dominate. Targets ~680 MCQ rows (down
 from ~20k in the parent) so the model learns the answer format without
-collapsing onto a position-A prior.
+collapsing onto a position-A prior or overfitting on single-anchor
+sub-templates.
 
 AthenaBench task alignment (trimmed slate):
 
@@ -27,12 +28,22 @@ What was removed vs Sophia-CTI-Templates-AthenaBench-aligned.txt:
                  dropped, coverage preserved by AB.ATE.5.
   - AB.ATE.4   : paraphrase of AB.ATE.1 with "Scenario:" framing but
                  identical binding -- dropped.
+  - AB.MCQ.2   : mitigation-of-technique. Dropped after the 04/22 trimmed
+                 run produced all 170 rows off a single anchor
+                 (T1056.002 -> M1017), i.e. every row was the same Q/A
+                 pair with only the option-letter shuffled -- pure
+                 content overfit with no graph-coverage benefit.
+  - AB.MCQ.6   : CAPEC-to-ATT&CK. Dropped for the same reason as MCQ.2
+                 (all 170 rows collapsed onto CWE-120/CAPEC->AP anchor
+                 in the trimmed run).
 
 What was kept:
 
-  - AB.MCQ.1-6 : all six retained for coverage breadth, each capped at
-                 Count: 170 (~1020 total MCQ rows after shuffler balances
-                 the correct-letter distribution uniformly across A-E).
+  - AB.MCQ.1,3,4,5 : four diverse-anchor sub-templates retained for
+                 coverage breadth, each capped at Count: 170 (~680 total
+                 MCQ rows after shuffler balances the correct-letter
+                 distribution uniformly across A-E). MCQ.1 alone binds
+                 ~105 distinct techniques over 170 rows.
   - AB.RCM.1-2 : 2 distinct CVE->CWE variants (description-only, full record).
   - AB.VSP.1,3 : headline score+vector + per-metric reasoning variants.
   - AB.ATE.1,3,5 : raw description, group-attributed narrative, telemetry-
@@ -52,8 +63,8 @@ MCQ position-bias control:
 
 Expected dataset effect:
 
-  - Templates drop 25 -> 15 (a 40% reduction in template count).
-  - Row count target: ~15k non-MCQ + ~1k MCQ = ~16k total.
+  - Templates drop 25 -> 13 (a ~48% reduction in template count).
+  - Row count target: ~15k non-MCQ + ~680 MCQ = ~15.7k total.
   - SFT wall-clock on 4xH100 with batch=4 grad_accum=1: target ~3-4h
     (down from ~8.5h on the full 138k-row slate).
 
@@ -80,28 +91,6 @@ Answer: MITRE ATT&CK classifies technique {ap.mitre_id} ({ap.name}) under the {t
 {force negtac2.mitre_id != negtac3.mitre_id}
 {force negtac2.mitre_id != negtac4.mitre_id}
 {force negtac3.mitre_id != negtac4.mitre_id}
-Sample: ap
-Shuffle: mcq
-Count: 170
-
-AB.MCQ.2 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult MITRE ATT&CK, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
-Question: Which MITRE ATT&CK mitigation addresses technique {ap:attack-pattern.mitre_id} ({ap.name})? Technique description: {ap.description}
-A) {coa:ap.mitigates<course-of-action.mitre_id} ({coa.name})
-B) {negcoa1:course-of-action.mitre_id} ({negcoa1.name})
-C) {negcoa2:course-of-action.mitre_id} ({negcoa2.name})
-D) {negcoa3:course-of-action.mitre_id} ({negcoa3.name})
-E) {negcoa4:course-of-action.mitre_id} ({negcoa4.name})
-Answer: MITRE ATT&CK records mitigation {coa.mitre_id} ({coa.name}) as addressing technique {ap.mitre_id}: {coa.description}. Therefore, A.
-{force negcoa1.mitre_id != coa.mitre_id}
-{force negcoa2.mitre_id != coa.mitre_id}
-{force negcoa3.mitre_id != coa.mitre_id}
-{force negcoa4.mitre_id != coa.mitre_id}
-{force negcoa1.mitre_id != negcoa2.mitre_id}
-{force negcoa1.mitre_id != negcoa3.mitre_id}
-{force negcoa1.mitre_id != negcoa4.mitre_id}
-{force negcoa2.mitre_id != negcoa3.mitre_id}
-{force negcoa2.mitre_id != negcoa4.mitre_id}
-{force negcoa3.mitre_id != negcoa4.mitre_id}
 Sample: ap
 Shuffle: mcq
 Count: 170
@@ -169,28 +158,6 @@ Answer: MITRE ATT&CK documents {grp.name} ({grp.mitre_id}) as using technique {a
 {force negack2.mitre_id != negack4.mitre_id}
 {force negack3.mitre_id != negack4.mitre_id}
 Sample: grp
-Shuffle: mcq
-Count: 170
-
-AB.MCQ.6 Instruction: You are a CTI analyst at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult the MITRE CAPEC and ATT&CK knowledge bases, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
-Question: Which MITRE ATT&CK technique corresponds to CAPEC-{cap:CAPEC.id} ({cap.name})? Attack pattern description: {cap.description}
-A) {ap:cap.map_ap>attack-pattern.mitre_id} ({ap.name})
-B) {negack1:attack-pattern.mitre_id} ({negack1.name})
-C) {negack2:attack-pattern.mitre_id} ({negack2.name})
-D) {negack3:attack-pattern.mitre_id} ({negack3.name})
-E) {negack4:attack-pattern.mitre_id} ({negack4.name})
-Answer: CAPEC-{cap.id} aligns with MITRE ATT&CK technique {ap.mitre_id} ({ap.name}); both describe the same adversary behaviour. Therefore, A.
-{force negack1.mitre_id != ap.mitre_id}
-{force negack2.mitre_id != ap.mitre_id}
-{force negack3.mitre_id != ap.mitre_id}
-{force negack4.mitre_id != ap.mitre_id}
-{force negack1.mitre_id != negack2.mitre_id}
-{force negack1.mitre_id != negack3.mitre_id}
-{force negack1.mitre_id != negack4.mitre_id}
-{force negack2.mitre_id != negack3.mitre_id}
-{force negack2.mitre_id != negack4.mitre_id}
-{force negack3.mitre_id != negack4.mitre_id}
-Sample: cap
 Shuffle: mcq
 Count: 170
 
