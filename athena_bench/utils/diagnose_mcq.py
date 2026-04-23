@@ -38,23 +38,31 @@ _PREFIX_RE = re.compile(
 
 
 def current_parse_mcq(text: str) -> str:
-    """Byte-for-byte copy of athena_cti_postprocessing.extract_answer('athena-mcq')."""
+    """Mirror athena_cti_postprocessing.extract_answer('athena-mcq').
+
+    Takes the LAST \\b[A-E]\\b match on each line (bottom-up over lines).
+    """
     if not text:
         return ""
+
+    def last(line: str):
+        hits = re.findall(r"\b([A-E])\b", line, re.IGNORECASE)
+        return hits[-1].upper() if hits else None
+
     lines = [ln.strip() for ln in text.strip().splitlines() if ln.strip()]
     for i in range(len(lines) - 1, -1, -1):
         raw = lines[i]
         line = _PREFIX_RE.sub("", raw).strip()
-        m = re.search(r"\b([A-E])\b", line, re.IGNORECASE)
+        m = last(line)
         if m:
-            return m.group(1).upper()
+            return m
         if re.search(r"\banswer\b", raw, re.IGNORECASE):
             for nb in (i + 1, i - 1):
                 if 0 <= nb < len(lines):
                     n = _PREFIX_RE.sub("", lines[nb]).strip()
-                    m = re.search(r"\b([A-E])\b", n, re.IGNORECASE)
+                    m = last(n)
                     if m:
-                        return m.group(1).upper()
+                        return m
     return ""
 
 

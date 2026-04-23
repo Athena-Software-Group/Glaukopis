@@ -1,20 +1,22 @@
 AthenaBench-Aligned CTI Templates -- Trimmed (derived from Sophia-CTI-Templates-AthenaBench-aligned.txt)
 
-Revision 04222026-trimmed: drops MCQ and TAA coverage in line with the
-benchmark slate shrinking (athena-mcq and athena-taa will no longer be
-scored), and thins the remaining sections by removing paraphrastic
-template variants to cut total dataset size and SFT wall-clock time.
+Revision 04222026-trimmed: drops TAA coverage (athena-taa retired from
+benchmark), thins the remaining sections by removing paraphrastic template
+variants, and caps MCQ fanout to keep the balanced MCQ signal in the
+training set without letting it dominate. Targets ~1k MCQ rows (down
+from ~20k in the parent) so the model learns the answer format without
+collapsing onto a position-A prior.
 
 AthenaBench task alignment (trimmed slate):
 
-  Section 1 - AB.RCM.* : CVE description -> CWE-####            -> athena-rcm
-  Section 2 - AB.VSP.* : CVE description -> CVSS:3.1/... vector -> athena-vsp
-  Section 3 - AB.ATE.* : attack scenario -> T####               -> athena-ate
-  Section 4 - AB.RMS.* : attack scenario -> M10xx (list)        -> athena-rms
+  Section 1 - AB.MCQ.* : 5-option multiple choice (A-E)         -> athena-mcq
+  Section 2 - AB.RCM.* : CVE description -> CWE-####            -> athena-rcm
+  Section 3 - AB.VSP.* : CVE description -> CVSS:3.1/... vector -> athena-vsp
+  Section 4 - AB.ATE.* : attack scenario -> T####               -> athena-ate
+  Section 5 - AB.RMS.* : attack scenario -> M10xx (list)        -> athena-rms
 
 What was removed vs Sophia-CTI-Templates-AthenaBench-aligned.txt:
 
-  - AB.MCQ.1-6 : entire section dropped (athena-mcq retired from benchmark).
   - AB.TAA.1-6 : entire section dropped (athena-taa retired from benchmark).
   - AB.VSP.2   : paraphrase of AB.VSP.1 (record-framed wording, same CVSS
                  derivation) -- dropped.
@@ -28,25 +30,171 @@ What was removed vs Sophia-CTI-Templates-AthenaBench-aligned.txt:
 
 What was kept:
 
+  - AB.MCQ.1-6 : all six retained for coverage breadth, each capped at
+                 Count: 170 (~1020 total MCQ rows after shuffler balances
+                 the correct-letter distribution uniformly across A-E).
   - AB.RCM.1-2 : 2 distinct CVE->CWE variants (description-only, full record).
   - AB.VSP.1,3 : headline score+vector + per-metric reasoning variants.
   - AB.ATE.1,3,5 : raw description, group-attributed narrative, telemetry-
                    framed. Each binds a meaningfully different graph path.
   - AB.RMS.1-2 : multi-mitigation list and single-primary-mitigation.
 
+MCQ position-bias control:
+
+  - Each MCQ template declares "Shuffle: mcq" so iftgen randomises option
+    labels per row and rewrites the final "Therefore, X." letter. This
+    must run against the fixed _shuffle_mcq_options in tmpl_parser.py
+    (anchors the option block to the "Therefore, X." tail instead of a
+    global count-all pass that silently bailed on ~50% of rows when CTI
+    description text contained incidental "A) ... B) ..." bullet markers).
+  - Each MCQ template declares "Count: 170" so the per-template Count
+    directive caps fanout independent of the CLI --count_max ceiling.
+
 Expected dataset effect:
 
-  - Templates drop 25 -> 9 (a 64% reduction in template count).
-  - Row count drops proportionally more than 64% because the removed MCQ
-    templates dominated generation fanout via negative sampling and the
-    removed TAA templates had the second-highest per-template yield.
+  - Templates drop 25 -> 15 (a 40% reduction in template count).
+  - Row count target: ~15k non-MCQ + ~1k MCQ = ~16k total.
   - SFT wall-clock on 4xH100 with batch=4 grad_accum=1: target ~3-4h
     (down from ~8.5h on the full 138k-row slate).
 
 Template IDs retain their original numbering (AB.VSP.3, AB.ATE.5, etc.)
 so diff-vs-parent traceability is preserved; there is no renumbering.
 
-Section 1 - AB.RCM.* Root-Cause Mapping (athena-rcm)
+Section 1 - AB.MCQ.* Multiple-Choice Questions (athena-mcq)
+
+AB.MCQ.1 Instruction: You are a cybersecurity analyst at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult MITRE ATT&CK, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
+Question: Which MITRE ATT&CK tactic does technique {ap:attack-pattern.mitre_id} ({ap.name}) achieve? Technique description: {ap.description}
+A) {ta:ap.achieves>x-mitre-tactic.name}
+B) {negtac1:x-mitre-tactic.name}
+C) {negtac2:x-mitre-tactic.name}
+D) {negtac3:x-mitre-tactic.name}
+E) {negtac4:x-mitre-tactic.name}
+Answer: MITRE ATT&CK classifies technique {ap.mitre_id} ({ap.name}) under the {ta.name} tactic, which covers {ta.description}. Therefore, A.
+{force negtac1.mitre_id != ta.mitre_id}
+{force negtac2.mitre_id != ta.mitre_id}
+{force negtac3.mitre_id != ta.mitre_id}
+{force negtac4.mitre_id != ta.mitre_id}
+{force negtac1.mitre_id != negtac2.mitre_id}
+{force negtac1.mitre_id != negtac3.mitre_id}
+{force negtac1.mitre_id != negtac4.mitre_id}
+{force negtac2.mitre_id != negtac3.mitre_id}
+{force negtac2.mitre_id != negtac4.mitre_id}
+{force negtac3.mitre_id != negtac4.mitre_id}
+Sample: ap
+Shuffle: mcq
+Count: 170
+
+AB.MCQ.2 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult MITRE ATT&CK, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
+Question: Which MITRE ATT&CK mitigation addresses technique {ap:attack-pattern.mitre_id} ({ap.name})? Technique description: {ap.description}
+A) {coa:ap.mitigates<course-of-action.mitre_id} ({coa.name})
+B) {negcoa1:course-of-action.mitre_id} ({negcoa1.name})
+C) {negcoa2:course-of-action.mitre_id} ({negcoa2.name})
+D) {negcoa3:course-of-action.mitre_id} ({negcoa3.name})
+E) {negcoa4:course-of-action.mitre_id} ({negcoa4.name})
+Answer: MITRE ATT&CK records mitigation {coa.mitre_id} ({coa.name}) as addressing technique {ap.mitre_id}: {coa.description}. Therefore, A.
+{force negcoa1.mitre_id != coa.mitre_id}
+{force negcoa2.mitre_id != coa.mitre_id}
+{force negcoa3.mitre_id != coa.mitre_id}
+{force negcoa4.mitre_id != coa.mitre_id}
+{force negcoa1.mitre_id != negcoa2.mitre_id}
+{force negcoa1.mitre_id != negcoa3.mitre_id}
+{force negcoa1.mitre_id != negcoa4.mitre_id}
+{force negcoa2.mitre_id != negcoa3.mitre_id}
+{force negcoa2.mitre_id != negcoa4.mitre_id}
+{force negcoa3.mitre_id != negcoa4.mitre_id}
+Sample: ap
+Shuffle: mcq
+Count: 170
+
+AB.MCQ.3 Instruction: You are a CTI analyst at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult the MITRE CVE and CWE knowledge bases, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
+Question: What is the root-cause CWE of the following vulnerability? {cve:CVE.id}: {cve.descriptions}
+A) {cwe:cve.problemType>Weakness.id} ({cwe.name})
+B) {negw1:Weakness.id} ({negw1.name})
+C) {negw2:Weakness.id} ({negw2.name})
+D) {negw3:Weakness.id} ({negw3.name})
+E) {negw4:Weakness.id} ({negw4.name})
+Answer: The CVE description matches the pattern defined by {cwe.id} ({cwe.name}): {cwe.description}. Therefore, A.
+{force negw1.id != cwe.id}
+{force negw2.id != cwe.id}
+{force negw3.id != cwe.id}
+{force negw4.id != cwe.id}
+{force negw1.id != negw2.id}
+{force negw1.id != negw3.id}
+{force negw1.id != negw4.id}
+{force negw2.id != negw3.id}
+{force negw2.id != negw4.id}
+{force negw3.id != negw4.id}
+Sample: cve
+Shuffle: mcq
+Count: 170
+
+AB.MCQ.4 Instruction: You are a CTI analyst at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult the MITRE CWE and CAPEC knowledge bases, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
+Question: Which CAPEC attack pattern primarily exploits {cwe:Weakness.id} ({cwe.name})? Weakness description: {cwe.description}
+A) CAPEC-{cap:cwe.related_attack_pattern>CAPEC.id} ({cap.name})
+B) CAPEC-{negcap1:CAPEC.id} ({negcap1.name})
+C) CAPEC-{negcap2:CAPEC.id} ({negcap2.name})
+D) CAPEC-{negcap3:CAPEC.id} ({negcap3.name})
+E) CAPEC-{negcap4:CAPEC.id} ({negcap4.name})
+Answer: MITRE CAPEC records CAPEC-{cap.id} ({cap.name}) as the attack pattern exploiting {cwe.id} ({cwe.name}): {cap.description}. Therefore, A.
+{force negcap1.id != cap.id}
+{force negcap2.id != cap.id}
+{force negcap3.id != cap.id}
+{force negcap4.id != cap.id}
+{force negcap1.id != negcap2.id}
+{force negcap1.id != negcap3.id}
+{force negcap1.id != negcap4.id}
+{force negcap2.id != negcap3.id}
+{force negcap2.id != negcap4.id}
+{force negcap3.id != negcap4.id}
+Sample: cwe
+Shuffle: mcq
+Count: 170
+
+AB.MCQ.5 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult MITRE ATT&CK, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
+Question: Which MITRE ATT&CK technique is threat group {grp:intrusion-set.name} ({grp.mitre_id}) documented as using? Group description: {grp.description}
+A) {ap:grp.uses>attack-pattern.mitre_id} ({ap.name})
+B) {negack1:attack-pattern.mitre_id} ({negack1.name})
+C) {negack2:attack-pattern.mitre_id} ({negack2.name})
+D) {negack3:attack-pattern.mitre_id} ({negack3.name})
+E) {negack4:attack-pattern.mitre_id} ({negack4.name})
+Answer: MITRE ATT&CK documents {grp.name} ({grp.mitre_id}) as using technique {ap.mitre_id} ({ap.name}): {ap.description}. Therefore, A.
+{force negack1.mitre_id != ap.mitre_id}
+{force negack2.mitre_id != ap.mitre_id}
+{force negack3.mitre_id != ap.mitre_id}
+{force negack4.mitre_id != ap.mitre_id}
+{force negack1.mitre_id != negack2.mitre_id}
+{force negack1.mitre_id != negack3.mitre_id}
+{force negack1.mitre_id != negack4.mitre_id}
+{force negack2.mitre_id != negack3.mitre_id}
+{force negack2.mitre_id != negack4.mitre_id}
+{force negack3.mitre_id != negack4.mitre_id}
+Sample: grp
+Shuffle: mcq
+Count: 170
+
+AB.MCQ.6 Instruction: You are a CTI analyst at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult the MITRE CAPEC and ATT&CK knowledge bases, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
+Question: Which MITRE ATT&CK technique corresponds to CAPEC-{cap:CAPEC.id} ({cap.name})? Attack pattern description: {cap.description}
+A) {ap:cap.map_ap>attack-pattern.mitre_id} ({ap.name})
+B) {negack1:attack-pattern.mitre_id} ({negack1.name})
+C) {negack2:attack-pattern.mitre_id} ({negack2.name})
+D) {negack3:attack-pattern.mitre_id} ({negack3.name})
+E) {negack4:attack-pattern.mitre_id} ({negack4.name})
+Answer: CAPEC-{cap.id} aligns with MITRE ATT&CK technique {ap.mitre_id} ({ap.name}); both describe the same adversary behaviour. Therefore, A.
+{force negack1.mitre_id != ap.mitre_id}
+{force negack2.mitre_id != ap.mitre_id}
+{force negack3.mitre_id != ap.mitre_id}
+{force negack4.mitre_id != ap.mitre_id}
+{force negack1.mitre_id != negack2.mitre_id}
+{force negack1.mitre_id != negack3.mitre_id}
+{force negack1.mitre_id != negack4.mitre_id}
+{force negack2.mitre_id != negack3.mitre_id}
+{force negack2.mitre_id != negack4.mitre_id}
+{force negack3.mitre_id != negack4.mitre_id}
+Sample: cap
+Shuffle: mcq
+Count: 170
+
+Section 2 - AB.RCM.* Root-Cause Mapping (athena-rcm)
 
 AB.RCM.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center performing root-cause mapping. Analyse the following CVE description and identify the most appropriate Common Weakness Enumeration (CWE) that represents the root cause of the vulnerability. Consult the MITRE CVE and CWE knowledge bases, reason step by step about the weakness pattern present in the description, and then state the CWE identifier.
 Question: {cve:CVE.descriptions}
@@ -56,7 +204,7 @@ AB.RCM.2 Instruction: You are a vulnerability analyst at an enterprise Security 
 Question: Vulnerability record for {cve:CVE.id}: {cve.descriptions}
 Answer: The record describes {cwe:cve.problemType>Weakness.name}, whose defining characteristic is {cwe.description}. Therefore, the root cause is {cwe.id}.
 
-Section 2 - AB.VSP.* Vulnerability Severity Prediction (athena-vsp)
+Section 3 - AB.VSP.* Vulnerability Severity Prediction (athena-vsp)
 
 AB.VSP.1 Instruction: You are a vulnerability risk analyst at an enterprise Security Operations Center computing CVSS v3.1 Base metrics. Analyse the following CVE description and derive the values for each base metric (AV, AC, PR, UI, S, C, I, A). Consult the CVSS v3.1 specification, reason about each metric in turn, and then state the resulting CVSS:3.1 vector.
 Question: {cve:CVE.descriptions}
@@ -66,7 +214,7 @@ AB.VSP.3 Instruction: You are a vulnerability risk analyst at an enterprise Secu
 Question: {cve:CVE.descriptions}
 Answer: Reasoning through each base metric: Attack Vector of {cve.cvss3_1_attackVector} is indicated by how the attacker reaches the vulnerable component; Attack Complexity is implied by the conditions required to weaponise the flaw; Privileges Required and User Interaction follow from whether authentication or victim action is needed; Scope, Confidentiality, Integrity, and Availability follow from the impact described. The resulting CVSS v3.1 base score is {cve.cvss3_1_baseScore}. Therefore, the CVSS v3.1 vector is {cve.cvss3_1_vectorString}. <*{force cve.cvss3_1_vectorString = cve.cvss3_1_vectorString}*>
 
-Section 3 - AB.ATE.* Attack Technique Enumeration (athena-ate)
+Section 4 - AB.ATE.* Attack Technique Enumeration (athena-ate)
 
 AB.ATE.1 Instruction: You are a threat hunter at an enterprise Security Operations Center performing attack technique enumeration. Analyse the following attack scenario and identify the single MITRE ATT&CK technique (ID format: T####) that best matches the behaviour described. Consult MITRE ATT&CK, reason about observable indicators in the scenario, and then state the technique identifier.
 Question: {ap:attack-pattern.description}
@@ -80,7 +228,7 @@ AB.ATE.5 Instruction: You are a detection engineer at an enterprise Security Ope
 Question: Based on observations collected from data sources {ap:attack-pattern.x_mitre_data_sources}, the following behaviour was recorded: {ap.description}
 Answer: The telemetry pattern matches {ap.name}, whose defining behaviour is captured by those data sources. Therefore, the technique is {ap.mitre_id}.
 
-Section 4 - AB.RMS.* Risk Mitigation Strategy (athena-rms)
+Section 5 - AB.RMS.* Risk Mitigation Strategy (athena-rms)
 
 AB.RMS.1 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend multiple MITRE ATT&CK mitigation identifiers (format: M10xx) that together address the adversary behaviour. Consult MITRE ATT&CK, reason about which defensive controls apply, and then state the mitigation identifiers as a comma-separated list.
 Question: {ap:attack-pattern.description}

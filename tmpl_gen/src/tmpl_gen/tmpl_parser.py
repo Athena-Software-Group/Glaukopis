@@ -1129,15 +1129,31 @@ class TmplGenNeo4j:
         the options to a random A-E order and remap the final answer letter to
         the new position of the originally correct option.
 
-        Returns the original text unchanged if the expected MCQ shape is not
-        detected (5 contiguous A-E options + one "Therefore, X." tail).
+        The option block is identified as the 5 A-E line-starts immediately
+        preceding the "Therefore, X." tail. This tolerates incidental "A) ..."
+        bullet markers inside CTI description text, which previously caused
+        the global-match version to bail on ~50% of MCQ rows (leaving the
+        template default "Therefore, A." in place and producing a catastrophic
+        position-A training bias).
+
+        Returns the original text unchanged when:
+          * no "Therefore, X." tail is present, or
+          * fewer than 5 A-E line-starts precede the tail, or
+          * the 5 matches immediately before the tail are not A,B,C,D,E in order.
         """
-        matches = list(cls._MCQ_OPT_RE.finditer(text))
-        if len(matches) != 5 or [m.group(1) for m in matches] != list("ABCDE"):
-            return text
         ans_match = cls._MCQ_ANS_RE.search(text)
         if not ans_match:
             return text
+
+        head = text[:ans_match.start()]
+        all_opts = list(cls._MCQ_OPT_RE.finditer(head))
+        if len(all_opts) < 5:
+            return text
+
+        matches = all_opts[-5:]
+        if [m.group(1) for m in matches] != list("ABCDE"):
+            return text
+
         orig_correct_idx = ord(ans_match.group(1)) - ord('A')
 
         options = [m.group(2) for m in matches]
@@ -1175,15 +1191,35 @@ class TmplGenNeo4j:
         # Each Pathspec will be replaced by nd.prop where nd is the target node on the
         # Pathspec chain and prop is the last (and only) property.
         
-        # specific config param overrides global specific limits:
-        # max. number of strings generated per template
-        limit = self.gencfg.get("override_count_limit", tmplobj.get("count_limit", 
-                                    self.gencfg.get("default_count_limit", 10)))
-        
-        # check if command line option override for count_limit:
-        if self.options.get("count_max", -1) >= 0:
-            limit = self.options["count_max"]
-            # print("process_template: OVERRIDE COUNT_MAX", limit)
+        # Per-template row count resolution. Priority (highest to lowest):
+        #   1. gencfg.override_count_limit  - operator hard-override applied to
+        #      all templates (rare; used to force-cap a whole run).
+        #   2. tmplobj.count_limit          - per-template Count: directive
+        #      from the .txt/.docx template. Authoritative author intent; used
+        #      e.g. to cap MCQ templates so they do not dominate the dataset.
+        #   3. CLI --count_max              - operator's broad cap for templates
+        #      that do not declare a Count: of their own.
+        #   4. gencfg.default_count_limit   - final fallback.
+        #
+        # The CLI --count_max additionally acts as a ceiling on whichever value
+        # was selected above (1 or 2), so an operator can always tighten a run
+        # without editing templates.
+        override = self.gencfg.get("override_count_limit")
+        tmpl_limit = tmplobj.get("count_limit")
+        cli_limit = self.options.get("count_max", -1)
+        default = self.gencfg.get("default_count_limit", 10)
+
+        if override is not None:
+            limit = override
+        elif tmpl_limit is not None:
+            limit = tmpl_limit
+        elif cli_limit >= 0:
+            limit = cli_limit
+        else:
+            limit = default
+
+        if cli_limit >= 0:
+            limit = min(limit, cli_limit)
             
         lst_match = list()
         lst_return = list()             # used to build the RETURN params       

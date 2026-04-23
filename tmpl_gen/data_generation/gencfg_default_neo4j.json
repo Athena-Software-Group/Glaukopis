@@ -2,7 +2,6 @@
     "version": "0.0",
     "default_propname": "name",
     "default_count_limit": 10,
-    "override_count_limit": 10,
     "default_order_by": "none",
     "override_order_by": "random",    
     "list_property_separator": ", ",

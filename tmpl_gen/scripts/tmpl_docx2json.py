@@ -98,8 +98,15 @@ def extract_templates_from_json(args) -> list[dict]:
             "text":        t_text,
             "source_file": args.input,
             "source_line": i + 1,
-            "count_limit": int(entry.get("count_limit", args.count_limit)),
         }
+        # Only carry forward count_limit when the source JSON has declared one
+        # explicitly; otherwise leave it unset so the parser's resolution
+        # chain can fall through to --count_max / default_count_limit.
+        if "count_limit" in entry and entry["count_limit"] is not None:
+            try:
+                tmpl["count_limit"] = int(entry["count_limit"])
+            except (TypeError, ValueError):
+                print(f"@@@ Entry {i}: invalid count_limit {entry['count_limit']!r} - ignored")
 
         for prefix in ("summary", "schema"):
             if prefix in entry and entry[prefix]:
@@ -188,10 +195,16 @@ def extract_templates_from_txt(args) -> list[dict]:
             "text":        t_text,
             "source_file": args.input,
             "source_line": src_line,
-            "count_limit": args.count_limit,
         }
 
-        # Collect optional Summary/Schema/Sample; skip {force} lines and blank lines
+        # Collect optional Summary/Schema/Sample/Shuffle/Count; skip {force}
+        # lines and blank lines. Count: N is authoritative per-template author
+        # intent (it is consulted by tmpl_parser.process_template ahead of the
+        # CLI --count_max, which acts as an operator's broad cap for templates
+        # that do not declare a Count: of their own). When no Count: directive
+        # is present we intentionally omit "count_limit" from the template so
+        # the downstream resolution chain can distinguish author-declared from
+        # unspecified.
         while i < len(lines):
             l = lines[i].strip()
             if re_id_instr.match(l):
@@ -199,9 +212,16 @@ def extract_templates_from_txt(args) -> list[dict]:
             if l == "" or l.startswith("{force"):
                 i += 1
                 continue
-            for prefix in ("Summary", "Schema", "Sample", "Shuffle"):
+            for prefix in ("Summary", "Schema", "Sample", "Shuffle", "Count"):
                 if l.startswith(f"{prefix}: "):
-                    tmpl[prefix.lower()] = l[len(f"{prefix}: "):]
+                    val = l[len(f"{prefix}: "):]
+                    if prefix == "Count":
+                        try:
+                            tmpl["count_limit"] = int(val.strip())
+                        except ValueError:
+                            print(f"@@@ Template {t_id}: invalid Count '{val}' - ignored")
+                    else:
+                        tmpl[prefix.lower()] = val
                     break
             i += 1
 

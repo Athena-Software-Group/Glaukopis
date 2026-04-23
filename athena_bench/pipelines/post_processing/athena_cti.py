@@ -14,6 +14,20 @@ class athena_cti_postprocessing:
     def _strip_prefix(self, s: str) -> str:
         return self._PREFIX_RE.sub("", s).strip()
 
+    @staticmethod
+    def _last_match(pattern: str, line: str):
+        """Return the last regex match on *line*, or None.
+
+        Model outputs commit to their final answer at the end of the line
+        ("...first-stage reasoning... Therefore, B."), so the last match is
+        the correct one to return. Using ``re.search`` (first match) causes
+        incidental tokens earlier in the line -- articles like "a", option
+        letters quoted from the question body ("E) T1041 ..."), or midway
+        reasoning -- to hijack the extracted answer.
+        """
+        matches = re.findall(pattern, line, re.IGNORECASE)
+        return matches[-1] if matches else None
+
     def _extract_from_lines(self, text: str, pattern: str, transform=lambda x: x) -> str:
         """Search *text* from bottom to top and return the last regex match."""
         lines = [ln.strip() for ln in text.strip().splitlines() if ln.strip()]
@@ -21,22 +35,22 @@ class athena_cti_postprocessing:
             raw = lines[i]
             line = self._strip_prefix(raw)
 
-            match = re.search(pattern, line, re.IGNORECASE)
-            if match:
-                return transform(match.group(1))
+            m = self._last_match(pattern, line)
+            if m is not None:
+                return transform(m)
 
             # Check neighbors if "Answer" label is present
             if re.search(r'\banswer\b', raw, re.IGNORECASE):
                 if i + 1 < len(lines):
                     nxt = self._strip_prefix(lines[i + 1])
-                    match = re.search(pattern, nxt, re.IGNORECASE)
-                    if match:
-                        return transform(match.group(1))
+                    m = self._last_match(pattern, nxt)
+                    if m is not None:
+                        return transform(m)
                 if i > 0:
                     prv = self._strip_prefix(lines[i - 1])
-                    match = re.search(pattern, prv, re.IGNORECASE)
-                    if match:
-                        return transform(match.group(1))
+                    m = self._last_match(pattern, prv)
+                    if m is not None:
+                        return transform(m)
         return ""
 
     def _clean_freeform(self, s: str) -> str:
