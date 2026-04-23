@@ -1,0 +1,166 @@
+# Declarative source registry for the CTI CPT corpus build.
+#
+# Each entry specifies:
+#   fetcher: dispatch key in cpt/fetch.py (http_json | http_zip | git | stix |
+#            rss | sitemap | manual)
+#   parser : dispatch key in cpt/parse.py (stix | cve_nvd | kev | cwe_xml |
+#            capec_xml | html_trafilatura | pdf_pymupdf | sigma_yaml |
+#            passthrough)
+#   url(s) : source URLs (list form when a single logical source has
+#            multiple endpoints, e.g. NVD yearly feeds)
+#   license: short label for attribution bookkeeping (not enforced)
+#   enabled: bool; disable to skip in build_corpus.py without deleting
+#   notes  : free-form, surfaces in build logs
+#
+# Licenses that require share-alike or non-commercial reuse (CC-BY-NC-SA,
+# proprietary blog content) are enabled=false by default. Flip them on
+# only after confirming redistribution constraints for your end model.
+
+leak_protection:
+  # 13-gram minhash near-dup; drop docs with Jaccard >= threshold against
+  # any row in the listed benchmark test splits.
+  jaccard_threshold: 0.30
+  ngram: 13
+  benchmarks:
+    - SFT/test/data/cti-mcq.tsv
+    - SFT/test/data/cti-rcm.tsv
+    - SFT/test/data/cti-vsp.tsv
+    - SFT/test/data/cti-ate.tsv
+    - SFT/test/data/cti-taa.tsv
+  athena_dirs:
+    - SFT/test/benchmark_data
+    - SFT/test/benchmark_data_mini
+
+sources:
+
+  # --- MITRE knowledge bases (small, clean, high signal) ---
+
+  mitre_attack_enterprise:
+    fetcher: http_json
+    parser: stix
+    url: https://raw.githubusercontent.com/mitre/cti/master/enterprise-attack/enterprise-attack.json
+    license: CC-BY
+    enabled: true
+    notes: ATT&CK enterprise STIX bundle; techniques, groups, software, mitigations
+
+  mitre_attack_mobile:
+    fetcher: http_json
+    parser: stix
+    url: https://raw.githubusercontent.com/mitre/cti/master/mobile-attack/mobile-attack.json
+    license: CC-BY
+    enabled: true
+
+  mitre_attack_ics:
+    fetcher: http_json
+    parser: stix
+    url: https://raw.githubusercontent.com/mitre/cti/master/ics-attack/ics-attack.json
+    license: CC-BY
+    enabled: true
+
+  mitre_capec:
+    fetcher: http_json
+    parser: stix
+    url: https://raw.githubusercontent.com/mitre/cti/master/capec/2.1/stix-capec.json
+    license: CC-BY
+    enabled: true
+
+  mitre_cwe:
+    fetcher: http_zip
+    parser: cwe_xml
+    url: https://cwe.mitre.org/data/xml/cwec_latest.xml.zip
+    license: public
+    enabled: true
+
+  # --- NVD CVE feeds (primary volume source) ---
+  # NVD 2.0 JSON feeds by year. Keep last 5-6 years by default to stay
+  # under ~100 MB raw; flip older years on for a heavier corpus.
+
+  nvd_2025:
+    fetcher: http_json
+    parser: cve_nvd
+    url: https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-2025.json.gz
+    license: public
+    enabled: true
+  nvd_2024:
+    fetcher: http_json
+    parser: cve_nvd
+    url: https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-2024.json.gz
+    license: public
+    enabled: true
+  nvd_2023:
+    fetcher: http_json
+    parser: cve_nvd
+    url: https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-2023.json.gz
+    license: public
+    enabled: true
+  nvd_2022:
+    fetcher: http_json
+    parser: cve_nvd
+    url: https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-2022.json.gz
+    license: public
+    enabled: true
+  nvd_2021:
+    fetcher: http_json
+    parser: cve_nvd
+    url: https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-2021.json.gz
+    license: public
+    enabled: true
+  nvd_2020:
+    fetcher: http_json
+    parser: cve_nvd
+    url: https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-2020.json.gz
+    license: public
+    enabled: true
+
+  # --- CISA (KEV + advisories) ---
+
+  cisa_kev:
+    fetcher: http_json
+    parser: kev
+    url: https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json
+    license: public
+    enabled: true
+
+  cisa_advisories:
+    fetcher: sitemap
+    parser: html_trafilatura
+    url: https://www.cisa.gov/news-events/cybersecurity-advisories.xml
+    license: public
+    enabled: true
+    notes: AA-series and ICSA-series advisories; requires HTML scrape
+
+  # --- Detection engineering corpora ---
+
+  sigma_rules:
+    fetcher: git
+    parser: sigma_yaml
+    url: https://github.com/SigmaHQ/sigma.git
+    subdir: rules
+    license: MIT
+    enabled: true
+
+  # --- Long-form incident writeups and vendor reports (curator input) ---
+  # These require manual curation of URL lists; fetch.py 'manual' fetcher
+  # reads cpt/cache/manual/<source>/urls.txt and downloads each line.
+
+  dfir_report:
+    fetcher: rss
+    parser: html_trafilatura
+    url: https://thedfirreport.com/feed/
+    license: CC-BY-NC-SA
+    enabled: false
+    notes: Enable only if end model will not be redistributed commercially
+
+  vendor_blogs:
+    fetcher: manual
+    parser: html_trafilatura
+    license: varies
+    enabled: false
+    notes: Populate cpt/cache/manual/vendor_blogs/urls.txt before enabling
+
+  vendor_reports_pdf:
+    fetcher: manual
+    parser: pdf_pymupdf
+    license: varies
+    enabled: false
+    notes: Populate cpt/cache/manual/vendor_reports_pdf/urls.txt before enabling

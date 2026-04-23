@@ -446,3 +446,9 @@ SFT/test/responses/
 *.safetensors
 
 SFT/merged/
+
+# CPT pipeline: raw fetched artifacts and intermediate parsed JSONL are
+# regeneratable via cpt/build_corpus.py; built corpus JSONLs are large
+# and stay on the training host (transferred via rsync like SFT ift_data_*.json).
+cpt/cache/
+cpt/corpus/
