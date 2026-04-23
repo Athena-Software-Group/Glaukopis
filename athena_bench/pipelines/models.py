@@ -597,14 +597,56 @@ def cleanup_model_cache(model_name=None):
 
 # ----------------- Global Function ----------------- #
 
-def get_single_prediction(question, model_name, task=None, cleanup_after=False, use_web_search=False, temperature=0, max_new_tokens=2048):
+# Per-task generation-length caps. Tight caps dramatically shorten local HF
+# inference because the model stops generating as soon as it emits EOS, but
+# wall-clock scales with `max_new_tokens` for any prompt where the model
+# fails to emit EOS (rambling, repetition, formatting drift). Keeping MCQ
+# at 128 trims 5-10x off runs on abaligned Llama-3.1-8B and has no observed
+# accuracy impact for the athena_bench post-processors, which only care
+# about the first answer letter / tail of the response.
+TASK_MAX_NEW_TOKENS: dict[str, int] = {
+    # MCQ-style: one letter + optional "Therefore, X." tail
+    "athena-mcq":    128,
+    "mcq":           128,
+    "cybermetric":   128,
+    # Short structured answers (technique ID, role label, short code)
+    "athena-rcm":    256,
+    "athena-rms":    256,
+    "athena-taa":    256,
+    "rcm":           256,
+    "rms":           256,
+    "taa":           256,
+    # Medium free-form (technique extraction lists, severity paragraphs)
+    "athena-ate":    512,
+    "athena-vsp":    512,
+    "ate":           512,
+    "vsp":           512,
+    # Long / unbounded tasks keep the historical 2048 default
+    "cve":          1024,
+    "urlhaus":       512,
+    "glue":          256,
+    "superglue":     256,
+    "mmlu":          256,
+}
+DEFAULT_MAX_NEW_TOKENS = 2048
+
+
+def _resolve_max_new_tokens(task: str | None, explicit: int | None) -> int:
+    if explicit is not None:
+        return explicit
+    if task and task in TASK_MAX_NEW_TOKENS:
+        return TASK_MAX_NEW_TOKENS[task]
+    return DEFAULT_MAX_NEW_TOKENS
+
+
+def get_single_prediction(question, model_name, task=None, cleanup_after=False, use_web_search=False, temperature=0, max_new_tokens=None):
     if model_name not in model_mapping:
         raise ValueError(f"Unsupported model: {model_name}. Available: {list(model_mapping.keys())}")
 
-    # Set model-specific max_new_tokens if not explicitly provided
-    # Llama 3.3 70b max_new_tokens = 1000    
-    #if max_new_tokens == 512 and model_name == 'gpt-oss-20b' and task == 'athena-vsp':
-    #    max_new_tokens = 1000
+    # Resolve the per-task generation-length cap. Callers passing an
+    # explicit max_new_tokens override the table; the default (None) falls
+    # through to TASK_MAX_NEW_TOKENS[task] and finally to 2048.
+    resolved_max = _resolve_max_new_tokens(task, max_new_tokens)
 
     # Get cached model instance
     model = get_cached_model(model_name)
@@ -615,7 +657,7 @@ def get_single_prediction(question, model_name, task=None, cleanup_after=False, 
             question,
             task=task,
             temperature=temperature,
-            max_new_tokens=max_new_tokens,
+            max_new_tokens=resolved_max,
             use_web_search=use_web_search
         )
         

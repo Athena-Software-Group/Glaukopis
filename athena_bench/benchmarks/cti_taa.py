@@ -68,7 +68,7 @@ class CTITAA(Benchmark):
             prompt = row['Prompt']
             gt_value = row['GT']
             try:
-                pred = get_single_prediction(prompt, self.model_name, cleanup_after=cleanup)
+                pred = get_single_prediction(prompt, self.model_name, task=self.task, cleanup_after=cleanup)
                 formatted_pred, is_valid = self.postprocessor.format_taa(pred)
                 prediction = formatted_pred if is_valid else 'X'
                 print(f"Row {idx+1}: {prediction}")

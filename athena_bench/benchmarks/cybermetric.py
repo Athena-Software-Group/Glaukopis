@@ -71,6 +71,7 @@ class CYBERMETRIC(Benchmark):
                 raw_response = get_single_prediction(
                     prompt,
                     self.model_name,
+                    task=self.task,
                     cleanup_after=cleanup,
                     use_web_search=use_web_search
                 )

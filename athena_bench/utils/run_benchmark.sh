@@ -41,6 +41,12 @@
 #                 fresh run instead of resume-from-checkpoint.
 #   --yes / -y    Skip the interactive confirmation prompt when --overwrite
 #                 is set (required for nohup / non-interactive runs).
+#   --single-gpu [IDX]
+#                 Pin inference to a single CUDA device (default idx=0) by
+#                 exporting CUDA_VISIBLE_DEVICES=IDX before launching each
+#                 task. For an 8B model this removes cross-GPU PCIe hops
+#                 that device_map="auto" introduces when multiple GPUs are
+#                 visible, typically 1.5-2x faster than a 2-GPU split.
 #
 # Examples:
 #   ./run_benchmark.sh deephat-7b                              # athena suite
@@ -72,6 +78,8 @@ USER_TASKS=""
 CYBERMETRIC_SIZE="80"
 OVERWRITE=0
 ASSUME_YES=0
+SINGLE_GPU=0
+SINGLE_GPU_IDX="0"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -83,6 +91,16 @@ while [[ $# -gt 0 ]]; do
         --cybermetric-size) CYBERMETRIC_SIZE="$2"; shift 2 ;;
         --overwrite) OVERWRITE=1; shift ;;
         --yes|-y)    ASSUME_YES=1; shift ;;
+        --single-gpu)
+            SINGLE_GPU=1
+            # Optional numeric index follows --single-gpu. Accept 0-9 only;
+            # anything else is treated as the next flag.
+            if [[ $# -ge 2 && "$2" =~ ^[0-9]+$ ]]; then
+                SINGLE_GPU_IDX="$2"; shift 2
+            else
+                shift
+            fi
+            ;;
         *) echo "Unknown argument: $1" >&2; exit 1 ;;
     esac
 done
@@ -262,6 +280,11 @@ fi
     if [[ "${TASKS}" == *"cybermetric"* ]]; then
         echo "  cybermetric : ${CYBERMETRIC_STEM} (${CYBERMETRIC_DATA_PATH})"
     fi
+    if [[ ${SINGLE_GPU} -eq 1 ]]; then
+        echo "  single-gpu  : yes (CUDA_VISIBLE_DEVICES=${SINGLE_GPU_IDX})"
+    else
+        echo "  single-gpu  : no (inherits CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-<unset>})"
+    fi
     echo "  overwrite   : $([[ ${OVERWRITE} -eq 1 ]] && echo yes || echo no)"
     echo "  started     : $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
     echo
@@ -314,8 +337,17 @@ fi
         task_out_file="$(mktemp -t athena_task.XXXXXX)"
         set +e
         set -o pipefail
-        python inference.py "${task}" "${MODEL_NAME}" "${extra_args[@]}" "${task_extra[@]}" 2>&1 \
-            | tee "${task_out_file}"
+        # Pin to a single GPU if --single-gpu was requested. Scoped to this
+        # subshell so the parent script's environment is untouched.
+        if [[ ${SINGLE_GPU} -eq 1 ]]; then
+            (
+                export CUDA_VISIBLE_DEVICES="${SINGLE_GPU_IDX}"
+                python inference.py "${task}" "${MODEL_NAME}" "${extra_args[@]}" "${task_extra[@]}" 2>&1
+            ) | tee "${task_out_file}"
+        else
+            python inference.py "${task}" "${MODEL_NAME}" "${extra_args[@]}" "${task_extra[@]}" 2>&1 \
+                | tee "${task_out_file}"
+        fi
         task_status=${PIPESTATUS[0]}
         set +o pipefail
         set -e

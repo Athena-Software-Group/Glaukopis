@@ -69,7 +69,7 @@ class CTIVSP(Benchmark):
             prompt = row['Prompt']
             gt_value = row['GT']
             try:
-                pred = get_single_prediction(prompt, self.model_name, cleanup_after=cleanup)
+                pred = get_single_prediction(prompt, self.model_name, task=self.task, cleanup_after=cleanup)
                 formatted_pred, _ = self.postprocessor.format_vsp(pred)
                 prediction = str(formatted_pred)
                 print(f"Row {idx+1}: {prediction}")

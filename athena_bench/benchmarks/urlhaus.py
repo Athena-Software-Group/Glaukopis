@@ -80,7 +80,7 @@ class URLHAUS(Benchmark):
                 f"URL: {url}"
             )
             try:
-                pred = get_single_prediction(prompt, self.model_name, cleanup_after=cleanup)
+                pred = get_single_prediction(prompt, self.model_name, task=self.task, cleanup_after=cleanup)
                 prediction = pred.strip()
             except Exception as e:
                 print(f"Error processing index {idx}: {e}")
