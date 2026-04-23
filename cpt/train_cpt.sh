@@ -84,7 +84,9 @@ done
 
 if [[ -z "${REPO_ID}" && -n "${HF_USERNAME:-}" ]]; then
     short="${MODEL##*/}"
-    REPO_ID="${HF_USERNAME}/athena-cti-cpt-${short,,}-v1"
+    # tr for portability (bash 3.2 on macOS has no ${var,,})
+    short_lc="$(printf '%s' "${short}" | tr '[:upper:]' '[:lower:]')"
+    REPO_ID="${HF_USERNAME}/athena-cti-cpt-${short_lc}-v1"
 fi
 
 TIMESTAMP="$(date +"%Y-%m-%d-%H-%M-%S")"
