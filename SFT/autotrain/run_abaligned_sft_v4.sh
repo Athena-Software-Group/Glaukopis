@@ -73,7 +73,7 @@ if [[ ! -f "${DATASET_FILE}" ]]; then
     echo "[FAIL] training dataset not found: ${DATASET_FILE}" >&2
     echo "       This file is gitignored (37MB). Transfer it to this host" >&2
     echo "       before running, e.g.:" >&2
-    echo "         rsync -avP workstation:Glaukopis/tmpl_gen/data_generation/${DATASET_NAME}.json \\" >&2
+    echo "         rsync -avP workstation:Glaukopis/SFT/data/${DATASET_NAME}.json \\" >&2
     echo "               ${SFT_DIR}/data/" >&2
     exit 2
 fi
