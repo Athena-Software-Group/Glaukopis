@@ -88,10 +88,12 @@ def main() -> int:
     summary = {
         "model": os.environ.get("RB_MODEL", ""),
         "display_name": os.environ.get("RB_DISPLAY", ""),
+        "suite": os.environ.get("RB_SUITE", ""),
         "version": int(os.environ.get("RB_VERSION", "1") or 1),
         "rows_filter": os.environ.get("RB_ROWS_STR", "all"),
         "batch": int(os.environ["RB_BATCH"]) if os.environ.get("RB_BATCH") else None,
         "tasks_requested": os.environ.get("RB_TASKS_REQUESTED", "").split(),
+        "cybermetric_stem": os.environ.get("RB_CYBERMETRIC_STEM", ""),
         "env": os.environ.get("RB_ENV_NAME", ""),
         "started": os.environ.get("RB_STARTED", ""),
         "finished": os.environ.get("RB_FINISHED", ""),
@@ -102,18 +104,25 @@ def main() -> int:
     }
 
     # --- Markdown table -----------------------------------------------------
-    header = (
-        f"## Sweep summary: `{summary['model']}`\n\n"
-        f"- display name : `{summary['display_name']}`\n"
-        f"- version      : {summary['version']}\n"
-        f"- rows filter  : {summary['rows_filter']}\n"
-        f"- batch        : {summary['batch'] if summary['batch'] is not None else '-'}\n"
-        f"- env          : {summary['env'] or '-'}\n"
-        f"- started      : {summary['started']}\n"
-        f"- finished     : {summary['finished']}\n"
-        f"- elapsed      : {_fmt_elapsed(summary['elapsed_sec'])}\n"
-        f"- overall exit : {summary['overall_exit']}\n"
-    )
+    header_lines = [
+        f"## Sweep summary: `{summary['model']}`",
+        "",
+        f"- display name : `{summary['display_name']}`",
+        f"- suite        : {summary['suite'] or '-'}",
+        f"- version      : {summary['version']}",
+        f"- rows filter  : {summary['rows_filter']}",
+        f"- batch        : {summary['batch'] if summary['batch'] is not None else '-'}",
+        f"- env          : {summary['env'] or '-'}",
+    ]
+    if summary["suite"] in ("cybermetric", "all") and summary["cybermetric_stem"]:
+        header_lines.append(f"- cybermetric  : {summary['cybermetric_stem']}")
+    header_lines += [
+        f"- started      : {summary['started']}",
+        f"- finished     : {summary['finished']}",
+        f"- elapsed      : {_fmt_elapsed(summary['elapsed_sec'])}",
+        f"- overall exit : {summary['overall_exit']}",
+    ]
+    header = "\n".join(header_lines) + "\n"
 
     table_rows = [
         "| Task | Rows | Elapsed | Exit | Metrics |",

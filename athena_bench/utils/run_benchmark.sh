@@ -1,12 +1,17 @@
 #!/bin/bash
 
-# Run the full Athena CTI benchmark sweep for a single model.
+# Run a benchmark sweep for a single model across one or more suites.
 #
-# Executes all six Athena tasks (mcq, rcm, vsp, ate, taa, rms) using each
-# benchmark class's default --data_path (i.e. the full-size files under
-# benchmark_data/athena_bench/). Each task is launched as its own
-# inference.py subprocess, so VRAM is naturally freed at process exit
-# before the next task starts.
+# Supported suites (selected via --suite, default = athena):
+#   athena      athena-mcq athena-rcm athena-vsp athena-ate athena-taa athena-rms
+#   ctibench    mcq rcm vsp ate taa           (CTI-Bench, .tsv responses)
+#   cybermetric cybermetric                   (CyberMetric MCQ, .csv responses;
+#                                              size selected via --cybermetric-size)
+#   all         athena U ctibench U cybermetric
+#
+# --tasks still works and overrides the suite-derived task list. Each task
+# is launched as its own inference.py subprocess so VRAM is freed at process
+# exit before the next task starts.
 #
 # NOTE: inference.py's --cleanup flag is NOT passed here. Despite the name,
 # --cleanup evicts the HuggingFace model from VRAM after *every single row*
@@ -18,10 +23,16 @@
 # All stdout/stderr is tee'd to <model-name>.log in this directory.
 #
 # Usage:
-#   ./run_benchmark.sh <model-name> [--version N] [--rows N] [--tasks "mcq rcm vsp"]
+#   ./run_benchmark.sh <model-name> [--suite athena|ctibench|cybermetric|all]
+#                                   [--version N] [--rows N]
+#                                   [--tasks "mcq rcm vsp"]
+#                                   [--cybermetric-size 80|500|2000|10000]
 #                                   [--batch N] [--overwrite] [--yes]
 #
 # Flags:
+#   --suite NAME  Preset task list. Default: athena. Ignored when --tasks set.
+#   --cybermetric-size N
+#                 Which CyberMetric-<N>-v1.json to evaluate on (default 80).
 #   --batch N     Run N concurrent requests per task. Only supported for
 #                 GPT/Gemini and HF Inference ('*-hf') models. Use 16-64
 #                 for hosted-API runs to get real throughput.
@@ -32,8 +43,10 @@
 #                 is set (required for nohup / non-interactive runs).
 #
 # Examples:
-#   ./run_benchmark.sh deephat-7b
-#   ./run_benchmark.sh deephat-7b --version 2
+#   ./run_benchmark.sh deephat-7b                              # athena suite
+#   ./run_benchmark.sh deephat-7b --suite ctibench
+#   ./run_benchmark.sh deephat-7b --suite cybermetric --cybermetric-size 500
+#   ./run_benchmark.sh deephat-7b --suite all --version 2
 #   ./run_benchmark.sh deephat-7b --rows 100 --tasks "athena-mcq athena-rcm"
 #   ./run_benchmark.sh deephat-7b --overwrite                 # interactive
 #   ./run_benchmark.sh deephat-7b --overwrite --yes           # no prompt
@@ -54,7 +67,9 @@ MODEL_NAME="$1"; shift
 VERSION=1
 ROWS=""
 BATCH=""
-TASKS="athena-mcq athena-rcm athena-vsp athena-ate athena-taa athena-rms"
+SUITE="athena"
+USER_TASKS=""
+CYBERMETRIC_SIZE="80"
 OVERWRITE=0
 ASSUME_YES=0
 
@@ -63,12 +78,41 @@ while [[ $# -gt 0 ]]; do
         --version)   VERSION="$2"; shift 2 ;;
         --rows)      ROWS="$2"; shift 2 ;;
         --batch)     BATCH="$2"; shift 2 ;;
-        --tasks)     TASKS="$2"; shift 2 ;;
+        --suite)     SUITE="$2"; shift 2 ;;
+        --tasks)     USER_TASKS="$2"; shift 2 ;;
+        --cybermetric-size) CYBERMETRIC_SIZE="$2"; shift 2 ;;
         --overwrite) OVERWRITE=1; shift ;;
         --yes|-y)    ASSUME_YES=1; shift ;;
         *) echo "Unknown argument: $1" >&2; exit 1 ;;
     esac
 done
+
+# Suite -> task-list preset. --tasks always wins. 'all' is the concatenation
+# of the three research-facing suites; MMLU/GLUE/SuperGLUE/URLHAUS/CVE stay
+# out of the sweep because they're not the CTI research target.
+case "${SUITE}" in
+    athena)      SUITE_TASKS="athena-mcq athena-rcm athena-vsp athena-ate athena-taa athena-rms" ;;
+    ctibench)    SUITE_TASKS="mcq rcm vsp ate taa" ;;
+    cybermetric) SUITE_TASKS="cybermetric" ;;
+    all)         SUITE_TASKS="athena-mcq athena-rcm athena-vsp athena-ate athena-taa athena-rms mcq rcm vsp ate taa cybermetric" ;;
+    *) echo "Unknown --suite: ${SUITE} (expected athena|ctibench|cybermetric|all)" >&2; exit 1 ;;
+esac
+if [[ -n "${USER_TASKS}" ]]; then
+    TASKS="${USER_TASKS}"
+else
+    TASKS="${SUITE_TASKS}"
+fi
+
+CYBERMETRIC_STEM="CyberMetric-${CYBERMETRIC_SIZE}-v1"
+CYBERMETRIC_DATA_PATH="benchmark_data/cybermetricdataset/${CYBERMETRIC_STEM}.json"
+if [[ "${TASKS}" == *"cybermetric"* ]]; then
+    if [[ ! -f "${BENCH_DIR}/${CYBERMETRIC_DATA_PATH}" ]]; then
+        echo "CyberMetric data file not found: ${CYBERMETRIC_DATA_PATH}" >&2
+        echo "Available sizes under benchmark_data/cybermetricdataset/:" >&2
+        ls "${BENCH_DIR}/benchmark_data/cybermetricdataset/" 2>/dev/null >&2 || true
+        exit 1
+    fi
+fi
 
 # Sanitize model name for use as a filename (e.g. "meta-llama/Llama-3" -> "meta-llama_Llama-3")
 SAFE_NAME="${MODEL_NAME//\//_}"
@@ -106,13 +150,47 @@ PY
 )"
 ROWS_STR="${ROWS:-all}"
 
-# Build the list of response files that inference.py would produce for this
-# sweep. inference.py writes:
-#   responses/<display_name>/<task>/<task>_<rows_str>_v<version>_<display_name>_response.jsonl
-# We use this both for the --overwrite deletion list and for reporting.
+# Build the list of response files inference.py would produce. The filename
+# pattern and extension vary by task family:
+#   athena-*    -> .jsonl
+#   CTI-Bench   -> .tsv  (mcq, rcm, vsp, ate, taa)
+#   cybermetric -> .csv  (includes the CyberMetric-<N>-v1 stem in the name)
+# resolve_resp_file echoes the expected absolute path for a given task (or
+# the empty string for tasks with no fixed pattern, e.g. glue/superglue).
+resolve_resp_file() {
+    local task="$1"
+    local base="${BENCH_DIR}/responses/${DISPLAY_NAME}/${task}"
+    case "${task}" in
+        athena-*)
+            echo "${base}/${task}_${ROWS_STR}_v${VERSION}_${DISPLAY_NAME}_response.jsonl" ;;
+        mcq|rcm|vsp|ate|taa)
+            echo "${base}/${task}_${ROWS_STR}_v${VERSION}_${DISPLAY_NAME}_response.tsv" ;;
+        cybermetric)
+            echo "${base}/${task}_${CYBERMETRIC_STEM}_${ROWS_STR}_v${VERSION}_${DISPLAY_NAME}_response.csv" ;;
+        *)
+            echo "" ;;
+    esac
+}
+
+# Count rows in a response file, excluding a header line for tsv/csv.
+# Echoes 0 when the file is missing or empty.
+count_resp_rows() {
+    local f="$1"
+    [[ -f "$f" ]] || { echo 0; return; }
+    local total
+    total=$(wc -l < "$f" | tr -d ' ')
+    case "$f" in
+        *.jsonl) echo "${total}" ;;
+        *.tsv|*.csv)
+            if [[ "${total}" -gt 0 ]]; then echo $(( total - 1 )); else echo 0; fi ;;
+        *) echo "${total}" ;;
+    esac
+}
+
 declare -a TARGET_FILES=()
 for task in ${TASKS}; do
-    TARGET_FILES+=("${BENCH_DIR}/responses/${DISPLAY_NAME}/${task}/${task}_${ROWS_STR}_v${VERSION}_${DISPLAY_NAME}_response.jsonl")
+    rf="$(resolve_resp_file "${task}")"
+    [[ -n "${rf}" ]] && TARGET_FILES+=("${rf}")
 done
 
 # --overwrite: prompt the user (unless --yes), then delete any existing
@@ -176,10 +254,14 @@ fi
     echo "  log file    : ${LOG_FILE}"
     echo "  python      : $(command -v python || echo '(none)')"
     echo "  env         : ${CONDA_DEFAULT_ENV:-<none>}"
+    echo "  suite       : ${SUITE}"
     echo "  version     : ${VERSION}"
     echo "  rows        : ${ROWS_STR}"
     echo "  batch       : ${BATCH:-<none>}"
     echo "  tasks       : ${TASKS}"
+    if [[ "${TASKS}" == *"cybermetric"* ]]; then
+        echo "  cybermetric : ${CYBERMETRIC_STEM} (${CYBERMETRIC_DATA_PATH})"
+    fi
     echo "  overwrite   : $([[ ${OVERWRITE} -eq 1 ]] && echo yes || echo no)"
     echo "  started     : $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
     echo
@@ -219,13 +301,20 @@ fi
         echo "  started : ${task_started_iso}"
         task_start=$(date +%s)
 
+        # Task-specific extras (mainly cybermetric which needs an explicit
+        # --data_path when the user picks a non-default size).
+        task_extra=()
+        if [[ "${task}" == "cybermetric" ]]; then
+            task_extra+=(--data_path "${CYBERMETRIC_DATA_PATH}")
+        fi
+
         # Capture the task's stdout+stderr in a temp file so we can parse the
         # "Evaluation result for ... : {...}" line while still streaming output
         # through the outer tee unchanged.
         task_out_file="$(mktemp -t athena_task.XXXXXX)"
         set +e
         set -o pipefail
-        python inference.py "${task}" "${MODEL_NAME}" "${extra_args[@]}" 2>&1 \
+        python inference.py "${task}" "${MODEL_NAME}" "${extra_args[@]}" "${task_extra[@]}" 2>&1 \
             | tee "${task_out_file}"
         task_status=${PIPESTATUS[0]}
         set +o pipefail
@@ -242,12 +331,8 @@ fi
         rm -f "${task_out_file}"
 
         # Count rows actually written (evaluator's authoritative input file).
-        resp_file="${BENCH_DIR}/responses/${DISPLAY_NAME}/${task}/${task}_${ROWS_STR}_v${VERSION}_${DISPLAY_NAME}_response.jsonl"
-        if [[ -f "${resp_file}" ]]; then
-            row_count=$(wc -l < "${resp_file}" | tr -d ' ')
-        else
-            row_count=0
-        fi
+        resp_file="$(resolve_resp_file "${task}")"
+        row_count="$(count_resp_rows "${resp_file}")"
 
         RES_TASKS+=("${task}")
         RES_ELAPSED+=("${elapsed}")
@@ -275,18 +360,22 @@ fi
     # Summary artifacts: pretty table to stdout (tee'd to log) + JSON/MD
     # dropped next to the response files. Handed off to Python so we can
     # literal-eval the metrics dicts and format percentages consistently.
+    # Summary filename is namespaced by suite so running multiple suites
+    # against the same model keeps one artifact per suite.
     summary_dir="${BENCH_DIR}/responses/${DISPLAY_NAME}"
     mkdir -p "${summary_dir}"
-    summary_json="${summary_dir}/summary_${ROWS_STR}_v${VERSION}.json"
-    summary_md="${summary_dir}/summary_${ROWS_STR}_v${VERSION}.md"
+    summary_json="${summary_dir}/summary_${SUITE}_${ROWS_STR}_v${VERSION}.json"
+    summary_md="${summary_dir}/summary_${SUITE}_${ROWS_STR}_v${VERSION}.md"
 
     # Hand data to Python via environment (bash arrays -> newline-joined strings).
     export RB_MODEL="${MODEL_NAME}"
     export RB_DISPLAY="${DISPLAY_NAME}"
+    export RB_SUITE="${SUITE}"
     export RB_VERSION="${VERSION}"
     export RB_ROWS_STR="${ROWS_STR}"
     export RB_BATCH="${BATCH:-}"
     export RB_TASKS_REQUESTED="${TASKS}"
+    export RB_CYBERMETRIC_STEM="${CYBERMETRIC_STEM}"
     export RB_STARTED="${sweep_start_iso}"
     export RB_FINISHED="${sweep_end_iso}"
     export RB_ELAPSED="${sweep_elapsed}"
