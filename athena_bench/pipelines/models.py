@@ -56,6 +56,7 @@ model_mapping = {
     'athena-cti-sft-llama31-8b-mcqfixed': 'asg-ai/athena-cti-sft-llama31-8b-mcqfixed',
     'athena-cti-sft-llama31-8b-abaligned': 'asg-ai/athena-cti-sft-llama31-8b-abaligned',
     'athena-cti-sft-llama31-8b-abaligned-v3': 'asg-ai/athena-cti-sft-llama31-8b-abaligned-v3',
+    'athena-cti-sft-llama31-8b-abaligned-v4': 'asg-ai/athena-cti-sft-llama31-8b-abaligned-v4',
     #'llama-4-17b': 'meta-llama/Llama-4-Maverick-17B-128E-Instruct',
     'minerva' : "xashru/minerva_v0",
     'llama3.3-70b': 'meta-llama/Llama-3.3-70B-Instruct',
