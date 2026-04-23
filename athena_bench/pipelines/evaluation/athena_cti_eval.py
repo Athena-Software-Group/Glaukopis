@@ -209,7 +209,8 @@ class ATHENAEvaluate:
 
             for _, rec in iterator:
                 response = rec.get("response", "")
-                pred = self.processor.extract_answer(task, response)
+                prompt = rec.get("prompt", "") or ""
+                pred = self.processor.extract_answer(task, response, prompt=prompt)
                 ans = rec.get("answer", "")
                 score, success = self.score_record(task, pred, ans, self.alias_dict, self.related_dict)
 

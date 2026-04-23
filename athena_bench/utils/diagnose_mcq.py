@@ -35,15 +35,27 @@ _PREFIX_RE = re.compile(
     r"^\s*(?:final\s+answer|answer|prediction|output|result)\s*[:\-–—]?\s*",
     re.IGNORECASE,
 )
+_ANSWER_IS_X = re.compile(
+    r"(?:final\s+|correct\s+|best\s+|right\s+)*"
+    r"(?:answer|choice|option)\s*(?:is|would\s+be|:|=)\s*\(?([A-E])\b",
+    re.IGNORECASE,
+)
 
 
-def current_parse_mcq(text: str) -> str:
-    """Mirror athena_cti_postprocessing.extract_answer('athena-mcq').
+def current_parse_mcq(text: str, options: dict | None = None) -> str:
+    """Mirror athena_cti_postprocessing.athena_mcq_answer.
 
-    Takes the LAST \\b[A-E]\\b match on each line (bottom-up over lines).
+    Tiered strategy:
+      1. Last global "(answer|choice|option) (is|:|=) X" commitment.
+      2. Bottom-up \\b[A-E]\\b per line (with Answer-label neighbor check).
+      3. Verbatim option-text match against *options* (len>=8, longest wins).
     """
     if not text:
         return ""
+
+    explicit = _ANSWER_IS_X.findall(text)
+    if explicit:
+        return explicit[-1].upper()
 
     def last(line: str):
         hits = re.findall(r"\b([A-E])\b", line, re.IGNORECASE)
@@ -63,6 +75,17 @@ def current_parse_mcq(text: str) -> str:
                     m = last(n)
                     if m:
                         return m
+
+    if options:
+        lower = text.lower()
+        hits = []
+        for L, opt in options.items():
+            opt = (opt or "").strip()
+            if len(opt) >= 8 and opt.lower() in lower:
+                hits.append((len(opt), L))
+        if hits:
+            hits.sort(reverse=True)
+            return hits[0][1]
     return ""
 
 
@@ -177,17 +200,18 @@ def main():
         resp = r.get("response") or ""
         stored_pred = (r.get("prediction") or "").upper()
         stored_gt = (r.get("answer") or "").upper()
-        reparsed = current_parse_mcq(resp)
-
-        gt = stored_gt if stored_gt in _LETTER_SET else ""
-        if not gt and rid in bench_by_id:
-            gt = normalize_gt(bench_by_id[rid])
 
         options = {}
         if rid in bench_by_id:
             brow = bench_by_id[rid]
             for L in _LETTERS:
                 options[L] = brow.get(f"option_{L.lower()}") or brow.get(f"option_{L}") or ""
+
+        reparsed = current_parse_mcq(resp, options)
+
+        gt = stored_gt if stored_gt in _LETTER_SET else ""
+        if not gt and rid in bench_by_id:
+            gt = normalize_gt(bench_by_id[rid])
 
         heuristics = heuristic_letters(resp, options) if resp and resp != "Error" else []
 

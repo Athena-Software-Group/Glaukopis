@@ -11,6 +11,20 @@ class athena_cti_postprocessing:
         re.IGNORECASE,
     )
 
+    # Explicit-commitment pattern for MCQ answers: matches
+    # "answer is B", "the correct answer: C", "option would be D", "choice = E",
+    # including optional qualifiers (final/correct/best/right) and a leading "("
+    # before the letter. Used as tier 1 of the MCQ extractor.
+    _MCQ_ANSWER_IS_X = re.compile(
+        r'(?:final\s+|correct\s+|best\s+|right\s+)*'
+        r'(?:answer|choice|option)\s*(?:is|would\s+be|:|=)\s*\(?([A-E])\b',
+        re.IGNORECASE,
+    )
+
+    # Parse option lines from a formatted MCQ prompt, e.g. "A) T0822 External..."
+    # Accepts ')', '.', '-', or ':' as the letter/body delimiter.
+    _MCQ_OPTION_LINE = re.compile(r'^\s*\(?([A-E])[\)\.\-:]\s*(.+?)\s*$')
+
     def _strip_prefix(self, s: str) -> str:
         return self._PREFIX_RE.sub("", s).strip()
 
@@ -79,15 +93,74 @@ class athena_cti_postprocessing:
         tid = self._extract_from_lines(text, r"(T\d{4}(?:\.\d{3})?)", lambda s: s.upper())
         return tid.split(".")[0]
 
-    def extract_answer(self, task: str, text: str) -> str:
-        """Return the parsed answer for *task* from *text*."""
+    def _parse_mcq_options(self, prompt: str) -> Dict[str, str]:
+        """Extract {letter: option_text} from a formatted MCQ prompt."""
+        opts: Dict[str, str] = {}
+        for ln in (prompt or "").splitlines():
+            m = self._MCQ_OPTION_LINE.match(ln)
+            if m:
+                L = m.group(1).upper()
+                if L not in opts:
+                    opts[L] = m.group(2).strip()
+        return opts
+
+    def athena_mcq_answer(self, text: str, prompt: str = "") -> str:
+        """Extract an A-E MCQ letter using a three-tier strategy.
+
+        Tier 1 -- explicit commitment. Take the last global match of
+        "(answer|choice|option) (is|:|=) X"; the model's final stated
+        choice wins over stray letters that appear in reasoning text.
+
+        Tier 2 -- last bare \\b[A-E]\\b per line, bottom-up. The previous
+        behavior; handles "Answer: C" and trailing "...is D." cleanly.
+
+        Tier 3 -- verbatim option-text match against the prompt. Only
+        fires when the model echoed option content without committing to
+        a letter (e.g. "...is T1583.006 Acquire Infrastructure: Web
+        Services."). Requires >=8 chars to avoid false positives; picks
+        the longest matching option when several overlap.
+        """
+        if not text:
+            return ""
+
+        explicit = self._MCQ_ANSWER_IS_X.findall(text)
+        if explicit:
+            return explicit[-1].upper()
+
+        letter = self._extract_from_lines(text, r"\b([A-E])\b", lambda s: s.upper())
+        if letter:
+            return letter
+
+        if prompt:
+            options = self._parse_mcq_options(prompt)
+            if options:
+                lower = text.lower()
+                hits = []
+                for L, opt in options.items():
+                    opt = (opt or "").strip()
+                    if len(opt) >= 8 and opt.lower() in lower:
+                        hits.append((len(opt), L))
+                if hits:
+                    hits.sort(reverse=True)
+                    return hits[0][1]
+
+        return ""
+
+    def extract_answer(self, task: str, text: str, prompt: str = "") -> str:
+        """Return the parsed answer for *task* from *text*.
+
+        *prompt* is optional and currently only consumed by the MCQ
+        extractor's option-text fallback; other tasks ignore it.
+        """
+        if task == "athena-mcq":
+            return self.athena_mcq_answer(text, prompt)
+
         extractors: Dict[str, Callable[[str], str]] = {
             "athena-rcm": self.athena_rcm_answer,
             "athena-vsp": self.athena_vsp_answer,
             "athena-taa": self.athena_taa_answer,
             "athena-rms": self.athena_rms_answer,
             "athena-ate": self.athena_ate_answer,
-            "athena-mcq": lambda text: self._extract_from_lines(text, r"\b([A-E])\b", lambda s: s.upper()),
         }
         func = extractors.get(task)
         return func(text) if func else ""

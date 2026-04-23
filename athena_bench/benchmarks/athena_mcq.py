@@ -100,7 +100,7 @@ class ATHENAMCQ(Benchmark):
                     cleanup_after=cleanup,
                     use_web_search=use_web_search
                 )
-                prediction = self.postprocessor.extract_answer(self.task, response) or 'X'
+                prediction = self.postprocessor.extract_answer(self.task, response, prompt=prompt) or 'X'
             except Exception as e:
                 response, prediction = 'Error', 'X'
                 print(f"Error processing id {idx}: {e}")
