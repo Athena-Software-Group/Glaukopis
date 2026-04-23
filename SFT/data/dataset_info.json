@@ -42,6 +42,14 @@
       "response": "output"
     }
   },
+  "ift_data_2026_04_23_abaligned_v4": {
+    "file_name": "ift_data_2026_04_23_abaligned_v4.json",
+    "columns": {
+      "system": "instruction",
+      "prompt": "input",
+      "response": "output"
+    }
+  },
   "alpaca_en_demo": {
     "file_name": "alpaca_en_demo.json"
   },
