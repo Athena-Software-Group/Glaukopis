@@ -1,6 +1,18 @@
-# Fine-Tuning LLMs with LlamaFactory (SFT / LoRA)
+# Fine-Tuning LLMs with LlamaFactory (SFT / CPT)
 
-This document describes the end-to-end workflow for supervised fine-tuning (SFT) of a large language model using [LlamaFactory](https://github.com/hiyouga/LlamaFactory), with LoRA adapters. The current configuration targets **Qwen2.5-14B-Instruct** on a custom instruction-following dataset (`ift_data`).
+This document describes the end-to-end workflow for fine-tuning a large
+language model for Cyber Threat Intelligence (CTI) using
+[LlamaFactory](https://github.com/hiyouga/LlamaFactory). The canonical
+pipeline is **templates → train → test**: IFT datasets are generated
+from Sophia CTI templates via [`tmpl_gen`](../tmpl_gen/README.md),
+continued pre-training (CPT) and supervised fine-tuning (SFT) runs are
+launched from [`cpt/`](../cpt/README.md) and
+[`autotrain/`](autotrain/README.md), and evaluation is driven from
+[`test/`](test/README.md) against the AthenaBench suite. The current
+targets are **Llama-3.1-8B-Instruct** (SFT) and **Llama-3.1-8B** (CPT
+base); the training datasets are the AthenaBench-aligned
+`ift_data_2026_04_23_trimmed_v3` (full SFT) and `…_v4` (LoRA SFT, MCQ
+and TAA dropped).
 
 ---
 
@@ -11,12 +23,8 @@ This document describes the end-to-end workflow for supervised fine-tuning (SFT)
 3. [Prerequisites](#prerequisites)
 4. [Installation](#installation)
 5. [CUDA and PyTorch Verification](#cuda-and-pytorch-verification)
-6. [Dataset Preparation](#dataset-preparation)
-7. [Training](#training)
-8. [Merging LoRA Adapters](#merging-lora-adapters)
-9. [Local Inference](#local-inference)
-10. [Uploading to Hugging Face](#uploading-to-hugging-face)
-11. [Notes](#notes)
+6. [Pipeline reference: templates → train → test](#pipeline-reference-templates--train--test)
+7. [Notes](#notes)
 
 ---
 
@@ -294,206 +302,95 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 
 ---
 
-## Dataset Preparation
+## Pipeline reference: templates → train → test
 
-Place your training data inside the `data/` directory. The dataset must be a JSON file in Alpaca format, where each entry contains three fields:
+The AthenaBench workflow is split across three modules, each with its
+own README. This section is a cross-reference map; use the per-module
+docs for anything beyond the orientation below.
 
-| Field         | Description                                      |
-|---------------|--------------------------------------------------|
-| `instruction` | System-level instruction or context              |
-| `input`       | The user prompt or question                      |
-| `output`      | The expected model response                      |
+### Templates — generating the IFT dataset
 
-Example entry from `data/ift_data.json`:
+Sophia CTI templates drive IFT triple generation from a Neo4j CTI
+graph (MITRE ATT&CK, CAPEC, CWE, CVE, CISA KEV, FIRST EPSS, MITRE
+ENGAGE). The pipeline lives at [`tmpl_gen/`](../tmpl_gen/README.md);
+the end-to-end entry point is `tmpl_gen/data_generation/make_dataset.sh`,
+which wraps:
 
-```json
-{
-    "instruction": "You are a cybersecurity expert ...",
-    "input": "Assess remediation urgency for KEV ...",
-    "output": "KEV Microsoft Windows Common Log File System ..."
-}
-```
+1. `docx2json.sh` — extract templates from a `.docx` to JSON
+2. `tmpl2triples.sh` — expand templates against the CTI DB
+3. `triples2alpaca.sh` — merge triples into an Alpaca-format dataset
 
-Register the dataset in `data/dataset_info.json` by adding an entry that maps your file's column names to LlamaFactory's expected schema:
+The canonical AthenaBench-aligned templates are under
+`tmpl_gen/templates/<date>/Sophia-CTI-Templates-AthenaBench-aligned*.txt`.
+Output datasets (e.g. `ift_data_2026_04_23_trimmed_v3.json`) are placed
+in [`SFT/data/`](data/) and registered in
+[`SFT/data/dataset_info.json`](data/dataset_info.json) with the
+Alpaca-column mapping LlamaFactory expects
+(`instruction` → `system`, `input` → `prompt`, `output` → `response`).
 
-```json
-"ift_data": {
-    "file_name": "ift_data.json",
-    "columns": {
-        "system": "instruction",
-        "prompt": "input",
-        "response": "output"
-    }
-}
-```
+Dataset JSON files are gitignored; rsync them onto the training host
+from your workstation or re-generate in place. Full template syntax,
+Neo4j connection parameters, and schema-validation tooling are
+documented in [`tmpl_gen/README.md`](../tmpl_gen/README.md).
 
----
+### Train — SFT and CPT launchers
 
-## Training
+Two training modes are supported, both driven by LlamaFactory:
 
-Training scripts are provided for different model configurations:
+| Mode | Launcher | Default recipe |
+|------|----------|----------------|
+| SFT (full-parameter) | [`autotrain/run_abaligned_sft.sh`](autotrain/run_abaligned_sft.sh) | Llama-3.1-8B-Instruct, `v3` dataset, 3 epochs, lr=1e-5, bf16, ZeRO-3 |
+| SFT (LoRA) | [`autotrain/run_abaligned_sft_v4.sh`](autotrain/run_abaligned_sft_v4.sh) | Llama-3.1-8B-Instruct, `v4` dataset, LoRA r=16, 1 epoch |
+| CPT | [`cpt/train_cpt.sh`](../cpt/train_cpt.sh) | Llama-3.1-8B (base), LoRA r=32, 1 epoch, packed raw text |
 
-| Script | Model | Description |
-|--------|-------|-------------|
-| `ift_training.sh` | Qwen2.5-14B-Instruct | General training script for Qwen 2.5-14B |
-| `ift_training_qwen_2.5_14b.sh` | Qwen2.5-14B-Instruct | Optimized configuration for Qwen 2.5-14B Instruct |
-| `ift_training_llama3_8b.sh` | Llama-3.1-8B-Instruct | Training configuration for Llama 3.1-8B Instruct |
+Every launcher accepts `--dry-run` (print the `llamafactory-cli`
+command and exit) and auto-configures DeepSpeed offload for
+single-GPU hosts. On exit 0 the merged full-weight model is pushed to
+`hf://${HF_USERNAME}/<repo-id>`. Flag reference, checkpoint layout,
+and hyperparameter rationale are in
+[`autotrain/README.md`](autotrain/README.md) and
+[`cpt/README.md`](../cpt/README.md).
 
-Run any script directly:
+### Test — AthenaBench evaluation
 
-```bash
-bash ift_training.sh
-```
+Benchmark sweeps are launched from
+[`test/utils/run_benchmark.sh`](test/utils/run_benchmark.sh). The
+transport is selected by the suffix on the model alias registered in
+[`test/pipelines/models.py`](test/pipelines/models.py):
 
-This launches SFT with LoRA on Qwen2.5-14B-Instruct using the `ift_data` dataset with a 5% validation split. The full command inside the script is:
+| Alias suffix | Transport | Use when |
+|---|---|---|
+| `-vllm` | Local vLLM OpenAI-compatible server (`test/utils/serve_vllm.sh`) | Benchmarking private CPT/SFT checkpoints; high-throughput |
+| `-hf` | HuggingFace Inference Providers (hosted API) | Large public models where hosted tok/s beats local compute |
+| *(none)* | Local transformers, `device_map="auto"` | Transport-parity checks; no batching |
 
-```bash
-llamafactory-cli train \
-    --stage sft \
-    --do_train True \
-    --do_eval True \
-    --model_name_or_path Qwen/Qwen2.5-14B-Instruct \
-    --preprocessing_num_workers 16 \
-    --finetuning_type lora \
-    --template qwen \
-    --flash_attn auto \
-    --dataset_dir data \
-    --dataset ift_data \
-    --cutoff_len 2048 \
-    --learning_rate 5e-05 \
-    --num_train_epochs 1.0 \
-    --max_samples 150000 \
-    --per_device_train_batch_size 4 \
-    --gradient_accumulation_steps 8 \
-    --lr_scheduler_type cosine \
-    --max_grad_norm 1.0 \
-    --logging_steps 5 \
-    --save_steps 100 \
-    --warmup_steps 0 \
-    --packing False \
-    --enable_thinking False \
-    --report_to wandb \
-    --output_dir saves/Qwen2.5-14B-Instruct/lora/train_${TIMESTAMP} \
-    --bf16 True \
-    --plot_loss True \
-    --trust_remote_code True \
-    --ddp_timeout 18000 \
-    --include_num_input_tokens_seen True \
-    --optim adamw_torch \
-    --lora_rank 8 \
-    --lora_alpha 16 \
-    --lora_dropout 0.05 \
-    --lora_target all \
-    --val_size 0.2 \
-    --eval_strategy steps \
-    --eval_steps 100 \
-    --per_device_eval_batch_size 4
-```
-
-### LoRA Hyperparameters
-
-LoRA (Low-Rank Adaptation) inserts small trainable matrices into the model's existing layers while keeping the base weights frozen. This drastically reduces the number of trainable parameters and GPU memory usage compared to full fine-tuning.
-
-| Parameter      | Value  | Description                                                                                                  |
-|----------------|--------|--------------------------------------------------------------------------------------------------------------|
-| `lora_rank`    | 64      | Rank of the low-rank decomposition matrices. Lower rank = fewer parameters and less capacity. Common values: 4, 8, 16, 32. Higher rank captures more complex adaptations but increases memory and risks overfitting on small datasets. |
-| `lora_alpha`   | 128     | Scaling factor applied to the LoRA output. The effective learning rate for LoRA layers is scaled by `alpha / rank` (here 16 / 8 = 2.0). A ratio of 2:1 (alpha:rank) is a standard starting point. |
-| `lora_dropout` | 0.05   | Dropout probability applied to LoRA layers during training. Provides light regularization to reduce overfitting. |
-| `lora_target`  | `all`  | Applies LoRA adapters to all linear layers in the model (attention projections, MLP layers, etc.) rather than a subset. This gives the adapter maximum expressiveness. |
-
-### Training Hyperparameters
-
-| Parameter                     | Value          | Description                                                                                      |
-|-------------------------------|----------------|--------------------------------------------------------------------------------------------------|
-| `learning_rate`               | 5e-05          | Peak learning rate. Decayed via cosine schedule over the training run.                           |
-| `lr_scheduler_type`           | `cosine`       | Cosine annealing schedule. Gradually reduces the learning rate to near zero by the end of training. |
-| `num_train_epochs`            | 1.0            | Single pass over the dataset. Sufficient for large datasets to avoid overfitting.                |
-| `max_samples`                 | 150000         | Upper limit on training samples. If the dataset has more, only the first 150k are used.          |
-| `per_device_train_batch_size` | 4              | Samples per GPU per forward pass. Maximum tested on A100 80 GB for this model.                   |
-| `gradient_accumulation_steps` | 8              | Accumulates gradients over 8 steps before updating weights. Effective batch size = 4 x 8 = 32.  |
-| `warmup_steps`                | 0              | No learning rate warmup. Training begins at the full learning rate immediately.                  |
-| `max_grad_norm`               | 1.0            | Gradient clipping threshold to prevent training instability.                                     |
-| `optim`                       | `adamw_torch`  | AdamW optimizer (PyTorch implementation) with decoupled weight decay.                            |
-| `bf16`                        | True           | Uses bfloat16 mixed precision to reduce memory usage and improve throughput on supported GPUs.   |
-| `cutoff_len`                  | 2048           | Maximum token length per training sample. Sequences longer than this are truncated.              |
-| `val_size`                    | 0.2            | 20% of data reserved for evaluation.                                                            |
-| `eval_strategy` / `eval_steps`| `steps` / 100  | Runs evaluation every 100 training steps.                                                        |
-| `save_steps`                  | 100            | Saves a checkpoint every 100 training steps.                                                     |
-| `report_to`                   | `wandb`        | Logs all metrics to Weights & Biases for experiment tracking.                                    |
-
-Checkpoints and training artifacts (including loss plots) are saved to:
-
-```
-saves/Qwen2.5-14B-Instruct/lora/train/
-```
-
----
-
-## Merging LoRA Adapters
-
-After training, merge the LoRA adapters back into the base model to produce a standalone model. A merge configuration is provided at `examples/merge_lora/qwen2.5_lora_sft.yaml`:
-
-```yaml
-### model 
-model_name_or_path: Qwen/Qwen2.5-14B-Instruct # Hugging Face path of model
-adapter_name_or_path: saves/Qwen2.5-14B-Instruct/lora/train_2026-04-04-21-52-50
-template: qwen
-finetuning_type: lora
-
-### export
-export_dir: models/qwen2.5_14b_sft_lora
-export_device: cpu
-export_legacy_format: false
-```
-
-Update `adapter_name_or_path` to point to the checkpoint directory from your training run, then execute:
-
-```bash
-llamafactory-cli export examples/merge_lora/qwen2.5_lora_sft.yaml
-```
-
-```bash
-llamafactory-cli export examples/merge_lora/llama3_lora_sft.yaml
-```
-
-The merged model (including tokenizer, config, and safetensors shards) is written to `models/qwen2.5_14b_sft_lora/`. Do not use a quantized base model or `quantization_bit` when merging.
-
----
-
-## Local Inference
-
-Run inference on the merged model using `inference_local.py`:
-
-```bash
-python inference_local.py
-```
-
-The script loads the model from `models/qwen2.5_14b_sft_lora` and generates a response using the chat template. Edit the `messages` list in the script to change the system prompt or user query. Key settings:
-
-- `device_map="auto"` distributes the model across available GPUs.
-- `torch_dtype="auto"` uses the model's native precision (bfloat16).
-- Generation uses greedy decoding (`do_sample=False`) with a 1024-token limit.
-
----
-
-## Uploading to Hugging Face
-
-The `upload_to_hf.py` script uploads the merged model to a private Hugging Face repository. Before running, replace the placeholder values:
-
-1. Set your Hugging Face write token in the `login()` call.
-2. Set your target `repo_id` (e.g., `your-username/qwen2.5-14b-sft-lora`).
-
-```bash
-python upload_to_hf.py
-```
-
-The model is uploaded as a **private** repository. Anyone using it for inference will need access to the repository and a valid Hugging Face token.
+All three transports share the same prompt templates, scoring code,
+and response-cache directory layout under `test/responses/<model>/`.
+The transformers path is sequential (no `--batch`); the `-vllm` and
+`-hf` paths accept `--batch N` for N concurrent requests. Alias
+tables, cost estimates, per-task row counts, and response-diff
+tooling (`test/utils/diff_hf_vllm_responses.py`) are documented in
+[`test/README.md`](test/README.md).
 
 ---
 
 ## Notes
 
-- **GPU requirements**: Training Qwen2.5-14B-Instruct with LoRA at batch size 4 requires approximately 80 GB of GPU VRAM (tested on NVIDIA A100 80 GB).
-- **CUDA compatibility**: Verify that your PyTorch CUDA version matches your driver's supported CUDA version before starting training. Mismatches cause silent failures or crashes.
-- **Checkpoint paths**: The training script appends a timestamp to the output directory (e.g., `train_2026-04-04-21-52-50`). Update the merge YAML accordingly after each training run.
-- **Secrets**: Do not commit `upload_to_hf.py` with a real Hugging Face token. Use environment variables or a `.env` file instead.
+- **GPU requirements**: Full-parameter SFT of Llama-3.1-8B-Instruct on
+  an A100 80 GB requires ZeRO-3 with CPU offload (auto-enabled by the
+  autotrain launcher on single-GPU hosts). The LoRA `v4` recipe fits
+  without offload. See
+  [`autotrain/README.md`](autotrain/README.md) for memory budgets per
+  configuration.
+- **CUDA compatibility**: Verify that your PyTorch CUDA version
+  matches your driver's supported CUDA version before starting
+  training. Mismatches cause silent failures or crashes.
+- **Checkpoint paths**: Training runs write to `saves/<model>/<ts>/`.
+  The launchers merge and upload on exit 0; intermediate checkpoints
+  are not committed to the HF repo.
+- **Secrets**: Put `HF_TOKEN` and `HF_USERNAME` in
+  [`SFT/.env`](.env.example); never commit real tokens. The setup
+  script bootstraps `.env` from `.env.example` if missing.
+- **Dataset files**: `SFT/data/*.json` training sets are gitignored
+  due to size (tens of MB). Rsync them onto the training host from a
+  workstation or regenerate from `tmpl_gen` before launching a run.
