@@ -428,11 +428,10 @@ class VLLMModel(BaseModel):
                     max_tokens=max_new_tokens,
                     top_p=1.0,
                 )
-                usage = getattr(resp, "usage", None)
-                if usage:
-                    prompt_toks = getattr(usage, "prompt_tokens", 0) or 0
-                    completion_toks = getattr(usage, "completion_tokens", 0) or 0
-                    add_tokens(self.model_name, prompt_toks, completion_toks, grounding=False)
+                # No add_tokens() call here: local vLLM is free and has no
+                # entry in api_usage.PRICING_PER_1K. HFInferenceModel does the
+                # same. Token counts are still available via resp.usage if a
+                # future caller wants to log them.
                 choice = resp.choices[0] if resp.choices else None
                 content = (choice.message.content if choice and choice.message else "") or ""
                 return content
