@@ -454,3 +454,4 @@ cpt/cache/
 cpt/corpus/
 SFT/data/dataset_info.json
 SFT/data/cti_corpus_smoke_post2023.jsonl
+SFT/test/responses/
