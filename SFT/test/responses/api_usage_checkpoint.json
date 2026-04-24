@@ -55,5 +55,17 @@
         "output_tokens_cost": 0.0,
         "grounding_calls": 0,
         "total_cost": 0.0
+    },
+    {
+        "date": "2026-04-24 12:04:15",
+        "task": "athena-rcm",
+        "model_name": "athena-cti-sft-llama31-8b-abaligned-v3-vllm",
+        "version": 2,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "input_tokens_cost": 0.0,
+        "output_tokens_cost": 0.0,
+        "grounding_calls": 0,
+        "total_cost": 0.0
     }
 ]
