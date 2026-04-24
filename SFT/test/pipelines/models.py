@@ -82,6 +82,15 @@ model_mapping = {
     'deepseek-v3.2-exp-hf': 'deepseek-ai/DeepSeek-V3.2-Exp',
     'athena-cti-cpt-llama31-8b-v1': 'asg-ai/athena-cti-cpt-llama31-8b-v1',
     'llama-3-8b-base': 'meta-llama/Llama-3.1-8B',
+
+    # --- Local vLLM server ('-vllm' suffix routes to VLLMModel). The HF repo
+    # id is the same as the non-vllm alias; suffix selects the inference path.
+    # VLLM_BASE_URL (default http://localhost:8000/v1) points at a running
+    # `vllm serve <repo-id>` process. See SFT/test/utils/serve_vllm.sh.
+    'llama-3-8b-base-vllm':                    'meta-llama/Llama-3.1-8B',
+    'llama-3-8b-vllm':                         'meta-llama/Meta-Llama-3.1-8B-Instruct',
+    'athena-cti-cpt-llama31-8b-v1-vllm':       'asg-ai/athena-cti-cpt-llama31-8b-v1',
+    'athena-cti-sft-llama31-8b-abaligned-v4-vllm': 'asg-ai/athena-cti-sft-llama31-8b-abaligned-v4',
 }
 
 # --- Centralized Helpers ---
@@ -354,6 +363,89 @@ class HFInferenceModel(BaseModel):
         raise last_err if last_err else RuntimeError("HF Inference: unknown failure")
 
 
+# ----------------- Local vLLM server (OpenAI-compatible) ----------------- #
+class VLLMModel(BaseModel):
+    """Run inference against a local `vllm serve` process.
+
+    vLLM exposes an OpenAI-compatible HTTP API; we talk to it via the openai
+    SDK by pointing ``base_url`` at the vLLM server (default
+    ``http://localhost:8000/v1``) and supplying a dummy api_key. No local
+    model load happens in this process: the server keeps weights resident
+    and serves concurrent requests, so --batch N in inference.py maps to N
+    in-flight HTTP requests from the benchmark's ThreadPoolExecutor.
+
+    Model keys use the '-vllm' suffix convention so the same HF repo id can
+    coexist with local-transformers and HF-Inference variants in
+    model_mapping (e.g. 'athena-cti-cpt-llama31-8b-v1' vs
+    '...-v1-vllm' vs a future '...-v1-hf').
+
+    Configuration via env:
+        VLLM_BASE_URL   default http://localhost:8000/v1
+        VLLM_API_KEY    default "EMPTY" (vLLM ignores but the SDK requires non-empty)
+
+    Chat template: vLLM uses whatever chat_template is on the HF repo. For
+    base (non-Instruct) models without a chat template, start the server
+    with `--chat-template <path>` or the chat.completions endpoint errors.
+    """
+
+    _TRANSIENT_HTTP = {408, 409, 425, 429, 500, 502, 503, 504}
+
+    def __init__(self, model_name):
+        super().__init__(model_name)
+        if OpenAI is None:
+            raise ImportError(
+                "openai package required for VLLMModel. "
+                "Install into the benchmark env: pip install openai"
+            )
+        self.base_url = os.getenv("VLLM_BASE_URL", "http://localhost:8000/v1").rstrip("/")
+        api_key = os.getenv("VLLM_API_KEY", "EMPTY") or "EMPTY"
+        self.hf_model_id = model_mapping.get(model_name, model_name)
+        self.client = OpenAI(api_key=api_key, base_url=self.base_url)
+        print(f"vLLM client ready for {self.hf_model_id} (base_url={self.base_url})")
+
+    def generate(self, question, task=None, cleanup_after=False, use_web_search=False,
+                 temperature=0.0, max_new_tokens=2048, **kwargs):
+        import time
+        sys_prompt = get_system_prompt(task)
+        messages = []
+        if sys_prompt:
+            messages.append({"role": "system", "content": sys_prompt})
+        messages.append({"role": "user", "content": question})
+
+        last_err = None
+        for attempt in range(5):
+            try:
+                resp = self.client.chat.completions.create(
+                    model=self.hf_model_id,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=max_new_tokens,
+                    top_p=1.0,
+                )
+                usage = getattr(resp, "usage", None)
+                if usage:
+                    prompt_toks = getattr(usage, "prompt_tokens", 0) or 0
+                    completion_toks = getattr(usage, "completion_tokens", 0) or 0
+                    add_tokens(self.model_name, prompt_toks, completion_toks, grounding=False)
+                choice = resp.choices[0] if resp.choices else None
+                content = (choice.message.content if choice and choice.message else "") or ""
+                return content
+            except Exception as e:
+                last_err = e
+                status = getattr(e, "status_code", None) or getattr(
+                    getattr(e, "response", None), "status_code", None)
+                msg = str(e)
+                retriable = status in self._TRANSIENT_HTTP or any(
+                    s in msg.lower() for s in ("timeout", "rate limit", "temporarily", "connection"))
+                if not retriable or attempt == 4:
+                    raise
+                backoff = min(2 ** attempt, 30)
+                print(f"vLLM transient error ({status or 'err'}) on "
+                      f"{self.hf_model_id}, retry {attempt+1}/5 in {backoff}s: {msg[:200]}")
+                time.sleep(backoff)
+        raise last_err if last_err else RuntimeError("vLLM: unknown failure")
+
+
 # ----------------- HuggingFace Model ----------------- #
 class HuggingFaceModel(BaseModel):
     def __init__(self, model_name):
@@ -562,8 +654,13 @@ _model_cache = {}
 def get_cached_model(model_name):
     """Get or create a cached model instance"""
     if model_name not in _model_cache:
-        # '-hf' suffix => hosted via HF Inference Providers, not local GPU
-        if model_name.endswith("-hf"):
+        # Suffix-based routing takes precedence over family-substring matches
+        # so 'llama-3-8b-base-vllm' hits VLLMModel rather than HuggingFaceModel.
+        # '-vllm' => local vLLM OpenAI-compatible server, no local model load.
+        # '-hf'   => hosted via HF Inference Providers, not local GPU.
+        if model_name.endswith("-vllm"):
+            _model_cache[model_name] = VLLMModel(model_name)
+        elif model_name.endswith("-hf"):
             _model_cache[model_name] = HFInferenceModel(model_name)
         elif model_name.startswith("gpt-oss"):
             _model_cache[model_name] = HuggingFaceModel(model_name)

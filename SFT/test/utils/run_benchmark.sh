@@ -33,9 +33,10 @@
 #   --suite NAME  Preset task list. Default: athena. Ignored when --tasks set.
 #   --cybermetric-size N
 #                 Which CyberMetric-<N>-v1.json to evaluate on (default 80).
-#   --batch N     Run N concurrent requests per task. Only supported for
-#                 GPT/Gemini and HF Inference ('*-hf') models. Use 16-64
-#                 for hosted-API runs to get real throughput.
+#   --batch N     Run N concurrent requests per task. Supported for
+#                 GPT/Gemini, HF Inference ('*-hf'), and local vLLM
+#                 ('*-vllm') models. Use 16-64 for hosted-API runs and
+#                 32-128 for a local vLLM server on a single H100.
 #   --overwrite   Delete existing response files for the selected (tasks,
 #                 rows, version, model) tuple before running, forcing a
 #                 fresh run instead of resume-from-checkpoint.
@@ -57,6 +58,8 @@
 #   ./run_benchmark.sh deephat-7b --overwrite                 # interactive
 #   ./run_benchmark.sh deephat-7b --overwrite --yes           # no prompt
 #   ./run_benchmark.sh deepseek-r1-14b-hf --batch 32          # hosted + parallel
+#   ./run_benchmark.sh athena-cti-cpt-llama31-8b-v1-vllm --batch 64
+#                                                             # local vLLM + parallel
 
 set -u
 

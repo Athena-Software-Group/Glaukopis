@@ -48,6 +48,7 @@ cd SFT/utils
 ./setup.sh --lfs-pull               # opt in to 'git lfs pull' for data/ (see note below)
 ./setup.sh --no-conda-init          # skip modifying your shell rc
 ./setup.sh --cuda cpu               # CPU-only install (also skips flash-attn)
+./setup.sh --mode vllm              # isolated 'vllm' env (see Local vLLM section)
 ./setup.sh --help
 ```
 
@@ -265,6 +266,94 @@ concurrency is already handled at the HTTP layer.
 
 Check `https://huggingface.co/<model-id>?inference_provider=...` for the
 current per-provider pricing.
+
+### Local vLLM server (`-vllm` suffix)
+
+Any model key ending in `-vllm` is routed through a local
+[vLLM](https://docs.vllm.ai/) OpenAI-compatible HTTP server rather than the
+default transformers/`device_map="auto"` load path. vLLM loads the model once
+and handles concurrent requests via continuous batching, so `--batch N` in
+`run_benchmark.sh` maps to N in-flight `/v1/chat/completions` requests — on a
+single H100 this is typically 10–20× the throughput of the transformers path
+for an 8B model at the same accuracy.
+
+This is the intended inference path for **private fine-tuned models** (CPT,
+SFT) that the HF Inference Providers router cannot serve. The HF-hosted
+`-hf` path remains the right choice for large public models
+(`deepseek-r1-70b-hf` etc.); `-vllm` is the right choice for local custom
+models.
+
+**One-time env setup** (separate conda env to keep vllm's torch pin
+isolated from the training / llamafactory env):
+
+```bash
+bash SFT/utils/setup.sh --mode vllm    # creates 'vllm' conda env
+```
+
+**Two-terminal workflow**:
+
+```bash
+# Terminal 1 — start the server. Foreground; Ctrl-C tears it down.
+conda activate vllm
+bash SFT/test/utils/serve_vllm.sh \
+    --model asg-ai/athena-cti-cpt-llama31-8b-v1 \
+    --tp 2                              # tensor-parallel-size (2xH100)
+
+# Terminal 2 — point the benchmark harness at localhost:8000.
+conda activate llm-sft                  # or ctibench if --split-envs
+cd SFT/test/utils
+./run_benchmark.sh athena-cti-cpt-llama31-8b-v1-vllm \
+    --suite athena --batch 64 --version 2
+```
+
+**Chat-template handling**: `serve_vllm.sh` probes the model repo for a
+`chat_template` on startup. Fine-tuned models (CPT/SFT) ship one and need
+nothing extra. Base models (e.g. `meta-llama/Llama-3.1-8B`) do not, which
+makes `/v1/chat/completions` return 400. The script detects this, matches
+the repo name against a family table, and auto-applies a bundled jinja
+from `utils/chat_templates/`:
+
+| Repo pattern     | Bundled template |
+|---|---|
+| `llama-3` / `llama3` | `utils/chat_templates/llama3.jinja` |
+
+Override with `--chat-template <path>` or disable with
+`--no-auto-template`. Add additional families by dropping a new jinja
+into `utils/chat_templates/` and extending the pattern match in
+`serve_vllm.sh`.
+
+**Available `-vllm` model keys**:
+
+| Key | Backing model |
+|---|---|
+| `llama-3-8b-base-vllm`                    | `meta-llama/Llama-3.1-8B`                         |
+| `llama-3-8b-vllm`                         | `meta-llama/Meta-Llama-3.1-8B-Instruct`           |
+| `athena-cti-cpt-llama31-8b-v1-vllm`       | `asg-ai/athena-cti-cpt-llama31-8b-v1`             |
+| `athena-cti-sft-llama31-8b-abaligned-v4-vllm` | `asg-ai/athena-cti-sft-llama31-8b-abaligned-v4` |
+
+Additional keys can be registered by adding an entry to `model_mapping` in
+`pipelines/models.py` with the `-vllm` suffix.
+
+**Config via env** (consumed by `VLLMModel` on the client side):
+
+```bash
+VLLM_BASE_URL=http://localhost:8000/v1   # default
+VLLM_API_KEY=EMPTY                       # vllm ignores; SDK needs non-empty
+```
+
+Override when running the benchmark against a non-default port or a
+remote vllm host.
+
+**Limitations**:
+
+- The served model and the benchmark alias must point at the same HF repo
+  id (see `model_mapping` — the `-vllm` alias value matches the non-suffix
+  alias). vLLM checks `model` against what it loaded and 404s on mismatch.
+- `--cleanup` on `inference.py` is a no-op for `-vllm` models: there are
+  no local weights in the benchmark process to evict.
+- Do **not** install `vllm` into the `llm-sft` / `ctibench` envs. vllm
+  pins torch precisely; mixing causes one or the other to break at import.
+  Always use the isolated `vllm` env from `setup.sh --mode vllm`.
 
 ## Evaluation
 

@@ -3,8 +3,9 @@
 # End-to-end setup script for the SFT pipeline on a Linux CUDA machine.
 # Installs both the LlamaFactory training stack and the SFT/test benchmarking
 # stack into a single Python 3.11 conda env by default. Use --mode to install
-# only one side, or --split-envs to preserve the legacy two-env layout
-# (llm-sft for training, ctibench for testing).
+# only one side, --mode vllm for a standalone vLLM inference env, or
+# --split-envs to preserve the legacy two-env layout (llm-sft for training,
+# ctibench for testing).
 #
 # Installs (as needed):
 #   1. Miniconda (if `conda` is not on PATH)
@@ -13,11 +14,13 @@
 #   4. [train] LlamaFactory (editable install of SFT/) + training extras
 #              (metrics, deepspeed) + wandb + huggingface_hub + python-dotenv
 #   5. [test]  SFT/test requirements + git-lfs
-#   6. flash-attn (optional, non-fatal; skipped with --no-flash-attn)
-#   7. Bootstraps SFT/.env from SFT/.env.example on first run
+#   6. [vllm]  vllm + openai client into an isolated env (default: vllm)
+#   7. flash-attn (optional, non-fatal; skipped with --no-flash-attn)
+#   8. Bootstraps SFT/.env from SFT/.env.example on first run
 #
 # Usage:
-#   ./setup.sh [--mode all|train|test] [--cuda cu124|cu121|cu118|cpu]
+#   ./setup.sh [--mode all|train|test|vllm]
+#              [--cuda cu124|cu121|cu118|cpu]
 #              [--env-name NAME] [--python VERSION]
 #              [--extras "metrics deepspeed"] [--no-flash-attn]
 #              [--lfs-pull] [--split-envs] [--no-conda-init]
@@ -25,7 +28,7 @@
 # Defaults:
 #   --mode all           (install both training + test stacks in one env)
 #   --cuda cu124
-#   --env-name llm-sft   (ctibench when --mode test alone)
+#   --env-name llm-sft   (ctibench when --mode test alone; vllm when --mode vllm)
 #   --python 3.11
 #   --extras "metrics deepspeed"
 #   (conda init runs by default for your shell; use --no-conda-init to skip)
@@ -72,8 +75,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 case "${MODE}" in
-    all|train|test) ;;
-    *) echo "Unsupported --mode value: ${MODE} (expected all|train|test)"; exit 1 ;;
+    all|train|test|vllm) ;;
+    *) echo "Unsupported --mode value: ${MODE} (expected all|train|test|vllm)"; exit 1 ;;
 esac
 
 # Default env names. --split-envs overrides ENV_NAME entirely (it runs two
@@ -81,6 +84,7 @@ esac
 if [[ -z "${ENV_NAME}" ]]; then
     case "${MODE}" in
         test) ENV_NAME="ctibench" ;;
+        vllm) ENV_NAME="vllm" ;;
         *)    ENV_NAME="llm-sft" ;;
     esac
 fi
@@ -135,8 +139,19 @@ install_stack() {
 
     python -m pip install --upgrade pip wheel setuptools
 
-    echo "=== Installing PyTorch (${CUDA_TAG}) into ${env} ==="
-    pip install --index-url "${TORCH_INDEX_URL}" torch torchvision torchaudio
+    # vllm ships its own torch pin; installing torch first causes pip to
+    # downgrade/upgrade it when `pip install vllm` runs, which wastes ~2min
+    # and sometimes leaves a broken env. Skip the explicit torch install
+    # in vllm mode and let vllm resolve its own dependency tree.
+    if [[ "${stack}" != "vllm" ]]; then
+        echo "=== Installing PyTorch (${CUDA_TAG}) into ${env} ==="
+        pip install --index-url "${TORCH_INDEX_URL}" torch torchvision torchaudio
+    fi
+
+    if [[ "${stack}" == "vllm" ]]; then
+        echo "=== Installing vllm + openai client into ${env} ==="
+        pip install vllm openai python-dotenv huggingface_hub
+    fi
 
     if [[ "${stack}" == "train" || "${stack}" == "all" ]]; then
         echo "=== Installing LlamaFactory in editable mode into ${env} ==="
@@ -165,7 +180,9 @@ install_stack() {
         pip install -r "${TEST_DIR}/requirements.txt"
     fi
 
-    if [[ ${INSTALL_FLASH_ATTN} -eq 1 && "${CUDA_TAG}" != "cpu" ]]; then
+    # flash-attn is only meaningful for the training / transformers-based
+    # inference paths. vllm bundles its own attention kernels internally.
+    if [[ "${stack}" != "vllm" && ${INSTALL_FLASH_ATTN} -eq 1 && "${CUDA_TAG}" != "cpu" ]]; then
         echo "=== Installing flash-attn (v${FLASH_ATTN_VERSION}) — optional, non-fatal ==="
         set +e
         install_flash_attn
@@ -200,8 +217,10 @@ install_stack() {
     fi
 
     local verify_label="PyTorch / CUDA"
-    if [[ "${stack}" != "test" ]]; then
+    if [[ "${stack}" == "train" || "${stack}" == "all" ]]; then
         verify_label="${verify_label} / LlamaFactory"
+    elif [[ "${stack}" == "vllm" ]]; then
+        verify_label="${verify_label} / vLLM"
     fi
     echo
     echo "=== Verifying ${verify_label} in ${env} ==="
@@ -221,6 +240,12 @@ if stack in ("train", "all"):
         print("llamafactory      :", getattr(llamafactory, "__version__", "installed"))
     except Exception as e:
         print("llamafactory import failed:", e)
+if stack == "vllm":
+    try:
+        import vllm
+        print("vllm              :", getattr(vllm, "__version__", "installed"))
+    except Exception as e:
+        print("vllm import failed:", e)
 PY
 
     if [[ "${stack}" == "train" || "${stack}" == "all" ]]; then
@@ -228,6 +253,13 @@ PY
             echo "llamafactory-cli  : $(command -v llamafactory-cli)"
         else
             echo "  [WARN] llamafactory-cli not on PATH after install"
+        fi
+    fi
+    if [[ "${stack}" == "vllm" ]]; then
+        if command -v vllm >/dev/null 2>&1; then
+            echo "vllm cli          : $(command -v vllm)"
+        else
+            echo "  [WARN] vllm cli not on PATH after install"
         fi
     fi
 }
@@ -365,4 +397,13 @@ if [[ "${MODE}" == "test" || "${MODE}" == "all" || ${SPLIT_ENVS} -eq 1 ]]; then
     echo "    cd ${TEST_DIR}"
     echo "    python inference.py athena-mcq <model_name> --batch 5 --version 1 \\"
     echo "        --data_path benchmark_data/athena_bench/athena-mcq.tsv"
+fi
+if [[ "${MODE}" == "vllm" ]]; then
+    echo "Launch a vLLM server (terminal 1):"
+    echo "    conda activate ${ENV_NAME}"
+    echo "    bash ${TEST_DIR}/utils/serve_vllm.sh --model <hf-repo-id> --tp 2"
+    echo
+    echo "Run a benchmark against it (terminal 2, in the ctibench/llm-sft env):"
+    echo "    cd ${TEST_DIR}/utils"
+    echo "    ./run_benchmark.sh <alias>-vllm --batch 64"
 fi

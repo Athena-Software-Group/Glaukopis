@@ -37,9 +37,10 @@ def main():
     # validate batch flag
     is_gpt_or_gemini = any(k in model_key for k in ["gpt", "gemini"])
     is_hf_inference = model_key.endswith("-hf")
+    is_vllm = model_key.endswith("-vllm")
     if args.batch is not None:
-        if not (is_gpt_or_gemini or is_hf_inference):
-            raise ValueError("--batch flag is only supported for GPT, Gemini, and HF Inference (*-hf) models")
+        if not (is_gpt_or_gemini or is_hf_inference or is_vllm):
+            raise ValueError("--batch flag is only supported for GPT, Gemini, HF Inference (*-hf), and vLLM (*-vllm) models")
         if args.batch <= 0:
             raise ValueError("--batch must be a positive integer")
         
@@ -101,7 +102,7 @@ def main():
 
     try:
         # Pass both cleanup and use_web_search to generate_responses
-        benchmark.generate_responses(cleanup=args.cleanup, use_web_search=use_web_search,batch=args.batch if (is_gpt_or_gemini or is_hf_inference) else None)
+        benchmark.generate_responses(cleanup=args.cleanup, use_web_search=use_web_search,batch=args.batch if (is_gpt_or_gemini or is_hf_inference or is_vllm) else None)
     except KeyboardInterrupt:
         print("\nKeyboardInterrupt detected. Saving checkpoint...")
         save_checkpoint(args.task, model_key, version=args.version)
