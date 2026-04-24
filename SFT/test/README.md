@@ -322,6 +322,16 @@ Override with `--chat-template <path>` or disable with
 into `utils/chat_templates/` and extending the pattern match in
 `serve_vllm.sh`.
 
+The same auto-apply runs on the **local transformers path**
+(`HuggingFaceModel.load_model` in `pipelines/models.py`). When a base
+model's tokenizer has no `chat_template` and the repo id matches a
+known family, the bundled jinja is assigned to
+`tokenizer.chat_template` at load time so that `generate()` takes the
+chat-formatted branch instead of feeding a raw continuation prompt.
+Without this, base Llama-3.1-8B emits `<|end_of_text|>` as token 1 on
+open-ended CTI prompts (ATE, RMS, TAA, RCM) and returns empty strings,
+producing misleading 0% baselines.
+
 **Available `-vllm` model keys**:
 
 | Key | Backing model |

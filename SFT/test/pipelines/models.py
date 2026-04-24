@@ -118,7 +118,13 @@ def get_system_prompt(task):
         return "You are an expert classification assistant."
     elif task == "mmlu":
         return "You are a knowledgeable multiple-choice assistant."
-    elif task in ["ate", "rcm", "vsp", "taa", "mcq"]: # CTIBench tasks
+    # CTI tasks: CTIBench (bare names) and AthenaBench (`athena-` prefix), plus
+    # CyberMetric. Previously only the CTIBench names were matched, so every
+    # `athena-*` sweep silently ran with `sys_prompt=None`.
+    elif task in ["ate", "rcm", "vsp", "taa", "mcq",
+                  "athena-ate", "athena-rcm", "athena-rms",
+                  "athena-taa", "athena-vsp", "athena-mcq",
+                  "cybermetric"]:
         return "You are a cybersecurity expert specializing in cyberthreat intelligence."
     return None
 
@@ -446,6 +452,38 @@ class VLLMModel(BaseModel):
         raise last_err if last_err else RuntimeError("vLLM: unknown failure")
 
 
+# Bundled chat templates for base models that ship without `tokenizer.chat_template`.
+# Mirrors the auto-apply logic in SFT/test/utils/serve_vllm.sh so the local
+# transformers path and the vLLM path produce comparable baselines.
+_CHAT_TEMPLATE_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "utils", "chat_templates",
+)
+_BUNDLED_CHAT_TEMPLATES = (
+    # (substring matched against model_id.lower(), template filename)
+    ("llama-3", "llama3.jinja"),
+    ("llama3",  "llama3.jinja"),
+)
+
+def _maybe_apply_bundled_chat_template(tokenizer, model_id):
+    """If the tokenizer has no chat_template and the repo id matches a known
+    base-model family, load the bundled jinja template. No-op otherwise."""
+    if getattr(tokenizer, "chat_template", None):
+        return
+    mid = model_id.lower()
+    for needle, fname in _BUNDLED_CHAT_TEMPLATES:
+        if needle in mid:
+            path = os.path.join(_CHAT_TEMPLATE_DIR, fname)
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    tokenizer.chat_template = f.read()
+                print(f" Applied bundled chat template '{fname}' to {model_id} "
+                      f"(tokenizer had none)")
+            except OSError as e:
+                print(f" WARN: bundled chat template '{fname}' not loadable: {e}")
+            return
+
+
 # ----------------- HuggingFace Model ----------------- #
 class HuggingFaceModel(BaseModel):
     def __init__(self, model_name):
@@ -479,6 +517,12 @@ class HuggingFaceModel(BaseModel):
         print("Tokenizer loaded and cached")
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
+        # Base models (e.g. meta-llama/Llama-3.1-8B) ship without a chat_template,
+        # which causes generate() to fall through to a raw-prompt path. On
+        # chat-shaped CTI prompts the base model then emits <|end_of_text|> as
+        # token 1 and produces an empty response. Apply the bundled template
+        # when the family matches; instruct/chat-templated repos are untouched.
+        _maybe_apply_bundled_chat_template(self.tokenizer, model_id)
 
         # Model loading settings
         loading_kwargs = {
