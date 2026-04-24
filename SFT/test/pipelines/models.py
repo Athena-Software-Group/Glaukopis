@@ -93,6 +93,7 @@ model_mapping = {
     'phi-4-vllm':                              'microsoft/phi-4',
     'gemma-2-9b-vllm':                         'google/gemma-2-9b-it',
     'ministral-8b-vllm':                       'mistralai/Ministral-8B-Instruct-2410',
+    'mistral-7b-vllm':                         'mistralai/Mistral-7B-Instruct-v0.3',
     'athena-cti-cpt-llama31-8b-v1-vllm':       'asg-ai/athena-cti-cpt-llama31-8b-v1',
     'athena-cti-sft-llama31-8b-abaligned-v3-vllm': 'asg-ai/athena-cti-sft-llama31-8b-abaligned-v3',
     'athena-cti-sft-llama31-8b-abaligned-v4-vllm': 'asg-ai/athena-cti-sft-llama31-8b-abaligned-v4',
