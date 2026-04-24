@@ -24,7 +24,10 @@
 #   ./serve_and_bench.sh llama-3-8b-vllm --tp 1 --max-len 8192 -- --batch 128
 #
 # Env vars:
-#   READY_TIMEOUT   seconds to wait for /v1/models (default 900)
+#   READY_TIMEOUT   seconds to wait for /v1/models (default 1800)
+#                   First-time cold-cache runs can easily exceed 15 min
+#                   once HF download + torch compile + cudagraph capture
+#                   are added up (Gemma-2 captures ~50 sizes x TP ranks).
 #   READY_POLL      poll interval in seconds (default 5)
 
 set -euo pipefail
@@ -33,7 +36,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEST_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 SFT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
-READY_TIMEOUT="${READY_TIMEOUT:-900}"
+READY_TIMEOUT="${READY_TIMEOUT:-1800}"
 READY_POLL="${READY_POLL:-5}"
 
 if [[ $# -lt 1 || "$1" == "-h" || "$1" == "--help" ]]; then
