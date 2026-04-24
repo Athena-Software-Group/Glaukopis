@@ -6,16 +6,169 @@ This document describes the end-to-end workflow for supervised fine-tuning (SFT)
 
 ## Table of Contents
 
-1. [Environment Setup](#environment-setup)
-2. [Prerequisites](#prerequisites)
-3. [Installation](#installation)
-4. [CUDA and PyTorch Verification](#cuda-and-pytorch-verification)
-5. [Dataset Preparation](#dataset-preparation)
-6. [Training](#training)
-7. [Merging LoRA Adapters](#merging-lora-adapters)
-8. [Local Inference](#local-inference)
-9. [Uploading to Hugging Face](#uploading-to-hugging-face)
-10. [Notes](#notes)
+1. [Quick primer: AthenaBench workflow](#quick-primer-athenabench-workflow)
+2. [Environment Setup](#environment-setup)
+3. [Prerequisites](#prerequisites)
+4. [Installation](#installation)
+5. [CUDA and PyTorch Verification](#cuda-and-pytorch-verification)
+6. [Dataset Preparation](#dataset-preparation)
+7. [Training](#training)
+8. [Merging LoRA Adapters](#merging-lora-adapters)
+9. [Local Inference](#local-inference)
+10. [Uploading to Hugging Face](#uploading-to-hugging-face)
+11. [Notes](#notes)
+
+---
+
+## Quick primer: AthenaBench workflow
+
+The `SFT/` tree plus the top-level `cpt/` tree together cover the full
+AthenaBench fine-tuning loop: host setup, continued pre-training (CPT),
+supervised fine-tuning (SFT), and benchmarking via either a local vLLM
+server or HuggingFace's Inference Providers API. The four subsections
+below are the minimum set of commands a new contributor needs; each
+points at the authoritative launcher and its own `--help` / README for
+full flag coverage.
+
+### a) Set up a fresh Linux + CUDA host
+
+[`SFT/utils/setup.sh`](utils/setup.sh) is idempotent: it installs
+Miniconda (if missing), creates the `llm-sft` conda env, installs
+CUDA-matched PyTorch + LlamaFactory (editable) + the `SFT/test/`
+benchmark stack, bootstraps `SFT/.env` from `.env.example`, and runs
+`conda init` for your shell.
+
+```bash
+cd ~/Glaukopis/SFT
+./utils/setup.sh                        # defaults: CUDA 12.4, env=llm-sft, py=3.11
+$EDITOR .env                            # fill in HF_TOKEN (write scope) + HF_USERNAME
+exec bash                               # pick up the conda shell hook
+conda activate llm-sft
+```
+
+Separate vLLM env (kept isolated so vLLM's torch pin does not clobber the
+training env):
+
+```bash
+./utils/setup.sh --mode vllm            # creates the 'vllm' conda env
+```
+
+Full flag reference: `./utils/setup.sh --help`.
+
+### b) Train an SFT model
+
+Full-parameter SFT of `Llama-3.1-8B-Instruct` on the AthenaBench-aligned
+v3 dataset (`ift_data_2026_04_23_trimmed_v3`) via LlamaFactory +
+DeepSpeed ZeRO-3, launched by
+[`autotrain/run_abaligned_sft.sh`](autotrain/run_abaligned_sft.sh):
+
+```bash
+# Confirm the 37 MB training file is on-host (gitignored; rsync from workstation).
+ls -lh SFT/data/ift_data_2026_04_23_trimmed_v3.json
+
+conda activate llm-sft
+cd SFT/autotrain
+./run_abaligned_sft.sh --dry-run        # inspect the llamafactory-cli command first
+./run_abaligned_sft.sh                  # 3 epochs, lr=1e-5, bf16, ZeRO-3
+```
+
+On exit 0 the merged full-weight model is pushed to
+`hf://${HF_USERNAME}/athena-cti-sft-llama31-8b-abaligned-v3`. ZeRO-3 CPU
+offload is auto-enabled on single-GPU hosts; override with `--offload` /
+`--no-offload`.
+
+LoRA variant on the v4 dataset (MCQ + TAA dropped; the adapter is merged
+at upload time):
+
+```bash
+./run_abaligned_sft_v4.sh               # LoRA r=16, 1 epoch
+```
+
+Full recipe details, hyperparameter rationale, and troubleshooting are
+in [`autotrain/README.md`](autotrain/README.md).
+
+### c) Train a CPT (continued pre-training) model
+
+CPT lives at the repo root under [`cpt/`](../cpt/README.md) because the
+corpus build pipeline (fetch + parse + dedupe + benchmark-leak filter)
+is a separate concern from instruction tuning. The launcher drives
+LlamaFactory with `--stage pt` (no chat template, packed raw text, 1
+epoch by default).
+
+```bash
+conda activate llm-sft
+pip install -r cpt/requirements.txt
+
+# 1. Build the corpus (fetches sources listed in cpt/sources.yaml).
+python cpt/build_corpus.py --out cpt/corpus --name cti_corpus_v1
+
+# 2. Register it with LlamaFactory (appends to SFT/data/dataset_info.json).
+python cpt/register_dataset.py --name cti_corpus_v1 \
+    --file cpt/corpus/cti_corpus_v1.jsonl
+
+# 3. Launch CPT. Default: base Llama-3.1-8B, LoRA r=32, 1 epoch, 1 H100.
+bash cpt/train_cpt.sh --dataset cti_corpus_v1 \
+    --repo-id asg-ai/athena-cti-cpt-llama31-8b-v1
+```
+
+Source catalog, hyperparameter starting points, and leak-protection
+rules live in [`cpt/README.md`](../cpt/README.md).
+
+### d) Benchmark on AthenaBench (vLLM and HF Inference Providers)
+
+Two transports are supported, selected by the suffix on the model alias
+registered in [`test/pipelines/models.py`](test/pipelines/models.py):
+`-vllm` for a local vLLM server (right choice for private CPT/SFT
+models), `-hf` for HuggingFace Inference Providers (right choice for
+large public models where hosted tok/s beats local compute), and no
+suffix for the default transformers / `device_map="auto"` path.
+
+**Local vLLM server** — two-terminal workflow:
+
+```bash
+# Terminal 1 — serve the model (Ctrl-C to tear down).
+conda activate vllm
+bash SFT/test/utils/serve_vllm.sh \
+    --model asg-ai/athena-cti-sft-llama31-8b-abaligned-v3 --tp 2
+
+# Terminal 2 — run the sweep against http://localhost:8000.
+conda activate llm-sft
+cd SFT/test/utils
+./run_benchmark.sh athena-cti-sft-llama31-8b-abaligned-v3-vllm \
+    --suite athena --batch 64 --version 1
+```
+
+`serve_vllm.sh` auto-applies a bundled chat template for base models
+that do not ship one (e.g. `meta-llama/Llama-3.1-8B`); CPT/SFT repos
+that carry their own template are used as-is.
+
+**HuggingFace Inference Providers** (hosted API; no local GPU):
+
+```bash
+# One-time: put an 'Inference Providers'-scoped token in SFT/test/.env
+#   HUGGINGFACE_TOKEN=hf_xxx
+conda activate llm-sft
+cd SFT/test
+./utils/run_benchmark.sh deepseek-r1-14b-hf --batch 32 --overwrite --yes
+```
+
+Any alias ending in `-hf` routes through `https://router.huggingface.co/v1`;
+`--batch N` fires N concurrent HTTPS requests.
+
+**Local transformers / HF path** (sequential, no server) — default when
+the alias has neither `-vllm` nor `-hf` suffix. Useful for transport
+parity checks against a vLLM run of the same model:
+
+```bash
+conda activate llm-sft
+cd SFT/test/utils
+./run_benchmark.sh athena-cti-sft-llama31-8b-abaligned-v3 \
+    --suite athena --version 1
+```
+
+Alias tables, cost estimates, and per-transport limitations are in
+[`test/README.md`](test/README.md) (*Local vLLM server* and *HuggingFace
+Inference Providers* sections).
 
 ---
 
