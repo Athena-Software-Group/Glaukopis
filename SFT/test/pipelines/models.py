@@ -90,6 +90,7 @@ model_mapping = {
     'llama-3-8b-base-vllm':                    'meta-llama/Llama-3.1-8B',
     'llama-3-8b-vllm':                         'meta-llama/Meta-Llama-3.1-8B-Instruct',
     'athena-cti-cpt-llama31-8b-v1-vllm':       'asg-ai/athena-cti-cpt-llama31-8b-v1',
+    'athena-cti-sft-llama31-8b-abaligned-v3-vllm': 'asg-ai/athena-cti-sft-llama31-8b-abaligned-v3',
     'athena-cti-sft-llama31-8b-abaligned-v4-vllm': 'asg-ai/athena-cti-sft-llama31-8b-abaligned-v4',
 }
 
