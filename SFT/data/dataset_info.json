@@ -793,5 +793,11 @@
       "prompt": "content"
     },
     "folder": "python"
+  },
+  "cti_corpus_smoke_post2023": {
+    "file_name": "cti_corpus_smoke_post2023.jsonl",
+    "columns": {
+      "prompt": "text"
+    }
   }
 }
