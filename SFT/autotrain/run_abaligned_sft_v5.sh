@@ -21,7 +21,7 @@
 # What stays fixed vs run_abaligned_sft.sh:
 #   - Base model: meta-llama/Llama-3.1-8B-Instruct
 #   - 3 epochs, cosine schedule, 5% warmup, bf16
-#   - lr 1e-5, cutoff_len 2048, save_steps 500
+#   - lr 1e-5, cutoff_len 2048
 #   - DeepSpeed ZeRO-3 (no offload on >=2 GPUs)
 #   - per-device batch 2, grad_accum 4 -> effective batch 16 on 2 GPUs
 #     (kept identical to the original abaligned run so the optimizer
@@ -35,9 +35,13 @@
 #   - Sequence packing on (was off): packs short Alpaca rows up to
 #     cutoff_len, eliminating padding waste and cutting optimizer steps
 #     by roughly 2-3x for this corpus.
-#   - eval_steps 1500 (was 500): full val pass every 500 steps was the
-#     second-largest wall-clock contributor; tripling the interval
-#     reclaims ~1-2 h without losing the early-stopping signal.
+#   - eval_steps + save_steps = 1500 (were 500/500): full val pass every
+#     500 steps was the second-largest wall-clock contributor; tripling
+#     the interval reclaims ~1-2 h without losing the early-stopping
+#     signal. Save and eval intervals are kept equal because HF Trainer
+#     requires save_steps to be a multiple of eval_steps when
+#     load_best_model_at_end=True (and packing makes 1500 steps land
+#     ~roughly every 25-30 min anyway).
 #   - Final merged model pushed to
 #     hf://${HF_USERNAME}/athena-cti-sft-llama31-8b-abaligned-v5
 #
@@ -73,7 +77,7 @@ while [[ $# -gt 0 ]]; do
         --dry-run)    DRY_RUN=1;        shift ;;
         --offload)    OFFLOAD="on";     shift ;;
         --no-offload) OFFLOAD="off";    shift ;;
-        -h|--help) sed -n '3,51p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) sed -n '3,53p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "Unknown argument: $1" >&2; exit 1 ;;
     esac
 done
@@ -168,7 +172,7 @@ RUN_TRAIN_ARGS=(
     --batch        "${BATCH_DEFAULT}"
     --grad-accum   "${GRAD_ACCUM_DEFAULT}"
     --cutoff       "2048"
-    --save-steps   "500"
+    --save-steps   "1500"
     --eval-steps   "1500"
     --packing      "true"
     --max-samples  "200000"
@@ -199,7 +203,7 @@ echo "  gpus visible : ${GPU_COUNT}"
 echo "  per-gpu batch: ${BATCH_DEFAULT}  grad_accum: ${GRAD_ACCUM_DEFAULT}  (effective batch ~= ${EFFECTIVE_BATCH})"
 echo "  epochs / lr  : ${EPOCHS} / ${LR}"
 echo "  packing      : true  (cutoff_len=2048)"
-echo "  eval         : every 1500 steps  (save every 500)"
+echo "  eval / save  : every 1500 steps (save_steps must be a multiple of eval_steps under load_best_model_at_end)"
 echo "  deepspeed    : ${SFT_DIR}/${DS_CONFIG}"
 echo "  cpu offload  : ${OFFLOAD}"
 echo "  method       : full-parameter SFT (DeepSpeed ZeRO-3)"
