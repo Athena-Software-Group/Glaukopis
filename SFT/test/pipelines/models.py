@@ -781,6 +781,10 @@ TASK_MAX_NEW_TOKENS: dict[str, int] = {
     "glue":          256,
     "superglue":     256,
     "mmlu":          256,
+    # CyberSOCEval emits a small JSON object ({"correct_answers":["A","B"]})
+    # wrapped in <json_object> tags. 256 is plenty even with verbose preamble.
+    "cybersoceval-malware": 256,
+    "cybersoceval-ti":      256,
 }
 DEFAULT_MAX_NEW_TOKENS = 2048
 

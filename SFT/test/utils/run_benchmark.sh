@@ -3,11 +3,15 @@
 # Run a benchmark sweep for a single model across one or more suites.
 #
 # Supported suites (selected via --suite, default = athena):
-#   athena      athena-mcq athena-rcm athena-vsp athena-ate athena-taa athena-rms
-#   ctibench    mcq rcm vsp ate taa           (CTI-Bench, .tsv responses)
-#   cybermetric cybermetric                   (CyberMetric MCQ, .csv responses;
-#                                              size selected via --cybermetric-size)
-#   all         athena U ctibench U cybermetric
+#   athena       athena-mcq athena-rcm athena-vsp athena-ate athena-taa athena-rms
+#   ctibench     mcq rcm vsp ate taa           (CTI-Bench, .tsv responses)
+#   cybermetric  cybermetric                   (CyberMetric MCQ, .csv responses;
+#                                               size selected via --cybermetric-size)
+#   cybersoceval cybersoceval-malware cybersoceval-ti
+#                                              (CrowdStrike+Meta CyberSOCEval, .jsonl
+#                                               responses; data fetched once via
+#                                               utils/fetch_cybersoceval_data.py)
+#   all          athena U ctibench U cybermetric U cybersoceval
 #
 # --tasks still works and overrides the suite-derived task list. Each task
 # is launched as its own inference.py subprocess so VRAM is freed at process
@@ -121,11 +125,12 @@ done
 # of the three research-facing suites; MMLU/GLUE/SuperGLUE/URLHAUS/CVE stay
 # out of the sweep because they're not the CTI research target.
 case "${SUITE}" in
-    athena)      SUITE_TASKS="athena-mcq athena-rcm athena-vsp athena-ate athena-taa athena-rms" ;;
-    ctibench)    SUITE_TASKS="mcq rcm vsp ate taa" ;;
-    cybermetric) SUITE_TASKS="cybermetric" ;;
-    all)         SUITE_TASKS="athena-mcq athena-rcm athena-vsp athena-ate athena-taa athena-rms mcq rcm vsp ate taa cybermetric" ;;
-    *) echo "Unknown --suite: ${SUITE} (expected athena|ctibench|cybermetric|all)" >&2; exit 1 ;;
+    athena)       SUITE_TASKS="athena-mcq athena-rcm athena-vsp athena-ate athena-taa athena-rms" ;;
+    ctibench)     SUITE_TASKS="mcq rcm vsp ate taa" ;;
+    cybermetric)  SUITE_TASKS="cybermetric" ;;
+    cybersoceval) SUITE_TASKS="cybersoceval-malware cybersoceval-ti" ;;
+    all)          SUITE_TASKS="athena-mcq athena-rcm athena-vsp athena-ate athena-taa athena-rms mcq rcm vsp ate taa cybermetric cybersoceval-malware cybersoceval-ti" ;;
+    *) echo "Unknown --suite: ${SUITE} (expected athena|ctibench|cybermetric|cybersoceval|all)" >&2; exit 1 ;;
 esac
 if [[ -n "${USER_TASKS}" ]]; then
     TASKS="${USER_TASKS}"
@@ -207,6 +212,8 @@ resolve_resp_file() {
             echo "${base}/${task}_${ROWS_STR}_v${VERSION}_${DISPLAY_NAME}_response.tsv" ;;
         cybermetric)
             echo "${base}/${task}_${CYBERMETRIC_STEM}_${ROWS_STR}_v${VERSION}_${DISPLAY_NAME}_response.csv" ;;
+        cybersoceval-*)
+            echo "${base}/${task}_${ROWS_STR}_v${VERSION}_${DISPLAY_NAME}_response.jsonl" ;;
         *)
             echo "" ;;
     esac

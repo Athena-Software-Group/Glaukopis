@@ -1,5 +1,5 @@
 import argparse
-from benchmarks import CTIMCQ, CTIRCM, CTIVSP, CTIATE, CTITAA, URLHAUS, CVE, GLUE, SUPERGLUE, MMLU, ATHENAATE, ATHENARCM, ATHENARMS, ATHENATAA, ATHENAVSP, CYBERMETRIC, ATHENAMCQ
+from benchmarks import CTIMCQ, CTIRCM, CTIVSP, CTIATE, CTITAA, URLHAUS, CVE, GLUE, SUPERGLUE, MMLU, ATHENAATE, ATHENARCM, ATHENARMS, ATHENATAA, ATHENAVSP, CYBERMETRIC, ATHENAMCQ, CYBERSOCEVALMALWARE, CYBERSOCEVALTI
 from pipelines.models import model_mapping, cleanup_model_cache, get_cached_model
 from pipelines.api_usage import get_totals, save_checkpoint, restore_checkpoint
 import os
@@ -7,7 +7,8 @@ import os
 def main():
     parser = argparse.ArgumentParser(description="Run inference for CTI tasks.")
     parser.add_argument("task", choices=["mcq", "rcm", "vsp", "ate", "taa", "urlhaus", "cve", "glue", "superglue", "mmlu",
-                                         "athena-ate", "athena-rcm", "athena-rms", "athena-taa", "athena-vsp","athena-mcq", "cybermetric"],
+                                         "athena-ate", "athena-rcm", "athena-rms", "athena-taa", "athena-vsp","athena-mcq", "cybermetric",
+                                         "cybersoceval-malware", "cybersoceval-ti"],
                         help="Task to evaluate (mcq, rcm, vsp, ate, taa)")
     parser.add_argument("subtask", nargs="?", default=None, help="Optional GLUE or SUPERGLUE subtask (e.g., cola, sst2)")
     parser.add_argument("model_name", help="Model name (e.g., gpt-3.5-turbo, gemini, llama-3-8b)")
@@ -64,7 +65,9 @@ def main():
         'athena-taa': ATHENATAA,
         'athena-vsp': ATHENAVSP,
         'athena-mcq': ATHENAMCQ,
-        'cybermetric': CYBERMETRIC
+        'cybermetric': CYBERMETRIC,
+        'cybersoceval-malware': CYBERSOCEVALMALWARE,
+        'cybersoceval-ti': CYBERSOCEVALTI,
     }
 
     if args.task not in task_classes:
@@ -144,6 +147,10 @@ def main():
         result = benchmark.evaluate_athena_mcq()
     elif args.task == 'cybermetric':
         result = benchmark.evaluate_cybermetric()
+    elif args.task == 'cybersoceval-malware':
+        result = benchmark.evaluate_cybersoceval_malware()
+    elif args.task == 'cybersoceval-ti':
+        result = benchmark.evaluate_cybersoceval_ti()
     else:  # taa
         correct_acc, plausible_acc = benchmark.compute_taa_accuracy()
         result = {'correct_accuracy': correct_acc, 'plausible_accuracy': plausible_acc}

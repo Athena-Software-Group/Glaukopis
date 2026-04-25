@@ -62,6 +62,7 @@ pooch>=1.8.2
 pydantic>=2.11.7
 pydantic_core>=2.33.2
 Pygments>=2.19.2
+pypdf>=5.0.0                     # used only by utils/fetch_cybersoceval_data.py to extract text from CTI PDFs
 python-dateutil>=2.9.0.post0
 pytz>=2025.2
 PyYAML>=6.0.2

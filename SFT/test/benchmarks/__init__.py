@@ -16,3 +16,5 @@ from .athena_taa import ATHENATAA
 from .athena_vsp import ATHENAVSP
 from .athena_mcq import ATHENAMCQ
 from .cybermetric import CYBERMETRIC
+from .cybersoceval_malware import CYBERSOCEVALMALWARE
+from .cybersoceval_threat_intel import CYBERSOCEVALTI
