@@ -24,11 +24,20 @@
 #   ./serve_and_bench.sh llama-3-8b-vllm --tp 1 --max-len 8192 -- --batch 128
 #
 # Env vars:
-#   READY_TIMEOUT   seconds to wait for /v1/models (default 1800)
-#                   First-time cold-cache runs can easily exceed 15 min
-#                   once HF download + torch compile + cudagraph capture
-#                   are added up (Gemma-2 captures ~50 sizes x TP ranks).
-#   READY_POLL      poll interval in seconds (default 5)
+#   READY_TIMEOUT     seconds to wait for /v1/models (default 1800)
+#                     First-time cold-cache runs can easily exceed 15 min
+#                     once HF download + torch compile + cudagraph capture
+#                     are added up (Gemma-2 captures ~50 sizes x TP ranks).
+#   READY_POLL        poll interval in seconds (default 5)
+#   BENCH_CONDA_ENV   conda env to use for the bench client. When set, the
+#                     run_benchmark.sh invocation is wrapped with
+#                     `conda run -n $BENCH_CONDA_ENV` so the bench picks up
+#                     pandas/transformers/openai from a different env than
+#                     the one serving vllm. Required when this script is
+#                     launched from the isolated 'vllm' env (which has no
+#                     test-stack deps); leave unset when serving + benching
+#                     happen in the same combined env (e.g. setup --mode all
+#                     plus a manual vllm install).
 
 set -euo pipefail
 
@@ -38,10 +47,26 @@ SFT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 READY_TIMEOUT="${READY_TIMEOUT:-1800}"
 READY_POLL="${READY_POLL:-5}"
+BENCH_CONDA_ENV="${BENCH_CONDA_ENV:-}"
 
 if [[ $# -lt 1 || "$1" == "-h" || "$1" == "--help" ]]; then
-    sed -n '3,30p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    sed -n '3,40p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
     exit 0
+fi
+
+# If BENCH_CONDA_ENV is set, make sure `conda` is on PATH and the named env
+# actually exists before we burn 10+ min loading vllm only to fail at the
+# bench step. `conda env list` is cheap and works without activating.
+if [[ -n "${BENCH_CONDA_ENV}" ]]; then
+    if ! command -v conda >/dev/null 2>&1; then
+        echo "ERROR: BENCH_CONDA_ENV='${BENCH_CONDA_ENV}' set but 'conda' not on PATH." >&2
+        exit 5
+    fi
+    if ! conda env list 2>/dev/null | awk '{print $1}' | grep -qx "${BENCH_CONDA_ENV}"; then
+        echo "ERROR: conda env '${BENCH_CONDA_ENV}' not found. Available envs:" >&2
+        conda env list >&2 || true
+        exit 6
+    fi
 fi
 
 ALIAS="$1"; shift
@@ -120,6 +145,7 @@ echo "  repo id    : ${REPO_ID}"
 echo "  port       : ${PORT}"
 echo "  serve args : ${serve_args[*]}"
 echo "  bench args : ${bench_args[*]}"
+echo "  bench env  : ${BENCH_CONDA_ENV:-<inherit current shell>}"
 echo "  serve log  : ${SERVE_LOG}"
 echo "  bench log  : ${BENCH_LOG}"
 echo
@@ -168,5 +194,15 @@ done
 
 echo
 echo "=== launching benchmark ==="
-bash "${SCRIPT_DIR}/run_benchmark.sh" "${ALIAS}" "${bench_args[@]}" \
-    2>&1 | tee "${BENCH_LOG}"
+# When BENCH_CONDA_ENV is set, wrap the bench client with `conda run` so it
+# picks up pandas/transformers/openai from a separate env than the one
+# serving vllm. --no-capture-output keeps stdout/stderr streaming live to
+# the tee'd log instead of being buffered until the subprocess exits.
+if [[ -n "${BENCH_CONDA_ENV}" ]]; then
+    conda run --no-capture-output -n "${BENCH_CONDA_ENV}" \
+        bash "${SCRIPT_DIR}/run_benchmark.sh" "${ALIAS}" "${bench_args[@]}" \
+        2>&1 | tee "${BENCH_LOG}"
+else
+    bash "${SCRIPT_DIR}/run_benchmark.sh" "${ALIAS}" "${bench_args[@]}" \
+        2>&1 | tee "${BENCH_LOG}"
+fi
