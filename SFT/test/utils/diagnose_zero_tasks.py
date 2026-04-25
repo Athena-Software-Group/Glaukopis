@@ -102,12 +102,17 @@ def gt_appears_in(task: str, response: str, gt: str) -> bool:
     return gt.strip().lower() in (response or "").lower()
 
 
-def score_row(task: str, pred: str, ans: str) -> float:
+def score_row(task: str, pred: str, ans: str, record=None) -> float:
     """Call the production scorer. Returns a numeric score (0/1 for
-    exact-match tasks, F1 for RMS, combined 0/0.5/1 for TAA)."""
-    res, _ok = _EVAL.score_record(task, pred or "", ans or "", _EVAL.alias_dict, _EVAL.related_dict)
-    if isinstance(res, dict):  # TAA returns a dict of {correct, plausible, combined}
-        return float(res.get("correct", 0.0))
+    exact-match tasks, strict F1 for RMS, combined 0/0.5/1 for TAA)."""
+    res, _ok = _EVAL.score_record(
+        task, pred or "", ans or "", _EVAL.alias_dict, _EVAL.related_dict, record=record
+    )
+    if isinstance(res, dict):
+        # TAA: {correct, plausible, combined}; RMS: {f1, plausible_f1, combined_f1, ...}
+        if "correct" in res:
+            return float(res.get("correct", 0.0))
+        return float(res.get("f1", 0.0))
     return float(res)
 
 
@@ -124,7 +129,7 @@ def classify(task: str, rows, sample_n: int):
             if len(samples[bucket]) < sample_n:
                 samples[bucket].append({"id": r.get("id"), "gt": gt, "response": resp[:800]})
             continue
-        score = score_row(task, pred, gt)
+        score = score_row(task, pred, gt, record=r)
         if score >= 1.0 - 1e-9 or (task == "athena-rms" and score > 0):
             c["correct"] += 1
         else:

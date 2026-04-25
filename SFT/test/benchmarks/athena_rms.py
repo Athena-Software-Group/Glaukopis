@@ -61,6 +61,8 @@ class ATHENARMS(Benchmark):
             idx, row = idx_row
             prompt = row.get('Prompt') or row.get('prompt') or ""
             gt_value = row.get('GT') or row.get('answer') or ""
+            technique_id = row.get('technique_id')
+            prompt_hash = row.get('prompt_hash')
             try:
                 response = get_single_prediction(
                     prompt,
@@ -78,7 +80,9 @@ class ATHENARMS(Benchmark):
                 "prompt": prompt,
                 "response": response,
                 "prediction": prediction,
-                "answer": gt_value
+                "answer": gt_value,
+                "technique_id": technique_id,
+                "prompt_hash": prompt_hash,
             }
 
         # --- Process and append safely ---

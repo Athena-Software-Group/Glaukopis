@@ -17,17 +17,54 @@ from pipelines.data_loader import load_jsonl, load_yaml
 from pipelines.post_processing.athena_cti import athena_cti_postprocessing
 
 
+RMS_NEIGHBORHOOD_PATH = "benchmark_data/athena_bench/athena_rms/mitigation_neighborhood.json"
+RMS_SOURCE_PATH = "benchmark_data/athena_bench/athena-cti-rms.jsonl"
+
+
 class ATHENAEvaluate:
     def __init__(
         self,
         predictions_dir: str = "responses",
         alias_csv: str = "benchmark_data/athena_bench/athena_taa/aliases.csv",
-        related_csv: str = "benchmark_data/athena_bench/athena_taa/related_groups.csv"
+        related_csv: str = "benchmark_data/athena_bench/athena_taa/related_groups.csv",
+        rms_neighborhood_path: str = RMS_NEIGHBORHOOD_PATH,
+        rms_source_path: str = RMS_SOURCE_PATH,
     ):
         self.pred_dir = Path(predictions_dir)
         self.alias_dict = self.load_alias_dict(alias_csv)
         self.related_dict = self.load_related_dict(related_csv)
         self.processor = athena_cti_postprocessing()
+        self.rms_neighborhood = self._load_rms_neighborhood(rms_neighborhood_path)
+        self._rms_source_path = rms_source_path
+        self._rms_prompt_hash_to_tid: Dict[str, str] | None = None
+
+    @staticmethod
+    def _load_rms_neighborhood(path: str) -> Dict[str, Dict[str, List[str]]]:
+        p = Path(path)
+        if not p.exists():
+            print(
+                f"[Warn] RMS mitigation neighborhood not found at {p}; "
+                f"plausible/combined F1 will fall back to strict F1. "
+                f"Run python -m athena_data.mitre_attck.build_mitigation_neighborhood to generate it."
+            )
+            return {}
+        with p.open("r", encoding="utf-8") as f:
+            return json.load(f)
+
+    def _rms_tid_for_prompt_hash(self, prompt_hash: str | None) -> str | None:
+        if not prompt_hash:
+            return None
+        if self._rms_prompt_hash_to_tid is None:
+            src = Path(self._rms_source_path)
+            mapping: Dict[str, str] = {}
+            if src.exists():
+                for row in load_jsonl(str(src)):
+                    h = row.get("prompt_hash")
+                    tid = row.get("technique_id")
+                    if h and tid:
+                        mapping[h] = tid
+            self._rms_prompt_hash_to_tid = mapping
+        return self._rms_prompt_hash_to_tid.get(prompt_hash)
 
     # -----------------------------------------------------------------------
     # TAA helpers
@@ -147,7 +184,69 @@ class ATHENAEvaluate:
     # -----------------------------------------------------------------------
     # Task scoring
 
-    def score_record(self, task: str, pred: str, ans: str, alias_dict, related_dict):
+    @staticmethod
+    def _f1(p: float, r: float) -> float:
+        return 2 * p * r / (p + r) if (p + r) else 0.0
+
+    def score_rms(self, pred: str, ans: str, technique_id: str | None) -> Tuple[Dict[str, float], bool]:
+        """Strict / plausible / combined F1 over predicted MITRE mitigation IDs.
+
+        Strict   : exact set-F1 over gold mitigation IDs (legacy behaviour).
+        Plausible: predictions that hit gold OR a neighbour-technique
+                   mitigation count toward precision; recall denominator
+                   stays the strict gold so missing the actual answer is
+                   still penalised.
+        Combined : strict matches contribute 1.0, plausible-only matches
+                   contribute 0.5 toward precision; recall is strict.
+        """
+        p_ids = set(re.findall(r"M\d{4}", pred.upper()))
+        a_ids = set(re.findall(r"M\d{4}", ans.upper()))
+
+        tp = len(p_ids & a_ids)
+        fp = len(p_ids - a_ids)
+        fn = len(a_ids - p_ids)
+        strict_p = tp / (tp + fp) if (tp + fp) else 0.0
+        strict_r = tp / (tp + fn) if (tp + fn) else 0.0
+        strict_f1 = self._f1(strict_p, strict_r)
+
+        neigh = self.rms_neighborhood.get(technique_id or "", {})
+        plausible_set = set(neigh.get("plausible", []))
+
+        if plausible_set:
+            ext_gold = a_ids | plausible_set
+            tp_p = len(p_ids & ext_gold)
+            plaus_p = tp_p / len(p_ids) if p_ids else 0.0
+            plaus_f1 = self._f1(plaus_p, strict_r)
+
+            strict_hits = len(p_ids & a_ids)
+            plaus_only = len(p_ids & plausible_set) - len(p_ids & a_ids & plausible_set)
+            comb_tp = strict_hits + 0.5 * plaus_only
+            comb_p = comb_tp / len(p_ids) if p_ids else 0.0
+            comb_f1 = self._f1(comb_p, strict_r)
+        else:
+            plaus_p = strict_p
+            plaus_f1 = strict_f1
+            comb_p = strict_p
+            comb_f1 = strict_f1
+
+        score = {
+            "f1": strict_f1,
+            "precision": strict_p,
+            "recall": strict_r,
+            "plausible_f1": plaus_f1,
+            "plausible_precision": plaus_p,
+            "combined_f1": comb_f1,
+            "combined_precision": comb_p,
+            "tp": tp,
+            "fp": fp,
+            "fn": fn,
+            "n_pred": len(p_ids),
+            "n_gold": len(a_ids),
+            "n_plausible_neighbors": len(plausible_set),
+        }
+        return score, True
+
+    def score_record(self, task: str, pred: str, ans: str, alias_dict, related_dict, record=None):
         task = task.lower()
         if task == "athena-rcm":
             return (1 if pred.strip().lower() == ans.strip().lower() else 0, True)
@@ -165,15 +264,10 @@ class ATHENAEvaluate:
             a = ans.strip().split(".")[0].upper()
             return (1 if p and p == a else 0, True)
         if task == "athena-rms":
-            p_ids = set(re.findall(r"M\d{4}", pred.upper()))
-            a_ids = set(re.findall(r"M\d{4}", ans.upper()))
-            tp = len(p_ids & a_ids)
-            fp = len(p_ids - a_ids)
-            fn = len(a_ids - p_ids)
-            precision = tp / (tp + fp) if (tp + fp) else 0.0
-            recall = tp / (tp + fn) if (tp + fn) else 0.0
-            f1 = 2 * precision * recall / (precision + recall) if (precision + recall) else 0.0
-            return (f1, True)
+            tid = (record or {}).get("technique_id") if isinstance(record, dict) else None
+            if not tid and isinstance(record, dict):
+                tid = self._rms_tid_for_prompt_hash(record.get("prompt_hash"))
+            return self.score_rms(pred, ans, tid)
         # default MCQ style
         return (1 if pred.strip().lower() == ans.strip().lower() else 0, True)
 
@@ -182,9 +276,9 @@ class ATHENAEvaluate:
     def format_percentage_metrics(self, metrics: Dict[str, float]) -> Dict[str, float]:
         formatted: Dict[str, float] = {}
         for key, value in metrics.items():
-            if isinstance(value, (int, float)) and (
-                "accuracy" in key.lower() or key.lower() == "f1"
-            ):
+            kl = key.lower()
+            is_pct = "accuracy" in kl or kl == "f1" or kl.endswith("_f1")
+            if isinstance(value, (int, float)) and is_pct:
                 formatted[key] = value * 100.0
             else:
                 formatted[key] = value
@@ -207,18 +301,24 @@ class ATHENAEvaluate:
             iterator = enumerate(raw_records)
             iterator = tqdm(iterator, total=len(raw_records), desc=str(preds_path))
 
+            sum_f1 = 0.0
+            sum_plaus_f1 = 0.0
+            sum_comb_f1 = 0.0
+
             for _, rec in iterator:
                 response = rec.get("response", "")
                 prompt = rec.get("prompt", "") or ""
                 pred = self.processor.extract_answer(task, response, prompt=prompt)
                 ans = rec.get("answer", "")
-                score, success = self.score_record(task, pred, ans, self.alias_dict, self.related_dict)
+                score, success = self.score_record(
+                    task, pred, ans, self.alias_dict, self.related_dict, record=rec
+                )
 
                 records.append({**rec, "score": score, "success": success})
 
                 if success:
                     count_success += 1
-                    if isinstance(score, dict):
+                    if isinstance(score, dict) and "correct" in score:
                         sum_correct += score.get("correct", 0)
                         sum_plausible += score.get("plausible", 0)
                         sum_combined += score.get("combined", 0.0)
@@ -227,6 +327,17 @@ class ATHENAEvaluate:
                                 "avg_correct": f"{sum_correct / count_success:.3f}",
                                 "avg_plausible": f"{sum_plausible / count_success:.3f}",
                                 "avg_combined": f"{sum_combined / count_success:.3f}",
+                            }
+                        )
+                    elif isinstance(score, dict) and "f1" in score:
+                        sum_f1 += score.get("f1", 0.0)
+                        sum_plaus_f1 += score.get("plausible_f1", 0.0)
+                        sum_comb_f1 += score.get("combined_f1", 0.0)
+                        iterator.set_postfix(
+                            {
+                                "avg_f1": f"{sum_f1 / count_success:.3f}",
+                                "avg_plaus_f1": f"{sum_plaus_f1 / count_success:.3f}",
+                                "avg_comb_f1": f"{sum_comb_f1 / count_success:.3f}",
                             }
                         )
                     else:
@@ -253,7 +364,22 @@ class ATHENAEvaluate:
         scores = [r["score"] for r in records if r["success"]]
 
         if task_up == "athena-rms":
-            metrics = {"f1": sum(scores) / len(scores) if scores else 0.0}
+            if scores and isinstance(scores[0], dict):
+                n = len(scores)
+                f1 = sum(s.get("f1", 0.0) for s in scores) / n
+                plaus_f1 = sum(s.get("plausible_f1", 0.0) for s in scores) / n
+                comb_f1 = sum(s.get("combined_f1", 0.0) for s in scores) / n
+                covered = sum(1 for s in scores if s.get("n_plausible_neighbors", 0) > 0)
+                metrics = {
+                    "f1": f1,
+                    "plausible_f1": plaus_f1,
+                    "combined_f1": comb_f1,
+                    "n_scored": n,
+                    "n_with_neighborhood": covered,
+                }
+            else:
+                # Legacy scored files where score is a bare float (strict F1).
+                metrics = {"f1": sum(scores) / len(scores) if scores else 0.0}
             return self.format_percentage_metrics(metrics)
 
         if task_up == "athena-vsp":
