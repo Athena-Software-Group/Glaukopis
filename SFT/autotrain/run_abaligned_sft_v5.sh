@@ -27,8 +27,11 @@
 #     (kept identical to the original abaligned run so the optimizer
 #     trajectory stays comparable; packing changes wall time, not the
 #     gradient noise scale)
-#   - save_only_model=True, load_best_model_at_end=True (avoids
-#     end-of-train OOM under ZeRO-3 + load_best)
+#   - save_only_model=True (avoids end-of-train OOM under ZeRO-3 by
+#     dropping fp32 optimizer state from checkpoints; final HF push
+#     uses the last checkpoint rather than best-eval-loss because
+#     transformers >=4.55 forbids the
+#     DeepSpeed + save_only_model + load_best_model_at_end triple)
 #
 # What changes vs run_abaligned_sft.sh:
 #   - Dataset: ift_data_2026_04_24_v5 (170,500 rows, was 138,343 in v3)
@@ -37,11 +40,10 @@
 #     by roughly 2-3x for this corpus.
 #   - eval_steps + save_steps = 1500 (were 500/500): full val pass every
 #     500 steps was the second-largest wall-clock contributor; tripling
-#     the interval reclaims ~1-2 h without losing the early-stopping
-#     signal. Save and eval intervals are kept equal because HF Trainer
-#     requires save_steps to be a multiple of eval_steps when
-#     load_best_model_at_end=True (and packing makes 1500 steps land
-#     ~roughly every 25-30 min anyway).
+#     the interval reclaims ~1-2 h without losing the eval-loss signal.
+#     Save and eval intervals are kept equal so each eval is paired with
+#     a recoverable checkpoint (~16 GB / 25-30 min instead of ~16 GB /
+#     8-10 min, halving disk burn).
 #   - Final merged model pushed to
 #     hf://${HF_USERNAME}/athena-cti-sft-llama31-8b-abaligned-v5
 #
@@ -77,7 +79,7 @@ while [[ $# -gt 0 ]]; do
         --dry-run)    DRY_RUN=1;        shift ;;
         --offload)    OFFLOAD="on";     shift ;;
         --no-offload) OFFLOAD="off";    shift ;;
-        -h|--help) sed -n '3,53p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) sed -n '3,55p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "Unknown argument: $1" >&2; exit 1 ;;
     esac
 done
@@ -150,11 +152,18 @@ else
 fi
 EFFECTIVE_BATCH=$(( BATCH_DEFAULT * GRAD_ACCUM_DEFAULT * (GPU_COUNT > 0 ? GPU_COUNT : 1) ))
 
-# save_only_model=True is mandatory under ZeRO-3 + load_best_model_at_end:
-# without it, Trainer._load_best_model reloads the fp32 optimizer state
-# (~32 GB / rank for an 8B model) on top of the still-resident training
-# state at end-of-train, which OOMs even on 2 x 80 GB H100s.
-EXTRA_DEFAULT="--deepspeed ${DS_CONFIG} --save_total_limit 10 --load_best_model_at_end True --metric_for_best_model eval_loss --greater_is_better False --save_only_model True"
+# Newer transformers (>=4.55) explicitly forbids the combination
+# DeepSpeed + save_only_model=True + load_best_model_at_end=True at
+# Trainer construction time. We have to drop one. Dropping
+# save_only_model=True would reintroduce the end-of-train OOM
+# (Trainer._load_best_model reloads ~32 GB / rank of fp32 optimizer
+# state on top of the still-resident training state under ZeRO-3),
+# so instead drop load_best_model_at_end. The HF push then takes
+# whatever checkpoint is in output_dir at end-of-training, which is
+# the last step. For a 3-epoch SFT with a cosine schedule, the final
+# step's eval_loss is within noise of the best step's, so this is
+# the right trade-off vs the OOM.
+EXTRA_DEFAULT="--deepspeed ${DS_CONFIG} --save_total_limit 10 --save_only_model True"
 
 if [[ -n "${EXTRA_USER}" ]]; then
     EXTRA_ALL="${EXTRA_DEFAULT} ${EXTRA_USER}"
@@ -203,7 +212,7 @@ echo "  gpus visible : ${GPU_COUNT}"
 echo "  per-gpu batch: ${BATCH_DEFAULT}  grad_accum: ${GRAD_ACCUM_DEFAULT}  (effective batch ~= ${EFFECTIVE_BATCH})"
 echo "  epochs / lr  : ${EPOCHS} / ${LR}"
 echo "  packing      : true  (cutoff_len=2048)"
-echo "  eval / save  : every 1500 steps (save_steps must be a multiple of eval_steps under load_best_model_at_end)"
+echo "  eval / save  : every 1500 steps  (paired so each eval has a recoverable checkpoint)"
 echo "  deepspeed    : ${SFT_DIR}/${DS_CONFIG}"
 echo "  cpu offload  : ${OFFLOAD}"
 echo "  method       : full-parameter SFT (DeepSpeed ZeRO-3)"
