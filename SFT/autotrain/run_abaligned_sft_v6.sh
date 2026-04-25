@@ -37,12 +37,17 @@
 #   - DeepSpeed ZeRO-3 (no offload on >=2 GPUs)
 #   - per-device batch 2, grad_accum 4 -> effective batch 16 on 2 GPUs
 #   - packing on, save_only_model=True
-#   - eval_steps + save_steps = 1500 (corpus size matches v5)
 #
 # What changes vs run_abaligned_sft_v5.sh:
 #   - Dataset: ift_data_2026_04_24_v5,ift_data_2026_04_25_abaligned_v6
 #     (was ift_data_2026_04_24_v5 alone). The v6 addendum adds 8,088
 #     RMS-only rows (~5% of corpus) without removing any v5 rows.
+#   - eval_steps + save_steps = 400 (was 1500). With packing on +
+#     cutoff 2048, the combined corpus packs to ~7.1k effective
+#     sequences/epoch, ~440 optimizer steps/epoch at effective batch
+#     16, ~1,320 steps total over 3 epochs. save_steps=1500 would
+#     yield zero intermediate checkpoints; 400 gives 3 intermediates
+#     (steps 400/800/1200) plus the final.
 #   - Final merged model pushed to
 #     hf://${HF_USERNAME}/athena-cti-sft-llama31-8b-abaligned-v6
 #
@@ -164,8 +169,8 @@ RUN_TRAIN_ARGS=(
     --batch        "${BATCH_DEFAULT}"
     --grad-accum   "${GRAD_ACCUM_DEFAULT}"
     --cutoff       "2048"
-    --save-steps   "1500"
-    --eval-steps   "1500"
+    --save-steps   "400"
+    --eval-steps   "400"
     --packing      "true"
     --max-samples  "200000"
     --report-to    "${REPORT_TO}"
@@ -196,7 +201,7 @@ echo "  gpus visible : ${GPU_COUNT}"
 echo "  per-gpu batch: ${BATCH_DEFAULT}  grad_accum: ${GRAD_ACCUM_DEFAULT}  (effective batch ~= ${EFFECTIVE_BATCH})"
 echo "  epochs / lr  : ${EPOCHS} / ${LR}"
 echo "  packing      : true  (cutoff_len=2048)"
-echo "  eval / save  : every 1500 steps"
+echo "  eval / save  : every 400 steps"
 echo "  deepspeed    : ${SFT_DIR}/${DS_CONFIG}"
 echo "  cpu offload  : ${OFFLOAD}"
 echo "  method       : full-parameter SFT (DeepSpeed ZeRO-3)"
