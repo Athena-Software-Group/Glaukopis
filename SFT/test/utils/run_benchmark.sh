@@ -48,11 +48,12 @@
 #   --yes / -y    Skip the interactive confirmation prompt when --overwrite
 #                 is set (required for nohup / non-interactive runs).
 #   --reasoning-effort EFFORT
-#                 Pass --reasoning_effort EFFORT to inference.py. Currently
-#                 only honored by the gpt5.2 alias; inference.py rewrites the
-#                 response folder to 'gpt-5.2-<effort>' when set, so we mirror
-#                 that suffix in DISPLAY_NAME below to keep --overwrite,
-#                 resume, and summary paths consistent.
+#                 Pass --reasoning_effort EFFORT to inference.py. Honored by
+#                 the OpenAI responses-API reasoning family (gpt5.2, gpt5.5,
+#                 gpt5.5-pro); inference.py rewrites the response folder to
+#                 '<display>-<effort>' when set, so we mirror that suffix in
+#                 DISPLAY_NAME below to keep --overwrite, resume, and summary
+#                 paths consistent.
 #   --single-gpu [IDX]
 #                 Pin inference to a single CUDA device (default idx=0) by
 #                 exporting CUDA_VISIBLE_DEVICES=IDX before launching each
@@ -187,12 +188,17 @@ print(mapping.get(name, name).replace("/", "_"))
 PY
 )"
 # inference.py rewrites the response folder to '<base>-<effort>' when a
-# reasoning effort is set on a model that supports it (currently only the
-# gpt5.2 alias). Mirror the same suffix here so resolve_resp_file/--overwrite
-# /summary paths line up with what inference.py actually writes.
-if [[ -n "${REASONING_EFFORT}" && "${MODEL_NAME}" == "gpt5.2" ]]; then
-    DISPLAY_NAME="${DISPLAY_NAME}-${REASONING_EFFORT}"
-fi
+# reasoning effort is set on a model that supports it (the OpenAI responses-API
+# reasoning family: gpt5.2, gpt5.5, gpt5.5-pro). Mirror the same suffix here so
+# resolve_resp_file/--overwrite/summary paths line up with what inference.py
+# actually writes.
+case "${MODEL_NAME}" in
+    gpt5.2|gpt5.5|gpt5.5-pro)
+        if [[ -n "${REASONING_EFFORT}" ]]; then
+            DISPLAY_NAME="${DISPLAY_NAME}-${REASONING_EFFORT}"
+        fi
+        ;;
+esac
 ROWS_STR="${ROWS:-all}"
 
 # Build the list of response files inference.py would produce. The filename

@@ -44,10 +44,13 @@ model_mapping = {
     #'gpt3': 'gpt-3.5-turbo',
     'gpt4': 'gpt-4-turbo-2024-04-09',
     'gpt5': 'gpt-5',
-    'gpt5.2': 'gpt-5.2', 
+    'gpt5.2': 'gpt-5.2',
+    'gpt5.5': 'gpt-5.5',
+    'gpt5.5-pro': 'gpt-5.5-pro',
     'gemini-2.5-flash': 'gemini-2.5-flash',
     'gemini-2.5-pro' : 'gemini-2.5-pro',
     'gemini-3-pro' : 'gemini-3-pro-preview',
+    'gemini-3.1-pro' : 'gemini-3.1-pro-preview',
     'llama-3-3b': 'meta-llama/Llama-3.2-3B',
     'llama-3-8b': 'meta-llama/Meta-Llama-3.1-8B-Instruct',
     'llama-3-70b': 'meta-llama/Meta-Llama-3-70B-Instruct',
@@ -155,6 +158,11 @@ try:
 except ImportError:
     OpenAI = None
 
+# OpenAI aliases routed through the v1/responses endpoint with optional
+# reasoning_effort (low|medium|high|xhigh). Keep in sync with the
+# REASONING_FAMILIES set in test/inference.py and run_benchmark.sh.
+REASONING_MODELS = {'gpt5.2', 'gpt5.5', 'gpt5.5-pro'}
+
 class OpenAIModel(BaseModel):
     def __init__(self, model_name, api_key=None):
         super().__init__(model_name)
@@ -197,7 +205,7 @@ class OpenAIModel(BaseModel):
             add_tokens(self.model_name,input_tokens,output_tokens,grounding=use_grounding)
             return resp.output_text
 
-        elif self.model_name == 'gpt5.2':
+        elif self.model_name in REASONING_MODELS:
             use_grounding = task == "cve" and use_web_search
             tools = [{"type": "web_search_preview"}] if use_grounding else []
 

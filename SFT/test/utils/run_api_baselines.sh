@@ -1,15 +1,16 @@
 #!/bin/bash
 
 # Run the AthenaBench suite against the latest hosted-API frontier models
-# (OpenAI gpt-5.2 + Google gemini-3-pro-preview) for v0/baseline comparison
-# alongside the v6 SFT training run. Pure HTTP work, no GPU/CUDA touched,
-# so this is safe to run in a separate terminal on the same host as a
-# concurrent SFT training job (zero VRAM, ~few hundred MB RSS).
+# (OpenAI gpt-5.5 / gpt-5.5-pro + Google gemini-3.1-pro-preview) for
+# v0/baseline comparison alongside the v6 SFT training run. Pure HTTP work,
+# no GPU/CUDA touched, so this is safe to run in a separate terminal on the
+# same host as a concurrent SFT training job (zero VRAM, ~few hundred MB RSS).
 #
 # Models exercised (in order, sequential to avoid shared-quota contention):
-#   1. gpt5.2                            -> display gpt-5.2
-#   2. gpt5.2 --reasoning-effort high    -> display gpt-5.2-high
-#   3. gemini-3-pro                      -> display gemini-3-pro-preview
+#   1. gpt5.5                            -> display gpt-5.5
+#   2. gpt5.5 --reasoning-effort high    -> display gpt-5.5-high
+#   3. gpt5.5-pro                        -> display gpt-5.5-pro
+#   4. gemini-3.1-pro                    -> display gemini-3.1-pro-preview
 #
 # Each run:
 #   - --suite athena       (athena-mcq, -rcm, -vsp, -ate, -taa, -rms)
@@ -22,14 +23,14 @@
 #
 # Usage:
 #   ./run_api_baselines.sh [--rows N] [--batch N] [--no-overwrite]
-#                          [--models "gpt5.2 gemini-3-pro ..."]
+#                          [--models "gpt5.5 gpt5.5-pro gemini-3.1-pro ..."]
 #                          [--suite athena|ctibench|all]
 #                          [--reasoning-effort low|medium|high|xhigh]
 #                          [--dry-run]
 #
 # Environment:
-#   OPENAI_API_KEY    required for the gpt5.2 runs
-#   GEMINI_API_KEY    required for the gemini-3-pro run
+#   OPENAI_API_KEY    required for the gpt5.5 / gpt5.5-pro runs
+#   GEMINI_API_KEY    required for the gemini-3.1-pro run
 #   Conda env         expected: ctibench (the bench-side env, NOT llm-sft)
 #
 # Logs:
@@ -88,12 +89,13 @@ fi
 
 # Per-row recipe: "<alias>|<display-suffix>|<reasoning-effort or empty>"
 # Sequential execution avoids hammering OpenAI's per-org quota with the
-# two gpt5.2 variants in parallel; gemini-3-pro is its own quota pool but
+# gpt5.5 variants in parallel; gemini-3.1-pro is its own quota pool but
 # kept sequential for log clarity.
 declare -a RUNS=(
-    "gpt5.2||"
-    "gpt5.2|-high|high"
-    "gemini-3-pro||"
+    "gpt5.5||"
+    "gpt5.5|-high|high"
+    "gpt5.5-pro||"
+    "gemini-3.1-pro||"
 )
 if [[ -n "${MODELS_OVERRIDE}" ]]; then
     RUNS=()

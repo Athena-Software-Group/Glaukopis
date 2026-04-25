@@ -144,13 +144,15 @@ def main():
         else:
             print(f"Running {args.task.capitalize()} benchmark for all subtasks")
 
-    # Set reasoning effort on the model instance and update output paths (only applies to GPT-5.2)
-    if args.reasoning_effort and model_key == 'gpt5.2':
+    # Set reasoning effort on the model instance and update output paths
+    # (applies to the OpenAI responses-API reasoning family: gpt5.2, gpt5.5, gpt5.5-pro)
+    from pipelines.models import REASONING_MODELS
+    if args.reasoning_effort and model_key in REASONING_MODELS:
         model_instance = get_cached_model(model_key)
         model_instance.reasoning_effort = args.reasoning_effort
 
         old_display = benchmark.display_model_name
-        new_display = f"gpt-5.2-{args.reasoning_effort}"
+        new_display = f"{old_display}-{args.reasoning_effort}"
         benchmark.display_model_name = new_display
         benchmark.model_folder = benchmark.model_folder.replace(old_display, new_display)
         os.makedirs(benchmark.model_folder, exist_ok=True)
