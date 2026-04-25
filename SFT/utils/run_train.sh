@@ -15,7 +15,8 @@
 #   ./run_train.sh [--model ID] [--dataset NAME] [--template NAME]
 #                  [--finetuning lora|full] [--epochs N] [--lr FLOAT]
 #                  [--batch N] [--grad-accum N] [--cutoff N]
-#                  [--save-steps N] [--max-samples N]
+#                  [--save-steps N] [--eval-steps N] [--max-samples N]
+#                  [--packing true|false]
 #                  [--output-dir DIR] [--report-to wandb|none|tensorboard]
 #                  [--run-name NAME] [--wandb-project NAME]
 #                  [--push-to-hf org/repo] [--hf-public] [--hf-export-dir DIR]
@@ -33,6 +34,8 @@
 #   --grad-accum    2
 #   --cutoff        2048
 #   --save-steps    500
+#   --eval-steps    <save-steps>
+#   --packing       false
 #   --max-samples   150000
 #   --report-to     none
 #   --wandb-project athena-cti-sft
@@ -70,6 +73,8 @@ BATCH="16"
 GRAD_ACCUM="2"
 CUTOFF="2048"
 SAVE_STEPS="500"
+EVAL_STEPS=""
+PACKING="false"
 MAX_SAMPLES="150000"
 REPORT_TO="none"
 OUTPUT_DIR=""
@@ -94,6 +99,8 @@ while [[ $# -gt 0 ]]; do
         --grad-accum)    GRAD_ACCUM="$2";        shift 2 ;;
         --cutoff)        CUTOFF="$2";            shift 2 ;;
         --save-steps)    SAVE_STEPS="$2";        shift 2 ;;
+        --eval-steps)    EVAL_STEPS="$2";        shift 2 ;;
+        --packing)       PACKING="$2";           shift 2 ;;
         --max-samples)   MAX_SAMPLES="$2";       shift 2 ;;
         --output-dir)    OUTPUT_DIR="$2";        shift 2 ;;
         --report-to)     REPORT_TO="$2";         shift 2 ;;
@@ -115,6 +122,17 @@ done
 if [[ "${FINETUNING}" != "lora" && "${FINETUNING}" != "full" ]]; then
     echo "--finetuning must be 'lora' or 'full' (got '${FINETUNING}')" >&2
     exit 1
+fi
+
+PACKING_LC="$(printf '%s' "${PACKING}" | tr '[:upper:]' '[:lower:]')"
+case "${PACKING_LC}" in
+    true)  PACKING="True" ;;
+    false) PACKING="False" ;;
+    *) echo "--packing must be 'true' or 'false' (got '${PACKING}')" >&2; exit 1 ;;
+esac
+
+if [[ -z "${EVAL_STEPS}" ]]; then
+    EVAL_STEPS="${SAVE_STEPS}"
 fi
 
 TIMESTAMP="$(date +"%Y-%m-%d-%H-%M-%S")"
@@ -208,6 +226,8 @@ cfg = {
     "gradient_accumulation_steps": int("${GRAD_ACCUM}"),
     "cutoff_len": int("${CUTOFF}"),
     "save_steps": int("${SAVE_STEPS}"),
+    "eval_steps": int("${EVAL_STEPS}"),
+    "packing": "${PACKING}".lower() == "true",
     "max_samples": int("${MAX_SAMPLES}"),
     "report_to": "${REPORT_TO}",
     "output_dir": "${OUTPUT_DIR}",
@@ -245,7 +265,7 @@ BASE_ARGS=(
     --logging_steps 5
     --save_steps "${SAVE_STEPS}"
     --warmup_ratio 0.05
-    --packing False
+    --packing "${PACKING}"
     --enable_thinking False
     --report_to "${REPORT_TO}"
     --run_name "${RUN_NAME}"
@@ -258,7 +278,7 @@ BASE_ARGS=(
     --optim adamw_torch
     --val_size 0.1
     --eval_strategy steps
-    --eval_steps "${SAVE_STEPS}"
+    --eval_steps "${EVAL_STEPS}"
     --per_device_eval_batch_size "${BATCH}"
     --overwrite_output_dir False
     --save_only_model False
@@ -273,7 +293,8 @@ print_banner() {
     echo "  dataset    : ${DATASET} (template=${TEMPLATE})"
     echo "  finetuning : ${FINETUNING}"
     echo "  epochs/lr  : ${EPOCHS} / ${LR}"
-    echo "  batch/accum: ${BATCH} / ${GRAD_ACCUM} (cutoff=${CUTOFF}, eff_batch=${EFFECTIVE_BATCH})"
+    echo "  batch/accum: ${BATCH} / ${GRAD_ACCUM} (cutoff=${CUTOFF}, eff_batch=${EFFECTIVE_BATCH}, packing=${PACKING})"
+    echo "  save/eval  : every ${SAVE_STEPS} / every ${EVAL_STEPS} steps"
     echo "  run name   : ${RUN_NAME}"
     echo "  wandb proj : ${WANDB_PROJECT:-<not set>}"
     echo "  push to hf : ${PUSH_TO_HF:-<none>}"

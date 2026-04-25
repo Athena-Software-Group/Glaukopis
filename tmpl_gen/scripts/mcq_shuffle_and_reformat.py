@@ -43,6 +43,7 @@ MCQ_SHORTNAMES = {
 LETTERS = "ABCDE"
 OPTION_LINE_RE = re.compile(r"^([A-E])\)\s*(.*)$")
 THEREFORE_RE = re.compile(r"\s*\.?\s*Therefore,?\s+[A-E]\.?\s*$", re.IGNORECASE)
+CORRECT_LETTER_RE = re.compile(r"Therefore,?\s+([A-E])\.?\s*$", re.IGNORECASE)
 
 
 def is_mcq_row(rec: dict) -> bool:
@@ -89,9 +90,19 @@ def shuffle_and_rewrite(rec: dict, rng: random.Random):
     if len(options) < 2:
         return rec, False, None
 
-    # Correct answer is at position A by template convention.
-    correct_text = options[0][1]
-    distractors = [content for _letter, content in options[1:]]
+    # Determine the current correct option. Legacy templates anchor the
+    # correct answer at position A; templates that emit Shuffle: mcq at
+    # render time encode the correct letter in the trailing "Therefore, X."
+    # of the output. Honour that letter when present so already-shuffled
+    # rows are re-shuffled correctly instead of corrupted.
+    correct_idx_in = 0
+    m_correct = CORRECT_LETTER_RE.search(rec.get("output", "").rstrip())
+    if m_correct:
+        idx_from_tail = LETTERS.index(m_correct.group(1).upper())
+        if idx_from_tail < len(options):
+            correct_idx_in = idx_from_tail
+    correct_text = options[correct_idx_in][1]
+    distractors = [c for i, (_l, c) in enumerate(options) if i != correct_idx_in]
 
     n = len(options)
     new_letters = list(LETTERS[:n])
@@ -183,6 +194,20 @@ def _self_test():
         counts[lt] += 1
     for lt in "ABCDE":
         assert counts[lt] > 300, (counts, "distribution should be roughly uniform")
+
+    # Pre-shuffled input: correct letter encoded in the Therefore tail (D),
+    # not in position A. The rewriter must follow the tail, not assume A.
+    rec_preshuffled = {
+        "input": "Q?\nA) wrong1\nB) wrong2\nC) wrong3\nD) actually_correct\nE) wrong4",
+        "output": "actually_correct is the answer per the data. Therefore, D.",
+        "shortname": "Q.MSR.1",
+    }
+    new_ps, changed_ps, lt_ps = shuffle_and_rewrite(rec_preshuffled, random.Random(7))
+    assert changed_ps and lt_ps in "ABCDE"
+    _stem, opts_ps = parse_options(new_ps["input"])
+    correct_line_ps = next(l for l, c in opts_ps if c == "actually_correct")
+    assert correct_line_ps == lt_ps, (correct_line_ps, lt_ps)
+    assert new_ps["output"].endswith(f"\nAnswer: {lt_ps}")
     print("self-test OK:", dict(counts))
 
 
