@@ -28,6 +28,7 @@
 #                                   [--tasks "mcq rcm vsp"]
 #                                   [--cybermetric-size 80|500|2000|10000]
 #                                   [--batch N] [--overwrite] [--yes]
+#                                   [--reasoning-effort none|low|medium|high|xhigh]
 #
 # Flags:
 #   --suite NAME  Preset task list. Default: athena. Ignored when --tasks set.
@@ -42,6 +43,12 @@
 #                 fresh run instead of resume-from-checkpoint.
 #   --yes / -y    Skip the interactive confirmation prompt when --overwrite
 #                 is set (required for nohup / non-interactive runs).
+#   --reasoning-effort EFFORT
+#                 Pass --reasoning_effort EFFORT to inference.py. Currently
+#                 only honored by the gpt5.2 alias; inference.py rewrites the
+#                 response folder to 'gpt-5.2-<effort>' when set, so we mirror
+#                 that suffix in DISPLAY_NAME below to keep --overwrite,
+#                 resume, and summary paths consistent.
 #   --single-gpu [IDX]
 #                 Pin inference to a single CUDA device (default idx=0) by
 #                 exporting CUDA_VISIBLE_DEVICES=IDX before launching each
@@ -83,6 +90,7 @@ OVERWRITE=0
 ASSUME_YES=0
 SINGLE_GPU=0
 SINGLE_GPU_IDX="0"
+REASONING_EFFORT=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -94,6 +102,7 @@ while [[ $# -gt 0 ]]; do
         --cybermetric-size) CYBERMETRIC_SIZE="$2"; shift 2 ;;
         --overwrite) OVERWRITE=1; shift ;;
         --yes|-y)    ASSUME_YES=1; shift ;;
+        --reasoning-effort) REASONING_EFFORT="$2"; shift 2 ;;
         --single-gpu)
             SINGLE_GPU=1
             # Optional numeric index follows --single-gpu. Accept 0-9 only;
@@ -147,6 +156,9 @@ fi
 if [[ -n "${BATCH}" ]]; then
     extra_args+=(--batch "${BATCH}")
 fi
+if [[ -n "${REASONING_EFFORT}" ]]; then
+    extra_args+=(--reasoning_effort "${REASONING_EFFORT}")
+fi
 
 # Resolve the model's on-disk response directory name via the same mapping
 # inference.py uses (model_mapping[alias].replace('/', '_')). We parse
@@ -169,6 +181,13 @@ except Exception:
 print(mapping.get(name, name).replace("/", "_"))
 PY
 )"
+# inference.py rewrites the response folder to '<base>-<effort>' when a
+# reasoning effort is set on a model that supports it (currently only the
+# gpt5.2 alias). Mirror the same suffix here so resolve_resp_file/--overwrite
+# /summary paths line up with what inference.py actually writes.
+if [[ -n "${REASONING_EFFORT}" && "${MODEL_NAME}" == "gpt5.2" ]]; then
+    DISPLAY_NAME="${DISPLAY_NAME}-${REASONING_EFFORT}"
+fi
 ROWS_STR="${ROWS:-all}"
 
 # Build the list of response files inference.py would produce. The filename
@@ -279,6 +298,7 @@ fi
     echo "  version     : ${VERSION}"
     echo "  rows        : ${ROWS_STR}"
     echo "  batch       : ${BATCH:-<none>}"
+    echo "  reasoning   : ${REASONING_EFFORT:-<none>}"
     echo "  tasks       : ${TASKS}"
     if [[ "${TASKS}" == *"cybermetric"* ]]; then
         echo "  cybermetric : ${CYBERMETRIC_STEM} (${CYBERMETRIC_DATA_PATH})"
