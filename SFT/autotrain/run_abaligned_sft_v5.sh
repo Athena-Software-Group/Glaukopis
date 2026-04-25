@@ -1,46 +1,51 @@
 #!/bin/bash
 
-# Launch LoRA SFT of Llama-3.1-8B-Instruct on the v5 dataset
+# Launch full-parameter SFT of Llama-3.1-8B-Instruct on the v5 dataset
 # (ift_data_2026_04_24_v5, 170,500 rows = 138,343 04-22 abaligned core +
-# 32,157 04-24 detection/exploit/PoC addendum). Throughput-optimised
-# successor to run_abaligned_sft_lora.sh, intended to land in <12 h on a
-# dual-H100 80GB host.
+# 32,157 04-24 detection/exploit/PoC addendum) via LLaMA-Factory +
+# DeepSpeed ZeRO-3. Throughput-optimised successor to
+# run_abaligned_sft.sh, intended to land in ~12 h on a dual-H100 80GB
+# host.
 #
-# Why this script exists:
-#   The 04-22 LoRA replication (run_abaligned_sft_lora.sh, 3 epochs, no
-#   packing, per-device batch 4 x grad_accum 2 x 2 GPUs = eff 16) takes
-#   ~24 h end-to-end. v5 keeps the recipe but turns on the throughput
-#   knobs that were left at safe defaults in the replication run, and
-#   layers in the addendum so the model gets exposure to Sigma rules,
-#   ExploitDB entries, and GitHub PoCs alongside the original core.
+# Why this script exists (and why it's full-param, not LoRA):
+#   The 04-22 LoRA replication (run_abaligned_sft_lora.sh) was
+#   benchmarked at 42.1 combined on AthenaBench v1, vs the original
+#   full-param 'abaligned' baseline at 52.0 on the same data -- a 9.9
+#   point regression attributable entirely to LoRA r=16 being too low-
+#   capacity to recover open-generation tasks (VSP -20.6, TAA -16.0,
+#   ATE -14.0, RCM -7.3, RMS -6.9). MCQ (CKT) actually improved (+5.6).
+#   To validate the v5 dataset on a fair footing, this run uses the
+#   same full-param recipe as run_abaligned_sft.sh and only changes the
+#   dataset + adds sequence packing.
 #
-# What stays fixed vs run_abaligned_sft_lora.sh:
+# What stays fixed vs run_abaligned_sft.sh:
 #   - Base model: meta-llama/Llama-3.1-8B-Instruct
 #   - 3 epochs, cosine schedule, 5% warmup, bf16
-#   - LoRA rank=16, alpha=32, dropout=0.05, target=all
-#   - lr 5e-5, cutoff_len 2048, save_steps 500
-#   - No DeepSpeed (plain DDP)
+#   - lr 1e-5, cutoff_len 2048, save_steps 500
+#   - DeepSpeed ZeRO-3 (no offload on >=2 GPUs)
+#   - per-device batch 2, grad_accum 4 -> effective batch 16 on 2 GPUs
+#     (kept identical to the original abaligned run so the optimizer
+#     trajectory stays comparable; packing changes wall time, not the
+#     gradient noise scale)
+#   - save_only_model=True, load_best_model_at_end=True (avoids
+#     end-of-train OOM under ZeRO-3 + load_best)
 #
-# What changes vs run_abaligned_sft_lora.sh:
-#   - Dataset: ift_data_2026_04_24_v5 (170,500 rows, was 138,343)
+# What changes vs run_abaligned_sft.sh:
+#   - Dataset: ift_data_2026_04_24_v5 (170,500 rows, was 138,343 in v3)
 #   - Sequence packing on (was off): packs short Alpaca rows up to
 #     cutoff_len, eliminating padding waste and cutting optimizer steps
 #     by roughly 2-3x for this corpus.
-#   - per-device batch 8, grad_accum 1 (was 4 / 2): with packing, each
-#     batch slot already carries up to 2048 tokens, so the larger
-#     per-device batch fits in 80 GB without OOM. Effective batch on
-#     2 GPUs becomes 16 (matches the replication run, so the optimizer
-#     trajectory stays comparable).
-#   - eval_steps 1500 (was 500): full 17K-row val pass every 500 steps
-#     was the second-largest wall-clock contributor; tripling the
-#     interval reclaims ~1-2 h without losing the early-stopping signal.
+#   - eval_steps 1500 (was 500): full val pass every 500 steps was the
+#     second-largest wall-clock contributor; tripling the interval
+#     reclaims ~1-2 h without losing the early-stopping signal.
 #   - Final merged model pushed to
-#     hf://${HF_USERNAME}/athena-cti-sft-llama31-8b-abaligned-v5-lora
+#     hf://${HF_USERNAME}/athena-cti-sft-llama31-8b-abaligned-v5
 #
 # Usage:
 #   ./run_abaligned_sft_v5.sh [--repo-id USER/NAME] [--output-dir DIR]
 #                             [--report-to wandb|none]
 #                             [--epochs N] [--lr FLOAT]
+#                             [--offload | --no-offload]
 #                             [--dry-run] [--extra "..."]
 
 set -euo pipefail
@@ -53,8 +58,9 @@ OUTPUT_DIR=""
 REPORT_TO="wandb"
 EXTRA_USER=""
 EPOCHS="3"
-LR="5e-05"
+LR="1e-05"
 DRY_RUN=0
+OFFLOAD="auto"    # auto | on | off
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -65,7 +71,9 @@ while [[ $# -gt 0 ]]; do
         --lr)         LR="$2";          shift 2 ;;
         --extra)      EXTRA_USER="$2";  shift 2 ;;
         --dry-run)    DRY_RUN=1;        shift ;;
-        -h|--help) sed -n '3,46p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        --offload)    OFFLOAD="on";     shift ;;
+        --no-offload) OFFLOAD="off";    shift ;;
+        -h|--help) sed -n '3,51p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "Unknown argument: $1" >&2; exit 1 ;;
     esac
 done
@@ -79,7 +87,7 @@ done
 
 if [[ -z "${REPO_ID}" ]]; then
     : "${HF_USERNAME:?Set HF_USERNAME in SFT/.env (or pass --repo-id USER/NAME)}"
-    REPO_ID="${HF_USERNAME}/athena-cti-sft-llama31-8b-abaligned-v5-lora"
+    REPO_ID="${HF_USERNAME}/athena-cti-sft-llama31-8b-abaligned-v5"
 fi
 
 DATASET_NAME="ift_data_2026_04_24_v5"
@@ -100,21 +108,49 @@ PY
 )"
 GPU_COUNT="${GPU_COUNT:-0}"
 
-if [[ "${GPU_COUNT}" -ge 2 ]]; then
-    BATCH_DEFAULT="8"
+# Auto-pick ZeRO-3 config: full-param 8B + AdamW fp32 states needs ~96 GB
+# of GPU RAM before activations, so on <2 GPUs we must offload optimizer +
+# params to CPU. Mirrors the logic in run_abaligned_sft.sh.
+if [[ "${OFFLOAD}" == "auto" ]]; then
+    if [[ "${GPU_COUNT}" -lt 2 ]]; then
+        OFFLOAD="on"
+        echo "[info] detected ${GPU_COUNT} GPU(s); auto-enabling ZeRO-3 CPU offload."
+        echo "       Pass --no-offload to force the on-GPU config (will OOM on <2 x 80GB)."
+    else
+        OFFLOAD="off"
+    fi
+fi
+
+if [[ "${OFFLOAD}" == "on" ]]; then
+    DS_CONFIG="examples/deepspeed/ds_z3_offload_config.json"
+else
+    DS_CONFIG="examples/deepspeed/ds_z3_config.json"
+fi
+if [[ ! -f "${SFT_DIR}/${DS_CONFIG}" ]]; then
+    echo "[FAIL] deepspeed config missing: ${SFT_DIR}/${DS_CONFIG}" >&2
+    exit 2
+fi
+
+# Mirror run_abaligned_sft.sh batch sizing so the optimizer trajectory is
+# identical to the original 'abaligned' baseline (effective batch 16):
+#   2 GPUs: batch=2, grad_accum=4 -> 2 * 4 * 2 = 16
+#   4 GPUs: batch=4, grad_accum=1 -> 4 * 1 * 4 = 16
+# Packing changes wall time (fewer optimizer steps per epoch), not the
+# gradient noise scale, so this stays comparable to the 52.0 baseline.
+if [[ "${GPU_COUNT}" -ge 4 ]]; then
+    BATCH_DEFAULT="4"
     GRAD_ACCUM_DEFAULT="1"
 else
-    BATCH_DEFAULT="8"
-    GRAD_ACCUM_DEFAULT="2"
+    BATCH_DEFAULT="2"
+    GRAD_ACCUM_DEFAULT="4"
 fi
 EFFECTIVE_BATCH=$(( BATCH_DEFAULT * GRAD_ACCUM_DEFAULT * (GPU_COUNT > 0 ? GPU_COUNT : 1) ))
 
-export LORA_RANK_DEFAULT=16
-export LORA_ALPHA_DEFAULT=32
-export LORA_DROPOUT_DEFAULT=0.05
-export LORA_TARGET_DEFAULT=all
-
-EXTRA_DEFAULT="--save_total_limit 5 --load_best_model_at_end True --metric_for_best_model eval_loss --greater_is_better False --save_only_model True"
+# save_only_model=True is mandatory under ZeRO-3 + load_best_model_at_end:
+# without it, Trainer._load_best_model reloads the fp32 optimizer state
+# (~32 GB / rank for an 8B model) on top of the still-resident training
+# state at end-of-train, which OOMs even on 2 x 80 GB H100s.
+EXTRA_DEFAULT="--deepspeed ${DS_CONFIG} --save_total_limit 10 --load_best_model_at_end True --metric_for_best_model eval_loss --greater_is_better False --save_only_model True"
 
 if [[ -n "${EXTRA_USER}" ]]; then
     EXTRA_ALL="${EXTRA_DEFAULT} ${EXTRA_USER}"
@@ -124,9 +160,9 @@ fi
 
 RUN_TRAIN_ARGS=(
     --model        "meta-llama/Llama-3.1-8B-Instruct"
-    --dataset      "${DATASET_NAME}"
+    --dataset      "${DATASET_NAME},alpaca_en_demo"
     --template     "llama3"
-    --finetuning   "lora"
+    --finetuning   "full"
     --epochs       "${EPOCHS}"
     --lr           "${LR}"
     --batch        "${BATCH_DEFAULT}"
@@ -155,7 +191,7 @@ for var in NNODES NODE_RANK NPROC_PER_NODE MASTER_ADDR MASTER_PORT RDZV_ID MIN_N
     fi
 done
 
-echo "=== AthenaBench-aligned v5 (04-22 core + 04-24 addendum) LoRA SFT ==="
+echo "=== AthenaBench-aligned v5 (04-22 core + 04-24 addendum) full SFT ==="
 echo "  env          : ${CONDA_DEFAULT_ENV:-<unset>}  (expected: llm-sft)"
 echo "  dataset file : ${DATASET_FILE}"
 echo "  hf repo      : ${REPO_ID}"
@@ -164,8 +200,9 @@ echo "  per-gpu batch: ${BATCH_DEFAULT}  grad_accum: ${GRAD_ACCUM_DEFAULT}  (eff
 echo "  epochs / lr  : ${EPOCHS} / ${LR}"
 echo "  packing      : true  (cutoff_len=2048)"
 echo "  eval         : every 1500 steps  (save every 500)"
-echo "  lora         : rank=16 alpha=32 dropout=0.05 target=all"
-echo "  method       : LoRA (no DeepSpeed), DDP"
+echo "  deepspeed    : ${SFT_DIR}/${DS_CONFIG}"
+echo "  cpu offload  : ${OFFLOAD}"
+echo "  method       : full-parameter SFT (DeepSpeed ZeRO-3)"
 echo "  launcher     : ${SFT_DIR}/utils/run_train.sh"
 echo "  torchrun     : forced (FORCE_TORCHRUN=1)"
 echo
