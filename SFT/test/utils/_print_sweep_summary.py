@@ -48,16 +48,90 @@ def _parse_metrics(raw: str) -> dict | None:
         return {"raw": raw}
 
 
+# Headline keys we know are percentages (formatted with a trailing %). All
+# other floats get a plain :.2f. Percentages are emitted as 18.78% rather
+# than 18.7793 so the table cell is human-scannable.
+_PCT_KEYS = {
+    "accuracy", "avg_score", "parse_error_pct",
+    "plausible_accuracy", "combined_accuracy",
+    "f1", "plausible_f1", "combined_f1",
+    "MCQ", "MCQ3K",
+}
+
+# Keys we drop from the table cell because they're either redundant with a
+# percentage we already show or just noise in the headline (the per-slice
+# breakdowns get their own sub-tables under the main table).
+_HIDDEN_KEYS = {
+    "correct_mc_count",
+    "incorrect_mc_count",
+    "response_parsing_error_count",
+}
+
+
+def _fmt_scalar(k: str, v) -> str:
+    if isinstance(v, float):
+        if k in _PCT_KEYS:
+            return f"{k}: {v:.2f}%"
+        return f"{k}: {v:.4f}"
+    return f"{k}: {v}"
+
+
 def _fmt_metrics(d: dict | None) -> str:
+    """Render the headline metrics cell -- scalars only.
+
+    Nested dict values (e.g. per_topic, per_source) are rendered as
+    separate Markdown sub-tables by ``_render_slice_tables``.
+    """
     if not d:
         return "-"
     parts = []
     for k, v in d.items():
-        if isinstance(v, float):
-            parts.append(f"{k}: {v:.4f}")
-        else:
-            parts.append(f"{k}: {v}")
-    return ", ".join(parts)
+        if isinstance(v, dict):
+            continue
+        if k in _HIDDEN_KEYS:
+            continue
+        parts.append(_fmt_scalar(k, v))
+    return ", ".join(parts) if parts else "-"
+
+
+def _render_slice_tables(rows_data: list[dict]) -> str:
+    """Emit per-task per-slice Markdown sub-tables.
+
+    For each task whose metrics dict contains nested per-* dicts, render
+    one sub-table per slice key showing N / Jaccard / Strict acc / Parse
+    err per slice value, sorted by N descending so the largest slices
+    surface first. Returns "" when no task has any nested per-* metrics.
+    """
+    blocks: list[str] = []
+    for r in rows_data:
+        m = r.get("metrics") or {}
+        per_keys = [k for k, v in m.items() if isinstance(v, dict) and k.startswith("per_")]
+        if not per_keys:
+            continue
+        blocks.append(f"### `{r['task']}` per-slice breakdown")
+        for pk in per_keys:
+            slice_label = pk[len("per_"):]
+            slice_dict = m[pk]
+            ordered = sorted(
+                slice_dict.items(),
+                key=lambda kv: -(int(kv[1].get("answered", 0)) + int(kv[1].get("parse_errors", 0))),
+            )
+            blocks.append(f"\n**per_{slice_label}** (sorted by N desc)")
+            blocks.append(
+                f"| {slice_label} | N | Jaccard | Strict acc | Parse err |"
+            )
+            blocks.append("|---|---:|---:|---:|---:|")
+            for name, vals in ordered:
+                answered = int(vals.get("answered", 0))
+                parse_err = int(vals.get("parse_errors", 0))
+                n = answered + parse_err
+                jacc = float(vals.get("avg_score", 0.0))
+                acc = float(vals.get("correct_mc_pct", 0.0))
+                blocks.append(
+                    f"| {name} | {n} | {jacc:.2f}% | {acc:.2f}% | {parse_err} |"
+                )
+        blocks.append("")
+    return "\n".join(blocks)
 
 
 def main() -> int:
@@ -134,6 +208,9 @@ def main() -> int:
             f"| {r['exit']} | {_fmt_metrics(r['metrics'])} |"
         )
     md = header + "\n" + "\n".join(table_rows) + "\n"
+    slice_md = _render_slice_tables(rows_data)
+    if slice_md:
+        md += "\n" + slice_md + "\n"
 
     # --- stdout (goes to the tee'd log too) ---------------------------------
     print("=== Sweep results ===")

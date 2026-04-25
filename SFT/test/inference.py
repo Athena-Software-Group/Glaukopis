@@ -4,6 +4,63 @@ from pipelines.models import model_mapping, cleanup_model_cache, get_cached_mode
 from pipelines.api_usage import get_totals, save_checkpoint, restore_checkpoint
 import os
 
+# Headline keys we know are percentages (rendered with a trailing %).
+_PCT_KEYS = {
+    "accuracy", "avg_score", "parse_error_pct",
+    "plausible_accuracy", "combined_accuracy",
+    "f1", "plausible_f1", "combined_f1",
+    "correct_accuracy",
+}
+
+
+def _print_pretty_result(task: str, model: str, result) -> None:
+    """Pretty-print the per-task evaluator result before the canonical line.
+
+    The canonical ``Evaluation result for <task> with <model>: <repr>`` line
+    must remain a single-line literal-eval-able dict (parser contract with
+    run_benchmark.sh + _print_sweep_summary.py). This helper emits a
+    multi-line readable summary first so live-streamed sweep logs are
+    easy to scan, especially for tasks like cybersoceval-* whose metrics
+    dict carries nested per-slice breakdowns.
+    """
+    if not isinstance(result, dict):
+        return
+    print(f"--- Pretty result: {task} ({model}) ---")
+    nested = []
+    for k, v in result.items():
+        if isinstance(v, dict):
+            nested.append((k, v))
+            continue
+        if isinstance(v, float):
+            if k in _PCT_KEYS:
+                print(f"  {k:32s} {v:>8.2f}%")
+            else:
+                print(f"  {k:32s} {v:>10.4f}")
+        else:
+            print(f"  {k:32s} {v}")
+    for slice_key, slice_dict in nested:
+        if not slice_dict:
+            continue
+        print(f"  {slice_key}:")
+        rows = sorted(
+            slice_dict.items(),
+            key=lambda kv: -(int(kv[1].get("answered", 0)) + int(kv[1].get("parse_errors", 0)))
+            if isinstance(kv[1], dict) else 0,
+        )
+        name_w = min(28, max((len(str(n)) for n, _ in rows), default=4))
+        print(f"    {'name':<{name_w}}  {'N':>5}  {'Jaccard':>8}  {'Strict':>7}  {'PE':>4}")
+        for name, vals in rows:
+            if not isinstance(vals, dict):
+                continue
+            answered = int(vals.get("answered", 0))
+            pe = int(vals.get("parse_errors", 0))
+            n = answered + pe
+            jacc = float(vals.get("avg_score", 0.0))
+            acc = float(vals.get("correct_mc_pct", 0.0))
+            print(f"    {str(name):<{name_w}}  {n:>5}  {jacc:>7.2f}%  {acc:>6.2f}%  {pe:>4}")
+    print(f"--- end pretty result ---")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Run inference for CTI tasks.")
     parser.add_argument("task", choices=["mcq", "rcm", "vsp", "ate", "taa", "urlhaus", "cve", "glue", "superglue", "mmlu",
@@ -155,6 +212,11 @@ def main():
         correct_acc, plausible_acc = benchmark.compute_taa_accuracy()
         result = {'correct_accuracy': correct_acc, 'plausible_accuracy': plausible_acc}
 
+    _print_pretty_result(args.task, args.model_name, result)
+    # Canonical single-line dict repr below is the parser contract that
+    # run_benchmark.sh greps to populate RES_METRICS; do not split or
+    # reformat without also updating the grep + ast.literal_eval path in
+    # _print_sweep_summary.py.
     print(f"Evaluation result for {args.task} with {args.model_name}: {result}")
     # Only for API-based GPT or Gemini models, show cumulative usage and cost
     # Exclude gpt-oss models as they are Hugging Face models that run locally
