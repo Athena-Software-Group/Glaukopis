@@ -89,6 +89,7 @@ model_mapping = {
     # `vllm serve <repo-id>` process. See SFT/test/utils/serve_vllm.sh.
     'llama-3-8b-base-vllm':                    'meta-llama/Llama-3.1-8B',
     'llama-3-8b-vllm':                         'meta-llama/Meta-Llama-3.1-8B-Instruct',
+    'qwen3-4b-vllm':                           'Qwen/Qwen3-4B-Instruct-2507',
     'qwen2.5-14b-vllm':                        'Qwen/Qwen2.5-14B-Instruct',
     'phi-4-vllm':                              'microsoft/phi-4',
     'gemma-2-9b-vllm':                         'google/gemma-2-9b-it',
