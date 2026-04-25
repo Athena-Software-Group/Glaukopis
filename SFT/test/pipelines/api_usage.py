@@ -23,19 +23,44 @@ PRICING_PER_1K = {
             "output": [(0, 200_000, 0.01000), (200_001, float("inf"), 0.01500)],
             "grounding_per_1k": 35.0,   # $35 per 1K requests (same as batch)
     },
+    "gemini-3-pro": {
+            # Deprecated 2026-03-09; entry retained for back-compat with prior
+            # response files. Same tier shape as gemini-3.1-pro below.
+            "input": [(0, 200_000, 0.00200), (200_001, float("inf"), 0.00400)],
+            "output": [(0, 200_000, 0.01200), (200_001, float("inf"), 0.01800)],
+            "grounding_per_1k": 35.0,
+    },
+    "gemini-3.1-pro": {
+            # Standard tier. <=200K ctx: $2/$12 per 1M; >200K: $4/$18 per 1M.
+            "input": [(0, 200_000, 0.00200), (200_001, float("inf"), 0.00400)],
+            "output": [(0, 200_000, 0.01200), (200_001, float("inf"), 0.01800)],
+            "grounding_per_1k": 35.0,
+    },
     # OpenAI GPT models
     "gpt4": {
-            "input": [(0, float("inf"), 0.01)],       # $10 per 1M tokens 
-            "output": [(0, float("inf"), 0.03)],      # $30 per 1M tokens tokens 
+            "input": [(0, float("inf"), 0.01)],       # $10 per 1M tokens
+            "output": [(0, float("inf"), 0.03)],      # $30 per 1M tokens tokens
     },
     "gpt5": {
-            "input": [(0, float("inf"), 0.00125)],    # $1.25/ 1M tokens 
+            "input": [(0, float("inf"), 0.00125)],    # $1.25/ 1M tokens
             "output": [(0, float("inf"), 0.01)],      # $10.00 / 1M tokens
             "grounding_per_1k": 10.0,              # $10 per 1k web_search_preview call
     },
     "gpt5.2": {
-        "input": [(0, float("inf"), 0.00175)],    # $1.75 per 1M tokens 
+        "input": [(0, float("inf"), 0.00175)],    # $1.75 per 1M tokens
         "output": [(0, float("inf"), 0.014)],     # $14 per 1M tokens
+    },
+    "gpt5.5": {
+        # Released 2026-04-23. $5 input / $30 output per 1M tokens (<272K ctx).
+        "input": [(0, float("inf"), 0.00500)],
+        "output": [(0, float("inf"), 0.03000)],
+        "grounding_per_1k": 10.0,             # web_search_preview, same as gpt5
+    },
+    "gpt5.5-pro": {
+        # Released 2026-04-23. $30 input / $180 output per 1M tokens.
+        "input": [(0, float("inf"), 0.03000)],
+        "output": [(0, float("inf"), 0.18000)],
+        "grounding_per_1k": 10.0,
     },
 }
 
