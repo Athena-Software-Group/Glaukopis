@@ -1,21 +1,34 @@
 #!/bin/bash
 
-# Launch full-parameter SFT of Llama-3.1-8B-Instruct on the v6 dataset
-# (ift_data_2026_04_25_abaligned_v6, 15,658 rows: RCM 25.5% / VSP 25.5% /
-# ATE 23.4% / RMS 25.5%) via LLaMA-Factory + DeepSpeed ZeRO-3.
+# Launch full-parameter SFT of Llama-3.1-8B-Instruct on the COMBINED v5+v6
+# dataset slate via LLaMA-Factory + DeepSpeed ZeRO-3. Trains on
+# ift_data_2026_04_24_v5 (170,500 rows, broad SFT coverage) plus
+# ift_data_2026_04_25_abaligned_v6 (8,088 rows, RMS-only addendum) plus
+# alpaca_en_demo (instruction-following baseline). Total ~178.6k rows.
 #
-# Why this script exists:
+# Why this script exists (Option B of the v0 -> v6 RMS recovery plan):
 #   The v0 (base Llama-3.1-8B-Instruct) AthenaBench RMS f1 was 5.88%
-#   (plausible_f1 5.97%, combined 5.93%). Diagnosis pointed at two
-#   structural gaps: (1) catalog hallucination -- the model anchors on
-#   M1037-style identifiers regardless of the technique; (2) cardinality
-#   gap -- v3/v4/v5 trained on fixed-N=2 mitigation lists while the
-#   benchmark asks for N=1..8. The v6 template slate
+#   (plausible_f1 5.97%, combined 5.93%) -- the lowest of the four
+#   AthenaBench tasks. Diagnosis pointed at two structural gaps:
+#     (1) catalog hallucination -- the model anchors on M1037-style
+#         identifiers regardless of the technique;
+#     (2) cardinality gap -- v3/v4/v5 trained on fixed-N=2 mitigation
+#         lists while the benchmark asks for N=1..8.
+#
+#   The v6 RMS-addendum template slate
 #   (tmpl_gen/templates/04252026/Sophia-CTI-Templates-AthenaBench-abaligned-v6.txt)
-#   adds 6 RMS templates (RMS.3a/b/c variable-N, RMS.4/RMS.5 ID<->name
-#   flashcards, RMS.6 negative-example discrimination) on top of the
-#   existing RMS.1/RMS.2, with M10xx subscripts to filter legacy Txxxx
-#   COA leakage.
+#   adds 6 NEW RMS templates on top of v5's existing RMS.1/RMS.2:
+#     - RMS.3a/b/c : variable-N at N=3, 4, 5 (Count: 2000 each, Neo4j
+#                    cardinality permitting)
+#     - RMS.4/RMS.5: catalog flashcards (ID<->name, ~44 rows each at
+#                    the modern M10xx ceiling)
+#     - RMS.6      : negative-example discrimination (Count: 2000)
+#   with M10xx subscripts to filter legacy Txxxx COA leakage.
+#
+#   Combined dataset RMS share rises from 0.6% (v5 alone, 1k of 170.5k)
+#   to ~5.1% (v5+v6, 9.1k of 178.6k). v5 supplies the RCM/VSP/ATE/TAA/
+#   CKT coverage so we don't regress non-RMS tasks while the model picks
+#   up the new RMS signal.
 #
 # What stays fixed vs run_abaligned_sft_v5.sh:
 #   - Base model: meta-llama/Llama-3.1-8B-Instruct
@@ -24,16 +37,12 @@
 #   - DeepSpeed ZeRO-3 (no offload on >=2 GPUs)
 #   - per-device batch 2, grad_accum 4 -> effective batch 16 on 2 GPUs
 #   - packing on, save_only_model=True
+#   - eval_steps + save_steps = 1500 (corpus size matches v5)
 #
 # What changes vs run_abaligned_sft_v5.sh:
-#   - Dataset: ift_data_2026_04_25_abaligned_v6 (15,658 rows, was 170,500
-#     in v5). With packing on (cutoff 2048) this is ~700-800 optimizer
-#     steps/epoch, so the run lands in ~2-3 h on a dual-H100 80GB host
-#     rather than v5's ~12 h.
-#   - eval_steps + save_steps = 500 (were 1500): the smaller corpus
-#     means 1500-step intervals would yield only 1 intermediate
-#     checkpoint; dropping to 500 gives ~4 checkpoints across the run
-#     and matches the original run_abaligned_sft.sh cadence.
+#   - Dataset: ift_data_2026_04_24_v5,ift_data_2026_04_25_abaligned_v6
+#     (was ift_data_2026_04_24_v5 alone). The v6 addendum adds 8,088
+#     RMS-only rows (~5% of corpus) without removing any v5 rows.
 #   - Final merged model pushed to
 #     hf://${HF_USERNAME}/athena-cti-sft-llama31-8b-abaligned-v6
 #
@@ -86,16 +95,20 @@ if [[ -z "${REPO_ID}" ]]; then
     REPO_ID="${HF_USERNAME}/athena-cti-sft-llama31-8b-abaligned-v6"
 fi
 
-DATASET_NAME="ift_data_2026_04_25_abaligned_v6"
-DATASET_FILE="${SFT_DIR}/data/${DATASET_NAME}.json"
-if [[ ! -f "${DATASET_FILE}" ]]; then
-    echo "[FAIL] training dataset not found: ${DATASET_FILE}" >&2
-    echo "       This file is gitignored (~46 MB). Transfer it to this host" >&2
-    echo "       before running, e.g.:" >&2
-    echo "         rsync -avP workstation:Glaukopis/SFT/data/${DATASET_NAME}.json \\" >&2
-    echo "               ${SFT_DIR}/data/" >&2
-    exit 2
-fi
+V5_DATASET_NAME="ift_data_2026_04_24_v5"
+V6_DATASET_NAME="ift_data_2026_04_25_abaligned_v6"
+V5_DATASET_FILE="${SFT_DIR}/data/${V5_DATASET_NAME}.json"
+V6_DATASET_FILE="${SFT_DIR}/data/${V6_DATASET_NAME}.json"
+for f in "${V5_DATASET_FILE}" "${V6_DATASET_FILE}"; do
+    if [[ ! -f "${f}" ]]; then
+        echo "[FAIL] training dataset not found: ${f}" >&2
+        echo "       Both v5 (~166 MB) and v6 (~67 MB) data files are gitignored." >&2
+        echo "       Transfer to this host before running, e.g.:" >&2
+        echo "         rsync -avP workstation:Glaukopis/SFT/data/$(basename "${f}") \\" >&2
+        echo "               ${SFT_DIR}/data/" >&2
+        exit 2
+    fi
+done
 
 GPU_COUNT="$(python - <<'PY' 2>/dev/null || echo 0
 import torch
@@ -143,7 +156,7 @@ fi
 
 RUN_TRAIN_ARGS=(
     --model        "meta-llama/Llama-3.1-8B-Instruct"
-    --dataset      "${DATASET_NAME},alpaca_en_demo"
+    --dataset      "${V5_DATASET_NAME},${V6_DATASET_NAME},alpaca_en_demo"
     --template     "llama3"
     --finetuning   "full"
     --epochs       "${EPOCHS}"
@@ -151,8 +164,8 @@ RUN_TRAIN_ARGS=(
     --batch        "${BATCH_DEFAULT}"
     --grad-accum   "${GRAD_ACCUM_DEFAULT}"
     --cutoff       "2048"
-    --save-steps   "500"
-    --eval-steps   "500"
+    --save-steps   "1500"
+    --eval-steps   "1500"
     --packing      "true"
     --max-samples  "200000"
     --report-to    "${REPORT_TO}"
@@ -174,15 +187,16 @@ for var in NNODES NODE_RANK NPROC_PER_NODE MASTER_ADDR MASTER_PORT RDZV_ID MIN_N
     fi
 done
 
-echo "=== AthenaBench-aligned v6 (04-25 RMS-expanded slate) full SFT ==="
+echo "=== AthenaBench-aligned v6 (v5 broad coverage + v6 RMS addendum) full SFT ==="
 echo "  env          : ${CONDA_DEFAULT_ENV:-<unset>}  (expected: llm-sft)"
-echo "  dataset file : ${DATASET_FILE}"
+echo "  v5 dataset   : ${V5_DATASET_FILE}"
+echo "  v6 dataset   : ${V6_DATASET_FILE}"
 echo "  hf repo      : ${REPO_ID}"
 echo "  gpus visible : ${GPU_COUNT}"
 echo "  per-gpu batch: ${BATCH_DEFAULT}  grad_accum: ${GRAD_ACCUM_DEFAULT}  (effective batch ~= ${EFFECTIVE_BATCH})"
 echo "  epochs / lr  : ${EPOCHS} / ${LR}"
 echo "  packing      : true  (cutoff_len=2048)"
-echo "  eval / save  : every 500 steps"
+echo "  eval / save  : every 1500 steps"
 echo "  deepspeed    : ${SFT_DIR}/${DS_CONFIG}"
 echo "  cpu offload  : ${OFFLOAD}"
 echo "  method       : full-parameter SFT (DeepSpeed ZeRO-3)"
