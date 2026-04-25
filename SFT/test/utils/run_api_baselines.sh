@@ -24,6 +24,7 @@
 # Usage:
 #   ./run_api_baselines.sh [--rows N] [--batch N] [--no-overwrite]
 #                          [--models "gpt5.5 gpt5.5-pro gemini-3.1-pro ..."]
+#                          [--skip-openai] [--skip-gemini]
 #                          [--suite athena|ctibench|all]
 #                          [--reasoning-effort low|medium|high|xhigh]
 #                          [--dry-run]
@@ -50,6 +51,8 @@ OVERWRITE=1
 REASONING_EFFORT_OVERRIDE=""
 DRY_RUN=0
 MODELS_OVERRIDE=""
+SKIP_OPENAI=0
+SKIP_GEMINI=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -59,6 +62,8 @@ while [[ $# -gt 0 ]]; do
         --no-overwrite)      OVERWRITE=0; shift ;;
         --reasoning-effort)  REASONING_EFFORT_OVERRIDE="$2"; shift 2 ;;
         --models)            MODELS_OVERRIDE="$2"; shift 2 ;;
+        --skip-openai)       SKIP_OPENAI=1; shift ;;
+        --skip-gemini)       SKIP_GEMINI=1; shift ;;
         --dry-run)           DRY_RUN=1; shift ;;
         -h|--help)           sed -n '3,33p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "Unknown argument: $1" >&2; exit 1 ;;
@@ -72,10 +77,12 @@ fi
 
 # Pre-flight: required API keys. .env is auto-loaded by pipelines/models.py
 # (python-dotenv) but a missing key surfaces as a stack trace mid-run, so
-# fail fast here.
+# fail fast here. Skip the family-specific check when the corresponding
+# --skip-* flag is set so split runs (GPT-only / Gemini-only) don't need
+# both keys present.
 missing=()
-[[ -z "${OPENAI_API_KEY:-}" ]] && missing+=("OPENAI_API_KEY")
-[[ -z "${GEMINI_API_KEY:-}" ]] && missing+=("GEMINI_API_KEY")
+[[ ${SKIP_OPENAI} -eq 0 && -z "${OPENAI_API_KEY:-}" ]] && missing+=("OPENAI_API_KEY")
+[[ ${SKIP_GEMINI} -eq 0 && -z "${GEMINI_API_KEY:-}" ]] && missing+=("GEMINI_API_KEY")
 if [[ ${#missing[@]} -gt 0 ]]; then
     echo "[FAIL] missing env var(s): ${missing[*]}" >&2
     echo "       Either export them in this shell or add them to SFT/.env." >&2
@@ -102,6 +109,21 @@ if [[ -n "${MODELS_OVERRIDE}" ]]; then
     for m in ${MODELS_OVERRIDE}; do
         RUNS+=("${m}||")
     done
+fi
+
+# --skip-openai / --skip-gemini drop entries from the resolved RUNS list.
+# Family is detected by alias prefix: gpt* -> OpenAI, gemini* -> Gemini.
+if [[ ${SKIP_OPENAI} -eq 1 || ${SKIP_GEMINI} -eq 1 ]]; then
+    filtered=()
+    for spec in "${RUNS[@]}"; do
+        alias_only="${spec%%|*}"
+        case "${alias_only}" in
+            gpt*)    [[ ${SKIP_OPENAI} -eq 1 ]] && continue ;;
+            gemini*) [[ ${SKIP_GEMINI} -eq 1 ]] && continue ;;
+        esac
+        filtered+=("${spec}")
+    done
+    RUNS=("${filtered[@]}")
 fi
 
 stamp="$(date -u +"%Y-%m-%dT%H-%M-%SZ")"
