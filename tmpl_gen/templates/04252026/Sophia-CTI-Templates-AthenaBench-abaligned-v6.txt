@@ -1,0 +1,219 @@
+AthenaBench-Aligned CTI Templates -- No-MCQ v6 (derived from 04232026/Sophia-CTI-Templates-AthenaBench-abaligned-v4.txt)
+
+Revision 04252026-noMCQ-v6: additive expansion of the AB.RMS.* section on
+top of the v4 noMCQ slate. RCM, VSP, ATE sections are retained unchanged.
+MCQ and TAA remain omitted (same rationale as v4). Target: close the
+documented training/test gaps on athena-rms by adding (a) variable-N
+multi-mitigation templates that match the benchmark's variable list
+cardinality (1 to 8+), (b) catalog flashcard templates that drill the
+mitigation ID-to-name binding directly, and (c) a free-text discriminative
+template that replaces the dropped AB.MCQ.2 negative-example signal
+without re-introducing MCQ format.
+
+Why RMS coverage is expanded in v6:
+
+  (1) The Llama-3.1-8B-Instruct baseline on athena-rms (500 rows, full
+      sweep, 04252026) measures f1=5.88%, plausible_f1=5.97%,
+      combined_f1=5.93%. The negligible plausible-vs-strict gap (+0.09pp)
+      indicates the model is missing the entire defensive family on most
+      rows, not just the exact MITRE-tagged mit. Diagnostic sampling
+      shows pronounced anchoring on M1037 with hallucinated descriptions
+      ("Restrict System Binaries", "Disable or Modify Tools",
+      "Limit Information on Public Websites" -- none of which is what
+      M1037 actually is in MITRE's catalog).
+
+  (2) Three concrete distribution gaps between the v4 SFT signal and the
+      athena-rms benchmark were identified:
+
+      (a) Prompt distribution: AB.RMS.1/2 use the raw {ap.description}
+          (MITRE catalog prose). The benchmark prompt is a GPT-5
+          rewritten incident narrative built per row at benchmark
+          generation time. Same underlying technique, very different
+          surface form.
+
+      (b) List cardinality: AB.RMS.1 binds exactly two mitigations per
+          row (coa1, coa2 with a {force coa1 != coa2} constraint). The
+          benchmark prompt explicitly demands "Return exactly N
+          mitigation IDs" where N varies from 1 to 8+ across the 500
+          rows. The model has no training signal for N!=2 multi-mit
+          output.
+
+      (c) ID-to-name binding: AB.RMS.1/2 mention each mitigation's
+          name and description once per row in the answer prose, but
+          the model is asked to recall ~80 distinct M-IDs across the
+          benchmark. The single-row exposure per (technique, mit)
+          pair is insufficient repetition for the 8B parameter count
+          to lock in the catalog. The hallucinated M1037 descriptions
+          observed at evaluation are the direct symptom.
+
+  (3) Train/test split for athena-rms: structurally not feasible without
+      crippling SFT coverage. The benchmark samples 500 of ~691
+      techniques-with-mitigations from the same MITRE STIX bundle that
+      tmpl_gen reads via Neo4j. There is no holdout mechanism in
+      create_mitre_attck_data.py and no exclusion list consumed by
+      tmpl_gen. Holding out 72% of MITRE's catalog from training to
+      eliminate (technique -> mitigation) overlap would defeat the
+      purpose of training a CTI model. The literal benchmark prompt
+      strings (GPT-5 scenarios) are NOT in the SFT data, so the model
+      is not seeing test questions verbatim. We treat athena-rms as
+      a catalog-recall benchmark by design and target the distribution
+      gaps above, not the underlying graph overlap.
+
+What is added in v6 (additive over v4):
+
+  - AB.RMS.3a : variable-N multi-mit at N=3, same prompt shape as RMS.1
+                with three coa bindings + pairwise distinctness. Closes
+                the cardinality gap for N=3 benchmark rows.
+  - AB.RMS.3b : variable-N multi-mit at N=4, four coa bindings.
+  - AB.RMS.3c : variable-N multi-mit at N=5, five coa bindings.
+  - AB.RMS.4  : flashcard, ID -> name + description. Binds against
+                course-of-action only (no attack-pattern join), one
+                row per mitigation per phrasing. Drills catalog ID
+                binding directly to address the M1037-anchoring
+                hallucination observed at v4 baseline.
+  - AB.RMS.5  : flashcard, name -> ID. Reverse direction of RMS.4.
+                Same single-node binding scope.
+  - AB.RMS.6  : free-text discriminative template, "which mitigation
+                is NOT recommended for technique X". Replaces the
+                negative-example training signal that was lost when
+                AB.MCQ.2 was dropped from the v4 slate, without
+                re-introducing MCQ format (which caused the v3
+                position-A collapse). Single position variant with
+                negcoa1 always in slot 1; row count capped to ~10%
+                of RMS total to limit position-bias risk. If a
+                discriminative regression appears in v6 evaluation,
+                v7 should add 6b/6c position variants.
+
+What is kept unchanged from v4:
+
+  - AB.RCM.1-2   : 2 distinct CVE->CWE variants. No change.
+  - AB.VSP.1,3   : headline score+vector + per-metric reasoning. No change.
+  - AB.ATE.1,3,5 : raw description, group-attributed, telemetry. No change.
+  - AB.RMS.1     : two-mitigation list (kept as anchor for catalog grounding).
+  - AB.RMS.2     : single-primary mitigation (kept).
+
+What remains omitted (same rationale as v4):
+
+  - AB.MCQ.*     : MCQ training coverage held until the v4 -> v5/v6 noMCQ
+                   experiment closes the position-A collapse question.
+  - AB.TAA.*     : TAA training coverage held pending mode-collapse
+                   diagnosis and template redesign.
+
+AthenaBench task alignment (v6 noMCQ slate):
+
+  Section 1 - AB.RCM.* : CVE description -> CWE-####            -> athena-rcm
+  Section 2 - AB.VSP.* : CVE description -> CVSS:3.1/... vector -> athena-vsp
+  Section 3 - AB.ATE.* : attack scenario -> T####               -> athena-ate
+  Section 4 - AB.RMS.* : attack scenario -> M10xx (list)        -> athena-rms
+
+Expected dataset effect:
+
+  - Templates rise 9 -> 15 (4 new RMS templates: 3a, 3b, 3c, 4, 5, 6
+    -- 6 templates, with RMS.1 and RMS.2 retained = 8 total RMS).
+  - Row count target: ~17.0k non-MCQ (~3.0k RMS, up from ~1.2k in v4).
+  - SFT wall-clock on 4xH100 with batch=4 grad_accum=1: target ~4-4.5h
+    (modest increase vs v4 driven by the larger RMS contribution).
+  - Mixture share for RMS rises from ~8% (v4) to ~18% (v6), justified
+    by the 5.88% baseline being the lowest of the four AthenaBench
+    tasks measured on this checkpoint family.
+
+Template IDs retain their original numbering (AB.VSP.3, AB.ATE.5, etc.)
+so diff-vs-parent traceability is preserved; there is no renumbering.
+The new RMS templates use the next available numbers (3a/b/c, 4, 5, 6).
+
+Section 1 - AB.RCM.* Root-Cause Mapping (athena-rcm)
+
+AB.RCM.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center performing root-cause mapping. Analyse the following CVE description and identify the most appropriate Common Weakness Enumeration (CWE) that represents the root cause of the vulnerability. Consult the MITRE CVE and CWE knowledge bases, reason step by step about the weakness pattern present in the description, and then state the CWE identifier.
+Question: {cve:CVE.descriptions}
+Answer: The description indicates the class of weakness captured by {cwe:cve.problemType>Weakness.name}: {cwe.description}. Therefore, the root cause is {cwe.id}.
+
+AB.RCM.2 Instruction: You are a vulnerability analyst at an enterprise Security Operations Center performing root-cause mapping for a newly disclosed CVE. Analyse the vulnerability record below and identify the most appropriate CWE. Consult the MITRE CVE and CWE knowledge bases, reason about the underlying weakness before committing to a label, and then state the CWE identifier.
+Question: Vulnerability record for {cve:CVE.id}: {cve.descriptions}
+Answer: The record describes {cwe:cve.problemType>Weakness.name}, whose defining characteristic is {cwe.description}. Therefore, the root cause is {cwe.id}.
+
+Section 2 - AB.VSP.* Vulnerability Severity Prediction (athena-vsp)
+
+AB.VSP.1 Instruction: You are a vulnerability risk analyst at an enterprise Security Operations Center computing CVSS v3.1 Base metrics. Analyse the following CVE description and derive the values for each base metric (AV, AC, PR, UI, S, C, I, A). Consult the CVSS v3.1 specification, reason about each metric in turn, and then state the resulting CVSS:3.1 vector.
+Question: {cve:CVE.descriptions}
+Answer: The exploit preconditions and impact implied by the description correspond to a CVSS v3.1 base score of {cve.cvss3_1_baseScore}. Therefore, the CVSS v3.1 vector is {cve.cvss3_1_vectorString}. <*{force cve.cvss3_1_vectorString = cve.cvss3_1_vectorString}*>
+
+AB.VSP.3 Instruction: You are a vulnerability risk analyst at an enterprise Security Operations Center producing a CVSS v3.1 Base vector with per-metric justification. Analyse the following CVE description, reason explicitly about each of the eight base metrics (Attack Vector, Attack Complexity, Privileges Required, User Interaction, Scope, Confidentiality, Integrity, Availability), and then state the resulting CVSS:3.1 vector.
+Question: {cve:CVE.descriptions}
+Answer: Reasoning through each base metric: Attack Vector of {cve.cvss3_1_attackVector} is indicated by how the attacker reaches the vulnerable component; Attack Complexity is implied by the conditions required to weaponise the flaw; Privileges Required and User Interaction follow from whether authentication or victim action is needed; Scope, Confidentiality, Integrity, and Availability follow from the impact described. The resulting CVSS v3.1 base score is {cve.cvss3_1_baseScore}. Therefore, the CVSS v3.1 vector is {cve.cvss3_1_vectorString}. <*{force cve.cvss3_1_vectorString = cve.cvss3_1_vectorString}*>
+
+Section 3 - AB.ATE.* Attack Technique Enumeration (athena-ate)
+
+AB.ATE.1 Instruction: You are a threat hunter at an enterprise Security Operations Center performing attack technique enumeration. Analyse the following attack scenario and identify the single MITRE ATT&CK technique (ID format: T####) that best matches the behaviour described. Consult MITRE ATT&CK, reason about observable indicators in the scenario, and then state the technique identifier.
+Question: {ap:attack-pattern.description}
+Answer: The described behaviour matches {ap.name}, which MITRE ATT&CK documents on platforms {ap.x_mitre_platforms} with detection guidance: {ap.x_mitre_detection}. Therefore, the technique is {ap.mitre_id}.
+
+AB.ATE.3 Instruction: You are an incident responder at an enterprise Security Operations Center correlating attacker activity to MITRE ATT&CK. Analyse the following incident narrative, which reflects adversary tradecraft attributed to a documented threat group. Consult MITRE ATT&CK, reason about which technique underpins the observed behaviour, and then state the technique identifier (ID format: T####).
+Question: During an engagement attributed to {grp:intrusion-set.name} ({grp.mitre_id}), analysts observed the following adversary behaviour: {ap:grp.uses>attack-pattern.description}
+Answer: The observed behaviour is the documented pattern for {ap.name}, which MITRE ATT&CK records {grp.name} as using. Therefore, the technique is {ap.mitre_id}.
+
+AB.ATE.5 Instruction: You are a detection engineer at an enterprise Security Operations Center mapping a telemetry-driven behaviour to MITRE ATT&CK. Analyse the following data-source-framed behaviour description and identify the single MITRE ATT&CK technique (ID format: T####) that best matches. Reason about which technique the telemetry reveals, and then state the technique identifier.
+Question: Based on observations collected from data sources {ap:attack-pattern.x_mitre_data_sources}, the following behaviour was recorded: {ap.description}
+Answer: The telemetry pattern matches {ap.name}, whose defining behaviour is captured by those data sources. Therefore, the technique is {ap.mitre_id}.
+
+Section 4 - AB.RMS.* Risk Mitigation Strategy (athena-rms)
+
+AB.RMS.1 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend multiple MITRE ATT&CK mitigation identifiers (format: M10xx) that together address the adversary behaviour. Consult MITRE ATT&CK, reason about which defensive controls apply, and then state the mitigation identifiers as a comma-separated list.
+Question: {ap:attack-pattern.description}
+Answer: Effective controls against {ap.name} include {coa1:ap.mitigates<course-of-action.mitre_id} ({coa1.name}), which {coa1.description}, and {coa2:ap.mitigates<course-of-action.mitre_id} ({coa2.name}), which {coa2.description}. Therefore, the recommended mitigations are {coa1.mitre_id}, {coa2.mitre_id}.
+{force coa1.mitre_id != coa2.mitre_id}
+Count: 650
+
+AB.RMS.2 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending a primary risk mitigation strategy. Analyse the following attack scenario and recommend the single most appropriate MITRE ATT&CK mitigation identifier (format: M10xx) that addresses the adversary behaviour. Consult MITRE ATT&CK, reason about which defensive control is most directly relevant, and then state the mitigation identifier.
+Question: {ap:attack-pattern.description}
+Answer: The most direct control for {ap.name} is {coa:ap.mitigates<course-of-action.mitre_id} ({coa.name}): {coa.description}. Therefore, the recommended mitigation is {coa.mitre_id}.
+Count: 650
+
+AB.RMS.3a Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend exactly three MITRE ATT&CK mitigation identifiers (format: M10xx) that together address the adversary behaviour. Consult MITRE ATT&CK, reason about which defensive controls apply, and then state the three mitigation identifiers as a comma-separated list.
+Question: {ap:attack-pattern.description}
+Answer: Effective controls against {ap.name} include {coa1:ap.mitigates<course-of-action.mitre_id} ({coa1.name}), which {coa1.description}; {coa2:ap.mitigates<course-of-action.mitre_id} ({coa2.name}), which {coa2.description}; and {coa3:ap.mitigates<course-of-action.mitre_id} ({coa3.name}), which {coa3.description}. Therefore, the recommended mitigations are {coa1.mitre_id}, {coa2.mitre_id}, {coa3.mitre_id}.
+{force coa1.mitre_id != coa2.mitre_id}
+{force coa1.mitre_id != coa3.mitre_id}
+{force coa2.mitre_id != coa3.mitre_id}
+Count: 650
+
+AB.RMS.3b Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend exactly four MITRE ATT&CK mitigation identifiers (format: M10xx) that together address the adversary behaviour. Consult MITRE ATT&CK, reason about which defensive controls apply, and then state the four mitigation identifiers as a comma-separated list.
+Question: {ap:attack-pattern.description}
+Answer: Effective controls against {ap.name} include {coa1:ap.mitigates<course-of-action.mitre_id} ({coa1.name}), which {coa1.description}; {coa2:ap.mitigates<course-of-action.mitre_id} ({coa2.name}), which {coa2.description}; {coa3:ap.mitigates<course-of-action.mitre_id} ({coa3.name}), which {coa3.description}; and {coa4:ap.mitigates<course-of-action.mitre_id} ({coa4.name}), which {coa4.description}. Therefore, the recommended mitigations are {coa1.mitre_id}, {coa2.mitre_id}, {coa3.mitre_id}, {coa4.mitre_id}.
+{force coa1.mitre_id != coa2.mitre_id}
+{force coa1.mitre_id != coa3.mitre_id}
+{force coa1.mitre_id != coa4.mitre_id}
+{force coa2.mitre_id != coa3.mitre_id}
+{force coa2.mitre_id != coa4.mitre_id}
+{force coa3.mitre_id != coa4.mitre_id}
+Count: 650
+
+AB.RMS.3c Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend exactly five MITRE ATT&CK mitigation identifiers (format: M10xx) that together address the adversary behaviour. Consult MITRE ATT&CK, reason about which defensive controls apply, and then state the five mitigation identifiers as a comma-separated list.
+Question: {ap:attack-pattern.description}
+Answer: Effective controls against {ap.name} include {coa1:ap.mitigates<course-of-action.mitre_id} ({coa1.name}), which {coa1.description}; {coa2:ap.mitigates<course-of-action.mitre_id} ({coa2.name}), which {coa2.description}; {coa3:ap.mitigates<course-of-action.mitre_id} ({coa3.name}), which {coa3.description}; {coa4:ap.mitigates<course-of-action.mitre_id} ({coa4.name}), which {coa4.description}; and {coa5:ap.mitigates<course-of-action.mitre_id} ({coa5.name}), which {coa5.description}. Therefore, the recommended mitigations are {coa1.mitre_id}, {coa2.mitre_id}, {coa3.mitre_id}, {coa4.mitre_id}, {coa5.mitre_id}.
+{force coa1.mitre_id != coa2.mitre_id}
+{force coa1.mitre_id != coa3.mitre_id}
+{force coa1.mitre_id != coa4.mitre_id}
+{force coa1.mitre_id != coa5.mitre_id}
+{force coa2.mitre_id != coa3.mitre_id}
+{force coa2.mitre_id != coa4.mitre_id}
+{force coa2.mitre_id != coa5.mitre_id}
+{force coa3.mitre_id != coa4.mitre_id}
+{force coa3.mitre_id != coa5.mitre_id}
+{force coa4.mitre_id != coa5.mitre_id}
+Count: 650
+
+AB.RMS.4 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center consulting the MITRE ATT&CK mitigation catalog. Given a MITRE ATT&CK mitigation identifier, state its name and description.
+Question: What is MITRE ATT&CK mitigation {coa:course-of-action.mitre_id[_~'M1']}?
+Answer: MITRE ATT&CK mitigation {coa.mitre_id} is "{coa.name}". {coa.description}
+
+AB.RMS.5 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center consulting the MITRE ATT&CK mitigation catalog. Given the name of a MITRE ATT&CK mitigation, state its identifier and description.
+Question: <*{coa:course-of-action.mitre_id[_~'M1']}*>Which MITRE ATT&CK mitigation identifier corresponds to "{coa.name}"?
+Answer: The mitigation "{coa.name}" has MITRE ATT&CK identifier {coa.mitre_id}: {coa.description}. Therefore, the mitigation identifier is {coa.mitre_id}.
+
+AB.RMS.6 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center auditing a proposed list of MITRE ATT&CK mitigations for a specific technique. Analyse the technique below and the candidate mitigations, identify the single mitigation MITRE ATT&CK does NOT recommend for this technique, and state its identifier.
+Question: For technique {ap:attack-pattern.mitre_id} ({ap.name}) -- {ap.description} -- which of the following mitigations is NOT recommended by MITRE ATT&CK: {negcoa1:course-of-action.mitre_id[_~'M1']} ({negcoa1.name}), {coa1:ap.mitigates<course-of-action.mitre_id} ({coa1.name}), {coa2:ap.mitigates<course-of-action.mitre_id} ({coa2.name})?
+Answer: MITRE ATT&CK recommends {coa1.mitre_id} ({coa1.name}) and {coa2.mitre_id} ({coa2.name}) as controls for {ap.name}. {negcoa1.mitre_id} ({negcoa1.name}) is not in the recommended set for this technique. Therefore, the mitigation that is NOT recommended is {negcoa1.mitre_id}.
+{force negcoa1.mitre_id != coa1.mitre_id}
+{force negcoa1.mitre_id != coa2.mitre_id}
+{force coa1.mitre_id != coa2.mitre_id}
+Count: 650
