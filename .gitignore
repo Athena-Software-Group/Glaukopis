@@ -418,6 +418,10 @@ myenv/
 __pycache__/
 .cache/
 
+SFT/test/responses
+SFT/test/responses/
+SFT/test/responses/*
+
 # Athena Bench scrape / processing outputs.
 # These were previously tracked as Git LFS pointer files but most of the
 # backing LFS objects are missing from the server (404 on 'git lfs pull').
@@ -435,8 +439,6 @@ tmpl_gen/utils/_db_schema.json
 
 tmpl_gen/data_generation/
 
-SFT/test/responses/*
-
 *.safetensors
 
 SFT/merged/
@@ -451,13 +453,3 @@ SFT/data/
 # CyberSOCEval (CrowdStrike + Meta) data: cloned repo + downloaded PDFs +
 # extracted text files. Regenerable via SFT/test/utils/fetch_cybersoceval_data.py.
 SFT/test/benchmark_data/cybersoceval/
-SFT/test/responses/deepseek-ai_DeepSeek-V3.2-Exp/athena-rms/athena-rms_all_v1_deepseek-ai_DeepSeek-V3.2-Exp_scored.jsonl
-SFT/test/responses/deepseek-ai_DeepSeek-V3.2-Exp/athena-rms/athena-rms_all_v1_deepseek-ai_DeepSeek-V3.2-Exp_scored.jsonl
-SFT/test/responses/fdtn-ai_Foundation-Sec-8B-Reasoning/athena-rms/athena-rms_all_v1_fdtn-ai_Foundation-Sec-8B-Reasoning_scored.jsonl
-SFT/test/responses/gpt-4-turbo-2024-04-09/athena-rms/athena-rms_all_v1_gpt-4-turbo-2024-04-09_scored.jsonl
-SFT/test/responses/gpt-5.2/athena-rms/athena-rms_all_v1_gpt-5.2_scored.jsonl
-SFT/test/responses/gpt-5.2-high/athena-rms/athena-rms_all_v1_gpt-5.2-high_scored.jsonl
-SFT/test/responses/meta-llama_Meta-Llama-3-70B-Instruct/athena-rms/athena-rms_all_v1_meta-llama_Meta-Llama-3-70B-Instruct_scored.jsonl
-SFT/test/responses/openai_gpt-oss-20b/athena-rms/athena-rms_all_v1_openai_gpt-oss-20b_scored.jsonl
-SFT/test/responses/Qwen-2.5-14b/athena-rms/athena-rms_all_v1_Qwen_Qwen2.5-14B-Instruct_scored.jsonl
-SFT/test/responses/Qwen_Qwen3.5-9B/athena-rms/athena-rms_all_v1_Qwen_Qwen3.5-9B_scored.jsonl
