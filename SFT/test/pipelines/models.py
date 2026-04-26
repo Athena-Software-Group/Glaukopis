@@ -62,6 +62,7 @@ model_mapping = {
     'athena-cti-sft-llama31-8b-abaligned-v4': 'asg-ai/athena-cti-sft-llama31-8b-abaligned-v4',
     'athena-cti-sft-llama31-8b-abaligned-v5': 'asg-ai/athena-cti-sft-llama31-8b-abaligned-v5',
     'athena-cti-sft-llama31-8b-abaligned-v5-lora': 'asg-ai/athena-cti-sft-llama31-8b-abaligned-v5-lora',
+    'athena-cti-sft-llama31-8b-abaligned-v6': 'asg-ai/athena-cti-sft-llama31-8b-abaligned-v6',
     #'llama-4-17b': 'meta-llama/Llama-4-Maverick-17B-128E-Instruct',
     'minerva' : "xashru/minerva_v0",
     'llama3.3-70b': 'meta-llama/Llama-3.3-70B-Instruct',
@@ -105,6 +106,7 @@ model_mapping = {
     'athena-cti-sft-llama31-8b-abaligned-v4-vllm': 'asg-ai/athena-cti-sft-llama31-8b-abaligned-v4',
     'athena-cti-sft-llama31-8b-abaligned-v5-vllm': 'asg-ai/athena-cti-sft-llama31-8b-abaligned-v5',
     'athena-cti-sft-llama31-8b-abaligned-v5-lora-vllm': 'asg-ai/athena-cti-sft-llama31-8b-abaligned-v5-lora',
+    'athena-cti-sft-llama31-8b-abaligned-v6-vllm': 'asg-ai/athena-cti-sft-llama31-8b-abaligned-v6',
     'athena-cti-sft-llama31-8b-abaligned-lora-vllm': 'asg-ai/athena-cti-sft-llama31-8b-abaligned-lora',
 }
 
