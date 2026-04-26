@@ -89,6 +89,7 @@ model_mapping = {
     'llama3.3-70b-hf':     'meta-llama/Llama-3.3-70B-Instruct',
     'deepseek-v3.2-exp-hf': 'deepseek-ai/DeepSeek-V3.2-Exp',
     'kimi-k2.6-hf':        'moonshotai/Kimi-K2.6',
+    'gemma-4-31b-hf':      'google/gemma-4-31B-it',
     'athena-cti-cpt-llama31-8b-v1': 'asg-ai/athena-cti-cpt-llama31-8b-v1',
     'llama-3-8b-base': 'meta-llama/Llama-3.1-8B',
 
