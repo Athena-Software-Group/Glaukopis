@@ -36,6 +36,20 @@ PRICING_PER_1K = {
             "output": [(0, 200_000, 0.01200), (200_001, float("inf"), 0.01800)],
             "grounding_per_1k": 35.0,
     },
+    # GeminiModel.generate passes the resolved model id (with -preview suffix)
+    # to add_tokens, not the alias key, so duplicate the rate cards under the
+    # resolved id as well. Keeping both shapes avoids breaking existing
+    # checkpoint data keyed by the alias form.
+    "gemini-3-pro-preview": {
+            "input": [(0, 200_000, 0.00200), (200_001, float("inf"), 0.00400)],
+            "output": [(0, 200_000, 0.01200), (200_001, float("inf"), 0.01800)],
+            "grounding_per_1k": 35.0,
+    },
+    "gemini-3.1-pro-preview": {
+            "input": [(0, 200_000, 0.00200), (200_001, float("inf"), 0.00400)],
+            "output": [(0, 200_000, 0.01200), (200_001, float("inf"), 0.01800)],
+            "grounding_per_1k": 35.0,
+    },
     # OpenAI GPT models
     "gpt4": {
             "input": [(0, float("inf"), 0.01)],       # $10 per 1M tokens
