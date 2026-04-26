@@ -367,15 +367,22 @@ class HFInferenceModel(BaseModel):
             messages.append({"role": "system", "content": sys_prompt})
         messages.append({"role": "user", "content": question})
 
-        # Per-model chat-template kwargs. Kimi-K2.x ships with thinking mode
-        # on by default; in that mode the OpenAI-compat path on HF Router
-        # tends to leak the (truncated) <think> trace into `content` instead
-        # of returning the final answer, so MCQ accuracy collapses to ~16%.
-        # enable_thinking=False is honored by the upstream chat template and
-        # produces a single direct answer in `content`.
+        # Per-model extra_body knobs. Kimi-K2.6 ships with thinking mode on by
+        # default; in that mode the OpenAI-compat path on HF Router leaks the
+        # (truncated) <think> trace into `content` instead of returning the
+        # final answer, so MCQ accuracy collapses to ~16%. Moonshot's documented
+        # API contract (mirrored by Novita and the Moonshot direct endpoint)
+        # accepts a top-level `thinking` field; vLLM/SGLang use the
+        # `chat_template_kwargs.enable_thinking` shape instead. We set both so
+        # the request works regardless of which provider HF Router auto-routes
+        # to. Providers that don't recognize the foreign field tend to ignore
+        # it; the Together/Fireworks-flavored OpenAI validator that earlier
+        # rejected `chat_template_kwargs` does not serve K2.6 in practice
+        # (K2-Thinking is dedicated-deploy on those), so the `thinking` shape
+        # is the one that matters in routing.
         extra_body = {}
         if "kimi-k2" in self.hf_model_id.lower():
-            extra_body["chat_template_kwargs"] = {"enable_thinking": False}
+            extra_body["thinking"] = {"type": "disabled"}
 
         last_err = None
         for attempt in range(5):
