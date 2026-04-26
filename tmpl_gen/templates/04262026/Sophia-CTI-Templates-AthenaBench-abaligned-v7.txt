@@ -1,0 +1,243 @@
+AthenaBench-Aligned CTI Templates -- RMS Addendum v7 (companion to ift_data_2026_04_24_v5)
+
+Revision 04262026-RMS-addendum-v7: pure RMS-only addendum intended to be
+trained jointly with ift_data_2026_04_24_v5. Replaces the v6 RMS-addendum
+slate (tmpl_gen/templates/04252026/Sophia-CTI-Templates-AthenaBench-abaligned-v6.txt)
+after a v6 post-mortem identified three structural bugs that drove the
+trained model to a worse-than-baseline athena-rms result:
+
+  (1) Output truncation. v6 inlines the full {coa.description} per
+      mitigation in the Answer body. At N=4-5 mitigations the output
+      reaches ~1500 chars / ~400-700 tokens. Combined with the input
+      attack-pattern description (~300-1000 tokens) and the v6
+      launcher's --cutoff 2048, ~80%+ of training rows are
+      right-truncated mid-explanation. The model never sees the
+      terminal sentence and never learns where to stop.
+
+  (2) Wrong terminator format. The AthenaBench RMS prompt mandates a
+      final line beginning with "Answer:" containing only the
+      mitigation IDs:
+          "The final line of your response must begin with 'Answer:'
+           and contain only the mitigation IDs ..."
+      v6 outputs end with "Therefore, the recommended mitigations are
+      M####, M####." and never emit an "Answer:" line. The trained
+      model inherits this format and emits zero compliant responses.
+
+  (3) Cardinality coverage gap. v6 ships templates for N=3,4,5 only.
+      The benchmark distribution is N=1..10 with the heaviest mass at
+      N=1 (39%) and N=2 (24%) -- v6 does not train on either. The
+      trained model collapses to emitting exactly one M-ID per row in
+      98.4% of rows.
+
+What v7 changes vs v6:
+
+  - Variable-N coverage spans N=1..8 (one template per N), matching the
+    benchmark prompt distribution. N=9, N=10 omitted (<2% of benchmark
+    each, Neo4j-cardinality-limited).
+  - Each per-mitigation clause is reduced to "{coa.mitre_id} ({coa.name})"
+    with no inline {coa.description}. Estimated output length at N=8 is
+    <600 chars / ~150 tokens. Combined with the largest observed input
+    (~1000 tokens) the full row fits comfortably under cutoff_len=4096
+    (the v7 launcher bumps from 2048 to 4096 for headroom).
+  - Every variable-N template terminates with a literal "Answer: M####,
+    M####, ..." line. This requires the lazy-quantifier fix in
+    tmpl_gen/scripts/to_alpaca.py (greedy match would absorb the
+    reasoning body up to the trailing "Answer:" marker and discard it).
+  - Instruction text is brought verbatim into alignment with the
+    benchmark prompt language ("Return exactly N mitigation IDs as a
+    comma-separated list. Briefly justify your choice. The final line
+    of your response must begin with 'Answer:' ...").
+  - RMS.4/RMS.5 catalog flashcards retained from v6 unchanged
+    (single-mitigation flashcards do not need the Answer-line
+    terminator and are scored on substring presence of the M-ID).
+  - RMS.6 discriminative negative retained but extended with an
+    "Answer: M####" terminator for format consistency with the
+    variable-N templates.
+
+Combined-training intent (continuation of Option B from the v0 -> v6 plan):
+
+  - Training command consumes --dataset ift_data_2026_04_24_v5,
+    ift_data_2026_04_26_abaligned_v7, alpaca_en_demo
+  - v5 contributes 170,500 rows of broad SFT coverage including 1,000
+    legacy v5-format RMS rows (AB.RMS.1 N=2 + AB.RMS.2 N=1, no
+    Answer-line). v5's RMS contribution becomes a small fraction of
+    total RMS gradient signal (~12-15%) once v7 lands ~7-9k new rows.
+  - v7 contributes ~7-9k RMS-specific rows in the new format. Combined
+    RMS share rises to ~5-6% of corpus.
+  - Format conflict (v5 no-Answer-line vs v7 with-Answer-line) is
+    accepted as an empirically minor risk; the dominant gradient is
+    v7-format.
+
+Coverage by N (target counts; Neo4j cardinality may cap N>=4):
+
+    N=1 : 1500   (39% of benchmark mass; closes single-ID cardinality gap)
+    N=2 : 1500   (24% of benchmark mass)
+    N=3 : 1500   (16% of benchmark mass)
+    N=4 : 1500   (10% of benchmark mass; Neo4j-capped)
+    N=5 : 1000
+    N=6 :  500
+    N=7 :  300
+    N=8 :  200
+    Total target ~ 8000 RMS scenario rows + ~88 flashcards + ~2000 negatives ~= 10k rows
+
+Section 4 - AB.RMS.* Risk Mitigation Strategy (athena-rms)
+
+AB.RMS.3a Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend the most appropriate MITRE ATT&CK mitigation ID (format: M10xx) that addresses the scenario. Return exactly 1 mitigation ID. Briefly justify your choice. Only ATT&CK mitigations (M10xx) -- do not output techniques (T####), groups, or generic advice. The final line of your response must begin with "Answer:" and contain only the mitigation ID, with no extra commentary.
+Question: {ap:attack-pattern.description}
+Answer: To address {ap.name}, the most directly applicable MITRE ATT&CK mitigation is {coa1:ap.mitigates<course-of-action.mitre_id} ({coa1.name}).
+
+Answer: {coa1.mitre_id}
+Count: 1500
+
+AB.RMS.3b Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend the most appropriate MITRE ATT&CK mitigation IDs (format: M10xx) that address the scenario. Return exactly 2 mitigation IDs as a comma-separated list. Briefly justify your choice. Only ATT&CK mitigations (M10xx) -- do not output techniques (T####), groups, or generic advice. The final line of your response must begin with "Answer:" and contain only the mitigation IDs, with no extra commentary.
+Question: {ap:attack-pattern.description}
+Answer: To address {ap.name}, the applicable MITRE ATT&CK mitigations are {coa1:ap.mitigates<course-of-action.mitre_id} ({coa1.name}) and {coa2:ap.mitigates<course-of-action.mitre_id} ({coa2.name}).
+
+Answer: {coa1.mitre_id}, {coa2.mitre_id}
+{force coa1.mitre_id != coa2.mitre_id}
+Count: 1500
+
+AB.RMS.3c Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend the most appropriate MITRE ATT&CK mitigation IDs (format: M10xx) that address the scenario. Return exactly 3 mitigation IDs as a comma-separated list. Briefly justify your choice. Only ATT&CK mitigations (M10xx) -- do not output techniques (T####), groups, or generic advice. The final line of your response must begin with "Answer:" and contain only the mitigation IDs, with no extra commentary.
+Question: {ap:attack-pattern.description}
+Answer: To address {ap.name}, the applicable MITRE ATT&CK mitigations are {coa1:ap.mitigates<course-of-action.mitre_id} ({coa1.name}), {coa2:ap.mitigates<course-of-action.mitre_id} ({coa2.name}), and {coa3:ap.mitigates<course-of-action.mitre_id} ({coa3.name}).
+
+Answer: {coa1.mitre_id}, {coa2.mitre_id}, {coa3.mitre_id}
+{force coa1.mitre_id != coa2.mitre_id}
+{force coa1.mitre_id != coa3.mitre_id}
+{force coa2.mitre_id != coa3.mitre_id}
+Count: 1500
+
+
+AB.RMS.3d Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend the most appropriate MITRE ATT&CK mitigation IDs (format: M10xx) that address the scenario. Return exactly 4 mitigation IDs as a comma-separated list. Briefly justify your choice. Only ATT&CK mitigations (M10xx) -- do not output techniques (T####), groups, or generic advice. The final line of your response must begin with "Answer:" and contain only the mitigation IDs, with no extra commentary.
+Question: {ap:attack-pattern.description}
+Answer: To address {ap.name}, the applicable MITRE ATT&CK mitigations are {coa1:ap.mitigates<course-of-action.mitre_id} ({coa1.name}), {coa2:ap.mitigates<course-of-action.mitre_id} ({coa2.name}), {coa3:ap.mitigates<course-of-action.mitre_id} ({coa3.name}), and {coa4:ap.mitigates<course-of-action.mitre_id} ({coa4.name}).
+
+Answer: {coa1.mitre_id}, {coa2.mitre_id}, {coa3.mitre_id}, {coa4.mitre_id}
+{force coa1.mitre_id != coa2.mitre_id}
+{force coa1.mitre_id != coa3.mitre_id}
+{force coa1.mitre_id != coa4.mitre_id}
+{force coa2.mitre_id != coa3.mitre_id}
+{force coa2.mitre_id != coa4.mitre_id}
+{force coa3.mitre_id != coa4.mitre_id}
+Count: 1500
+
+AB.RMS.3e Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend the most appropriate MITRE ATT&CK mitigation IDs (format: M10xx) that address the scenario. Return exactly 5 mitigation IDs as a comma-separated list. Briefly justify your choice. Only ATT&CK mitigations (M10xx) -- do not output techniques (T####), groups, or generic advice. The final line of your response must begin with "Answer:" and contain only the mitigation IDs, with no extra commentary.
+Question: {ap:attack-pattern.description}
+Answer: To address {ap.name}, the applicable MITRE ATT&CK mitigations are {coa1:ap.mitigates<course-of-action.mitre_id} ({coa1.name}), {coa2:ap.mitigates<course-of-action.mitre_id} ({coa2.name}), {coa3:ap.mitigates<course-of-action.mitre_id} ({coa3.name}), {coa4:ap.mitigates<course-of-action.mitre_id} ({coa4.name}), and {coa5:ap.mitigates<course-of-action.mitre_id} ({coa5.name}).
+
+Answer: {coa1.mitre_id}, {coa2.mitre_id}, {coa3.mitre_id}, {coa4.mitre_id}, {coa5.mitre_id}
+{force coa1.mitre_id != coa2.mitre_id}
+{force coa1.mitre_id != coa3.mitre_id}
+{force coa1.mitre_id != coa4.mitre_id}
+{force coa1.mitre_id != coa5.mitre_id}
+{force coa2.mitre_id != coa3.mitre_id}
+{force coa2.mitre_id != coa4.mitre_id}
+{force coa2.mitre_id != coa5.mitre_id}
+{force coa3.mitre_id != coa4.mitre_id}
+{force coa3.mitre_id != coa5.mitre_id}
+{force coa4.mitre_id != coa5.mitre_id}
+Count: 1000
+
+AB.RMS.3f Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend the most appropriate MITRE ATT&CK mitigation IDs (format: M10xx) that address the scenario. Return exactly 6 mitigation IDs as a comma-separated list. Briefly justify your choice. Only ATT&CK mitigations (M10xx) -- do not output techniques (T####), groups, or generic advice. The final line of your response must begin with "Answer:" and contain only the mitigation IDs, with no extra commentary.
+Question: {ap:attack-pattern.description}
+Answer: To address {ap.name}, the applicable MITRE ATT&CK mitigations are {coa1:ap.mitigates<course-of-action.mitre_id} ({coa1.name}), {coa2:ap.mitigates<course-of-action.mitre_id} ({coa2.name}), {coa3:ap.mitigates<course-of-action.mitre_id} ({coa3.name}), {coa4:ap.mitigates<course-of-action.mitre_id} ({coa4.name}), {coa5:ap.mitigates<course-of-action.mitre_id} ({coa5.name}), and {coa6:ap.mitigates<course-of-action.mitre_id} ({coa6.name}).
+
+Answer: {coa1.mitre_id}, {coa2.mitre_id}, {coa3.mitre_id}, {coa4.mitre_id}, {coa5.mitre_id}, {coa6.mitre_id}
+{force coa1.mitre_id != coa2.mitre_id}
+{force coa1.mitre_id != coa3.mitre_id}
+{force coa1.mitre_id != coa4.mitre_id}
+{force coa1.mitre_id != coa5.mitre_id}
+{force coa1.mitre_id != coa6.mitre_id}
+{force coa2.mitre_id != coa3.mitre_id}
+{force coa2.mitre_id != coa4.mitre_id}
+{force coa2.mitre_id != coa5.mitre_id}
+{force coa2.mitre_id != coa6.mitre_id}
+{force coa3.mitre_id != coa4.mitre_id}
+{force coa3.mitre_id != coa5.mitre_id}
+{force coa3.mitre_id != coa6.mitre_id}
+{force coa4.mitre_id != coa5.mitre_id}
+{force coa4.mitre_id != coa6.mitre_id}
+{force coa5.mitre_id != coa6.mitre_id}
+Count: 500
+
+
+AB.RMS.3g Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend the most appropriate MITRE ATT&CK mitigation IDs (format: M10xx) that address the scenario. Return exactly 7 mitigation IDs as a comma-separated list. Briefly justify your choice. Only ATT&CK mitigations (M10xx) -- do not output techniques (T####), groups, or generic advice. The final line of your response must begin with "Answer:" and contain only the mitigation IDs, with no extra commentary.
+Question: {ap:attack-pattern.description}
+Answer: To address {ap.name}, the applicable MITRE ATT&CK mitigations are {coa1:ap.mitigates<course-of-action.mitre_id} ({coa1.name}), {coa2:ap.mitigates<course-of-action.mitre_id} ({coa2.name}), {coa3:ap.mitigates<course-of-action.mitre_id} ({coa3.name}), {coa4:ap.mitigates<course-of-action.mitre_id} ({coa4.name}), {coa5:ap.mitigates<course-of-action.mitre_id} ({coa5.name}), {coa6:ap.mitigates<course-of-action.mitre_id} ({coa6.name}), and {coa7:ap.mitigates<course-of-action.mitre_id} ({coa7.name}).
+
+Answer: {coa1.mitre_id}, {coa2.mitre_id}, {coa3.mitre_id}, {coa4.mitre_id}, {coa5.mitre_id}, {coa6.mitre_id}, {coa7.mitre_id}
+{force coa1.mitre_id != coa2.mitre_id}
+{force coa1.mitre_id != coa3.mitre_id}
+{force coa1.mitre_id != coa4.mitre_id}
+{force coa1.mitre_id != coa5.mitre_id}
+{force coa1.mitre_id != coa6.mitre_id}
+{force coa1.mitre_id != coa7.mitre_id}
+{force coa2.mitre_id != coa3.mitre_id}
+{force coa2.mitre_id != coa4.mitre_id}
+{force coa2.mitre_id != coa5.mitre_id}
+{force coa2.mitre_id != coa6.mitre_id}
+{force coa2.mitre_id != coa7.mitre_id}
+{force coa3.mitre_id != coa4.mitre_id}
+{force coa3.mitre_id != coa5.mitre_id}
+{force coa3.mitre_id != coa6.mitre_id}
+{force coa3.mitre_id != coa7.mitre_id}
+{force coa4.mitre_id != coa5.mitre_id}
+{force coa4.mitre_id != coa6.mitre_id}
+{force coa4.mitre_id != coa7.mitre_id}
+{force coa5.mitre_id != coa6.mitre_id}
+{force coa5.mitre_id != coa7.mitre_id}
+{force coa6.mitre_id != coa7.mitre_id}
+Count: 300
+
+AB.RMS.3h Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend the most appropriate MITRE ATT&CK mitigation IDs (format: M10xx) that address the scenario. Return exactly 8 mitigation IDs as a comma-separated list. Briefly justify your choice. Only ATT&CK mitigations (M10xx) -- do not output techniques (T####), groups, or generic advice. The final line of your response must begin with "Answer:" and contain only the mitigation IDs, with no extra commentary.
+Question: {ap:attack-pattern.description}
+Answer: To address {ap.name}, the applicable MITRE ATT&CK mitigations are {coa1:ap.mitigates<course-of-action.mitre_id} ({coa1.name}), {coa2:ap.mitigates<course-of-action.mitre_id} ({coa2.name}), {coa3:ap.mitigates<course-of-action.mitre_id} ({coa3.name}), {coa4:ap.mitigates<course-of-action.mitre_id} ({coa4.name}), {coa5:ap.mitigates<course-of-action.mitre_id} ({coa5.name}), {coa6:ap.mitigates<course-of-action.mitre_id} ({coa6.name}), {coa7:ap.mitigates<course-of-action.mitre_id} ({coa7.name}), and {coa8:ap.mitigates<course-of-action.mitre_id} ({coa8.name}).
+
+Answer: {coa1.mitre_id}, {coa2.mitre_id}, {coa3.mitre_id}, {coa4.mitre_id}, {coa5.mitre_id}, {coa6.mitre_id}, {coa7.mitre_id}, {coa8.mitre_id}
+{force coa1.mitre_id != coa2.mitre_id}
+{force coa1.mitre_id != coa3.mitre_id}
+{force coa1.mitre_id != coa4.mitre_id}
+{force coa1.mitre_id != coa5.mitre_id}
+{force coa1.mitre_id != coa6.mitre_id}
+{force coa1.mitre_id != coa7.mitre_id}
+{force coa1.mitre_id != coa8.mitre_id}
+{force coa2.mitre_id != coa3.mitre_id}
+{force coa2.mitre_id != coa4.mitre_id}
+{force coa2.mitre_id != coa5.mitre_id}
+{force coa2.mitre_id != coa6.mitre_id}
+{force coa2.mitre_id != coa7.mitre_id}
+{force coa2.mitre_id != coa8.mitre_id}
+{force coa3.mitre_id != coa4.mitre_id}
+{force coa3.mitre_id != coa5.mitre_id}
+{force coa3.mitre_id != coa6.mitre_id}
+{force coa3.mitre_id != coa7.mitre_id}
+{force coa3.mitre_id != coa8.mitre_id}
+{force coa4.mitre_id != coa5.mitre_id}
+{force coa4.mitre_id != coa6.mitre_id}
+{force coa4.mitre_id != coa7.mitre_id}
+{force coa4.mitre_id != coa8.mitre_id}
+{force coa5.mitre_id != coa6.mitre_id}
+{force coa5.mitre_id != coa7.mitre_id}
+{force coa5.mitre_id != coa8.mitre_id}
+{force coa6.mitre_id != coa7.mitre_id}
+{force coa6.mitre_id != coa8.mitre_id}
+{force coa7.mitre_id != coa8.mitre_id}
+Count: 200
+
+AB.RMS.4 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center consulting the MITRE ATT&CK mitigation catalog. Given a MITRE ATT&CK mitigation identifier, state its name and description.
+Question: What is MITRE ATT&CK mitigation {coa:course-of-action.mitre_id[_~'M1']}?
+Answer: MITRE ATT&CK mitigation {coa.mitre_id} is "{coa.name}". {coa.description}
+
+AB.RMS.5 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center consulting the MITRE ATT&CK mitigation catalog. Given the name of a MITRE ATT&CK mitigation, state its identifier and description.
+Question: <*{coa:course-of-action.mitre_id[_~'M1']}*>Which MITRE ATT&CK mitigation identifier corresponds to "{coa.name}"?
+Answer: The mitigation "{coa.name}" has MITRE ATT&CK identifier {coa.mitre_id}: {coa.description}. Therefore, the mitigation identifier is {coa.mitre_id}.
+
+AB.RMS.6 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center auditing a proposed list of MITRE ATT&CK mitigations for a specific technique. Analyse the technique below and the candidate mitigations, identify the single mitigation MITRE ATT&CK does NOT recommend for this technique, and state its identifier. The final line of your response must begin with "Answer:" and contain only the mitigation ID, with no extra commentary.
+Question: For technique {ap:attack-pattern.mitre_id} ({ap.name}) -- {ap.description} -- which of the following mitigations is NOT recommended by MITRE ATT&CK: {negcoa1:course-of-action.mitre_id[_~'M1']} ({negcoa1.name}), {coa1:ap.mitigates<course-of-action.mitre_id} ({coa1.name}), {coa2:ap.mitigates<course-of-action.mitre_id} ({coa2.name})?
+Answer: MITRE ATT&CK recommends {coa1.mitre_id} ({coa1.name}) and {coa2.mitre_id} ({coa2.name}) as controls for {ap.name}. {negcoa1.mitre_id} ({negcoa1.name}) is not in the recommended set for this technique.
+
+Answer: {negcoa1.mitre_id}
+{force negcoa1.mitre_id != coa1.mitre_id}
+{force negcoa1.mitre_id != coa2.mitre_id}
+{force coa1.mitre_id != coa2.mitre_id}
+Count: 2000

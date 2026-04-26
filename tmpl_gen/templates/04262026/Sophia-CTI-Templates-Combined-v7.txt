@@ -1,0 +1,1594 @@
+================================================================================
+Sophia CTI Templates -- Combined v7 (single-file corpus for athena-cti-sft v7)
+================================================================================
+
+Companion to:  SFT/data/ift_data_2026_04_26_combined_v7.json   (180,533 rows)
+Trainer:       SFT/autotrain/run_abaligned_sft_v7.sh
+Base model:    meta-llama/Llama-3.1-8B-Instruct
+Target tasks:  AthenaBench (athena-rcm, athena-vsp, athena-ate, athena-taa,
+               athena-rms) plus broad CTI knowledge for transfer
+
+This file is a single-source consolidation of every template that was used to
+generate the v7 training corpus. The corpus combines the 174 v5 templates
+(broad CTI coverage) with the 11 v7 RMS-only addendum templates that fix the
+v6 RMS regression. Section A documents the design history; sections B-F are
+the verbatim source template files in their generation order.
+
+================================================================================
+SECTION A. Design history and rationale
+================================================================================
+
+1. The problem we are training for
+----------------------------------
+AthenaBench (https://athenabench.org) is a five-task CTI benchmark with a
+small validation slice (~500 rows per task). The five tasks and their reading:
+
+  athena-rcm  Reverse Campaign Mapping     CVE description -> CWE id
+  athena-vsp  Vuln Scoring Profile         CVE description -> CVSS v3.1 vector
+  athena-ate  ATT&CK Technique Extraction  threat report -> T#### technique ids
+  athena-taa  Threat Actor Attribution     report fragment -> intrusion-set
+  athena-rms  Risk Mitigation Strategy     attack scenario -> N x M#### ids
+
+The Llama-3.1-8B-Instruct base scores poorly on all five out-of-the-box
+(athena-rms baseline F1 = 5.88%). Improving these scores via full-parameter
+SFT on a curated synthetic CTI corpus is the v7 program goal.
+
+2. Corpus build pipeline
+------------------------
+Templates in this file are processed by tmpl_gen (see tmpl_gen/README.md and
+tmpl_gen/templates/README.md). The pipeline is:
+
+  .txt template      -> tmpl_docx2json.py        -> templates.json
+  templates.json     -> iftgen.py + Neo4j        -> per-template triples
+  per-tmpl triples   -> to_alpaca.py             -> Alpaca-format JSON
+
+The Neo4j graph contains the MITRE ATT&CK, CWE, CVE, CAPEC, KEV, EPSS, and
+ENGAGE knowledge bases plus several derived nodes. Each template selects a
+subgraph pattern and a generation cardinality (Count: directive); iftgen
+walks the graph and emits one row per match (capped by Count: or by
+--count_max from the launcher).
+
+3. Template family taxonomy
+---------------------------
+Every shortname in the v7 corpus belongs to one of the families below. The
+families are kept stable across v0..v7 so that all SFT runs share a vocabulary
+of skills.
+
+  AB.*       AthenaBench-aligned templates (one or more per benchmark task)
+             AB.RCM, AB.VSP, AB.ATE, AB.TAA, AB.RMS, AB.MCQ
+  M.*        ATT&CK core (technique, tactic, campaign, malware, mitigation)
+  A.*        CAPEC attack patterns + CWE/CVE/ATT&CK bridges
+  W.*        CWE weakness analysis (root cause, detection, mitigation)
+  V.*        CVE interpretation + CVSS triage
+  S.*        CISA KEV operational urgency + remediation
+  P.*        FIRST EPSS exploit-likelihood prioritization
+  E.*        MITRE ENGAGE active-defense planning
+  X.*        Multi-source cross-correlation chains (ATT&CK<->CAPEC<->CWE<->CVE
+             <->KEV<->EPSS<->ENGAGE) -- the heaviest learners of joint reasoning
+  Q.*        Question-only single-graph "quiz" templates (general MITRE QA)
+  CL.*       Cleartext / disambiguation aids for the multi-source families
+  SU.*       Summary aids that walk a single source from one entrypoint
+  YN.*       Yes/no discriminative templates (positive and negative variants)
+  POC.*      Proof-of-Concept exploit context (atomic-red-team-style)
+  EDB.*      Exploit-DB record interpretation
+  SR.*       Sigma rule / signature reasoning
+  V.CPE.*    CVE -> CPE / vendor-product correlation
+  AB.RMS.3*  v7 variable-N RMS scenarios (N=1..8) -- the cardinality fix
+  AB.RMS.4   v7 mitigation catalog flashcard (ID -> name)
+  AB.RMS.5   v7 mitigation catalog flashcard (name -> ID)
+  AB.RMS.6   v7 negative-discrimination RMS template
+
+4. Lineage v0 -> v7 (what failed at each step and why we kept iterating)
+------------------------------------------------------------------------
+v0   baseline, no SFT. athena-rms F1 = 5.88%. Loss path: model has the right
+     M-IDs in distribution but wrong cardinality and wrong format.
+
+v1-v3 incremental broad-CTI SFT runs. Improved athena-rcm/vsp/ate/taa, did not
+     consistently improve athena-rms; some runs regressed it slightly.
+
+v4   first AthenaBench-aligned (AB.*) addendum. AB.RCM and AB.VSP gained 5-15
+     pp; AB.RMS unchanged because the addendum only had AB.RMS.1 (single-id)
+     and AB.RMS.2 (pair) templates.
+
+v5   broad-coverage release used as the trunk for v6/v7. 170,500 rows over 174
+     templates. AB.* coverage expanded to 25 templates, X.*/YN.*/Q.* expanded
+     to cover detection/exploit families. v5 is the "everything except an
+     RMS-specific fix" baseline this combined corpus rests on.
+
+v6   first attempted athena-rms fix. Added an RMS-only addendum (RMS.3 N=3-5,
+     RMS.4/5 catalog flashcards, RMS.6 negative). Result: F1 dropped from
+     5.88% to 0.00%. Post-mortem identified three structural bugs:
+       (1) Output truncation: full {coa.description} per mitigation pushed
+           N=4-5 outputs to ~1500 chars. Combined with the 04022026.txt
+           inputs (~300-1000 tokens) and the v6 launcher's --cutoff 2048,
+           ~80%+ of training rows were right-truncated mid-explanation.
+       (2) Wrong terminator: the AthenaBench RMS prompt mandates a final
+           line beginning with "Answer:" containing only the M-IDs. v6
+           outputs ended with "Therefore, the recommended ..." and never
+           emitted an Answer: line; the trained model emitted zero
+           compliant responses.
+       (3) Cardinality gap: v6 trained N=3,4,5 only. Benchmark distribution
+           peaks at N=1 (39%) and N=2 (24%) -- v6 trained on neither. The
+           trained model collapsed to emitting exactly one M-ID in 98.4% of
+           rows, all from a small high-frequency anchor set (M1037 picked
+           28% of the time).
+     v6 is the version this combined corpus replaces.
+
+v7   addresses all three v6 bugs. Adds the AB.RMS.3a..3h slate (N=1..8, one
+     template per N, weighted to match benchmark mass), reduces per-mitigation
+     output to "{coa.mitre_id} ({coa.name})" (no inline description), every
+     variable-N template ends with a literal "Answer: M####, M####, ..."
+     terminator line, instruction text aligned verbatim with the benchmark
+     prompt. v7 launcher bumps --cutoff 2048 -> 4096 to give headroom.
+     This required parser fixes:
+       - tmpl_gen/scripts/tmpl_docx2json.py: multi-line Answer: bodies
+         (so a template's Answer: section can include the literal trailing
+         "Answer: M####" line).
+       - tmpl_gen/scripts/to_alpaca.py: lazy quantifiers in the
+         Instruction/Question regex (greedy match would absorb the
+         reasoning body up to the trailing "Answer:" marker and discard it).
+
+5. Combined-corpus composition
+------------------------------
+Training rows by source contribution (180,533 total):
+
+   79,816 (44.2%)  v5 broad CTI               A/E/M/P/S/V/W/X.{1..8}    [Section C]
+   62,099 (34.4%)  v5 benchmark addendum      X.*, Q.*, CL.*, SU.*, YN. [Section D]
+   17,685 ( 9.8%)  v5 detections/exploits     EDB.*, POC.*, SR.*, CPE   [Section E]
+   10,900 ( 6.0%)  v5 AthenaBench-aligned     AB.{ATE,MCQ,RCM,RMS,TAA,VSP} [Section B]
+   10,033 ( 5.6%)  v7 RMS addendum            AB.RMS.{3a..3h,4,5,6}     [Section F]
+
+Per-section template counts: B=25, C=64, D=43, E=42, F=11  (174 + 11 = 185 templates)
+
+The v5 "broad CTI" + "benchmark addendum" + "detections/exploits" sections
+together provide the representational substrate (CTI vocabulary, multi-source
+joins, explanation patterns). The v5 AthenaBench-aligned section provides the
+five-task answer formats. The v7 RMS addendum is the narrowly targeted fix
+for the one task v5 failed to recover (athena-rms).
+
+6. How to read the rest of this file
+------------------------------------
+Sections B through F below are the verbatim source template files used to
+generate the combined v7 corpus, in the order they were generated. Each
+section is delimited by an "==== SECTION X ====" banner and prefixed with the
+source-file path so that any individual template can still be traced back to
+its origin. The intra-section template syntax follows tmpl_gen/templates/
+README.md (Instruction:/Question:/Answer:/Count: with {var:Type.prop} graph
+placeholders).
+
+
+================================================================================
+SECTION B. AthenaBench-aligned core (AB.*) -- 25 templates
+================================================================================
+Source: tmpl_gen/templates/04222026/Sophia-CTI-Templates-AthenaBench-aligned.txt
+Provides the answer formats for the five AthenaBench tasks plus the AB.MCQ
+multi-choice format coverage. AB.RMS.1/AB.RMS.2 here are the legacy single-id
+and pair-id RMS templates; the variable-N N=1..8 fix is in Section F.
+--------------------------------------------------------------------------------
+
+AthenaBench-Aligned CTI Templates (Addendum to Sophia-CTI-Templates-04022026)
+
+Revision 04222026: adds native MCQ option shuffling (Shuffle: mcq), expands
+TAA coverage (AB.TAA.3-6), adds forward-direction ATE variants (AB.ATE.4-5),
+and adds CVSS metric-by-metric VSP variants (AB.VSP.3-4).
+
+AthenaBench task alignment:
+
+  Section 1 - AB.MCQ.* : 5-option multiple choice (A-E)         -> athena-mcq
+  Section 2 - AB.RCM.* : CVE description -> CWE-####            -> athena-rcm
+  Section 3 - AB.VSP.* : CVE description -> CVSS:3.1/... vector -> athena-vsp
+  Section 4 - AB.ATE.* : attack scenario -> T####               -> athena-ate
+  Section 5 - AB.RMS.* : attack scenario -> M10xx (list)        -> athena-rms
+  Section 6 - AB.TAA.* : incident summary -> threat actor name  -> athena-taa
+
+Design notes:
+
+  - MCQ templates declare "Shuffle: mcq" so iftgen randomises option labels
+    per row and rewrites the final "Therefore, X." letter, removing the
+    position-A bias observed in earlier SFT runs.
+  - TAA expansion drops the single mandatory malware slot so templates bind
+    against graph paths that exist densely (group_uses_tech=4362,
+    group_uses_tool=457, group_uses_malware=647,
+    campaign_attributed_to=25).
+  - ATE expansion adds forward-direction (description -> T-ID) variants
+    framed as telemetry narratives and data-source snippets, matching the
+    AthenaBench athena-ate task direction.
+  - VSP expansion adds metric-by-metric justification text so the model
+    learns to reason about AV/AC/PR/UI/S/C/I/A before emitting the vector.
+
+ID convention:
+
+  AB.<TASK>.<N>   AthenaBench task, sequential index
+
+Section 1 - AB.MCQ.* Multiple-Choice Questions (athena-mcq)
+
+AB.MCQ.1 Instruction: You are a cybersecurity analyst at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult MITRE ATT&CK, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
+Question: Which MITRE ATT&CK tactic does technique {ap:attack-pattern.mitre_id} ({ap.name}) achieve? Technique description: {ap.description}
+A) {ta:ap.achieves>x-mitre-tactic.name}
+B) {negtac1:x-mitre-tactic.name}
+C) {negtac2:x-mitre-tactic.name}
+D) {negtac3:x-mitre-tactic.name}
+E) {negtac4:x-mitre-tactic.name}
+Answer: MITRE ATT&CK classifies technique {ap.mitre_id} ({ap.name}) under the {ta.name} tactic, which covers {ta.description}. Therefore, A.
+{force negtac1.mitre_id != ta.mitre_id}
+{force negtac2.mitre_id != ta.mitre_id}
+{force negtac3.mitre_id != ta.mitre_id}
+{force negtac4.mitre_id != ta.mitre_id}
+{force negtac1.mitre_id != negtac2.mitre_id}
+{force negtac1.mitre_id != negtac3.mitre_id}
+{force negtac1.mitre_id != negtac4.mitre_id}
+{force negtac2.mitre_id != negtac3.mitre_id}
+{force negtac2.mitre_id != negtac4.mitre_id}
+{force negtac3.mitre_id != negtac4.mitre_id}
+Sample: ap
+Shuffle: mcq
+
+AB.MCQ.2 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult MITRE ATT&CK, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
+Question: Which MITRE ATT&CK mitigation addresses technique {ap:attack-pattern.mitre_id} ({ap.name})? Technique description: {ap.description}
+A) {coa:ap.mitigates<course-of-action.mitre_id} ({coa.name})
+B) {negcoa1:course-of-action.mitre_id} ({negcoa1.name})
+C) {negcoa2:course-of-action.mitre_id} ({negcoa2.name})
+D) {negcoa3:course-of-action.mitre_id} ({negcoa3.name})
+E) {negcoa4:course-of-action.mitre_id} ({negcoa4.name})
+Answer: MITRE ATT&CK records mitigation {coa.mitre_id} ({coa.name}) as addressing technique {ap.mitre_id}: {coa.description}. Therefore, A.
+{force negcoa1.mitre_id != coa.mitre_id}
+{force negcoa2.mitre_id != coa.mitre_id}
+{force negcoa3.mitre_id != coa.mitre_id}
+{force negcoa4.mitre_id != coa.mitre_id}
+{force negcoa1.mitre_id != negcoa2.mitre_id}
+{force negcoa1.mitre_id != negcoa3.mitre_id}
+{force negcoa1.mitre_id != negcoa4.mitre_id}
+{force negcoa2.mitre_id != negcoa3.mitre_id}
+{force negcoa2.mitre_id != negcoa4.mitre_id}
+{force negcoa3.mitre_id != negcoa4.mitre_id}
+Sample: ap
+Shuffle: mcq
+
+AB.MCQ.3 Instruction: You are a CTI analyst at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult the MITRE CVE and CWE knowledge bases, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
+Question: What is the root-cause CWE of the following vulnerability? {cve:CVE.id}: {cve.descriptions}
+A) {cwe:cve.problemType>Weakness.id} ({cwe.name})
+B) {negw1:Weakness.id} ({negw1.name})
+C) {negw2:Weakness.id} ({negw2.name})
+D) {negw3:Weakness.id} ({negw3.name})
+E) {negw4:Weakness.id} ({negw4.name})
+Answer: The CVE description matches the pattern defined by {cwe.id} ({cwe.name}): {cwe.description}. Therefore, A.
+{force negw1.id != cwe.id}
+{force negw2.id != cwe.id}
+{force negw3.id != cwe.id}
+{force negw4.id != cwe.id}
+{force negw1.id != negw2.id}
+{force negw1.id != negw3.id}
+{force negw1.id != negw4.id}
+{force negw2.id != negw3.id}
+{force negw2.id != negw4.id}
+{force negw3.id != negw4.id}
+Sample: cve
+Shuffle: mcq
+
+AB.MCQ.4 Instruction: You are a CTI analyst at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult the MITRE CWE and CAPEC knowledge bases, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
+Question: Which CAPEC attack pattern primarily exploits {cwe:Weakness.id} ({cwe.name})? Weakness description: {cwe.description}
+A) CAPEC-{cap:cwe.related_attack_pattern>CAPEC.id} ({cap.name})
+B) CAPEC-{negcap1:CAPEC.id} ({negcap1.name})
+C) CAPEC-{negcap2:CAPEC.id} ({negcap2.name})
+D) CAPEC-{negcap3:CAPEC.id} ({negcap3.name})
+E) CAPEC-{negcap4:CAPEC.id} ({negcap4.name})
+Answer: MITRE CAPEC records CAPEC-{cap.id} ({cap.name}) as the attack pattern exploiting {cwe.id} ({cwe.name}): {cap.description}. Therefore, A.
+{force negcap1.id != cap.id}
+{force negcap2.id != cap.id}
+{force negcap3.id != cap.id}
+{force negcap4.id != cap.id}
+{force negcap1.id != negcap2.id}
+{force negcap1.id != negcap3.id}
+{force negcap1.id != negcap4.id}
+{force negcap2.id != negcap3.id}
+{force negcap2.id != negcap4.id}
+{force negcap3.id != negcap4.id}
+Sample: cwe
+Shuffle: mcq
+
+AB.MCQ.5 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult MITRE ATT&CK, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
+Question: Which MITRE ATT&CK technique is threat group {grp:intrusion-set.name} ({grp.mitre_id}) documented as using? Group description: {grp.description}
+A) {ap:grp.uses>attack-pattern.mitre_id} ({ap.name})
+B) {negack1:attack-pattern.mitre_id} ({negack1.name})
+C) {negack2:attack-pattern.mitre_id} ({negack2.name})
+D) {negack3:attack-pattern.mitre_id} ({negack3.name})
+E) {negack4:attack-pattern.mitre_id} ({negack4.name})
+Answer: MITRE ATT&CK documents {grp.name} ({grp.mitre_id}) as using technique {ap.mitre_id} ({ap.name}): {ap.description}. Therefore, A.
+{force negack1.mitre_id != ap.mitre_id}
+{force negack2.mitre_id != ap.mitre_id}
+{force negack3.mitre_id != ap.mitre_id}
+{force negack4.mitre_id != ap.mitre_id}
+{force negack1.mitre_id != negack2.mitre_id}
+{force negack1.mitre_id != negack3.mitre_id}
+{force negack1.mitre_id != negack4.mitre_id}
+{force negack2.mitre_id != negack3.mitre_id}
+{force negack2.mitre_id != negack4.mitre_id}
+{force negack3.mitre_id != negack4.mitre_id}
+Sample: grp
+Shuffle: mcq
+
+AB.MCQ.6 Instruction: You are a CTI analyst at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult the MITRE CAPEC and ATT&CK knowledge bases, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
+Question: Which MITRE ATT&CK technique corresponds to CAPEC-{cap:CAPEC.id} ({cap.name})? Attack pattern description: {cap.description}
+A) {ap:cap.map_ap>attack-pattern.mitre_id} ({ap.name})
+B) {negack1:attack-pattern.mitre_id} ({negack1.name})
+C) {negack2:attack-pattern.mitre_id} ({negack2.name})
+D) {negack3:attack-pattern.mitre_id} ({negack3.name})
+E) {negack4:attack-pattern.mitre_id} ({negack4.name})
+Answer: CAPEC-{cap.id} aligns with MITRE ATT&CK technique {ap.mitre_id} ({ap.name}); both describe the same adversary behaviour. Therefore, A.
+{force negack1.mitre_id != ap.mitre_id}
+{force negack2.mitre_id != ap.mitre_id}
+{force negack3.mitre_id != ap.mitre_id}
+{force negack4.mitre_id != ap.mitre_id}
+{force negack1.mitre_id != negack2.mitre_id}
+{force negack1.mitre_id != negack3.mitre_id}
+{force negack1.mitre_id != negack4.mitre_id}
+{force negack2.mitre_id != negack3.mitre_id}
+{force negack2.mitre_id != negack4.mitre_id}
+{force negack3.mitre_id != negack4.mitre_id}
+Sample: cap
+Shuffle: mcq
+
+Section 2 - AB.RCM.* Root-Cause Mapping (athena-rcm)
+
+AB.RCM.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center performing root-cause mapping. Analyse the following CVE description and identify the most appropriate Common Weakness Enumeration (CWE) that represents the root cause of the vulnerability. Consult the MITRE CVE and CWE knowledge bases, reason step by step about the weakness pattern present in the description, and then state the CWE identifier.
+Question: {cve:CVE.descriptions}
+Answer: The description indicates the class of weakness captured by {cwe:cve.problemType>Weakness.name}: {cwe.description}. Therefore, the root cause is {cwe.id}.
+
+AB.RCM.2 Instruction: You are a vulnerability analyst at an enterprise Security Operations Center performing root-cause mapping for a newly disclosed CVE. Analyse the vulnerability record below and identify the most appropriate CWE. Consult the MITRE CVE and CWE knowledge bases, reason about the underlying weakness before committing to a label, and then state the CWE identifier.
+Question: Vulnerability record for {cve:CVE.id}: {cve.descriptions}
+Answer: The record describes {cwe:cve.problemType>Weakness.name}, whose defining characteristic is {cwe.description}. Therefore, the root cause is {cwe.id}.
+
+Section 3 - AB.VSP.* Vulnerability Severity Prediction (athena-vsp)
+
+AB.VSP.1 Instruction: You are a vulnerability risk analyst at an enterprise Security Operations Center computing CVSS v3.1 Base metrics. Analyse the following CVE description and derive the values for each base metric (AV, AC, PR, UI, S, C, I, A). Consult the CVSS v3.1 specification, reason about each metric in turn, and then state the resulting CVSS:3.1 vector.
+Question: {cve:CVE.descriptions}
+Answer: The exploit preconditions and impact implied by the description correspond to a CVSS v3.1 base score of {cve.cvss3_1_baseScore}. Therefore, the CVSS v3.1 vector is {cve.cvss3_1_vectorString}. <*{force cve.cvss3_1_vectorString = cve.cvss3_1_vectorString}*>
+
+AB.VSP.2 Instruction: You are a vulnerability risk analyst at an enterprise Security Operations Center triaging a newly disclosed CVE by CVSS v3.1 severity. Analyse the vulnerability record below, reason about exploit preconditions and impact, and then state the CVSS v3.1 base score followed by the full vector.
+Question: Vulnerability record for {cve:CVE.id}: {cve.descriptions}
+Answer: The exploit preconditions and impact implied by the description justify a CVSS v3.1 base score of {cve.cvss3_1_baseScore}. Therefore, the full vector is {cve.cvss3_1_vectorString}. <*{force cve.cvss3_1_vectorString = cve.cvss3_1_vectorString}*>
+
+AB.VSP.3 Instruction: You are a vulnerability risk analyst at an enterprise Security Operations Center producing a CVSS v3.1 Base vector with per-metric justification. Analyse the following CVE description, reason explicitly about each of the eight base metrics (Attack Vector, Attack Complexity, Privileges Required, User Interaction, Scope, Confidentiality, Integrity, Availability), and then state the resulting CVSS:3.1 vector.
+Question: {cve:CVE.descriptions}
+Answer: Reasoning through each base metric: Attack Vector of {cve.cvss3_1_attackVector} is indicated by how the attacker reaches the vulnerable component; Attack Complexity is implied by the conditions required to weaponise the flaw; Privileges Required and User Interaction follow from whether authentication or victim action is needed; Scope, Confidentiality, Integrity, and Availability follow from the impact described. The resulting CVSS v3.1 base score is {cve.cvss3_1_baseScore}. Therefore, the CVSS v3.1 vector is {cve.cvss3_1_vectorString}. <*{force cve.cvss3_1_vectorString = cve.cvss3_1_vectorString}*>
+
+AB.VSP.4 Instruction: You are a vulnerability risk analyst at an enterprise Security Operations Center performing same-day CVE triage. Analyse the vulnerability record below with explicit reasoning about exploit preconditions and impact across all eight CVSS v3.1 Base metrics, and then state the full CVSS:3.1 vector.
+Question: Vulnerability record for {cve:CVE.id}: {cve.descriptions}
+Answer: Triage reasoning: exploit preconditions (AV/AC/PR/UI) and impact (S/C/I/A) in the description together justify a CVSS v3.1 base score of {cve.cvss3_1_baseScore} with primary Attack Vector {cve.cvss3_1_attackVector}. Therefore, the full vector is {cve.cvss3_1_vectorString}. <*{force cve.cvss3_1_vectorString = cve.cvss3_1_vectorString}*>
+
+Section 4 - AB.ATE.* Attack Technique Enumeration (athena-ate)
+
+AB.ATE.1 Instruction: You are a threat hunter at an enterprise Security Operations Center performing attack technique enumeration. Analyse the following attack scenario and identify the single MITRE ATT&CK technique (ID format: T####) that best matches the behaviour described. Consult MITRE ATT&CK, reason about observable indicators in the scenario, and then state the technique identifier.
+Question: {ap:attack-pattern.description}
+Answer: The described behaviour matches {ap.name}, which MITRE ATT&CK documents on platforms {ap.x_mitre_platforms} with detection guidance: {ap.x_mitre_detection}. Therefore, the technique is {ap.mitre_id}.
+
+AB.ATE.2 Instruction: You are a detection engineer at an enterprise Security Operations Center performing attack technique enumeration from telemetry narratives. Analyse the following scenario and identify the single MITRE ATT&CK technique (ID format: T####) that best matches. Consult MITRE ATT&CK, reason about the adversary action implied by the narrative, and then state the technique identifier.
+Question: {ap:attack-pattern.description}
+Answer: The action sequence in the narrative is the defining behaviour of {ap.name}, collected from data sources {ap.x_mitre_data_sources}. Therefore, the technique is {ap.mitre_id}.
+
+AB.ATE.3 Instruction: You are an incident responder at an enterprise Security Operations Center correlating attacker activity to MITRE ATT&CK. Analyse the following incident narrative, which reflects adversary tradecraft attributed to a documented threat group. Consult MITRE ATT&CK, reason about which technique underpins the observed behaviour, and then state the technique identifier (ID format: T####).
+Question: During an engagement attributed to {grp:intrusion-set.name} ({grp.mitre_id}), analysts observed the following adversary behaviour: {ap:grp.uses>attack-pattern.description}
+Answer: The observed behaviour is the documented pattern for {ap.name}, which MITRE ATT&CK records {grp.name} as using. Therefore, the technique is {ap.mitre_id}.
+
+AB.ATE.4 Instruction: You are a SOC analyst at an enterprise Security Operations Center performing attack technique enumeration from a scenario summary written in natural language. Analyse the following scenario and identify the single MITRE ATT&CK technique (ID format: T####) that best matches. Consult MITRE ATT&CK, reason about what adversary objective the narrative implies before labelling, and then state the technique identifier.
+Question: Scenario: an adversary performed the following action: {ap:attack-pattern.description}
+Answer: The scenario describes {ap.name}, which is the MITRE ATT&CK technique for this adversary action on platforms {ap.x_mitre_platforms}. Therefore, the technique is {ap.mitre_id}.
+
+AB.ATE.5 Instruction: You are a detection engineer at an enterprise Security Operations Center mapping a telemetry-driven behaviour to MITRE ATT&CK. Analyse the following data-source-framed behaviour description and identify the single MITRE ATT&CK technique (ID format: T####) that best matches. Reason about which technique the telemetry reveals, and then state the technique identifier.
+Question: Based on observations collected from data sources {ap:attack-pattern.x_mitre_data_sources}, the following behaviour was recorded: {ap.description}
+Answer: The telemetry pattern matches {ap.name}, whose defining behaviour is captured by those data sources. Therefore, the technique is {ap.mitre_id}.
+
+Section 5 - AB.RMS.* Risk Mitigation Strategy (athena-rms)
+
+AB.RMS.1 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend multiple MITRE ATT&CK mitigation identifiers (format: M10xx) that together address the adversary behaviour. Consult MITRE ATT&CK, reason about which defensive controls apply, and then state the mitigation identifiers as a comma-separated list.
+Question: {ap:attack-pattern.description}
+Answer: Effective controls against {ap.name} include {coa1:ap.mitigates<course-of-action.mitre_id} ({coa1.name}), which {coa1.description}, and {coa2:ap.mitigates<course-of-action.mitre_id} ({coa2.name}), which {coa2.description}. Therefore, the recommended mitigations are {coa1.mitre_id}, {coa2.mitre_id}.
+{force coa1.mitre_id != coa2.mitre_id}
+
+AB.RMS.2 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending a primary risk mitigation strategy. Analyse the following attack scenario and recommend the single most appropriate MITRE ATT&CK mitigation identifier (format: M10xx) that addresses the adversary behaviour. Consult MITRE ATT&CK, reason about which defensive control is most directly relevant, and then state the mitigation identifier.
+Question: {ap:attack-pattern.description}
+Answer: The most direct control for {ap.name} is {coa:ap.mitigates<course-of-action.mitre_id} ({coa.name}): {coa.description}. Therefore, the recommended mitigation is {coa.mitre_id}.
+
+Section 6 - AB.TAA.* Threat Actor Attribution (athena-taa)
+
+AB.TAA.1 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center performing threat actor attribution from observed tradecraft. Analyse the following anonymised incident summary, which reports the MITRE ATT&CK techniques and malware family observed during an intrusion, and identify the responsible named intrusion set. Consult the MITRE ATT&CK groups knowledge base, reason about which documented intrusion set the combination of techniques and tooling matches, and then state the adversary name.
+Question: <*{grp:intrusion-set.name}*>An adversary has been observed employing MITRE ATT&CK techniques {ap1:grp.uses>attack-pattern.name} ({ap1.mitre_id}), {ap2:grp.uses>attack-pattern.name} ({ap2.mitre_id}), and {ap3:grp.uses>attack-pattern.name} ({ap3.mitre_id}), alongside the malware family {mw:grp.uses>malware.name}.
+Answer: The joint use of {ap1.name}, {ap2.name}, and {ap3.name} together with {mw.name} matches the documented tradecraft of {grp.name} ({grp.mitre_id}). Therefore, the adversary is {grp.name}.
+Sample: grp
+
+AB.TAA.2 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center performing threat actor attribution from observed tradecraft. Analyse the following anonymised narrative summarising attacker techniques and associated tooling and identify the responsible adversary. Consult the MITRE ATT&CK groups knowledge base, reason about which documented intrusion set the evidence matches, and then state the adversary name.
+Question: <*{grp:intrusion-set.name}*>An adversary has been observed employing MITRE ATT&CK technique {ap1:grp.uses>attack-pattern.mitre_id} ({ap1.name}) together with technique {ap2:grp.uses>attack-pattern.mitre_id} ({ap2.name}), and has deployed the malware family {mw:grp.uses>malware.name}.
+Answer: Use of {ap1.name} and {ap2.name} together with {mw.name} matches the documented tradecraft of {grp.name} ({grp.mitre_id}). Therefore, the adversary is {grp.name}.
+Sample: grp
+
+AB.TAA.3 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center performing threat actor attribution from observed tradecraft. Analyse the following anonymised incident summary, which reports only the MITRE ATT&CK techniques observed during an intrusion (no malware indicators were recovered), and identify the responsible named intrusion set. Consult the MITRE ATT&CK groups knowledge base, reason about which documented intrusion set the combination of techniques matches, and then state the adversary name.
+Question: <*{grp:intrusion-set.name}*>An adversary was observed employing MITRE ATT&CK techniques {ap1:grp.uses>attack-pattern.name} ({ap1.mitre_id}), {ap2:grp.uses>attack-pattern.name} ({ap2.mitre_id}), and {ap3:grp.uses>attack-pattern.name} ({ap3.mitre_id}).
+Answer: The combination of {ap1.name}, {ap2.name}, and {ap3.name} is the documented tradecraft of {grp.name} ({grp.mitre_id}). Therefore, the adversary is {grp.name}.
+Sample: grp
+
+AB.TAA.4 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center reviewing a documented campaign attribution. Analyse the following campaign summary and identify the responsible named intrusion set. Consult the MITRE ATT&CK groups and campaigns knowledge bases, reason about which documented intrusion set owns the campaign, and then state the adversary name.
+Question: <*{grp:intrusion-set.name}*>During the {cp:grp.attributed-to<campaign.name} campaign ({cp.mitre_id}), operators employed MITRE ATT&CK techniques {ap1:cp.uses>attack-pattern.name} ({ap1.mitre_id}) and {ap2:cp.uses>attack-pattern.name} ({ap2.mitre_id}). Campaign description: {cp.description}
+Answer: MITRE ATT&CK attributes the {cp.name} campaign to {grp.name} ({grp.mitre_id}); the observed techniques {ap1.name} and {ap2.name} match the group's documented tradecraft. Therefore, the adversary is {grp.name}.
+Sample: grp
+
+AB.TAA.5 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center performing threat actor attribution from tooling and tradecraft telemetry. Analyse the following anonymised summary combining MITRE ATT&CK techniques and the dual-use or custom tool observed, and identify the responsible named intrusion set. Consult the MITRE ATT&CK groups knowledge base, reason about which documented intrusion set the evidence matches, and then state the adversary name.
+Question: <*{grp:intrusion-set.name}*>An adversary was observed employing MITRE ATT&CK techniques {ap1:grp.uses>attack-pattern.name} ({ap1.mitre_id}) and {ap2:grp.uses>attack-pattern.name} ({ap2.mitre_id}), together with the tool {tl:grp.uses>tool.name}.
+Answer: Use of {ap1.name} and {ap2.name} together with {tl.name} matches the documented tradecraft of {grp.name} ({grp.mitre_id}). Therefore, the adversary is {grp.name}.
+Sample: grp
+
+AB.TAA.6 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center performing threat actor attribution from malware-centric evidence. Analyse the following anonymised narrative describing a malware family observed during an intrusion and identify the responsible named intrusion set. Consult the MITRE ATT&CK groups and software knowledge bases, reason about which documented intrusion set the malware evidence matches, and then state the adversary name.
+Question: <*{grp:intrusion-set.name}*>During an intrusion, analysts recovered the malware family {mw:grp.uses>malware.name} ({mw.mitre_id}). Malware description: {mw.description}
+Answer: MITRE ATT&CK documents {mw.name} ({mw.mitre_id}) as tooling used by {grp.name} ({grp.mitre_id}). Therefore, the adversary is {grp.name}.
+Sample: grp
+
+
+
+
+
+================================================================================
+SECTION C. Broad CTI knowledge core (M/A/W/V/S/P/E/X.{1..8}) -- 64 templates
+================================================================================
+Source: tmpl_gen/templates/04202026/Sophia-CTI-Templates-04022026.txt
+The substrate of the corpus. Eight templates per family x eight families.
+M (ATT&CK), A (CAPEC), W (CWE), V (CVE+CVSS), S (KEV), P (EPSS),
+E (ENGAGE), X (multi-source correlation). See tmpl_gen/templates/README.md
+for the per-family design strategy.
+--------------------------------------------------------------------------------
+
+Hand Crafted Templates (Expanded)
+Date: 2026-03-22
+
+Id abbreviations:
+CAPEC - A, KEV - S, CVE - V, CWE - W, EPSS - P, ATT&CK - M, MITRE ENGAGE - E, Cross-source Correlation - X
+
+ATT&CK Core Templates
+M.1 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Explain ATT&CK technique {ap:attack-pattern.name} ({ap.id}) and how it is used.
+Answer: Technique {ap.name} ({ap.id}) is described as follows:  {ap.description}. It is commonly observed across {ap.x_mitre_platforms}.
+
+M.2 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: What is a recommended defense for technique {ap:attack-pattern.name} ({ap.id})?
+Answer: A recommended course of action is {coa:ap.mitigates<course-of-action.name} ({coa.id}). Mitigation details: {coa.description}.
+
+M.3 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Which ATT&CK techniques are used by intrusion set {is:intrusion-set.name} ({is.id})?
+Answer: Intrusion set {is.name} is associated with attack pattern {ap:is.uses>attack-pattern.name} ({ap.id}), described as {ap.description}.
+
+M.4 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: What is the parent technique of sub-technique {sub:attack-pattern.name} ({sub.id})?
+Answer: Sub-technique {sub.name} ({sub.id}) belongs to parent technique {par:sub.subtechnique-of>attack-pattern.name} ({par.id}).
+
+M.5 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: How can defenders detect {ap:attack-pattern.name} ({ap.id}) using ATT&CK detection content?
+Answer: Technique {ap.name} can be detected with detection strategy {det:ap.detects<x-mitre-detection-strategy.name} ({det.mitre_id}), implemented by analytic {an:det.implemented_by>x-mitre-analytic.name} ({an.id}) using data component {dc:an.requires_data>x-mitre-data-component.name}.
+
+M.6 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Which ATT&CK tactic does technique {ap:attack-pattern.name} ({ap.id}) support?
+Answer: Technique {ap.name} ({ap.id}) supports tactic {ta:ap.achieves>x-mitre-tactic.name} ({ta.id}), with tactic context: {ta.description}.
+
+M.7 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Summarize campaign {c:campaign.name} with its actor, malware, tool, and technique usage.
+Answer: Campaign {c.name} is attributed to {is:c.attributed-to>intrusion-set.name}. It uses malware {mw:c.uses>malware.name}, tool {tl:c.uses>tool.name}, and technique {ap:c.uses>attack-pattern.name} ({ap.id}).
+
+M.8 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: What replacement should analysts use for revoked ATT&CK technique {old:attack-pattern.name} ({old.id})?
+Answer: Revoked technique {old.name} ({old.id}) is superseded by {new:old.revoked-by>attack-pattern.name} ({new.id}).
+
+
+CAPEC Attack Pattern Templates
+A.1 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Describe CAPEC attack pattern {cap:CAPEC.name} (CAPEC-{cap.id}).
+Answer: {cap.name} (CAPEC-{cap.id}) is {cap.description}. It is {cap.abstraction}-level, with severity {cap.severity} and likelihood {cap.likelihood_of_attack}.
+
+A.2 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Summarize the execution flow and prerequisites for {cap:CAPEC.name} (CAPEC-{cap.id}).
+Answer: Execution flow: {cap.execution_flow}. Prerequisites: {cap.prerequisites}. Required skills: {cap.skills_required}.
+
+A.3 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Which weakness is exploited by {cap:CAPEC.name} (CAPEC-{cap.id})?
+Answer: CAPEC pattern {cap.name} exploits weakness {cwe:cap.exploits>Weakness.name} (CWE-{cwe.id}), described as {cwe.extended_description}.
+
+A.4 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Which ATT&CK technique maps to {cap:CAPEC.name} (CAPEC-{cap.id})?
+Answer: CAPEC {cap.name} maps to ATT&CK technique {ap:cap.map_ap>attack-pattern.name} ({ap.id}), which supports tactic {ta:ap.achieves>x-mitre-tactic.name}.
+
+A.5 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: What CAPEC hierarchy context exists for {cap:CAPEC.name} (CAPEC-{cap.id})?
+Answer: Related hierarchy includes child/parent pattern {par:cap.ChildOf>CAPEC.name}, peer pattern {peer:cap.PeerOf>CAPEC.name}, and a can-precede relation to {next:cap.CanPrecede>CAPEC.name}.
+
+A.6 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Which CVE records are impacted by CAPEC pattern {cap:CAPEC.name}?
+Answer: CVE {cve:cap.impacts<CVE.id} is linked to CAPEC {cap.name}. CVE details: {cve.descriptions}.
+
+A.7 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Provide real examples and mitigations for {cap:CAPEC.name} (CAPEC-{cap.id}).
+Answer: Example instances: {cap.example_instances}. Recommended mitigations: {cap.mitigations}. Consequences include: {cap.consequences}.
+
+A.8 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Correlate CVE, CWE, and CAPEC for a single vulnerability chain.
+Answer: CVE {cve:CVE.id} impacts CAPEC {cap:cve.impacts>CAPEC.name} and is categorized as weakness {cwe:cve.problemType>Weakness.name}. CAPEC {cap.id} exploits weakness {cwe2:cap.exploits>Weakness.name}. <*{force cwe.id=cwe2.id}*>
+
+
+CWE Weakness Templates
+W.1 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Explain weakness {cwe:Weakness.name} (CWE-{cwe.id}).
+Answer: {cwe.name} (CWE-{cwe.id}) has abstraction {cwe.abstraction}. Extended detail: {cwe.extended_description}.
+
+W.2 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: What are the root cause areas for {cwe:Weakness.name} (CWE-{cwe.id})?
+Answer: Functional areas: {cwe.functional_areas}. Likelihood of exploit: {cwe.likelihood_of_exploit}.
+
+W.3 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: At what lifecycle stage is {cwe:Weakness.name} introduced?
+Answer: {cwe.name} is introduced through modes/phases {cwe.modes_of_introduction} and {cwe.phases}.
+
+W.4 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Give an observed CVE example for weakness {cwe:Weakness.name}.
+Answer: Weakness {cwe.name} is observed as CVE {cve:cwe.observed_as>CVE.id} with description {cve.descriptions}.
+
+W.5 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: How can defenders detect and mitigate {cwe:Weakness.name}?
+Answer: Detection method: {dm:cwe.detected_by>Detection_Method.method}. Mitigation: {mit:cwe.mitigated_by>Mitigation.description} (phase: {mit.phase}).
+
+W.6 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Is weakness {cwe:Weakness.name} linked to KEV exploitation?
+Answer: Yes. Weakness {cwe.name} is linked to KEV entry for CVE {kev:cwe.known_exploit>KEV.cveID}, requiring action {kev.requiredAction} by {kev.dueDate}.
+
+W.7 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Which CAPEC and ATT&CK content correlate with weakness {cwe:Weakness.name}?
+Answer: Weakness {cwe.name} relates to CAPEC pattern {cap:cwe.related_attack_pattern>CAPEC.name}, mapped to ATT&CK technique {ap:cap.map_ap>attack-pattern.name} ({ap.id}).
+
+W.8 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Compare two CVEs from the same weakness and identify which has higher exploit likelihood.
+Answer: For weakness {cwe:Weakness.name}, CVE {cve1:cwe.observed_as>CVE.id} has EPSS {e1:cve1.scores<EPSS.epss} while CVE {cve2:cwe.observed_as>CVE.id} has EPSS {e2:cve2.scores<EPSS.epss}. Prioritize {cve1.id}. <*{force e1.epss > e2.epss} -- use “ > “ with spaces around > to denote greater than operator*>
+
+CVE Vulnerability Templates
+V.1 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Describe CVE {cve:CVE.id} and summarize its severity.
+Answer: CVE {cve.id} is described as {cve.descriptions}. CVSS base score: {cve.cvss3_1_baseScore}, vector string: {cve.cvss3_1_vectorString}, attack vector: {cve.cvss3_1_attackVector}.
+
+V.2 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Which CWE category applies to CVE {cve:CVE.id}?
+Answer: CVE {cve.id} maps to weakness {cwe:cve.problemType>Weakness.name} (CWE-{cwe.id}) with details: {cwe.extended_description}.
+
+V.3 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Which CAPEC attack pattern is associated with CVE {cve:CVE.id}?
+Answer: CVE {cve.id} impacts CAPEC pattern {cap:cve.impacts>CAPEC.name} (CAPEC-{cap.id}), with CAPEC description {cap.description}.
+
+V.4 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Is CVE {cve:CVE.id} in KEV and what action is required?
+Answer: CVE {cve.id} is tracked in KEV as {kev:cve.known_exploit>KEV.vulnerabilityName}. Required action: {kev.requiredAction}. Due date: {kev.dueDate}.
+
+V.5 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Compare exploitation likelihood and technical severity for CVE {cve:CVE.id}.
+Answer: CVE {cve.id} has EPSS {e:cve.scores<EPSS.epss} (percentile {e.percentile}) and CVSS base score {cve.cvss3_1_baseScore}. Use both likelihood and impact to prioritize.
+
+V.6 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Map CVE {cve:CVE.id} to ATT&CK technique context.
+Answer: CVE {cve.id} impacts CAPEC {cap:cve.impacts>CAPEC.name}, which maps to ATT&CK technique {ap:cap.map_ap>attack-pattern.name} ({ap.id}) in tactic {ta:ap.achieves>x-mitre-tactic.name}.
+
+V.7 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: What detection and mitigation guidance applies to CVE {cve:CVE.id} through its weakness mapping?
+Answer: CVE {cve.id} maps to weakness {cwe:cve.problemType>Weakness.name}. Detect via {dm:cwe.detected_by>Detection_Method.method}. Mitigate via {mit:cwe.mitigated_by>Mitigation.description}.
+
+V.8 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Identify high-priority CVEs by score and exploitation context.
+Answer: CVE {cve:CVE.id} with CVSS {cve.cvss3_1_baseScore} and EPSS {e:cve.scores<EPSS.epss} should be escalated when score context is high. <*{cve.cvss3_1_baseScore[_>=7]}*> 
+
+
+KEV (Known Exploited Vulnerabilities) Templates
+S.1 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Assess remediation urgency for KEV {kev:KEV.vulnerabilityName} affecting {kev.product}.
+Answer: KEV {kev.vulnerabilityName} (CVE {kev.cveID}) is actively exploited in {kev.product} ({kev.vendorProject}). Required action: {kev.requiredAction} by {kev.dueDate}.
+
+S.2 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Explain the operational significance of KEV due date {kev:KEV.dueDate}.
+Answer: Due date {kev.dueDate} for CVE {kev.cveID} indicates required remediation timing for active exploitation risk reduction.
+
+S.3 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Is KEV {kev:KEV.vulnerabilityName} associated with ransomware activity?
+Answer: KEV {kev.vulnerabilityName} has ransomware-use field value {kev.knownRansomwareCampaignUse} and notes {kev.notes}.
+
+S.4 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Which weakness is associated with KEV {kev:KEV.vulnerabilityName}?
+Answer: KEV {kev.vulnerabilityName} links to weakness {cwe:kev.known_exploit<Weakness.name} (CWE-{cwe.id}) with description {cwe.extended_description}.
+
+S.5 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Provide CVSS and EPSS context for KEV {kev:KEV.vulnerabilityName}.
+Answer: KEV {kev.vulnerabilityName} maps to CVE {cve:kev.known_exploit<CVE.id} with CVSS {cve.cvss3_1_baseScore} and EPSS {e:cve.scores<EPSS.epss} ({e.percentile}).
+
+S.6 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Correlate KEV {kev:KEV.vulnerabilityName} to ATT&CK technique coverage.
+Answer: CVE {cve:kev.known_exploit<CVE.id} impacts CAPEC {cap:cve.impacts>CAPEC.name}, mapped to ATT&CK technique {ap:cap.map_ap>attack-pattern.name} ({ap.id}).
+
+S.7 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: What mitigation and detection guidance can be derived from KEV {kev:KEV.vulnerabilityName} via CWE mapping?
+Answer: KEV {kev.vulnerabilityName} links to CWE {cwe:kev.known_exploit<Weakness.name}. Detection: {dm:cwe.detected_by>Detection_Method.method}. Mitigation: {mit:cwe.mitigated_by>Mitigation.description}.
+
+S.8 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Compare two KEV entries on the same product for patch sequencing.
+Answer: For product {kev1:KEV.product}, prioritize {kev1.vulnerabilityName} before {kev2:KEV.vulnerabilityName} when due date is earlier. <*{force kev1.product=kev2.product} {force kev1.dueDate < kev2.dueDate}*>
+
+
+EPSS Templates
+P.1 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Assess exploit likelihood using EPSS for CVE-{e:EPSS.cve}.
+Answer: CVE {cve:e.scores>CVE.id} has EPSS {e.epss} and percentile {e.percentile}. Higher values indicate greater near-term exploitation likelihood.
+
+P.2 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Compare EPSS and CVSS for CVE-{e:EPSS.cve}.
+Answer: CVE {cve:e.scores>CVE.id} has EPSS {e.epss} and CVSS {cve.cvss3_1_baseScore}. EPSS reflects exploitation probability; CVSS reflects technical impact.
+
+P.3 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Does CVE-{e:EPSS.cve} have KEV confirmation of active exploitation?
+Answer: CVE {cve:e.scores>CVE.id} has EPSS {e.epss} and KEV status via {kev:cve.known_exploit>KEV.cveID}. Use both to drive urgent remediation.
+
+P.4 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Correlate EPSS with CWE for CVE-{e:EPSS.cve}.
+Answer: CVE {cve:e.scores>CVE.id} maps to weakness {cwe:cve.problemType>Weakness.name} (CWE-{cwe.id}) and has EPSS {e.epss}.
+
+P.5 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Correlate EPSS to CAPEC and ATT&CK for CVE-{e:EPSS.cve}.
+Answer: CVE {cve:e.scores>CVE.id} impacts CAPEC {cap:cve.impacts>CAPEC.name}, mapped to ATT&CK technique {ap:cap.map_ap>attack-pattern.name} ({ap.id}); EPSS is {e.epss}.
+
+P.6 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Identify high-likelihood exploitation candidates from EPSS record CVE-{e:EPSS.cve}.
+Answer: CVE {cve:e.scores>CVE.id} has EPSS {e.epss} and percentile {e.percentile}. Prioritize records with high percentile.
+
+P.7 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Provide detection guidance for high-EPSS CVEs using ATT&CK links, starting from CVE-{e:EPSS.cve}.
+Answer: CVE {cve:e.scores>CVE.id} with EPSS {e.epss} maps to CAPEC {cap:cve.impacts>CAPEC.name} and ATT&CK {ap:cap.map_ap>attack-pattern.name}. Detect using detection strategy "{ds:ap.detects<.name}", with analytic "{anl:ds.implemented_by.name}", that requires data component "{anl.requires_data.name}”.
+
+P.8 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Compare two CVEs in the same CWE family and prioritize by EPSS.
+Answer: CVE {cve1:CVE.id} (EPSS {e1:cve1.scores<EPSS.epss}) and CVE {cve2:CVE.id} (EPSS {e2:cve2.scores<EPSS.epss}) share weakness {cwe:cve1.problemType>Weakness.name}. Prioritize {cve1.id}. <*{force cve1.problemType.id=cve2.problemType.id} {force e1.epss > e2.epss}*>
+
+
+MITRE ENGAGE Templates
+E.1 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Describe ENGAGE activity {act:activity.name} and its mapped tactic/technique context.
+Answer: Activity {act.name} ({act.id}) uses technique {atk:act.uses_technique>attack_technique.name} ({atk.id}) and aligns to tactic {at:act.with_tactic>attack_tactic.name} ({at.id}).
+
+E.2 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Summarize approach and goal design for ENGAGE activity {act:activity.name}.
+Answer: Activity {act.name} uses approach {app:act.has_approach>approach.name} and goal {g:act.has_goal>goal.name}. Approach detail: {app.description}. Goal detail: {g.description}.
+
+E.3 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Explain how approach {app:approach.name} supports activity operations.
+Answer: Approach {app.name} ({app.id}) supports activity {act:app.for_activity>activity.name} and is tied to goal {g:app.with_goal>goal.name}.
+
+E.4 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Which approach is associated with goal {g:goal.name}?
+Answer: Goal {g.name} ({g.id}) is associated with approach {app:g.for_approach>approach.name}, whose description is {app.description}.
+
+E.5 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Map ENGAGE technique {atk:attack_technique.name} to ATT&CK and tactic context.
+Answer: ENGAGE technique {atk.name} ({atk.id}) maps to ATT&CK technique {ap:atk.maps_ap>attack-pattern.name} ({ap.id}) and tactic {ta:atk.achieves>x-mitre-tactic.name}.
+
+E.6 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Map ENGAGE tactic {at:attack_tactic.name} to ATT&CK tactic context.
+Answer: ENGAGE tactic {at.name} ({at.id}) maps to ATT&CK tactic {ta:at.maps_ack>x-mitre-tactic.name} ({ta.id}) with description {ta.description}.
+
+E.7 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Correlate activity, vulnerability, and technique objects in ENGAGE.
+Answer: Activity {act:activity.name} is for vulnerability {v1:act.for_vulnerability>vulnerability.id} and uses technique {atk:act.uses_technique>attack_technique.name}. Technique {atk.id} is also linked to vulnerability {v2:atk.for_vulnerability>vulnerability.id}. <*{force v1.id=v2.id}*>
+
+E.8 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Align ENGAGE and ATT&CK tactic context for an activity.
+Answer: Activity {act:activity.name} maps to ENGAGE tactic {at:act.with_tactic>attack_tactic.name} and ATT&CK tactic {ta:at.maps_ack>x-mitre-tactic.name}. Its technique {atk:act.uses_technique>attack_technique.name} maps to ATT&CK {ap:atk.maps_ap>attack-pattern.name}. <*{force ta.id=ap.achieves.id}*>
+
+
+Cross-Source Correlation Templates
+X.1 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Build a full risk chain from EPSS through CVE, KEV, CWE, CAPEC, and ATT&CK.
+Answer: EPSS entry CVE-{e:EPSS.cve} maps to CVE {cve:e.scores>CVE.id}, KEV {kev:cve.known_exploit>KEV.vulnerabilityName}, weakness {cwe:cve.problemType>Weakness.name}, CAPEC {cap:cve.impacts>CAPEC.name}, and ATT&CK technique {ap:cap.map_ap>attack-pattern.name} ({ap.id}).
+
+X.2 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Correlate KEV {kev:KEV.vulnerabilityName} to ATT&CK tactic and mitigation recommendations.
+Answer: KEV {kev.vulnerabilityName} maps to CVE {cve:kev.known_exploit<CVE.id}, CAPEC {cap:cve.impacts>CAPEC.name}, ATT&CK technique {ap:cap.map_ap>attack-pattern.name}, tactic {ta:ap.achieves>x-mitre-tactic.name}, and mitigation {coa:ap.mitigates<course-of-action.name}.
+
+X.3 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Validate CWE consistency between CVE problem type and CAPEC exploited weakness.
+Answer: CVE {cve:CVE.id} maps to CAPEC {cap:cve.impacts>CAPEC.name} and CWE {cwe1:cve.problemType>Weakness.name}. CAPEC {cap.id} exploits CWE {cwe2:cap.exploits>Weakness.name}. <*{force cwe1.id=cwe2.id}*>
+
+X.4 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Build a weakness-centric chain across CVE, KEV, EPSS, CAPEC, and ATT&CK.
+Answer: Weakness {cwe:Weakness.name} is observed as CVE {cve:cwe.observed_as>CVE.id}, linked to KEV {kev:cwe.known_exploit>KEV.vulnerabilityName}, with EPSS {e:cve.scores<EPSS.epss}, CAPEC {cap:cwe.related_attack_pattern>CAPEC.name}, and ATT&CK {ap:cap.map_ap>attack-pattern.name}.
+
+X.5 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Correlate threat actor tradecraft with vulnerability intelligence.
+Answer: Intrusion set {is:intrusion-set.name} uses ATT&CK technique {ap:is.uses>attack-pattern.name}. That technique maps from CAPEC {cap:ap.map_ap<CAPEC.name}, which is impacted by CVE {cve:CVE.id} with EPSS {e:cve.scores<EPSS.epss} and KEV {kev:cve.known_exploit>KEV.cveID}. <*{force cap.id=cve.impacts.id}*>
+
+X.6 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Correlate MITRE ENGAGE activity with ATT&CK and CVE risk context.
+Answer: ENGAGE activity {act:activity.name} uses technique {atk:act.uses_technique>attack_technique.name}, mapped to ATT&CK {ap:atk.maps_ap>attack-pattern.name}. That ATT&CK technique aligns to CAPEC {cap:ap.map_ap<CAPEC.name} impacted by CVE {cve:CVE.id} with EPSS {e:cve.scores<EPSS.epss}. <*{force cap.id=cve.impacts.id}*>
+
+X.7 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Build detection-first prioritization for KEV vulnerabilities using ATT&CK analytics.
+Answer: KEV {kev:KEV.vulnerabilityName} maps to CVE {cve:kev.known_exploit<CVE.id}, CAPEC {cap:cve.impacts>CAPEC.name}, and ATT&CK {ap:cap.map_ap>attack-pattern.name}. Detect via strategy {det:ap.detects<x-mitre-detection-strategy.name}, analytic {an:det.implemented_by>x-mitre-analytic.name}, and data component {dc:an.requires_data>x-mitre-data-component.name}.
+
+X.8 Instruction: You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.
+Question: Prioritize two CVEs in the same weakness family using EPSS and KEV metadata.
+Answer: CVE {cve1:CVE.id} has EPSS {e1:cve1.scores<EPSS.epss} and KEV entry {kev1:cve1.known_exploit>KEV.vulnerabilityName}; CVE {cve2:CVE.id} has EPSS {e2:cve2.scores<EPSS.epss} and KEV entry {kev2:cve2.known_exploit>KEV.vulnerabilityName}. Prioritize {cve1.id}. <*{force cve1.problemType.id=cve2.problemType.id} {force e1.epss > e2.epss}*>
+
+
+================================================================================
+SECTION D. Benchmark addendum (X.*/Q.*/CL.*/SU.*/YN.*) -- 43 templates
+================================================================================
+Source: tmpl_gen/templates/04202026/Sophia-CTI-Templates-04022026-benchmark-addendum.txt
+Multi-source joins and discriminative variants intended to improve transfer
+from the broad CTI substrate to the AthenaBench tasks. Q.* are quiz-style
+single-graph templates; CL.*/SU.* are clarification/summary aids; YN.* are
+yes/no positive+negative pairs that train discriminative signal.
+--------------------------------------------------------------------------------
+
+Benchmark-Aligned CTI Templates (Addendum to Sophia-CTI-Templates-04022026)
+
+This revision (2026-04-20) addresses two classes of errors reported against the
+original addendum:
+
+  1. Variable redefinition: per tmpl_gen/src/tmpl_gen/tmpl_parser.py, a variable
+     is defined exactly once per template (Instruction + Question + Answer)
+     using {var:Type.prop} or {var:existing.rel>Type.prop}. All subsequent
+     references in the same template drop the ":Type" part.
+
+  2. Schema alignment: ATT&CK mitigations are course-of-action nodes (not
+     Mitigation); attack-pattern is reached from course-of-action via the
+     "mitigates" relationship, so from attack-pattern we traverse the inverse
+     ("mitigates<course-of-action"). CAPEC->Weakness uses "exploits" (lower-
+     case). CAPEC->attack-pattern uses "map_ap". CWE->CAPEC uses
+     "related_attack_pattern".
+
+This template set still addresses the three SecKnowledge / CyberPal.AI gaps
+(Levi et al., 2024, arXiv:2408.09304):
+
+  Gap 1: Multi-hop cross-framework path templates
+  Gap 2: Hard-negative / discrimination templates
+  Gap 3: Task-type diversity (MCQ, Yes/No, Classification, Summarization)
+
+ID convention:
+  X.<edge>.<n>    cross-framework path  (e.g. X.VW.1 = CVE -> Weakness)
+  YN.<edge>.P.n   yes/no positive
+  YN.<edge>.N.n   yes/no hard-negative  (uses {force} to pick unconnected node)
+  Q.<edge>.<n>    multiple-choice (A/B/C/D)
+  CL.<src>.<n>    classification (closed-list)
+  SU.<src>.<n>    summarization (long -> short)
+
+Edge abbreviations:
+  V = CVE          W = Weakness (CWE)      A = CAPEC
+  M = Technique    T = Tactic              G = intrusion-set (threat group)
+  N = course-of-action (ATT&CK mitigation) P = EPSS           K = KEV
+
+Note on {force}: as-written, distractor selection picks random non-match nodes.
+For SecKnowledge-style adversarial distractors (semantically near the correct
+answer rather than random), extend iftgen.py to pre-embed node descriptions and
+filter candidate bindings by cosine similarity to the correct answer.
+
+Section 1 - Cross-Framework Path Templates (Gap 1)
+
+X.VW.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center correlating vulnerabilities to their root-cause weaknesses. Consult the MITRE CVE and CWE knowledge bases to infer the correct answer.
+Question: CVE-{cve:CVE.id} is described as: {cve.descriptions}. Which CWE is its root cause?
+Answer: The root cause of CVE-{cve.id} is CWE-{cve.problemType.id} ({cve.problemType.name}). The CVE description matches the pattern defined by CWE-{cve.problemType.id}: {cve.problemType.description}.
+
+X.VW.2 Instruction: You are a vulnerability analyst at an enterprise Security Operations Center classifying CVEs by weakness category. Consult the MITRE CVE and CWE knowledge bases to infer the correct answer.
+Question: Which CWE does CVE-{cve:CVE.id} fall under?
+Answer: CVE-{cve.id} falls under CWE-{cve.problemType.id} ({cve.problemType.name}).
+
+X.VW.3 Instruction: You are a CTI analyst at an enterprise Security Operations Center illustrating weakness classes with concrete vulnerability examples. Consult the MITRE CWE and CVE knowledge bases to cite a representative example.
+Question: Give an example CVE that demonstrates CWE-{cwe:Weakness.id} ({cwe.name}).
+Answer: CVE-{cve:cwe.observed_as>CVE.id} is an example of CWE-{cwe.id}. It exhibits {cwe.description}, which is the defining characteristic of {cwe.name}.
+
+X.WA.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center linking weaknesses to the attack patterns that exploit them. Consult the MITRE CWE and CAPEC knowledge bases to infer the correct answer.
+Question: Which CAPEC attack pattern exploits CWE-{cwe:Weakness.id} ({cwe.name})?
+Answer: CAPEC-{cap:cwe.related_attack_pattern>CAPEC.id} ({cap.name}) exploits CWE-{cwe.id}. The attack pattern leverages {cwe.description} to achieve its goal.
+
+X.WA.2 Instruction: You are a CTI analyst at an enterprise Security Operations Center mapping attack patterns to the weakness classes they target. Consult the MITRE CAPEC and CWE knowledge bases to infer the correct answer.
+Question: Which CWE weakness does CAPEC-{cap:CAPEC.id} ({cap.name}) typically exploit?
+Answer: CAPEC-{cap.id} typically exploits CWE-{cwe:cap.exploits>Weakness.id} ({cwe.name}). The attack pattern ({cap.description}) targets the weakness class {cwe.name}.
+
+X.AM.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center aligning CAPEC attack patterns with MITRE ATT&CK techniques. Consult the MITRE CAPEC and ATT&CK knowledge bases to infer the correct answer.
+Question: Which MITRE ATT&CK technique corresponds to the adversary behaviour in CAPEC-{cap:CAPEC.id} ({cap.name})?
+Answer: CAPEC-{cap.id} aligns with MITRE ATT&CK technique {ap:cap.map_ap>attack-pattern.mitre_id} ({ap.name}). Both describe the same adversary behaviour: {cap.description}.
+
+X.MT.1 Instruction: You are a threat hunter at an enterprise Security Operations Center analysing MITRE ATT&CK coverage. Consult MITRE ATT&CK to determine the tactic the technique serves.
+Question: What MITRE ATT&CK tactic does technique {ap:attack-pattern.mitre_id} ({ap.name}) achieve?
+Answer: Technique {ap.mitre_id} ({ap.name}) achieves the {ta:ap.achieves>x-mitre-tactic.name} tactic, which represents the adversary objective: {ta.description}.
+
+X.MT.2 Instruction: You are a threat hunter at an enterprise Security Operations Center analysing MITRE ATT&CK coverage. Consult MITRE ATT&CK to identify a technique that realises the tactic.
+Question: Provide a technique that adversaries use to achieve the {tac:x-mitre-tactic.name} tactic.
+Answer: Technique {ap:tac.achieves<attack-pattern.mitre_id} ({ap.name}) is used to achieve the {tac.name} tactic: {ap.description}.
+
+X.MM.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center navigating the MITRE ATT&CK technique hierarchy. Consult MITRE ATT&CK to identify the parent technique.
+Question: What is the parent technique of sub-technique {ap:attack-pattern.mitre_id} ({ap.name})?
+Answer: Sub-technique {ap.mitre_id} is a refinement of technique {par:ap.subtechnique-of>attack-pattern.mitre_id} ({par.name}). The parent covers the general approach: {par.description}.
+
+X.MN.1 Instruction: You are a cybersecurity architect hardening a corporate enterprise network against adversary techniques. Consult MITRE ATT&CK to identify a defensive control that addresses the technique.
+Question: What mitigation addresses MITRE ATT&CK technique {ap:attack-pattern.mitre_id} ({ap.name})?
+Answer: Mitigation {coa:ap.mitigates<course-of-action.mitre_id} ({coa.name}) addresses technique {ap.mitre_id}. The mitigation recommends: {coa.description}.
+
+X.MN.2 Instruction: You are a cybersecurity architect hardening a corporate enterprise network. Consult MITRE ATT&CK to list a defensive control that mitigates the technique.
+Question: List a mitigation for technique {ap:attack-pattern.mitre_id} ({ap.name}).
+Answer: Technique {ap.mitre_id} ({ap.name}) is mitigated by {coa:ap.mitigates<course-of-action.mitre_id} ({coa.name}): {coa.description}.
+
+X.GM.1 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center tracking adversary tradecraft. Consult MITRE ATT&CK to identify a technique documented as used by the threat group.
+Question: Which MITRE ATT&CK technique does the threat group {grp:intrusion-set.name} ({grp.mitre_id}) commonly use?
+Answer: The threat group {grp.name} ({grp.mitre_id}) commonly uses technique {ap:grp.uses>attack-pattern.mitre_id} ({ap.name}). This behaviour is documented in MITRE ATT&CK as: {ap.description}.
+
+X.GM.2 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center identifying which adversaries employ a given technique. Consult MITRE ATT&CK to identify a threat group documented as using the technique.
+Question: Which threat group is known to use technique {ap:attack-pattern.mitre_id} ({ap.name})?
+Answer: Threat group {grp:ap.uses<intrusion-set.name} ({grp.mitre_id}) is known to use technique {ap.mitre_id} ({ap.name}) in their operations.
+
+X.GS.1 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center profiling adversary tooling. Consult MITRE ATT&CK to identify software associated with the threat group.
+Question: What software has threat group {grp:intrusion-set.name} ({grp.mitre_id}) been observed using?
+Answer: The threat group {grp.name} has been observed using {mw:grp.uses>malware.name} ({mw.mitre_id}).
+
+X.VP.1 Instruction: You are a vulnerability risk analyst prioritising patching across an enterprise estate. Consult the EPSS score to assess near-term exploitation likelihood and reason about prioritisation.
+Question: What is the EPSS exploitation likelihood for CVE-{cve:CVE.id}, and how should this inform prioritisation?
+Answer: CVE-{cve.id} has an EPSS score of {e:cve.scores<EPSS.epss} ({e.percentile} percentile), reflecting the probability of exploitation in the next 30 days. Higher scores should be prioritised for patching.
+
+X.VK.1 Instruction: You are a SOC analyst triaging actively exploited vulnerabilities for a corporate enterprise. Consult the CISA Known Exploited Vulnerabilities (KEV) catalog to confirm exploitation status and required remediation.
+Question: Is CVE-{cve:CVE.id} listed in the CISA KEV catalog, and what is the required remediation?
+Answer: CVE-{cve.id} is listed in the CISA KEV catalog as {kev:cve.known_exploit>KEV.vulnerabilityName} affecting {kev.product} ({kev.vendorProject}). Required action: {kev.requiredAction}. Due by: {kev.dueDate}.
+
+X.VWA.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center building an end-to-end threat picture. Consult the MITRE CVE, CWE, and CAPEC knowledge bases and reason step by step from the vulnerability to its root-cause weakness to the attack pattern that exploits it.
+Question: Trace CVE-{cve:CVE.id} from vulnerability to weakness to attack pattern.
+Answer: CVE-{cve.id} ({cve.descriptions}) is an instance of CWE-{cve.problemType.id} ({cve.problemType.name}). This weakness is exploited by CAPEC-{cap:cve.impacts>CAPEC.id} ({cap.name}). Chain: CVE-{cve.id} -> CWE-{cve.problemType.id} -> CAPEC-{cap.id}.
+
+X.TMN.1 Instruction: You are a cybersecurity architect hardening a corporate enterprise network. Consult MITRE ATT&CK and reason step by step from the adversary tactic to a technique that realises it and then to a defensive control that mitigates the technique.
+Question: Starting from the {tac:x-mitre-tactic.name} tactic, provide a technique that achieves it and a mitigation against that technique.
+Answer: The {tac.name} tactic ({tac.description}) is achieved by technique {ap:tac.achieves<attack-pattern.mitre_id} ({ap.name}), which can be mitigated by {coa:ap.mitigates<course-of-action.mitre_id} ({coa.name}): {coa.description}.
+
+Section 2 - Yes/No Discrimination Templates (Gap 2)
+
+YN.VW.P.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center verifying vulnerability-to-weakness mappings. Consult the MITRE CVE and CWE knowledge bases, reason about the assignment first, and then conclude with yes or no.
+Question: Does CVE-{cve:CVE.id} ({cve.descriptions}) have CWE-{cve.problemType.id} ({cve.problemType.name}) as a root cause?
+Answer: CVE-{cve.id} describes {cve.descriptions}, which matches the pattern defined by CWE-{cve.problemType.id} ({cve.problemType.name}): {cve.problemType.description}. Therefore, yes.
+
+YN.VW.N.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center verifying vulnerability-to-weakness mappings. Consult the MITRE CVE and CWE knowledge bases, reason about the assignment first, and then conclude with yes or no.
+Question: Does CVE-{cve:CVE.id} ({cve.descriptions}) have CWE-{negw:Weakness.id} ({negw.name}) as a root cause?
+Answer: CVE-{cve.id} describes {cve.descriptions}, which does not match CWE-{negw.id} ({negw.name}) (that weakness concerns {negw.description}); the actual root cause recorded in MITRE is CWE-{cve.problemType.id} ({cve.problemType.name}). Therefore, no.
+{force negw.id != cve.problemType.id}
+
+YN.WA.P.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center verifying CAPEC-to-CWE relationships. Consult the MITRE CAPEC and CWE knowledge bases, reason about the relationship first, and then conclude with yes or no.
+Question: Does CAPEC-{cap:CAPEC.id} ({cap.name}) exploit CWE-{cwe:cap.exploits>Weakness.id} ({cwe.name})?
+Answer: The attack pattern CAPEC-{cap.id} ({cap.description}) leverages the weakness {cwe.name} ({cwe.description}), which is the defining characteristic of CWE-{cwe.id}. Therefore, yes.
+
+YN.WA.N.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center verifying CAPEC-to-CWE relationships. Consult the MITRE CAPEC and CWE knowledge bases, reason about the relationship first, and then conclude with yes or no.
+Question: Does CAPEC-{cap:CAPEC.id} ({cap.name}) exploit CWE-{negw:Weakness.id} ({negw.name})?
+Answer: CAPEC-{cap.id} does not target CWE-{negw.id}; instead, MITRE CAPEC records that CAPEC-{cap.id} exploits {cap.exploits.name} (CWE-{cap.exploits.id}). Therefore, no.
+{force negw.id != cap.exploits.id}
+
+YN.MT.P.1 Instruction: You are a threat hunter at an enterprise Security Operations Center verifying MITRE ATT&CK technique-to-tactic assignments. Consult MITRE ATT&CK, reason about the assignment first, and then conclude with yes or no.
+Question: Does technique {ap:attack-pattern.mitre_id} ({ap.name}) serve the {ta:ap.achieves>x-mitre-tactic.name} tactic?
+Answer: MITRE ATT&CK classifies technique {ap.mitre_id} ({ap.name}) under the {ta.name} tactic, which covers {ta.description}. Therefore, yes.
+
+YN.MT.N.1 Instruction: You are a threat hunter at an enterprise Security Operations Center verifying MITRE ATT&CK technique-to-tactic assignments. Consult MITRE ATT&CK, reason about the assignment first, and then conclude with yes or no.
+Question: Does technique {ap:attack-pattern.mitre_id} ({ap.name}) serve the {negtac:x-mitre-tactic.name} tactic?
+Answer: MITRE ATT&CK classifies technique {ap.mitre_id} under the {ap.achieves.name} tactic, not under {negtac.name}. Therefore, no.
+{force negtac.mitre_id != ap.achieves.mitre_id}
+
+YN.GM.P.1 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center confirming documented adversary tradecraft. Consult MITRE ATT&CK, reason about the evidence first, and then conclude with yes or no.
+Question: Is threat group {grp:intrusion-set.name} ({grp.mitre_id}) known to use technique {ap:grp.uses>attack-pattern.mitre_id} ({ap.name})?
+Answer: MITRE ATT&CK documents {grp.name} ({grp.mitre_id}) as using technique {ap.mitre_id} ({ap.name}): {ap.description}. Therefore, yes.
+
+YN.GM.N.1 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center confirming documented adversary tradecraft. Consult MITRE ATT&CK, reason about the evidence first, and then conclude with yes or no.
+Question: Is threat group {grp:intrusion-set.name} ({grp.mitre_id}) known to use technique {negack:attack-pattern.mitre_id} ({negack.name})?
+Answer: MITRE ATT&CK records no documented use of technique {negack.mitre_id} by {grp.name}; instead {grp.name} is associated with technique {posack:grp.uses>attack-pattern.mitre_id} ({posack.name}). Therefore, no.
+{force negack.mitre_id != posack.mitre_id}
+
+YN.MN.P.1 Instruction: You are a cybersecurity architect hardening a corporate enterprise network. Consult MITRE ATT&CK, reason about whether the proposed control addresses the technique, and then conclude with yes or no.
+Question: Does mitigation {coa:ap.mitigates<course-of-action.mitre_id} ({coa.name}) address MITRE ATT&CK technique {ap:attack-pattern.mitre_id} ({ap.name})?
+Answer: MITRE ATT&CK records that mitigation {coa.mitre_id} ({coa.name}) addresses technique {ap.mitre_id} by {coa.description}. Therefore, yes.
+
+YN.MN.N.1 Instruction: You are a cybersecurity architect hardening a corporate enterprise network. Consult MITRE ATT&CK, reason about whether the proposed control addresses the technique, and then conclude with yes or no.
+Question: Does mitigation {negcoa:course-of-action.mitre_id} ({negcoa.name}) address MITRE ATT&CK technique {ap:attack-pattern.mitre_id} ({ap.name})?
+Answer: MITRE ATT&CK does not record mitigation {negcoa.mitre_id} as addressing technique {ap.mitre_id}; the appropriate control for this technique is {coa:ap.mitigates<course-of-action.mitre_id} ({coa.name}). Therefore, no.
+{force negcoa.mitre_id != coa.mitre_id}
+
+
+Section 3 - Multiple-Choice Templates (Gap 3)
+
+Note: distractor bindings (negw*, negack*, negtac*, negcoa*, negcap*) use
+{force} to ensure they differ from the correct answer. Extend iftgen.py with
+semantic filtering to promote near-miss distractors (SecKnowledge-style).
+
+Q.VW.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center correlating vulnerabilities to their root-cause weaknesses. Consult the MITRE CVE and CWE knowledge bases, reason about each option in turn, and then select the single best answer from A, B, C, or D.
+Question: What is the root-cause CWE of CVE-{cve:CVE.id} ({cve.descriptions})?
+A) CWE-{cve.problemType.id} ({cve.problemType.name})
+B) CWE-{negw1:Weakness.id} ({negw1.name})
+C) CWE-{negw2:Weakness.id} ({negw2.name})
+D) CWE-{negw3:Weakness.id} ({negw3.name})
+Answer: The CVE description matches the pattern defined by CWE-{cve.problemType.id} ({cve.problemType.name}): {cve.problemType.description}. Therefore, A.
+{force negw1.id != cve.problemType.id}
+{force negw2.id != cve.problemType.id}
+{force negw3.id != cve.problemType.id}
+{force negw1.id != negw2.id}
+{force negw1.id != negw3.id}
+{force negw2.id != negw3.id}
+
+Q.WA.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center linking weaknesses to the attack patterns that exploit them. Consult the MITRE CWE and CAPEC knowledge bases, reason about each option in turn, and then select the single best answer from A, B, C, or D.
+Question: Which CAPEC attack pattern primarily exploits CWE-{cwe:Weakness.id} ({cwe.name})?
+A) CAPEC-{cap:cwe.related_attack_pattern>CAPEC.id} ({cap.name})
+B) CAPEC-{negcap1:CAPEC.id} ({negcap1.name})
+C) CAPEC-{negcap2:CAPEC.id} ({negcap2.name})
+D) CAPEC-{negcap3:CAPEC.id} ({negcap3.name})
+Answer: MITRE CAPEC records CAPEC-{cap.id} ({cap.name}) as the attack pattern that exploits CWE-{cwe.id} ({cwe.name}). Therefore, A.
+{force negcap1.id != cap.id}
+{force negcap2.id != cap.id}
+{force negcap3.id != cap.id}
+{force negcap1.id != negcap2.id}
+{force negcap1.id != negcap3.id}
+{force negcap2.id != negcap3.id}
+
+Q.MT.1 Instruction: You are a threat hunter at an enterprise Security Operations Center mapping techniques to their tactics. Consult MITRE ATT&CK, reason about each option in turn, and then select the single best answer from A, B, C, or D.
+Question: Which MITRE ATT&CK tactic does technique {ap:attack-pattern.mitre_id} ({ap.name}) achieve?
+A) {ta:ap.achieves>x-mitre-tactic.name}
+B) {negtac1:x-mitre-tactic.name}
+C) {negtac2:x-mitre-tactic.name}
+D) {negtac3:x-mitre-tactic.name}
+Answer: MITRE ATT&CK classifies technique {ap.mitre_id} ({ap.name}) under the {ta.name} tactic. Therefore, A.
+{force negtac1.mitre_id != ta.mitre_id}
+{force negtac2.mitre_id != ta.mitre_id}
+{force negtac3.mitre_id != ta.mitre_id}
+{force negtac1.mitre_id != negtac2.mitre_id}
+{force negtac1.mitre_id != negtac3.mitre_id}
+{force negtac2.mitre_id != negtac3.mitre_id}
+
+Q.MN.1 Instruction: You are a cybersecurity architect hardening a corporate enterprise network. Consult MITRE ATT&CK, reason about each option in turn, and then select the single best answer from A, B, C, or D.
+Question: Which MITRE ATT&CK mitigation addresses technique {ap:attack-pattern.mitre_id} ({ap.name})?
+A) {coa:ap.mitigates<course-of-action.mitre_id} ({coa.name})
+B) {negcoa1:course-of-action.mitre_id} ({negcoa1.name})
+C) {negcoa2:course-of-action.mitre_id} ({negcoa2.name})
+D) {negcoa3:course-of-action.mitre_id} ({negcoa3.name})
+Answer: MITRE ATT&CK records mitigation {coa.mitre_id} ({coa.name}) as addressing technique {ap.mitre_id}: {coa.description}. Therefore, A.
+{force negcoa1.mitre_id != coa.mitre_id}
+{force negcoa2.mitre_id != coa.mitre_id}
+{force negcoa3.mitre_id != coa.mitre_id}
+{force negcoa1.mitre_id != negcoa2.mitre_id}
+{force negcoa1.mitre_id != negcoa3.mitre_id}
+{force negcoa2.mitre_id != negcoa3.mitre_id}
+
+Q.GM.1 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center tracking adversary tradecraft. Consult MITRE ATT&CK, reason about each option in turn, and then select the single best answer from A, B, C, or D.
+Question: Which MITRE ATT&CK technique is {grp:intrusion-set.name} ({grp.mitre_id}) known to use?
+A) {ap:grp.uses>attack-pattern.mitre_id} ({ap.name})
+B) {negack1:attack-pattern.mitre_id} ({negack1.name})
+C) {negack2:attack-pattern.mitre_id} ({negack2.name})
+D) {negack3:attack-pattern.mitre_id} ({negack3.name})
+Answer: MITRE ATT&CK documents {grp.name} ({grp.mitre_id}) as using technique {ap.mitre_id} ({ap.name}). Therefore, A.
+{force negack1.mitre_id != ap.mitre_id}
+{force negack2.mitre_id != ap.mitre_id}
+{force negack3.mitre_id != ap.mitre_id}
+{force negack1.mitre_id != negack2.mitre_id}
+{force negack1.mitre_id != negack3.mitre_id}
+{force negack2.mitre_id != negack3.mitre_id}
+
+Q.AM.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center aligning CAPEC attack patterns with MITRE ATT&CK techniques. Consult the MITRE CAPEC and ATT&CK knowledge bases, reason about each option in turn, and then select the single best answer from A, B, C, or D.
+Question: Which MITRE ATT&CK technique corresponds to CAPEC-{cap:CAPEC.id} ({cap.name})?
+A) {ap:cap.map_ap>attack-pattern.mitre_id} ({ap.name})
+B) {negack1:attack-pattern.mitre_id} ({negack1.name})
+C) {negack2:attack-pattern.mitre_id} ({negack2.name})
+D) {negack3:attack-pattern.mitre_id} ({negack3.name})
+Answer: CAPEC-{cap.id} aligns with MITRE ATT&CK technique {ap.mitre_id} ({ap.name}); both describe the same adversary behaviour. Therefore, A.
+{force negack1.mitre_id != ap.mitre_id}
+{force negack2.mitre_id != ap.mitre_id}
+{force negack3.mitre_id != ap.mitre_id}
+{force negack1.mitre_id != negack2.mitre_id}
+{force negack1.mitre_id != negack3.mitre_id}
+{force negack2.mitre_id != negack3.mitre_id}
+
+
+Section 4 - Classification Templates (Gap 3)
+
+CL.V.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center classifying vulnerabilities by weakness category. Consult the MITRE CVE and CWE knowledge bases to determine the correct weakness, then respond with the CWE identifier only.
+Question: Classify the following vulnerability: {cve:CVE.descriptions}
+Answer: CWE-{cve.problemType.id}
+
+CL.V.2 Instruction: You are a CTI triage analyst at an enterprise Security Operations Center screening vulnerabilities for active exploitation. Consult the CISA Known Exploited Vulnerabilities (KEV) catalog to decide, then reply with one of: KEV, NON-KEV.
+Question: Is CVE-{cve:CVE.id} ({cve.descriptions}) known to be exploited in the wild per the CISA KEV catalog?
+Answer: KEV. CVE-{cve.id} is listed in CISA KEV as {kev:cve.known_exploit>KEV.vulnerabilityName}, required action: {kev.requiredAction}.
+
+CL.M.1 Instruction: You are a threat hunter at an enterprise Security Operations Center mapping techniques to their tactics. Consult MITRE ATT&CK to determine the correct tactic, then respond with the tactic name only.
+Question: Classify MITRE ATT&CK technique {ap:attack-pattern.mitre_id} ({ap.name}) by tactic: {ap.description}
+Answer: {ta:ap.achieves>x-mitre-tactic.name}
+
+CL.A.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center categorising attack patterns by the weakness they target. Consult the MITRE CAPEC and CWE knowledge bases to determine the correct weakness, then respond with the CWE identifier only.
+Question: Classify CAPEC-{cap:CAPEC.id} ({cap.name}) by primary target weakness: {cap.description}
+Answer: CWE-{cwe:cap.exploits>Weakness.id}
+
+CL.G.1 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center identifying which adversaries employ a given technique. Consult MITRE ATT&CK to determine the correct attribution, then respond with the threat group name only.
+Question: Which threat group is associated with technique {ap:attack-pattern.mitre_id} ({ap.name})?
+Answer: {grp:ap.uses<intrusion-set.name}
+
+Section 5 - Summarization Templates (Gap 3)
+
+SU.V.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center briefing leadership on a newly disclosed vulnerability. Consult the MITRE CVE and CWE knowledge bases and produce a one-sentence executive summary covering impact and root cause.
+Question: Summarise CVE-{cve:CVE.id} in a single sentence covering impact and root cause: {cve.descriptions}
+Answer: CVE-{cve.id} is a {cve.problemType.name} (CWE-{cve.problemType.id}) vulnerability allowing {cve.descriptions}.
+
+SU.W.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center briefing leadership on a weakness class. Consult the MITRE CWE and CAPEC knowledge bases and produce a one-sentence executive summary that names a representative attack pattern.
+Question: Summarise CWE-{cwe:Weakness.id} ({cwe.name}) for an executive audience: {cwe.description}
+Answer: CWE-{cwe.id} ({cwe.name}) is a weakness class in which {cwe.description}, commonly exploited via CAPEC-{cap:cwe.related_attack_pattern>CAPEC.id} ({cap.name}).
+
+SU.M.1 Instruction: You are a threat hunter at an enterprise Security Operations Center briefing defenders on a MITRE ATT&CK technique. Consult MITRE ATT&CK and produce a one-sentence summary that names the associated tactic and a concrete mitigation.
+Question: Summarise MITRE ATT&CK technique {ap:attack-pattern.mitre_id} ({ap.name}) including its tactic and a mitigation.
+Answer: {ap.name} ({ap.mitre_id}) is a {ta:ap.achieves>x-mitre-tactic.name} technique that can be mitigated by {coa:ap.mitigates<course-of-action.mitre_id} ({coa.name}).
+
+SU.G.1 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center briefing defenders on a threat group. Consult MITRE ATT&CK and produce a one-sentence profile that names one documented technique and one associated piece of software.
+Question: Summarise threat group {grp:intrusion-set.name} ({grp.mitre_id}), including one technique and one associated piece of software.
+Answer: {grp.name} ({grp.mitre_id}) is a threat group known to use technique {ap:grp.uses>attack-pattern.mitre_id} ({ap.name}) and the software {mw:grp.uses>malware.name}.
+
+
+================================================================================
+SECTION E. Detections / Exploits / PoCs / CPE addendum -- 42 templates
+================================================================================
+Source: tmpl_gen/templates/04242026/Sophia-CTI-Templates-Detections-Exploits-PoCs-addendum.txt
+EDB.* (Exploit-DB records), POC.* (proof-of-concept context),
+SR.* (Sigma-rule reasoning), V.CPE.* (CVE -> CPE / vendor-product),
+plus their X.* / SU.* / YN. variants. Adds operational
+detection/exploitation signal not covered by the core CTI families.
+--------------------------------------------------------------------------------
+
+Detections, Weaponised Exploits, and Public PoCs CTI Templates
+(Addendum to Sophia-CTI-Templates-04022026)
+
+Revision 04242026: adds training coverage for four CTI-DB subjects landed
+in the 2026-04 schema extension:
+
+  1. NVD CPE affected-products (new property on CVE: cpe_matches, JSON string
+     of CPE 2.3 criteria describing vendor/product/version/edition tuples).
+  2. SigmaHQ detection rules   (new node: SigmaRule)
+                               -detects-> attack-pattern
+  3. ExploitDB weaponised      (new node: ExploitDBEntry)
+     exploits                  (CVE)-has_weaponized_exploit->(ExploitDBEntry)
+  4. PoC-in-GitHub references  (new node: GithubPoC)
+                               (CVE)-has_poc->(GithubPoC)
+
+Subject-area alignment:
+
+  Section 1 - V.CPE.* : CVE affected-products (NVD cpe_matches)
+  Section 2 - SR.*    : Sigma rule core
+  Section 3 - EDB.*   : ExploitDB entry core
+  Section 4 - POC.*   : GitHub PoC core
+  Section 5 - X.*     : Cross-framework multi-hop paths
+  Section 6 - YN.*    : Yes/No positive + hard-negative discrimination
+  Section 7 - Q.*     : 5-option multiple-choice (Shuffle: mcq)
+  Section 8 - CL.*    : Classification (closed-list)
+  Section 9 - SU.*    : Summarisation (long -> short)
+
+ID convention (extensions to 04-20 addendum; per-file alias, not global):
+
+  V.CPE.<n>            CVE affected-products (uses cpe_matches property)
+  SR.<n>               Sigma rule core
+  EDB.<n>              ExploitDB entry core
+  POC.<n>              GitHub PoC core
+  X.VEDB.<n>           CVE -> ExploitDB path
+  X.VPOC.<n>           CVE -> GitHub PoC path
+  X.MSR.<n>            attack-pattern -> Sigma rule path (reverse of detects)
+  X.VSR.<n>            CVE -> CWE -> CAPEC -> attack-pattern <- Sigma chain
+  YN.<edge>.P.<n>      yes/no positive
+  YN.<edge>.N.<n>      yes/no hard-negative (uses {force} to pick unrelated)
+  Q.<edge>.<n>         5-option MCQ
+  CL.<src>.<n>         closed-list classification
+  SU.<src>.<n>         long -> short summarisation
+
+Design notes:
+
+  - The V.CPE.* templates treat cpe_matches as opaque JSON text at bind time
+    and teach the model to parse CPE 2.3 strings
+    (cpe:2.3:<part>:<vendor>:<product>:<version>:...) in the Answer, so
+    the model learns to interpret the field rather than just echo it.
+  - SR.* templates never bind the raw "detection" JSON into the Question
+    (the rule logic is too noisy) but do use it in the Answer where the
+    model is asked to summarise the detection logic. This keeps prompts
+    short while still teaching rule interpretation.
+  - EDB.* and POC.* use neo4j_datetime fields (published) rendered as
+    strings; date arithmetic is out of scope for these templates.
+  - TAA-style hard-negatives in YN.N.* use {force} on the primary key
+    (id / mitre_id) to guarantee the distractor is genuinely unrelated.
+  - All MCQ templates declare "Shuffle: mcq" so iftgen randomises option
+    labels per row and rewrites the final "Therefore, X." letter.
+
+
+Section 1 - V.CPE.* CVE Affected-Products Templates (new cpe_matches property)
+
+V.CPE.1 Instruction: You are a vulnerability analyst at an enterprise Security Operations Center determining which products are impacted by a CVE. Consult the NVD CPE applicability statements and state the affected vendor-product-version tuples from the CPE 2.3 criteria recorded for the CVE.
+Question: Which products and versions are affected by CVE {cve:CVE.id}? Vulnerability description: {cve.descriptions}
+Answer: NVD records the following CPE 2.3 applicability statements for CVE {cve.id}: {cve.cpe_matches}. Each "cpe:2.3:a:<vendor>:<product>:<version>:*" entry in that list identifies an affected vendor, product, and version range. Therefore, the affected products are those enumerated by the cpe_matches criteria.
+
+V.CPE.2 Instruction: You are a CTI analyst at an enterprise Security Operations Center extracting vendor-level exposure for a newly disclosed CVE. Consult the NVD CPE applicability statements on the CVE record and identify the vendors whose products appear in the cpe_matches list.
+Question: Which vendors have products affected by CVE {cve:CVE.id}?
+Answer: The CPE 2.3 criteria recorded for CVE {cve.id} enumerate the affected vendor-product-version tuples: {cve.cpe_matches}. The second field of each "cpe:2.3:a:<vendor>:<product>:..." string names the responsible vendor. Therefore, the affected vendors are those that appear in the vendor field of the cpe_matches entries.
+
+V.CPE.3 Instruction: You are a SOC analyst at an enterprise Security Operations Center interpreting the CPE 2.3 applicability statements attached to a CVE. Consult the NVD CVE record and explain what the cpe_matches property encodes, so that a downstream triage query can filter on vendor, product, or version.
+Question: Explain the cpe_matches applicability statements recorded on CVE {cve:CVE.id}.
+Answer: The cpe_matches property on CVE {cve.id} is a JSON list of CPE 2.3 match criteria, where each entry uses the Common Platform Enumeration v2.3 URI scheme "cpe:2.3:<part>:<vendor>:<product>:<version>:<update>:<edition>:<language>:<sw_edition>:<target_sw>:<target_hw>:<other>". For CVE {cve.id} the recorded criteria are: {cve.cpe_matches}. Version-range fields (versionStartIncluding / versionEndExcluding) on each entry narrow which installed versions are in scope. Therefore, cpe_matches is the authoritative field for determining whether a given asset inventory record is exposed to CVE {cve.id}.
+
+V.CPE.4 Instruction: You are a vulnerability risk analyst at an enterprise Security Operations Center correlating a CVE to asset-inventory exposure. Consult the NVD CPE applicability statements on the CVE record and use them to determine whether a given product-version combination is covered.
+Question: Given CVE {cve:CVE.id} ({cve.descriptions}), how would an analyst determine whether a specific product-version is affected?
+Answer: The analyst compares the asset's vendor, product, and version against each entry in the cpe_matches list for CVE {cve.id}: {cve.cpe_matches}. An asset is in scope when its "cpe:2.3:a:<vendor>:<product>:<version>" matches any entry's criteria (including any versionStartIncluding / versionEndExcluding range bounds) and the entry's "vulnerable" flag is true. Therefore, cpe_matches is the join key between the CVE record and the asset inventory.
+
+
+Section 2 - SR.* Sigma Detection Rule Core Templates
+
+SR.1 Instruction: You are a detection engineer at an enterprise Security Operations Center reviewing a community Sigma rule. Consult the SigmaHQ rule repository and describe the rule's purpose, maturity, and scope.
+Question: Describe Sigma rule {sr:SigmaRule.id} ({sr.title}).
+Answer: Sigma rule {sr.id} ({sr.title}) has status {sr.status} and severity level {sr.level}. Its stated purpose is: {sr.description}. The rule was authored by {sr.author}.
+
+SR.2 Instruction: You are a detection engineer at an enterprise Security Operations Center assessing the log-source footprint of a Sigma rule. Consult the rule's logsource block and state which telemetry channel the rule consumes.
+Question: Which log source does Sigma rule {sr:SigmaRule.title} ({sr.id}) require?
+Answer: Sigma rule {sr.id} is written against logsource product={sr.logsource_product}, category={sr.logsource_category}, service={sr.logsource_service}. Deploying the rule therefore requires telemetry ingestion from that specific log channel.
+
+SR.3 Instruction: You are a detection engineer at an enterprise Security Operations Center triaging Sigma-rule alerts. Consult the rule's declared false-positive guidance and explain which benign behaviours may trigger it.
+Question: What false-positive conditions does Sigma rule {sr:SigmaRule.id} ({sr.title}) call out?
+Answer: SigmaHQ records the following false-positive conditions for rule {sr.id}: {sr.falsepositives}. Analysts correlating alerts from this rule should factor those benign patterns into triage before escalation.
+
+SR.4 Instruction: You are a detection engineer at an enterprise Security Operations Center summarising a Sigma rule's detection logic for a SOC runbook. Consult the rule's detection block and paraphrase the logical conditions without reproducing the raw YAML.
+Question: Summarise the detection logic of Sigma rule {sr:SigmaRule.id} ({sr.title}).
+Answer: Sigma rule {sr.id} encodes the following detection logic: {sr.detection}. In plain terms, it fires when the selection clauses in that block match an event on the declared log source ({sr.logsource_product}/{sr.logsource_category}/{sr.logsource_service}) and the overall condition expression evaluates to true.
+
+SR.5 Instruction: You are a CTI-to-detection bridge analyst at an enterprise Security Operations Center mapping Sigma rules to MITRE ATT&CK coverage. Consult the (SigmaRule)-detects->(attack-pattern) relationship and state which technique the rule is designed to catch.
+Question: Which MITRE ATT&CK technique does Sigma rule {sr:SigmaRule.id} ({sr.title}) detect?
+Answer: SigmaHQ tags rule {sr.id} with a "detects" link to MITRE ATT&CK technique {ap:sr.detects>attack-pattern.mitre_id} ({ap.name}). The rule's detection block is written to surface observable indicators of {ap.name}: {ap.description}.
+
+SR.6 Instruction: You are a detection engineer at an enterprise Security Operations Center enumerating Sigma coverage for a specific MITRE ATT&CK technique. Consult the reverse (attack-pattern)<-detects-(SigmaRule) edge and cite a Sigma rule authored against the technique.
+Question: Name a Sigma rule that detects MITRE ATT&CK technique {ap:attack-pattern.mitre_id} ({ap.name}).
+Answer: Sigma rule {sr:ap.detects<SigmaRule.id} ({sr.title}) is authored against technique {ap.mitre_id} ({ap.name}), with status {sr.status} and severity level {sr.level}.
+
+SR.7 Instruction: You are a CTI analyst at an enterprise Security Operations Center interpreting a Sigma rule's MITRE ATT&CK tags. Consult the rule's tags list and explain what defensive context the tagging encodes.
+Question: What MITRE ATT&CK tags are attached to Sigma rule {sr:SigmaRule.id} ({sr.title})?
+Answer: Sigma rule {sr.id} carries the following tags: {sr.tags}. Entries of the form "attack.t####" reference MITRE ATT&CK technique identifiers; "attack.<tactic>" entries cite the tactic the technique serves. Together the tags record the adversary behaviour the rule is intended to catch.
+
+SR.8 Instruction: You are a detection engineer at an enterprise Security Operations Center prioritising Sigma rules for deployment based on their publication status. Consult the rule's status field and reason about whether the rule is deployment-ready.
+Question: Is Sigma rule {sr:SigmaRule.id} ({sr.title}) ready for production deployment?
+Answer: Sigma rule {sr.id} carries status {sr.status} at severity {sr.level}. SigmaHQ uses "stable" for rules with mature, vetted logic, "test" for rules undergoing validation, "experimental" for early-stage patterns, and "deprecated" for retired rules. The rule's production readiness therefore follows from its status value and the SOC's own deployment gate.
+
+
+Section 3 - EDB.* ExploitDB Weaponised Exploit Core Templates
+
+EDB.1 Instruction: You are a vulnerability risk analyst at an enterprise Security Operations Center reviewing a weaponised exploit published to ExploitDB. Consult the ExploitDB entry and describe the exploit artefact, its target platform, and its type.
+Question: Describe ExploitDB entry {edb:ExploitDBEntry.id} ({edb.title}).
+Answer: ExploitDB entry {edb.id} ({edb.title}) is a {edb.type} exploit targeting the {edb.platform} platform, published on {edb.published}. The canonical reference is {edb.url}.
+
+EDB.2 Instruction: You are a SOC analyst at an enterprise Security Operations Center interpreting the ExploitDB "type" and "platform" fields for an exploit artefact. Consult the entry and explain what the fields encode so that defenders can reason about applicability.
+Question: What exploit category and target environment does ExploitDB entry {edb:ExploitDBEntry.id} ({edb.title}) cover?
+Answer: ExploitDB classifies entry {edb.id} as a {edb.type} exploit on the {edb.platform} platform. The "type" value identifies the exploit mechanism (remote / local / webapps / dos / shellcode), while "platform" identifies the target operating system or runtime. Together they scope which assets in an inventory are at risk from the artefact.
+
+EDB.3 Instruction: You are a CTI analyst at an enterprise Security Operations Center correlating a CVE to its public weaponised exploits. Consult the (CVE)-has_weaponized_exploit->(ExploitDBEntry) edge and cite an exploit artefact published against the vulnerability.
+Question: Is there a weaponised exploit published for CVE {cve:CVE.id}, and if so where is it hosted?
+Answer: CVE {cve.id} has an associated ExploitDB entry {edb:cve.has_weaponized_exploit>ExploitDBEntry.id} ({edb.title}) of type {edb.type} for the {edb.platform} platform, published on {edb.published} at {edb.url}. Its presence confirms that a working exploit is publicly available for this vulnerability.
+
+EDB.4 Instruction: You are a vulnerability triage analyst at an enterprise Security Operations Center reverse-querying from an ExploitDB artefact back to the underlying CVE. Consult the reverse (ExploitDBEntry)<-has_weaponized_exploit-(CVE) edge.
+Question: Which CVE is exploited by ExploitDB entry {edb:ExploitDBEntry.id} ({edb.title})?
+Answer: ExploitDB entry {edb.id} ({edb.title}) is the weaponised exploit for CVE {cve:edb.has_weaponized_exploit<CVE.id}: {cve.descriptions}.
+
+EDB.5 Instruction: You are a vulnerability risk analyst at an enterprise Security Operations Center assessing exploitability urgency for a newly disclosed CVE. Consult the CVE's ExploitDB linkage, CVSS base score, and EPSS score and reason about overall exploit risk.
+Question: How should analysts prioritise CVE {cve:CVE.id} given its public exploit availability and scoring context?
+Answer: CVE {cve.id} carries CVSS base score {cve.cvss3_1_baseScore} and EPSS {e:cve.scores<EPSS.epss} ({e.percentile} percentile). A weaponised exploit is published at ExploitDB entry {edb:cve.has_weaponized_exploit>ExploitDBEntry.id} ({edb.title}, type {edb.type}, platform {edb.platform}, published {edb.published}). The combination of high technical severity, measurable exploitation likelihood, and a public weaponised artefact elevates remediation urgency.
+
+
+Section 4 - POC.* PoC-in-GitHub Core Templates
+
+POC.1 Instruction: You are a vulnerability risk analyst at an enterprise Security Operations Center reviewing a community proof-of-concept repository indexed by nomi-sec/PoC-in-GitHub. Consult the entry and describe what it encodes.
+Question: Describe GitHub PoC {poc:GithubPoC.id} ({poc.title}).
+Answer: GitHub PoC {poc.id} ({poc.title}) is hosted at {poc.url} and was published on {poc.published}. Unlike ExploitDB entries, PoC-in-GitHub indexes community-submitted repositories and their weaponisation maturity therefore varies; the entry should be read as evidence that proof-of-concept code is publicly circulating rather than as a vetted exploit.
+
+POC.2 Instruction: You are a CTI analyst at an enterprise Security Operations Center correlating a CVE to publicly available PoC code on GitHub. Consult the (CVE)-has_poc->(GithubPoC) edge and cite a repository published against the vulnerability.
+Question: Is there a public PoC on GitHub for CVE {cve:CVE.id}?
+Answer: CVE {cve.id} has a GitHub PoC reference {poc:cve.has_poc>GithubPoC.id} ({poc.title}), hosted at {poc.url} and indexed on {poc.published}. The presence of a PoC repository indicates community reverse-engineering effort even where no ExploitDB artefact exists.
+
+POC.3 Instruction: You are a vulnerability triage analyst at an enterprise Security Operations Center reverse-querying from a GitHub PoC back to the underlying CVE. Consult the reverse (GithubPoC)<-has_poc-(CVE) edge.
+Question: Which CVE is demonstrated by GitHub PoC {poc:GithubPoC.id} ({poc.title})?
+Answer: GitHub PoC {poc.id} ({poc.title}), hosted at {poc.url}, demonstrates exploitation of CVE {cve:poc.has_poc<CVE.id}: {cve.descriptions}.
+
+POC.4 Instruction: You are a vulnerability risk analyst at an enterprise Security Operations Center distinguishing weaponised exploits from proof-of-concept code when prioritising patches. Consult the CVE's ExploitDB and GitHub-PoC linkages and reason about maturity.
+Question: For CVE {cve:CVE.id}, compare the maturity of the available public exploitation material.
+Answer: CVE {cve.id} has both a weaponised ExploitDB entry {edb:cve.has_weaponized_exploit>ExploitDBEntry.id} ({edb.title}, type {edb.type}) and a GitHub PoC reference {poc:cve.has_poc>GithubPoC.id} ({poc.title}). ExploitDB submissions are vetted and tagged by exploit type, while GitHub PoCs are community repositories of varying completeness. Analysts should treat the ExploitDB artefact as the authoritative weaponisation signal and the GitHub PoC as corroborating evidence of public exploitation interest.
+
+
+Section 5 - X.* Cross-Framework Path Templates
+
+X.VEDB.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center tracing a vulnerability from disclosure to weaponisation. Consult the MITRE CVE record and its (CVE)-has_weaponized_exploit->(ExploitDBEntry) linkage and reason about the path from CVE to public exploit.
+Question: Trace CVE {cve:CVE.id} from vulnerability disclosure to public weaponisation.
+Answer: CVE {cve.id} ({cve.descriptions}) has a published weaponised exploit at ExploitDB entry {edb:cve.has_weaponized_exploit>ExploitDBEntry.id} ({edb.title}), of type {edb.type} for platform {edb.platform}, released on {edb.published}. Chain: CVE {cve.id} -> ExploitDBEntry {edb.id}.
+
+X.VPOC.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center correlating a CVE to community PoC activity on GitHub. Consult the (CVE)-has_poc->(GithubPoC) edge and reason about the path from CVE to public PoC.
+Question: Trace CVE {cve:CVE.id} to community proof-of-concept activity on GitHub.
+Answer: CVE {cve.id} ({cve.descriptions}) has a GitHub PoC reference {poc:cve.has_poc>GithubPoC.id} ({poc.title}) hosted at {poc.url}, indexed on {poc.published}. Chain: CVE {cve.id} -> GithubPoC {poc.id}.
+
+X.MSR.1 Instruction: You are a detection engineer at an enterprise Security Operations Center mapping defensive coverage from MITRE ATT&CK techniques to community Sigma rules. Consult MITRE ATT&CK for the technique context and the reverse (attack-pattern)<-detects-(SigmaRule) edge for detection coverage.
+Question: What Sigma-rule coverage exists for MITRE ATT&CK technique {ap:attack-pattern.mitre_id} ({ap.name})?
+Answer: Technique {ap.mitre_id} ({ap.name}) serves the {ta:ap.achieves>x-mitre-tactic.name} tactic. SigmaHQ publishes rule {sr:ap.detects<SigmaRule.id} ({sr.title}, status {sr.status}, level {sr.level}) against this technique. Chain: x-mitre-tactic {ta.name} <- attack-pattern {ap.mitre_id} <- SigmaRule {sr.id}.
+
+X.VSR.1 Instruction: You are a CTI-to-detection bridge analyst at an enterprise Security Operations Center tracing a vulnerability to the detection content that covers its downstream attack pattern. Consult the CVE, its CWE root cause, the CAPEC it impacts, the ATT&CK technique that CAPEC maps to, and the Sigma rule authored against that technique.
+Question: Trace CVE {cve:CVE.id} to a Sigma rule that would detect its downstream adversary technique.
+Answer: CVE {cve.id} has root cause {cwe:cve.problemType>Weakness.name} (CWE-{cwe.id}). The weakness is exploited by CAPEC {cap:cve.impacts>CAPEC.name} (CAPEC-{cap.id}), which maps to MITRE ATT&CK technique {ap:cap.map_ap>attack-pattern.mitre_id} ({ap.name}). SigmaHQ publishes rule {sr:ap.detects<SigmaRule.id} ({sr.title}, level {sr.level}) against that technique. Chain: CVE {cve.id} -> CWE {cwe.id} -> CAPEC {cap.id} -> attack-pattern {ap.mitre_id} <- SigmaRule {sr.id}.
+
+X.VEDB.2 Instruction: You are a vulnerability risk analyst at an enterprise Security Operations Center correlating weaponised exploit availability with KEV exploitation status. Consult the CVE's ExploitDB linkage and KEV membership and reason about overall exploitation signal.
+Question: For CVE {cve:CVE.id}, does public weaponisation correlate with KEV enrolment?
+Answer: CVE {cve.id} has a weaponised exploit at ExploitDB entry {edb:cve.has_weaponized_exploit>ExploitDBEntry.id} ({edb.title}, type {edb.type}, published {edb.published}). CISA records the CVE in the KEV catalog as {kev:cve.known_exploit>KEV.vulnerabilityName} with required action "{kev.requiredAction}" by {kev.dueDate}. Chain: CVE {cve.id} -> ExploitDBEntry {edb.id} (public weaponisation) and CVE {cve.id} -> KEV {kev.vulnerabilityName} (observed exploitation). The two signals together indicate both available exploit code and confirmed in-the-wild use.
+
+
+Section 6 - YN.* Yes/No Discrimination Templates
+
+YN.MSR.P.1 Instruction: You are a detection engineer at an enterprise Security Operations Center verifying Sigma-rule-to-technique assignments. Consult the (SigmaRule)-detects->(attack-pattern) edge, reason about the assignment first, and then conclude with yes or no.
+Question: Is Sigma rule {sr:SigmaRule.id} ({sr.title}) authored against MITRE ATT&CK technique {ap:sr.detects>attack-pattern.mitre_id} ({ap.name})?
+Answer: SigmaHQ tags rule {sr.id} with a "detects" relation to technique {ap.mitre_id} ({ap.name}): {ap.description}. Therefore, yes.
+
+YN.MSR.N.1 Instruction: You are a detection engineer at an enterprise Security Operations Center verifying Sigma-rule-to-technique assignments. Consult the (SigmaRule)-detects->(attack-pattern) edge, reason about the assignment first, and then conclude with yes or no.
+Question: Is Sigma rule {sr:SigmaRule.id} ({sr.title}) authored against MITRE ATT&CK technique {negap:attack-pattern.mitre_id} ({negap.name})?
+Answer: SigmaHQ does not link rule {sr.id} to technique {negap.mitre_id}; the technique the rule is authored against is {posap:sr.detects>attack-pattern.mitre_id} ({posap.name}). Therefore, no.
+{force negap.mitre_id != posap.mitre_id}
+
+YN.VEDB.P.1 Instruction: You are a vulnerability risk analyst at an enterprise Security Operations Center verifying ExploitDB weaponisation status for a CVE. Consult the (CVE)-has_weaponized_exploit->(ExploitDBEntry) edge, reason about the evidence first, and then conclude with yes or no.
+Question: Does CVE {cve:CVE.id} have a published weaponised exploit in ExploitDB entry {edb:cve.has_weaponized_exploit>ExploitDBEntry.id} ({edb.title})?
+Answer: ExploitDB entry {edb.id} ({edb.title}), a {edb.type} exploit on {edb.platform} published {edb.published}, is recorded as the weaponised exploit for CVE {cve.id}. Therefore, yes.
+
+YN.VEDB.N.1 Instruction: You are a vulnerability risk analyst at an enterprise Security Operations Center verifying ExploitDB weaponisation status for a CVE. Consult the (CVE)-has_weaponized_exploit->(ExploitDBEntry) edge, reason about the evidence first, and then conclude with yes or no.
+Question: Does CVE {cve:CVE.id} have a published weaponised exploit in ExploitDB entry {negedb:ExploitDBEntry.id} ({negedb.title})?
+Answer: ExploitDB entry {negedb.id} is not recorded as the weaponised exploit for CVE {cve.id}; the weaponised exploit actually linked to this CVE is ExploitDB entry {posedb:cve.has_weaponized_exploit>ExploitDBEntry.id} ({posedb.title}). Therefore, no.
+{force negedb.id != posedb.id}
+
+YN.VPOC.P.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center verifying GitHub PoC references for a CVE. Consult the (CVE)-has_poc->(GithubPoC) edge, reason about the evidence first, and then conclude with yes or no.
+Question: Does CVE {cve:CVE.id} have a public PoC reference at GitHub PoC {poc:cve.has_poc>GithubPoC.id} ({poc.title})?
+Answer: GitHub PoC {poc.id} ({poc.title}), hosted at {poc.url} and indexed on {poc.published}, is recorded as a proof-of-concept reference for CVE {cve.id}. Therefore, yes.
+
+YN.VPOC.N.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center verifying GitHub PoC references for a CVE. Consult the (CVE)-has_poc->(GithubPoC) edge, reason about the evidence first, and then conclude with yes or no.
+Question: Does CVE {cve:CVE.id} have a public PoC reference at GitHub PoC {negpoc:GithubPoC.id} ({negpoc.title})?
+Answer: GitHub PoC {negpoc.id} is not recorded as a proof-of-concept reference for CVE {cve.id}; the PoC actually linked to this CVE is {pospoc:cve.has_poc>GithubPoC.id} ({pospoc.title}). Therefore, no.
+{force negpoc.id != pospoc.id}
+
+YN.CPE.P.1 Instruction: You are a vulnerability analyst at an enterprise Security Operations Center verifying whether a CVE carries NVD CPE applicability statements. Consult the cpe_matches property, reason about the evidence first, and then conclude with yes or no.
+Question: Does CVE {cve:CVE.id} record NVD CPE applicability statements in its cpe_matches property?
+Answer: CVE {cve.id} carries the following cpe_matches content: {cve.cpe_matches}. The field enumerates the affected vendor-product-version tuples in CPE 2.3 URI form. Therefore, yes.
+
+
+Section 7 - Q.* 5-Option Multiple-Choice Templates
+
+Q.MSR.1 Instruction: You are a detection engineer at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult the SigmaHQ rule repository and the (SigmaRule)-detects->(attack-pattern) mappings, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
+Question: Which MITRE ATT&CK technique does Sigma rule {sr:SigmaRule.id} ({sr.title}) detect? Rule description: {sr.description}
+A) {ap:sr.detects>attack-pattern.mitre_id} ({ap.name})
+B) {negap1:attack-pattern.mitre_id} ({negap1.name})
+C) {negap2:attack-pattern.mitre_id} ({negap2.name})
+D) {negap3:attack-pattern.mitre_id} ({negap3.name})
+E) {negap4:attack-pattern.mitre_id} ({negap4.name})
+Answer: SigmaHQ tags rule {sr.id} with a "detects" relation to technique {ap.mitre_id} ({ap.name}): {ap.description}. Therefore, A.
+{force negap1.mitre_id != ap.mitre_id}
+{force negap2.mitre_id != ap.mitre_id}
+{force negap3.mitre_id != ap.mitre_id}
+{force negap4.mitre_id != ap.mitre_id}
+{force negap1.mitre_id != negap2.mitre_id}
+{force negap1.mitre_id != negap3.mitre_id}
+{force negap1.mitre_id != negap4.mitre_id}
+{force negap2.mitre_id != negap3.mitre_id}
+{force negap2.mitre_id != negap4.mitre_id}
+{force negap3.mitre_id != negap4.mitre_id}
+Sample: sr
+Shuffle: mcq
+
+Q.VEDB.1 Instruction: You are a vulnerability risk analyst at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult the ExploitDB archive and the (CVE)-has_weaponized_exploit->(ExploitDBEntry) mapping, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
+Question: Which ExploitDB entry is the published weaponised exploit for CVE {cve:CVE.id}? Vulnerability description: {cve.descriptions}
+A) {edb:cve.has_weaponized_exploit>ExploitDBEntry.id} ({edb.title})
+B) {negedb1:ExploitDBEntry.id} ({negedb1.title})
+C) {negedb2:ExploitDBEntry.id} ({negedb2.title})
+D) {negedb3:ExploitDBEntry.id} ({negedb3.title})
+E) {negedb4:ExploitDBEntry.id} ({negedb4.title})
+Answer: ExploitDB entry {edb.id} ({edb.title}) is recorded as the weaponised exploit for CVE {cve.id}; it is a {edb.type} exploit on {edb.platform} published on {edb.published}. Therefore, A.
+{force negedb1.id != edb.id}
+{force negedb2.id != edb.id}
+{force negedb3.id != edb.id}
+{force negedb4.id != edb.id}
+{force negedb1.id != negedb2.id}
+{force negedb1.id != negedb3.id}
+{force negedb1.id != negedb4.id}
+{force negedb2.id != negedb3.id}
+{force negedb2.id != negedb4.id}
+{force negedb3.id != negedb4.id}
+Sample: edb
+Shuffle: mcq
+
+Q.VPOC.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult the nomi-sec/PoC-in-GitHub index and the (CVE)-has_poc->(GithubPoC) mapping, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
+Question: Which GitHub PoC repository is indexed as a proof-of-concept reference for CVE {cve:CVE.id}? Vulnerability description: {cve.descriptions}
+A) {poc:cve.has_poc>GithubPoC.id} ({poc.title})
+B) {negpoc1:GithubPoC.id} ({negpoc1.title})
+C) {negpoc2:GithubPoC.id} ({negpoc2.title})
+D) {negpoc3:GithubPoC.id} ({negpoc3.title})
+E) {negpoc4:GithubPoC.id} ({negpoc4.title})
+Answer: PoC-in-GitHub indexes GitHub PoC {poc.id} ({poc.title}) at {poc.url} as the proof-of-concept repository for CVE {cve.id}. Therefore, A.
+{force negpoc1.id != poc.id}
+{force negpoc2.id != poc.id}
+{force negpoc3.id != poc.id}
+{force negpoc4.id != poc.id}
+{force negpoc1.id != negpoc2.id}
+{force negpoc1.id != negpoc3.id}
+{force negpoc1.id != negpoc4.id}
+{force negpoc2.id != negpoc3.id}
+{force negpoc2.id != negpoc4.id}
+{force negpoc3.id != negpoc4.id}
+Sample: poc
+Shuffle: mcq
+
+
+Section 8 - CL.* Classification Templates (closed-list)
+
+CL.SR.1 Instruction: You are a detection engineer at an enterprise Security Operations Center classifying Sigma rules by their publication status. Consult the rule's status field and assign the single status label from the SigmaHQ closed list.
+Question: What is the publication status of Sigma rule {sr:SigmaRule.id} ({sr.title})? Description: {sr.description}
+Answer: The SigmaHQ status field on rule {sr.id} is {sr.status}. Therefore, the classification is {sr.status}.
+
+CL.SR.2 Instruction: You are a detection engineer at an enterprise Security Operations Center classifying Sigma rules by their declared severity. Consult the rule's level field and assign the severity label from the SigmaHQ closed list.
+Question: What severity level does Sigma rule {sr:SigmaRule.id} ({sr.title}) carry? Description: {sr.description}
+Answer: The SigmaHQ level field on rule {sr.id} is {sr.level}. Therefore, the severity classification is {sr.level}.
+
+CL.EDB.1 Instruction: You are a vulnerability analyst at an enterprise Security Operations Center classifying ExploitDB artefacts by exploit type. Consult the entry's type field and assign the single type label from the ExploitDB closed list (remote / local / webapps / dos / shellcode).
+Question: What exploit type does ExploitDB entry {edb:ExploitDBEntry.id} ({edb.title}) represent? Target platform: {edb.platform}.
+Answer: ExploitDB classifies entry {edb.id} as type {edb.type}. Therefore, the classification is {edb.type}.
+
+
+Section 9 - SU.* Summarisation Templates (long -> short)
+
+SU.SR.1 Instruction: You are a SOC lead at an enterprise Security Operations Center preparing a one-line runbook summary for a Sigma rule. Consult the rule's description, log source, and MITRE ATT&CK linkage and produce a concise operational summary.
+Question: Summarise Sigma rule {sr:SigmaRule.id} ({sr.title}) for a SOC runbook.
+Answer: Sigma rule {sr.id} (status {sr.status}, level {sr.level}) monitors {sr.logsource_product}/{sr.logsource_category}/{sr.logsource_service} telemetry for behaviour consistent with MITRE ATT&CK technique {ap:sr.detects>attack-pattern.mitre_id} ({ap.name}): {sr.description}.
+
+SU.EDB.1 Instruction: You are a vulnerability triage analyst at an enterprise Security Operations Center preparing a one-line exploit summary for a CVE. Consult the ExploitDB entry and its CVE linkage and produce a concise summary.
+Question: Summarise the ExploitDB weaponisation status of CVE {cve:CVE.id} in a single line.
+Answer: CVE {cve.id} has ExploitDB entry {edb:cve.has_weaponized_exploit>ExploitDBEntry.id} ({edb.title}), a {edb.type} exploit on {edb.platform} published {edb.published} at {edb.url}.
+
+SU.POC.1 Instruction: You are a vulnerability triage analyst at an enterprise Security Operations Center preparing a one-line PoC-availability summary for a CVE. Consult the GitHub PoC index and the CVE linkage and produce a concise summary.
+Question: Summarise the public-PoC status of CVE {cve:CVE.id} in a single line.
+Answer: CVE {cve.id} has GitHub PoC {poc:cve.has_poc>GithubPoC.id} ({poc.title}) at {poc.url}, indexed on {poc.published}.
+
+================================================================================
+SECTION F. AthenaBench RMS addendum v7 (AB.RMS.{3a..3h,4,5,6}) -- 11 templates
+================================================================================
+Source: tmpl_gen/templates/04262026/Sophia-CTI-Templates-AthenaBench-abaligned-v7.txt
+The narrowly targeted athena-rms recovery slate that supersedes v6.
+RMS.3a..3h: variable-N scenario -> mitigation with N=1..8 weighted to
+match benchmark mass. RMS.4/RMS.5: catalog flashcards (M-ID <-> name).
+RMS.6: negative-discrimination ("which mitigation is NOT recommended").
+Every variable-N template and RMS.6 ends with a literal
+"Answer: M####, M####, ..." final-line directive (the v6 -> v7 fix).
+--------------------------------------------------------------------------------
+
+AthenaBench-Aligned CTI Templates -- RMS Addendum v7 (companion to ift_data_2026_04_24_v5)
+
+Revision 04262026-RMS-addendum-v7: pure RMS-only addendum intended to be
+trained jointly with ift_data_2026_04_24_v5. Replaces the v6 RMS-addendum
+slate (tmpl_gen/templates/04252026/Sophia-CTI-Templates-AthenaBench-abaligned-v6.txt)
+after a v6 post-mortem identified three structural bugs that drove the
+trained model to a worse-than-baseline athena-rms result:
+
+  (1) Output truncation. v6 inlines the full {coa.description} per
+      mitigation in the Answer body. At N=4-5 mitigations the output
+      reaches ~1500 chars / ~400-700 tokens. Combined with the input
+      attack-pattern description (~300-1000 tokens) and the v6
+      launcher's --cutoff 2048, ~80%+ of training rows are
+      right-truncated mid-explanation. The model never sees the
+      terminal sentence and never learns where to stop.
+
+  (2) Wrong terminator format. The AthenaBench RMS prompt mandates a
+      final line beginning with "Answer:" containing only the
+      mitigation IDs:
+          "The final line of your response must begin with 'Answer:'
+           and contain only the mitigation IDs ..."
+      v6 outputs end with "Therefore, the recommended mitigations are
+      M####, M####." and never emit an "Answer:" line. The trained
+      model inherits this format and emits zero compliant responses.
+
+  (3) Cardinality coverage gap. v6 ships templates for N=3,4,5 only.
+      The benchmark distribution is N=1..10 with the heaviest mass at
+      N=1 (39%) and N=2 (24%) -- v6 does not train on either. The
+      trained model collapses to emitting exactly one M-ID per row in
+      98.4% of rows.
+
+What v7 changes vs v6:
+
+  - Variable-N coverage spans N=1..8 (one template per N), matching the
+    benchmark prompt distribution. N=9, N=10 omitted (<2% of benchmark
+    each, Neo4j-cardinality-limited).
+  - Each per-mitigation clause is reduced to "{coa.mitre_id} ({coa.name})"
+    with no inline {coa.description}. Estimated output length at N=8 is
+    <600 chars / ~150 tokens. Combined with the largest observed input
+    (~1000 tokens) the full row fits comfortably under cutoff_len=4096
+    (the v7 launcher bumps from 2048 to 4096 for headroom).
+  - Every variable-N template terminates with a literal "Answer: M####,
+    M####, ..." line. This requires the lazy-quantifier fix in
+    tmpl_gen/scripts/to_alpaca.py (greedy match would absorb the
+    reasoning body up to the trailing "Answer:" marker and discard it).
+  - Instruction text is brought verbatim into alignment with the
+    benchmark prompt language ("Return exactly N mitigation IDs as a
+    comma-separated list. Briefly justify your choice. The final line
+    of your response must begin with 'Answer:' ...").
+  - RMS.4/RMS.5 catalog flashcards retained from v6 unchanged
+    (single-mitigation flashcards do not need the Answer-line
+    terminator and are scored on substring presence of the M-ID).
+  - RMS.6 discriminative negative retained but extended with an
+    "Answer: M####" terminator for format consistency with the
+    variable-N templates.
+
+Combined-training intent (continuation of Option B from the v0 -> v6 plan):
+
+  - Training command consumes --dataset ift_data_2026_04_24_v5,
+    ift_data_2026_04_26_abaligned_v7, alpaca_en_demo
+  - v5 contributes 170,500 rows of broad SFT coverage including 1,000
+    legacy v5-format RMS rows (AB.RMS.1 N=2 + AB.RMS.2 N=1, no
+    Answer-line). v5's RMS contribution becomes a small fraction of
+    total RMS gradient signal (~12-15%) once v7 lands ~7-9k new rows.
+  - v7 contributes ~7-9k RMS-specific rows in the new format. Combined
+    RMS share rises to ~5-6% of corpus.
+  - Format conflict (v5 no-Answer-line vs v7 with-Answer-line) is
+    accepted as an empirically minor risk; the dominant gradient is
+    v7-format.
+
+Coverage by N (target counts; Neo4j cardinality may cap N>=4):
+
+    N=1 : 1500   (39% of benchmark mass; closes single-ID cardinality gap)
+    N=2 : 1500   (24% of benchmark mass)
+    N=3 : 1500   (16% of benchmark mass)
+    N=4 : 1500   (10% of benchmark mass; Neo4j-capped)
+    N=5 : 1000
+    N=6 :  500
+    N=7 :  300
+    N=8 :  200
+    Total target ~ 8000 RMS scenario rows + ~88 flashcards + ~2000 negatives ~= 10k rows
+
+Section 4 - AB.RMS.* Risk Mitigation Strategy (athena-rms)
+
+AB.RMS.3a Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend the most appropriate MITRE ATT&CK mitigation ID (format: M10xx) that addresses the scenario. Return exactly 1 mitigation ID. Briefly justify your choice. Only ATT&CK mitigations (M10xx) -- do not output techniques (T####), groups, or generic advice. The final line of your response must begin with "Answer:" and contain only the mitigation ID, with no extra commentary.
+Question: {ap:attack-pattern.description}
+Answer: To address {ap.name}, the most directly applicable MITRE ATT&CK mitigation is {coa1:ap.mitigates<course-of-action.mitre_id} ({coa1.name}).
+
+Answer: {coa1.mitre_id}
+Count: 1500
+
+AB.RMS.3b Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend the most appropriate MITRE ATT&CK mitigation IDs (format: M10xx) that address the scenario. Return exactly 2 mitigation IDs as a comma-separated list. Briefly justify your choice. Only ATT&CK mitigations (M10xx) -- do not output techniques (T####), groups, or generic advice. The final line of your response must begin with "Answer:" and contain only the mitigation IDs, with no extra commentary.
+Question: {ap:attack-pattern.description}
+Answer: To address {ap.name}, the applicable MITRE ATT&CK mitigations are {coa1:ap.mitigates<course-of-action.mitre_id} ({coa1.name}) and {coa2:ap.mitigates<course-of-action.mitre_id} ({coa2.name}).
+
+Answer: {coa1.mitre_id}, {coa2.mitre_id}
+{force coa1.mitre_id != coa2.mitre_id}
+Count: 1500
+
+AB.RMS.3c Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend the most appropriate MITRE ATT&CK mitigation IDs (format: M10xx) that address the scenario. Return exactly 3 mitigation IDs as a comma-separated list. Briefly justify your choice. Only ATT&CK mitigations (M10xx) -- do not output techniques (T####), groups, or generic advice. The final line of your response must begin with "Answer:" and contain only the mitigation IDs, with no extra commentary.
+Question: {ap:attack-pattern.description}
+Answer: To address {ap.name}, the applicable MITRE ATT&CK mitigations are {coa1:ap.mitigates<course-of-action.mitre_id} ({coa1.name}), {coa2:ap.mitigates<course-of-action.mitre_id} ({coa2.name}), and {coa3:ap.mitigates<course-of-action.mitre_id} ({coa3.name}).
+
+Answer: {coa1.mitre_id}, {coa2.mitre_id}, {coa3.mitre_id}
+{force coa1.mitre_id != coa2.mitre_id}
+{force coa1.mitre_id != coa3.mitre_id}
+{force coa2.mitre_id != coa3.mitre_id}
+Count: 1500
+
+
+AB.RMS.3d Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend the most appropriate MITRE ATT&CK mitigation IDs (format: M10xx) that address the scenario. Return exactly 4 mitigation IDs as a comma-separated list. Briefly justify your choice. Only ATT&CK mitigations (M10xx) -- do not output techniques (T####), groups, or generic advice. The final line of your response must begin with "Answer:" and contain only the mitigation IDs, with no extra commentary.
+Question: {ap:attack-pattern.description}
+Answer: To address {ap.name}, the applicable MITRE ATT&CK mitigations are {coa1:ap.mitigates<course-of-action.mitre_id} ({coa1.name}), {coa2:ap.mitigates<course-of-action.mitre_id} ({coa2.name}), {coa3:ap.mitigates<course-of-action.mitre_id} ({coa3.name}), and {coa4:ap.mitigates<course-of-action.mitre_id} ({coa4.name}).
+
+Answer: {coa1.mitre_id}, {coa2.mitre_id}, {coa3.mitre_id}, {coa4.mitre_id}
+{force coa1.mitre_id != coa2.mitre_id}
+{force coa1.mitre_id != coa3.mitre_id}
+{force coa1.mitre_id != coa4.mitre_id}
+{force coa2.mitre_id != coa3.mitre_id}
+{force coa2.mitre_id != coa4.mitre_id}
+{force coa3.mitre_id != coa4.mitre_id}
+Count: 1500
+
+AB.RMS.3e Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend the most appropriate MITRE ATT&CK mitigation IDs (format: M10xx) that address the scenario. Return exactly 5 mitigation IDs as a comma-separated list. Briefly justify your choice. Only ATT&CK mitigations (M10xx) -- do not output techniques (T####), groups, or generic advice. The final line of your response must begin with "Answer:" and contain only the mitigation IDs, with no extra commentary.
+Question: {ap:attack-pattern.description}
+Answer: To address {ap.name}, the applicable MITRE ATT&CK mitigations are {coa1:ap.mitigates<course-of-action.mitre_id} ({coa1.name}), {coa2:ap.mitigates<course-of-action.mitre_id} ({coa2.name}), {coa3:ap.mitigates<course-of-action.mitre_id} ({coa3.name}), {coa4:ap.mitigates<course-of-action.mitre_id} ({coa4.name}), and {coa5:ap.mitigates<course-of-action.mitre_id} ({coa5.name}).
+
+Answer: {coa1.mitre_id}, {coa2.mitre_id}, {coa3.mitre_id}, {coa4.mitre_id}, {coa5.mitre_id}
+{force coa1.mitre_id != coa2.mitre_id}
+{force coa1.mitre_id != coa3.mitre_id}
+{force coa1.mitre_id != coa4.mitre_id}
+{force coa1.mitre_id != coa5.mitre_id}
+{force coa2.mitre_id != coa3.mitre_id}
+{force coa2.mitre_id != coa4.mitre_id}
+{force coa2.mitre_id != coa5.mitre_id}
+{force coa3.mitre_id != coa4.mitre_id}
+{force coa3.mitre_id != coa5.mitre_id}
+{force coa4.mitre_id != coa5.mitre_id}
+Count: 1000
+
+AB.RMS.3f Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend the most appropriate MITRE ATT&CK mitigation IDs (format: M10xx) that address the scenario. Return exactly 6 mitigation IDs as a comma-separated list. Briefly justify your choice. Only ATT&CK mitigations (M10xx) -- do not output techniques (T####), groups, or generic advice. The final line of your response must begin with "Answer:" and contain only the mitigation IDs, with no extra commentary.
+Question: {ap:attack-pattern.description}
+Answer: To address {ap.name}, the applicable MITRE ATT&CK mitigations are {coa1:ap.mitigates<course-of-action.mitre_id} ({coa1.name}), {coa2:ap.mitigates<course-of-action.mitre_id} ({coa2.name}), {coa3:ap.mitigates<course-of-action.mitre_id} ({coa3.name}), {coa4:ap.mitigates<course-of-action.mitre_id} ({coa4.name}), {coa5:ap.mitigates<course-of-action.mitre_id} ({coa5.name}), and {coa6:ap.mitigates<course-of-action.mitre_id} ({coa6.name}).
+
+Answer: {coa1.mitre_id}, {coa2.mitre_id}, {coa3.mitre_id}, {coa4.mitre_id}, {coa5.mitre_id}, {coa6.mitre_id}
+{force coa1.mitre_id != coa2.mitre_id}
+{force coa1.mitre_id != coa3.mitre_id}
+{force coa1.mitre_id != coa4.mitre_id}
+{force coa1.mitre_id != coa5.mitre_id}
+{force coa1.mitre_id != coa6.mitre_id}
+{force coa2.mitre_id != coa3.mitre_id}
+{force coa2.mitre_id != coa4.mitre_id}
+{force coa2.mitre_id != coa5.mitre_id}
+{force coa2.mitre_id != coa6.mitre_id}
+{force coa3.mitre_id != coa4.mitre_id}
+{force coa3.mitre_id != coa5.mitre_id}
+{force coa3.mitre_id != coa6.mitre_id}
+{force coa4.mitre_id != coa5.mitre_id}
+{force coa4.mitre_id != coa6.mitre_id}
+{force coa5.mitre_id != coa6.mitre_id}
+Count: 500
+
+
+AB.RMS.3g Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend the most appropriate MITRE ATT&CK mitigation IDs (format: M10xx) that address the scenario. Return exactly 7 mitigation IDs as a comma-separated list. Briefly justify your choice. Only ATT&CK mitigations (M10xx) -- do not output techniques (T####), groups, or generic advice. The final line of your response must begin with "Answer:" and contain only the mitigation IDs, with no extra commentary.
+Question: {ap:attack-pattern.description}
+Answer: To address {ap.name}, the applicable MITRE ATT&CK mitigations are {coa1:ap.mitigates<course-of-action.mitre_id} ({coa1.name}), {coa2:ap.mitigates<course-of-action.mitre_id} ({coa2.name}), {coa3:ap.mitigates<course-of-action.mitre_id} ({coa3.name}), {coa4:ap.mitigates<course-of-action.mitre_id} ({coa4.name}), {coa5:ap.mitigates<course-of-action.mitre_id} ({coa5.name}), {coa6:ap.mitigates<course-of-action.mitre_id} ({coa6.name}), and {coa7:ap.mitigates<course-of-action.mitre_id} ({coa7.name}).
+
+Answer: {coa1.mitre_id}, {coa2.mitre_id}, {coa3.mitre_id}, {coa4.mitre_id}, {coa5.mitre_id}, {coa6.mitre_id}, {coa7.mitre_id}
+{force coa1.mitre_id != coa2.mitre_id}
+{force coa1.mitre_id != coa3.mitre_id}
+{force coa1.mitre_id != coa4.mitre_id}
+{force coa1.mitre_id != coa5.mitre_id}
+{force coa1.mitre_id != coa6.mitre_id}
+{force coa1.mitre_id != coa7.mitre_id}
+{force coa2.mitre_id != coa3.mitre_id}
+{force coa2.mitre_id != coa4.mitre_id}
+{force coa2.mitre_id != coa5.mitre_id}
+{force coa2.mitre_id != coa6.mitre_id}
+{force coa2.mitre_id != coa7.mitre_id}
+{force coa3.mitre_id != coa4.mitre_id}
+{force coa3.mitre_id != coa5.mitre_id}
+{force coa3.mitre_id != coa6.mitre_id}
+{force coa3.mitre_id != coa7.mitre_id}
+{force coa4.mitre_id != coa5.mitre_id}
+{force coa4.mitre_id != coa6.mitre_id}
+{force coa4.mitre_id != coa7.mitre_id}
+{force coa5.mitre_id != coa6.mitre_id}
+{force coa5.mitre_id != coa7.mitre_id}
+{force coa6.mitre_id != coa7.mitre_id}
+Count: 300
+
+AB.RMS.3h Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend the most appropriate MITRE ATT&CK mitigation IDs (format: M10xx) that address the scenario. Return exactly 8 mitigation IDs as a comma-separated list. Briefly justify your choice. Only ATT&CK mitigations (M10xx) -- do not output techniques (T####), groups, or generic advice. The final line of your response must begin with "Answer:" and contain only the mitigation IDs, with no extra commentary.
+Question: {ap:attack-pattern.description}
+Answer: To address {ap.name}, the applicable MITRE ATT&CK mitigations are {coa1:ap.mitigates<course-of-action.mitre_id} ({coa1.name}), {coa2:ap.mitigates<course-of-action.mitre_id} ({coa2.name}), {coa3:ap.mitigates<course-of-action.mitre_id} ({coa3.name}), {coa4:ap.mitigates<course-of-action.mitre_id} ({coa4.name}), {coa5:ap.mitigates<course-of-action.mitre_id} ({coa5.name}), {coa6:ap.mitigates<course-of-action.mitre_id} ({coa6.name}), {coa7:ap.mitigates<course-of-action.mitre_id} ({coa7.name}), and {coa8:ap.mitigates<course-of-action.mitre_id} ({coa8.name}).
+
+Answer: {coa1.mitre_id}, {coa2.mitre_id}, {coa3.mitre_id}, {coa4.mitre_id}, {coa5.mitre_id}, {coa6.mitre_id}, {coa7.mitre_id}, {coa8.mitre_id}
+{force coa1.mitre_id != coa2.mitre_id}
+{force coa1.mitre_id != coa3.mitre_id}
+{force coa1.mitre_id != coa4.mitre_id}
+{force coa1.mitre_id != coa5.mitre_id}
+{force coa1.mitre_id != coa6.mitre_id}
+{force coa1.mitre_id != coa7.mitre_id}
+{force coa1.mitre_id != coa8.mitre_id}
+{force coa2.mitre_id != coa3.mitre_id}
+{force coa2.mitre_id != coa4.mitre_id}
+{force coa2.mitre_id != coa5.mitre_id}
+{force coa2.mitre_id != coa6.mitre_id}
+{force coa2.mitre_id != coa7.mitre_id}
+{force coa2.mitre_id != coa8.mitre_id}
+{force coa3.mitre_id != coa4.mitre_id}
+{force coa3.mitre_id != coa5.mitre_id}
+{force coa3.mitre_id != coa6.mitre_id}
+{force coa3.mitre_id != coa7.mitre_id}
+{force coa3.mitre_id != coa8.mitre_id}
+{force coa4.mitre_id != coa5.mitre_id}
+{force coa4.mitre_id != coa6.mitre_id}
+{force coa4.mitre_id != coa7.mitre_id}
+{force coa4.mitre_id != coa8.mitre_id}
+{force coa5.mitre_id != coa6.mitre_id}
+{force coa5.mitre_id != coa7.mitre_id}
+{force coa5.mitre_id != coa8.mitre_id}
+{force coa6.mitre_id != coa7.mitre_id}
+{force coa6.mitre_id != coa8.mitre_id}
+{force coa7.mitre_id != coa8.mitre_id}
+Count: 200
+
+AB.RMS.4 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center consulting the MITRE ATT&CK mitigation catalog. Given a MITRE ATT&CK mitigation identifier, state its name and description.
+Question: What is MITRE ATT&CK mitigation {coa:course-of-action.mitre_id[_~'M1']}?
+Answer: MITRE ATT&CK mitigation {coa.mitre_id} is "{coa.name}". {coa.description}
+
+AB.RMS.5 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center consulting the MITRE ATT&CK mitigation catalog. Given the name of a MITRE ATT&CK mitigation, state its identifier and description.
+Question: <*{coa:course-of-action.mitre_id[_~'M1']}*>Which MITRE ATT&CK mitigation identifier corresponds to "{coa.name}"?
+Answer: The mitigation "{coa.name}" has MITRE ATT&CK identifier {coa.mitre_id}: {coa.description}. Therefore, the mitigation identifier is {coa.mitre_id}.
+
+AB.RMS.6 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center auditing a proposed list of MITRE ATT&CK mitigations for a specific technique. Analyse the technique below and the candidate mitigations, identify the single mitigation MITRE ATT&CK does NOT recommend for this technique, and state its identifier. The final line of your response must begin with "Answer:" and contain only the mitigation ID, with no extra commentary.
+Question: For technique {ap:attack-pattern.mitre_id} ({ap.name}) -- {ap.description} -- which of the following mitigations is NOT recommended by MITRE ATT&CK: {negcoa1:course-of-action.mitre_id[_~'M1']} ({negcoa1.name}), {coa1:ap.mitigates<course-of-action.mitre_id} ({coa1.name}), {coa2:ap.mitigates<course-of-action.mitre_id} ({coa2.name})?
+Answer: MITRE ATT&CK recommends {coa1.mitre_id} ({coa1.name}) and {coa2.mitre_id} ({coa2.name}) as controls for {ap.name}. {negcoa1.mitre_id} ({negcoa1.name}) is not in the recommended set for this technique.
+
+Answer: {negcoa1.mitre_id}
+{force negcoa1.mitre_id != coa1.mitre_id}
+{force negcoa1.mitre_id != coa2.mitre_id}
+{force coa1.mitre_id != coa2.mitre_id}
+Count: 2000

@@ -172,21 +172,41 @@ def extract_templates_from_txt(args) -> list[dict]:
             print(f"\n@@@ Template {t_id} at line {src_line}: missing Question — skipping.\n")
             continue
 
-        # Collect Answer
+        # Collect Answer (may span multiple lines, including embedded blank
+        # lines and a second "Answer: ..." final-line directive). Stop only
+        # at: the next template's ID line, a {force ...} constraint, or one
+        # of the Summary/Schema/Sample/Shuffle/Count directives. Trailing
+        # blank lines are stripped. Single-line answers (the legacy norm)
+        # are unaffected -- the loop terminates at the first sentinel and
+        # produces the same t_a as before.
+        _ANS_SENTINEL_PREFIXES = ("{force", "Summary: ", "Schema: ",
+                                  "Sample: ", "Shuffle: ", "Count: ")
         t_a = None
+        ans_lines = []
         while i < len(lines):
             l = lines[i].strip()
             if re_id_instr.match(l):
                 break
-            if l.startswith("Answer:"):
-                t_a = l[len("Answer:"):].strip()
+            if t_a is None:
+                if l.startswith("Answer:"):
+                    t_a = l[len("Answer:"):].strip()
+                    ans_lines.append(t_a)
+                    i += 1
+                    continue
                 i += 1
+                continue
+            if l.startswith(_ANS_SENTINEL_PREFIXES):
                 break
+            ans_lines.append(l)
             i += 1
 
         if t_a is None:
             print(f"\n@@@ Template {t_id} at line {src_line}: missing Answer — skipping.\n")
             continue
+
+        while ans_lines and ans_lines[-1] == "":
+            ans_lines.pop()
+        t_a = "\n".join(ans_lines)
 
         t_text = f"Instruction: {t_instr}\n\nQuestion: {t_q}\n\nAnswer: {t_a}"
         tmpl = {

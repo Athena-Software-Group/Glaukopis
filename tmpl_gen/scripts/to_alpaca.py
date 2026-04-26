@@ -74,8 +74,15 @@ def parse_triples(args:argparse.Namespace, jsin) -> list[dict[str, str]]:
         list of dictionaries with {"instruction":..., "input":..., "output":...}
 
     """
-    # pattern = r"Instruction: (.*?)(\s)+Question: (.*)(\s)+Answer: (.*)(\s)*"
-    pattern = r"Instruction: (.*)\s+Question: (.*)\s+Answer: (.*)\s*"
+    # Lazy quantifiers on Instruction/Question so the FIRST occurrence of
+    # each section header acts as the delimiter. The greedy variant
+    # (kept below for reference) matches up to the LAST occurrence of
+    # `Question:` / `Answer:` in the text, which silently corrupts any
+    # template whose body legitimately repeats those markers (e.g. an
+    # AthenaBench-aligned RMS template whose assistant output ends with
+    # a `Answer: M####, M####` final-line directive).
+    # pattern = r"Instruction: (.*)\s+Question: (.*)\s+Answer: (.*)\s*"
+    pattern = r"Instruction: (.*?)\s+Question: (.*?)\s+Answer: (.*)\s*"
     lst_out = list()
     shortname = jsin["template_object"].get("shortname", "")
     
