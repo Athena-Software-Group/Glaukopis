@@ -85,9 +85,21 @@ class athena_cti_postprocessing:
         return self._extract_from_lines(text, r"(.+)", self._clean_freeform)
 
     def athena_rms_answer(self, text: str) -> str:
-        line = self._extract_from_lines(text, r"(.+)", self._clean_freeform).upper()
-        ids = re.findall(r"M\d{4}", line)
-        return ", ".join(ids)
+        # Mitigation IDs may appear anywhere in the response (preamble,
+        # body, or a closing summary). Verbose SFT outputs commonly cite
+        # IDs in early lines and explain each one in following paragraphs,
+        # leaving the bottom-most non-empty line ID-free; the previous
+        # last-line-only scan dropped those IDs entirely. The scorer
+        # collapses to set(re.findall(M\d{4}, pred)) regardless of
+        # position, so the extractor mirrors that scope: scan the whole
+        # response, dedupe in first-seen order, comma-join.
+        if not text:
+            return ""
+        seen: list[str] = []
+        for m in re.findall(r"M\d{4}", text.upper()):
+            if m not in seen:
+                seen.append(m)
+        return ", ".join(seen)
 
     def athena_ate_answer(self, text: str) -> str:
         tid = self._extract_from_lines(text, r"(T\d{4}(?:\.\d{3})?)", lambda s: s.upper())
