@@ -367,17 +367,39 @@ class HFInferenceModel(BaseModel):
             messages.append({"role": "system", "content": sys_prompt})
         messages.append({"role": "user", "content": question})
 
+        # Per-model chat-template kwargs. Kimi-K2.x ships with thinking mode
+        # on by default; in that mode the OpenAI-compat path on HF Router
+        # tends to leak the (truncated) <think> trace into `content` instead
+        # of returning the final answer, so MCQ accuracy collapses to ~16%.
+        # enable_thinking=False is honored by the upstream chat template and
+        # produces a single direct answer in `content`.
+        extra_body = {}
+        if "kimi-k2" in self.hf_model_id.lower():
+            extra_body["chat_template_kwargs"] = {"enable_thinking": False}
+
         last_err = None
         for attempt in range(5):
             try:
-                resp = self.client.chat.completions.create(
+                create_kwargs = dict(
                     model=self.hf_model_id,
                     messages=messages,
                     temperature=temperature,
                     max_tokens=max_new_tokens,
                 )
+                if extra_body:
+                    create_kwargs["extra_body"] = extra_body
+                resp = self.client.chat.completions.create(**create_kwargs)
                 choice = resp.choices[0] if resp.choices else None
-                content = (choice.message.content if choice and choice.message else "") or ""
+                cmsg = choice.message if choice else None
+                content = (cmsg.content if cmsg else "") or ""
+                # Fallback: some providers split a reasoning model's output
+                # into message.content (final answer) + message.reasoning_content
+                # (trace). If content is empty but reasoning_content is set,
+                # prefer the reasoning text over an empty string so the row is
+                # at least scoreable rather than silently dropped.
+                if not content and cmsg is not None:
+                    rc = getattr(cmsg, "reasoning_content", None) or ""
+                    content = rc or ""
                 return content
             except Exception as e:
                 last_err = e
