@@ -36,6 +36,16 @@ PRICING_PER_1K = {
             "output": [(0, 200_000, 0.01200), (200_001, float("inf"), 0.01800)],
             "grounding_per_1k": 35.0,
     },
+    "gemini-3-flash": {
+            # Vertex AI listed pricing as of 2026-04: $0.50 input / $3.00 output
+            # per 1M tokens, flat (no >200K context tier breakpoint published
+            # for Flash). Used as the non-Pro Gemini frontier baseline; there
+            # is no general-purpose 'gemini-3.1-flash' (3.1 only ships
+            # Flash-Lite, Flash Image, Flash Live, and Flash TTS).
+            "input": [(0, float("inf"), 0.00050)],
+            "output": [(0, float("inf"), 0.00300)],
+            "grounding_per_1k": 35.0,
+    },
     # GeminiModel.generate passes the resolved model id (with -preview suffix)
     # to add_tokens, not the alias key, so duplicate the rate cards under the
     # resolved id as well. Keeping both shapes avoids breaking existing
@@ -48,6 +58,11 @@ PRICING_PER_1K = {
     "gemini-3.1-pro-preview": {
             "input": [(0, 200_000, 0.00200), (200_001, float("inf"), 0.00400)],
             "output": [(0, 200_000, 0.01200), (200_001, float("inf"), 0.01800)],
+            "grounding_per_1k": 35.0,
+    },
+    "gemini-3-flash-preview": {
+            "input": [(0, float("inf"), 0.00050)],
+            "output": [(0, float("inf"), 0.00300)],
             "grounding_per_1k": 35.0,
     },
     # OpenAI GPT models

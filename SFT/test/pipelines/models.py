@@ -50,6 +50,7 @@ model_mapping = {
     'gemini-2.5-flash': 'gemini-2.5-flash',
     'gemini-2.5-pro' : 'gemini-2.5-pro',
     'gemini-3-pro' : 'gemini-3-pro-preview',
+    'gemini-3-flash' : 'gemini-3-flash-preview',
     'gemini-3.1-pro' : 'gemini-3.1-pro-preview',
     'llama-3-3b': 'meta-llama/Llama-3.2-3B',
     'llama-3-8b': 'meta-llama/Meta-Llama-3.1-8B-Instruct',
