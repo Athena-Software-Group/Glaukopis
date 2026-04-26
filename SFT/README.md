@@ -92,8 +92,19 @@ at upload time):
 ./run_abaligned_sft_v4.sh               # LoRA r=16, 1 epoch
 ```
 
-Full recipe details, hyperparameter rationale, and troubleshooting are
-in [`autotrain/README.md`](autotrain/README.md).
+Current canonical recipe (full-parameter SFT on the consolidated v7
+dataset; supersedes v6 which regressed `athena-rms` to 0 % F1):
+
+```bash
+./run_abaligned_sft_v7.sh               # 3 epochs, lr=1e-5, cutoff_len=4096, ZeRO-3
+```
+
+v7 is the first run to land above the v0 baseline on every athena
+task; in particular `athena-rms` recovered from 5.88 % (v0) /
+0.00 % (v6) to **62.64 % strict F1**. Full recipe details,
+hyperparameter rationale, validated benchmark scores, and
+troubleshooting are in [`autotrain/README.md`](autotrain/README.md)
+(*v7 recipe and results* section).
 
 ### c) Train a CPT (continued pre-training) model
 
@@ -339,7 +350,8 @@ Two training modes are supported, both driven by LlamaFactory:
 
 | Mode | Launcher | Default recipe |
 |------|----------|----------------|
-| SFT (full-parameter) | [`autotrain/run_abaligned_sft.sh`](autotrain/run_abaligned_sft.sh) | Llama-3.1-8B-Instruct, `v3` dataset, 3 epochs, lr=1e-5, bf16, ZeRO-3 |
+| SFT (full-parameter, **canonical**) | [`autotrain/run_abaligned_sft_v7.sh`](autotrain/run_abaligned_sft_v7.sh) | Llama-3.1-8B-Instruct, consolidated `v7` dataset (~181k rows), 3 epochs, lr=1e-5, bf16, ZeRO-3, `cutoff_len=4096` |
+| SFT (full-parameter, legacy) | [`autotrain/run_abaligned_sft.sh`](autotrain/run_abaligned_sft.sh) | Llama-3.1-8B-Instruct, `v3` dataset, 3 epochs, lr=1e-5, bf16, ZeRO-3 |
 | SFT (LoRA) | [`autotrain/run_abaligned_sft_v4.sh`](autotrain/run_abaligned_sft_v4.sh) | Llama-3.1-8B-Instruct, `v4` dataset, LoRA r=16, 1 epoch |
 | CPT | [`cpt/train_cpt.sh`](../cpt/train_cpt.sh) | Llama-3.1-8B (base), LoRA r=32, 1 epoch, packed raw text |
 

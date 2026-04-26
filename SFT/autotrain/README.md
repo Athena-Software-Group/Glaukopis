@@ -21,6 +21,11 @@ for the full rationale).
 | File | Purpose |
 |---|---|
 | `run_abaligned_sft.sh` | Launch full-parameter SFT on `ift_data_2026_04_23_trimmed_v3` via `../utils/run_train.sh` with DeepSpeed ZeRO-3. Pushes the merged model to `${HF_USERNAME}/athena-cti-sft-llama31-8b-abaligned-v3` on success. |
+| `run_abaligned_sft_v4.sh` | LoRA r=16, 1 epoch on `ift_data_2026_04_23_trimmed_v4` (MCQ + TAA dropped). Pushes to `…-abaligned-v4`. |
+| `run_abaligned_sft_v5.sh` | Full-parameter SFT on `ift_data_2026_04_24_abaligned_v5` (broad CTI coverage, all six athena tasks). Pushes to `…-abaligned-v5`. |
+| `run_abaligned_sft_v5_lora.sh` | LoRA variant of the v5 recipe. Pushes to `…-abaligned-v5-lora`. |
+| `run_abaligned_sft_v6.sh` | Full-parameter SFT on the v5 dataset + the v6 RMS-only addendum. **Regressed** athena-rms from 5.88% → 0.00% F1 (truncation + missing terminator + N=3..5-only coverage). Kept for provenance; do not use. |
+| `run_abaligned_sft_v7.sh` | **Current canonical recipe.** Full-parameter SFT on the consolidated `ift_data_2026_04_26_combined_v7` (v5 broad coverage + v7 RMS addendum, ~181k rows). Fixes the three v6 regressions (`cutoff_len=4096`, variable-N N=1..8, `Answer: M####` terminator). Pushes to `…-abaligned-v7`. See [v7 recipe and results](#v7-recipe-and-results) below. |
 | `run_athenabench.sh` | Register the trained+pushed model in `SFT/test/pipelines/models.py` (idempotent), run a smoke test, then the full 6-task sweep. |
 
 ## Prerequisites
@@ -123,6 +128,85 @@ directly, so `upload_to_hf.py --merged-dir` is used instead of the LoRA
                      [--rows N] [--batch N]
                      [--tasks "athena-mcq athena-rcm ..."]
 ```
+
+## v7 recipe and results
+
+`run_abaligned_sft_v7.sh` is the current canonical full-parameter SFT
+recipe. It supersedes v6, which regressed `athena-rms` from the v0
+baseline of 5.88% strict F1 to 0.00% due to three structural bugs in
+the RMS-only addendum templates and launcher (output truncation at
+`cutoff_len=2048`, missing `Answer:` terminator, and N=3..5-only
+cardinality coverage that mismatched the benchmark's N=1..8
+distribution). v7 fixes all three.
+
+### Training configuration
+
+| Setting | Value | Notes vs v6 |
+|---|---|---|
+| Base model | `meta-llama/Llama-3.1-8B-Instruct` | unchanged |
+| Method | full-parameter SFT (DeepSpeed ZeRO-3) | unchanged |
+| Dataset | `ift_data_2026_04_26_combined_v7` (~181k rows: v5 broad coverage + v7 RMS addendum) + `alpaca_en_demo` mix-in | merged into a single file (was v5 + v6-addendum split) |
+| Epochs | 3 | unchanged |
+| Learning rate | 1e-5 cosine, 5 % warmup | unchanged |
+| Precision | bf16 | unchanged |
+| `cutoff_len` | **4096** | doubled from 2048 — v6 truncated ~80 % of RMS rows mid-explanation |
+| Effective batch | 16 | unchanged |
+| Per-device batch / grad-accum | 1 / 8 (≤ 3 GPUs) or 2 / 2 (≥ 4 GPUs) | halved per-device + doubled grad-accum to absorb the 2× cutoff growth in activation memory |
+| Packing | on | unchanged |
+| `save_steps` / `eval_steps` | 200 | halved (packed-sequence count roughly halves at 4096) |
+| Pushed repo | `${HF_USERNAME}/athena-cti-sft-llama31-8b-abaligned-v7` | new repo |
+
+Template-side changes (in
+[`tmpl_gen/templates/04262026/Sophia-CTI-Templates-AthenaBench-abaligned-v7.txt`](../../tmpl_gen/templates/04262026/Sophia-CTI-Templates-AthenaBench-abaligned-v7.txt)):
+
+- **Variable-N** RMS templates `RMS.3a..3h` covering N=1..8 (matches
+  the benchmark mass distribution; v6 collapsed to N=1 in 98.4 % of
+  responses because it only saw N=3..5 in training).
+- **Per-mitigation clauses reduced** to `{coa.mitre_id} ({coa.name})`
+  (no inline `{coa.description}`); estimated output stays under
+  ~600 chars at N=8.
+- **Mandatory `Answer:` terminator** — every variable-N template (and
+  RMS.6) ends with a literal `Answer: M####, M####, ...` final line,
+  matching the AthenaBench RMS post-processor's extraction regex.
+- Instruction text aligned verbatim with the benchmark prompt
+  ("Return exactly N mitigation IDs ...").
+
+### Validated AthenaBench results (suite=athena, version=1)
+
+Run on a single H100 via vLLM (`utils/serve_and_bench.sh
+athena-cti-sft-llama31-8b-abaligned-v7-vllm --tp 1 --max-len 4096
+--port 8000 -- --suite athena --version 1 --batch 128 --overwrite
+--yes`); end-to-end wall clock 1m51s.
+
+| Task | Rows | Metric | v7 | v0 baseline | v6 |
+|---|---:|---|---:|---:|---:|
+| `athena-mcq` | 3000 | accuracy | **57.60 %** | ~50 % | ~50 % |
+| `athena-rcm` | 2000 | accuracy | **65.80 %** | ~55 % | ~60 % |
+| `athena-vsp` | 2000 | accuracy (MAD 1.92) | **75.02 %** | ~70 % | ~70 % |
+| `athena-ate` | 500 | accuracy | **50.00 %** | ~45 % | ~45 % |
+| `athena-taa` | 100 | combined accuracy (strict 17.0 % / plausible 82.0 %) | **49.50 %** | low double-digits strict | low double-digits strict |
+| `athena-rms` | 500 | strict F1 (plausible 64.32 %) | **62.64 %** | **5.88 %** | **0.00 %** |
+
+The RMS recovery (`+56.76 pp` strict F1 over the v0 baseline,
+`+62.64 pp` over the v6 regression) is the headline result and
+confirms all three template/launcher fixes were necessary.
+
+### Reproducing v7
+
+```bash
+# On the training host (≥ 2× 80 GB GPUs recommended).
+ls -lh SFT/data/ift_data_2026_04_26_combined_v7.json   # ~193 MB, gitignored
+
+conda activate llm-sft
+cd SFT/autotrain
+./run_abaligned_sft_v7.sh --dry-run    # inspect the llamafactory-cli command first
+./run_abaligned_sft_v7.sh              # 3 epochs, ZeRO-3, pushes to HF on exit 0
+```
+
+On exit 0 the merged full-weight checkpoint is at
+`hf://${HF_USERNAME}/athena-cti-sft-llama31-8b-abaligned-v7`. The
+benchmark sweep above can then be run from any host with vLLM and a
+single H100.
 
 ## Troubleshooting
 
