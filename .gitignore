@@ -418,6 +418,10 @@ myenv/
 __pycache__/
 .cache/
 
+SFT/test/responses
+SFT/test/responses/
+SFT/test/responses/*
+
 # Athena Bench scrape / processing outputs.
 # These were previously tracked as Git LFS pointer files but most of the
 # backing LFS objects are missing from the server (404 on 'git lfs pull').
@@ -435,8 +439,6 @@ tmpl_gen/utils/_db_schema.json
 
 tmpl_gen/data_generation/
 
-SFT/test/responses/
-
 *.safetensors
 
 SFT/merged/
@@ -447,7 +449,6 @@ SFT/merged/
 cpt/cache/
 cpt/corpus/
 SFT/data/
-SFT/test/responses/
 
 # CyberSOCEval (CrowdStrike + Meta) data: cloned repo + downloaded PDFs +
 # extracted text files. Regenerable via SFT/test/utils/fetch_cybersoceval_data.py.
