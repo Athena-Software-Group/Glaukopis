@@ -22,6 +22,10 @@
 #   ./serve_and_bench.sh phi-4-vllm
 #   ./serve_and_bench.sh phi-4-vllm --tp 2 -- --suite athena --version 2 --batch 64
 #   ./serve_and_bench.sh llama-3-8b-vllm --tp 1 --max-len 8192 -- --batch 128
+#   # CyberSOCEval baseline (long TI report context, JSON-block answers):
+#   ./serve_and_bench.sh llama-3-8b-vllm --tp 1 --max-len 65536 \
+#       --extra "--gpu-memory-utilization 0.90 --max-num-seqs 64" \
+#       -- --suite cybersoceval --batch 32 --version 1 --overwrite --yes
 #
 # Env vars:
 #   READY_TIMEOUT     seconds to wait for /v1/models (default 1800)

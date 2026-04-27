@@ -845,10 +845,15 @@ TASK_MAX_NEW_TOKENS: dict[str, int] = {
     "glue":          256,
     "superglue":     256,
     "mmlu":          256,
-    # CyberSOCEval emits a small JSON object ({"correct_answers":["A","B"]})
-    # wrapped in <json_object> tags. 256 is plenty even with verbose preamble.
-    "cybersoceval-malware": 256,
-    "cybersoceval-ti":      256,
+    # CyberSOCEval malware/TI emit a JSON object {"correct_answers":["A","B"]}
+    # but Llama-3.1-8B-Instruct (and similar) preface the JSON with a verbose
+    # bulleted MITRE/IOC walkthrough. The malware baseline at 256 tokens hit a
+    # 30% parse-error rate driven entirely by mid-emit truncation (PE rate
+    # jumps from 2% in the 0-500 char bucket to 86% in the 1000-1300 bucket,
+    # which is the 256-token ceiling). 1024 leaves headroom for the preamble
+    # without changing wall-clock on terse models that stop at EOS.
+    "cybersoceval-malware": 1024,
+    "cybersoceval-ti":      1024,
 }
 DEFAULT_MAX_NEW_TOKENS = 2048
 
