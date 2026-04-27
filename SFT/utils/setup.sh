@@ -1,11 +1,12 @@
 #!/bin/bash
 
 # End-to-end setup script for the SFT pipeline on a Linux CUDA machine.
-# Installs both the LlamaFactory training stack and the SFT/test benchmarking
-# stack into a single Python 3.11 conda env by default. Use --mode to install
-# only one side, --mode vllm for a standalone vLLM inference env, or
-# --split-envs to preserve the legacy two-env layout (llm-sft for training,
-# ctibench for testing).
+# By default (--mode all) installs both the LlamaFactory training stack into
+# `llm-sft` and the SFT/test benchmarking stack into `ctibench` (the two-env
+# layout the rest of the repo + docs assume). Pass --env-name NAME together
+# with --mode all to collapse both stacks into a single named env instead.
+# Use --mode train|test|vllm to install only one side. --split-envs is kept
+# as an explicit alias of the default split behavior.
 #
 # Installs (as needed):
 #   1. Miniconda (if `conda` is not on PATH)
@@ -26,9 +27,11 @@
 #              [--lfs-pull] [--split-envs] [--no-conda-init]
 #
 # Defaults:
-#   --mode all           (install both training + test stacks in one env)
+#   --mode all           (creates llm-sft + ctibench; pass --env-name to
+#                         force everything into a single named env instead)
 #   --cuda cu124
-#   --env-name llm-sft   (ctibench when --mode test alone; vllm when --mode vllm)
+#   --env-name <unset>   (train -> llm-sft, test -> ctibench, vllm -> vllm,
+#                         all -> llm-sft + ctibench)
 #   --python 3.11
 #   --extras "metrics deepspeed"
 #   (conda init runs by default for your shell; use --no-conda-init to skip)
@@ -48,6 +51,7 @@ TEST_DIR="${SFT_DIR}/test"
 MODE="all"
 CUDA_TAG="cu124"
 ENV_NAME=""
+ENV_NAME_EXPLICIT=0
 PYTHON_VERSION="3.11"
 EXTRAS="metrics deepspeed"
 INSTALL_FLASH_ATTN=1
@@ -59,7 +63,7 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --mode)           MODE="$2"; shift 2 ;;
         --cuda)           CUDA_TAG="$2"; shift 2 ;;
-        --env-name)       ENV_NAME="$2"; shift 2 ;;
+        --env-name)       ENV_NAME="$2"; ENV_NAME_EXPLICIT=1; shift 2 ;;
         --python)         PYTHON_VERSION="$2"; shift 2 ;;
         --extras)         EXTRAS="$2"; shift 2 ;;
         --no-flash-attn)  INSTALL_FLASH_ATTN=0; shift ;;
@@ -67,7 +71,7 @@ while [[ $# -gt 0 ]]; do
         --split-envs)     SPLIT_ENVS=1; shift ;;
         --no-conda-init)  RUN_CONDA_INIT=0; shift ;;
         -h|--help)
-            sed -n '3,33p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+            sed -n '3,37p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
             exit 0
             ;;
         *) echo "Unknown argument: $1"; exit 1 ;;
@@ -78,6 +82,16 @@ case "${MODE}" in
     all|train|test|vllm) ;;
     *) echo "Unsupported --mode value: ${MODE} (expected all|train|test|vllm)"; exit 1 ;;
 esac
+
+# `--mode all` without an explicit `--env-name` is treated as the two-env
+# layout (llm-sft for training, ctibench for testing). Earlier this script
+# silently put both stacks into a single `llm-sft` env, which surprised every
+# caller who then looked for `ctibench` to run benchmarks. If the user did
+# pass `--env-name FOO` together with `--mode all`, that's a clear opt-in to
+# the single-env collapse, so we honor it.
+if [[ "${MODE}" == "all" && ${ENV_NAME_EXPLICIT} -eq 0 && ${SPLIT_ENVS} -eq 0 ]]; then
+    SPLIT_ENVS=1
+fi
 
 # Default env names. --split-envs overrides ENV_NAME entirely (it runs two
 # passes, one per stack) so it's checked in the dispatch block further down.

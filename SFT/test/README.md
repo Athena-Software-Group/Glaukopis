@@ -41,9 +41,10 @@ The recommended path on a Linux CUDA host is the scripted installer under
 
 ```bash
 cd SFT/utils
-./setup.sh                          # defaults: CUDA 12.4, env=ctibench, python=3.11
+./setup.sh                          # defaults: CUDA 12.4, python=3.11, envs=llm-sft + ctibench
+./setup.sh --mode test              # benchmarking stack only -> 'ctibench' env
 ./setup.sh --cuda cu121             # target a different CUDA toolkit
-./setup.sh --env-name ctibench-dev  # use a custom conda env name
+./setup.sh --env-name ctibench-dev  # collapse both stacks into one custom env (with --mode all)
 ./setup.sh --no-flash-attn          # skip flash-attn (e.g. unsupported GPU)
 ./setup.sh --lfs-pull               # opt in to 'git lfs pull' for data/ (see note below)
 ./setup.sh --no-conda-init          # skip modifying your shell rc
@@ -54,7 +55,8 @@ cd SFT/utils
 
 The script is idempotent and handles:
 1. Bootstrapping Miniconda to `$HOME/miniconda3` if `conda` is not on `PATH`.
-2. Creating/reusing the conda env (default `ctibench`, Python 3.11).
+2. Creating/reusing the conda envs (default: `llm-sft` for training +
+   `ctibench` for benchmarking; `--mode test` alone creates only `ctibench`).
 3. Installing the CUDA-matched PyTorch wheels (`cu124` by default).
 4. Installing `requirements.txt` and (optionally) `flash-attn`.
    - `flash-attn` is **optional and non-fatal**: the runtime uses PyTorch SDPA

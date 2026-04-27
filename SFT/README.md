@@ -41,17 +41,19 @@ full flag coverage.
 ### a) Set up a fresh Linux + CUDA host
 
 [`SFT/utils/setup.sh`](utils/setup.sh) is idempotent: it installs
-Miniconda (if missing), creates the `llm-sft` conda env, installs
-CUDA-matched PyTorch + LlamaFactory (editable) + the `SFT/test/`
-benchmark stack, bootstraps `SFT/.env` from `.env.example`, and runs
-`conda init` for your shell.
+Miniconda (if missing), creates the `llm-sft` (training) and `ctibench`
+(benchmarking) conda envs, installs CUDA-matched PyTorch + LlamaFactory
+(editable) into the former and the `SFT/test/` benchmark stack into the
+latter, bootstraps `SFT/.env` from `.env.example`, and runs `conda init`
+for your shell. Pass `--env-name FOO` together with `--mode all` to
+collapse both stacks into a single named env instead.
 
 ```bash
 cd ~/Glaukopis/SFT
-./utils/setup.sh                        # defaults: CUDA 12.4, env=llm-sft, py=3.11
+./utils/setup.sh                        # defaults: CUDA 12.4, py=3.11, envs=llm-sft + ctibench
 $EDITOR .env                            # fill in HF_TOKEN (write scope) + HF_USERNAME
 exec bash                               # pick up the conda shell hook
-conda activate llm-sft
+conda activate llm-sft                  # training; use ctibench for benchmarks
 ```
 
 Separate vLLM env (kept isolated so vLLM's torch pin does not clobber the
