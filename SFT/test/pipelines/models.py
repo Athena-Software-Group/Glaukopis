@@ -417,6 +417,16 @@ class HFInferenceModel(BaseModel):
                 if not content and cmsg is not None:
                     rc = getattr(cmsg, "reasoning_content", None) or ""
                     content = rc or ""
+                # Track per-request usage so the sweep summary can surface
+                # token totals + cost for HF Router models. add_tokens is
+                # graceful for models without a PRICING_PER_1K entry (warns
+                # once, accumulates tokens, reports cost=0). Mirrors the
+                # OpenAIModel.generate pattern.
+                usage = getattr(resp, "usage", None)
+                if usage is not None:
+                    in_tok = getattr(usage, "prompt_tokens", 0) or 0
+                    out_tok = getattr(usage, "completion_tokens", 0) or 0
+                    add_tokens(self.model_name, in_tok, out_tok, grounding=False)
                 return content
             except Exception as e:
                 last_err = e

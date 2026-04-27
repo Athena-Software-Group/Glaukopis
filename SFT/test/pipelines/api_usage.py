@@ -91,7 +91,27 @@ PRICING_PER_1K = {
         "output": [(0, float("inf"), 0.18000)],
         "grounding_per_1k": 10.0,
     },
+    # HuggingFace Inference Providers (router.huggingface.co/v1).
+    # Provider list price passed through with 0% HF markup for Pro/PAYG.
+    # Source: HF Inference Providers model pages, snapshot 2026-04-27.
+    # If the underlying provider repricies, update here; HF dashboard at
+    # https://huggingface.co/settings/billing is authoritative for actual spend.
+    "deepseek-v4-pro-hf": {
+        # novita / together / fireworks-ai pool. $1.74 in / $3.48 out per 1M.
+        "input": [(0, float("inf"), 0.00174)],
+        "output": [(0, float("inf"), 0.00348)],
+    },
+    "deepseek-v3.2-exp-hf": {
+        # novita. $0.27 in / $0.40 out per 1M.
+        "input": [(0, float("inf"), 0.00027)],
+        "output": [(0, float("inf"), 0.00040)],
+    },
 }
+
+# Models we've already warned about for missing pricing, so we only emit one
+# stderr line per (process, model) instead of N×rows lines. Populated lazily
+# by add_tokens() the first time it sees an unpriced model.
+_unpriced_warned: set[str] = set()
 
 RESPONSES_DIR = os.path.join(os.getcwd(), "responses")
 os.makedirs(RESPONSES_DIR, exist_ok=True)
@@ -109,13 +129,38 @@ def add_tokens(model_name: str, input_tokens: int, output_tokens: int, grounding
                grounding_calls: int = None, cost_override: float = None):
     """
     Add usage for a request and compute cost.
-    Supports Gemini, GPT, and GROQ models.
-    Only Gemini models have grounding cost.
+    Supports Gemini, GPT, and HF Inference Providers models with rate cards
+    in PRICING_PER_1K. Models not in the table still have their token totals
+    accumulated (so wall-clock + token counts surface in the sweep summary)
+    but contribute zero to the cost totals; a one-time stderr warning is
+    emitted per unpriced model so the gap is visible without spamming logs.
+    Only Gemini models support grounding cost.
     """
     global _total_input_tokens, _total_output_tokens, _total_cost, _total_grounding_calls, _total_input_cost, _total_output_cost
 
     if model_name not in PRICING_PER_1K:
-        raise ValueError(f"Unknown model pricing: {model_name}")
+        # Unpriced path: still track tokens, skip cost. Lets HFInferenceModel
+        # call add_tokens unconditionally without crashing sweeps for
+        # newly-added -hf aliases that don't yet have a rate card.
+        if model_name not in _unpriced_warned:
+            import sys
+            print(f"[api_usage] WARN: no PRICING_PER_1K entry for '{model_name}'; "
+                  f"tracking token counts but reporting cost=0. Add a rate card "
+                  f"to api_usage.PRICING_PER_1K to enable cost reporting.",
+                  file=sys.stderr)
+            _unpriced_warned.add(model_name)
+        _total_input_tokens += input_tokens
+        _total_output_tokens += output_tokens
+        if grounding_calls is not None:
+            _total_grounding_calls += grounding_calls
+        return {
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "input_cost": 0.0,
+            "output_cost": 0.0,
+            "grounding_cost": 0.0,
+            "request_cost": 0.0,
+        }
 
     rates = PRICING_PER_1K[model_name]
     input_rate = _get_tiered_rate(rates["input"], input_tokens)

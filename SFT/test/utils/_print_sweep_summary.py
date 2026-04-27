@@ -94,6 +94,110 @@ def _fmt_metrics(d: dict | None) -> str:
     return ", ".join(parts) if parts else "-"
 
 
+def _load_cost_records(model_key: str, version: int, tasks: list[str]) -> list[dict]:
+    """Load per-task cost records from responses/api_usage_checkpoint.json.
+
+    inference.py calls save_checkpoint(task, model_name, version) at the
+    end of each task for billable API models (GPT, Gemini, HF Router), so
+    we just filter by (model_name, version, task in tasks) and preserve
+    the order of `tasks`. Returns an empty list when no checkpoint file
+    exists or no rows match (silent: tasks for unbilled models like local
+    HF / vLLM legitimately produce no rows).
+
+    Note on semantics: restore_checkpoint at task start loads previous
+    totals into the in-process globals before add_tokens accumulates new
+    rows, so the persisted total for a re-run with --overwrite reflects
+    cumulative spend across runs, not just the latest run. The HF
+    dashboard remains authoritative for actual billed amounts.
+    """
+    ckpt_path = Path("responses") / "api_usage_checkpoint.json"
+    if not ckpt_path.exists():
+        return []
+    try:
+        data = json.loads(ckpt_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    if not isinstance(data, list):
+        return []
+    by_task: dict[str, dict] = {}
+    for entry in data:
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("model_name") != model_key:
+            continue
+        if int(entry.get("version", 1)) != int(version):
+            continue
+        t = entry.get("task")
+        if t in tasks:
+            by_task[t] = entry  # last-wins if duplicates
+    return [by_task[t] for t in tasks if t in by_task]
+
+
+def _render_cost_block(model_key: str, version: int, rows_data: list[dict]) -> tuple[str, dict]:
+    """Build the markdown cost-summary block + a json-serializable dict.
+
+    Returns ("", {}) when no cost data is available so the caller can
+    skip emission cleanly. Otherwise returns a markdown block with a
+    per-task table (input/output tokens, input/output cost, total cost)
+    plus a totals row, and a dict that gets folded into the JSON summary.
+    """
+    tasks = [r["task"] for r in rows_data]
+    cost_records = _load_cost_records(model_key, version, tasks)
+    if not cost_records:
+        return "", {}
+
+    table = [
+        "## Cost summary",
+        "",
+        "Per-task token + USD cost from `responses/api_usage_checkpoint.json` "
+        "(billed via the model's API provider). Rows for non-API tasks are "
+        "omitted. HF dashboard is authoritative for actual spend.",
+        "",
+        "| Task | Input tok | Output tok | Input $ | Output $ | Total $ |",
+        "|---|---:|---:|---:|---:|---:|",
+    ]
+    tot_in = tot_out = 0
+    tot_in_cost = tot_out_cost = tot_cost = 0.0
+    json_rows = []
+    for rec in cost_records:
+        in_tok = int(rec.get("input_tokens", 0) or 0)
+        out_tok = int(rec.get("output_tokens", 0) or 0)
+        in_cost = float(rec.get("input_tokens_cost", 0.0) or 0.0)
+        out_cost = float(rec.get("output_tokens_cost", 0.0) or 0.0)
+        total = float(rec.get("total_cost", 0.0) or 0.0)
+        tot_in += in_tok
+        tot_out += out_tok
+        tot_in_cost += in_cost
+        tot_out_cost += out_cost
+        tot_cost += total
+        table.append(
+            f"| {rec.get('task','')} | {in_tok:,} | {out_tok:,} "
+            f"| ${in_cost:.4f} | ${out_cost:.4f} | ${total:.4f} |"
+        )
+        json_rows.append({
+            "task": rec.get("task", ""),
+            "input_tokens": in_tok,
+            "output_tokens": out_tok,
+            "input_cost_usd": in_cost,
+            "output_cost_usd": out_cost,
+            "total_cost_usd": total,
+        })
+    table.append(
+        f"| **TOTAL** | **{tot_in:,}** | **{tot_out:,}** "
+        f"| **${tot_in_cost:.4f}** | **${tot_out_cost:.4f}** | **${tot_cost:.4f}** |"
+    )
+    table.append("")
+    cost_json = {
+        "per_task": json_rows,
+        "total_input_tokens": tot_in,
+        "total_output_tokens": tot_out,
+        "total_input_cost_usd": tot_in_cost,
+        "total_output_cost_usd": tot_out_cost,
+        "total_cost_usd": tot_cost,
+    }
+    return "\n".join(table), cost_json
+
+
 def _render_slice_tables(rows_data: list[dict]) -> str:
     """Emit per-task per-slice Markdown sub-tables.
 
@@ -208,6 +312,12 @@ def main() -> int:
             f"| {r['exit']} | {_fmt_metrics(r['metrics'])} |"
         )
     md = header + "\n" + "\n".join(table_rows) + "\n"
+    cost_md, cost_json = _render_cost_block(
+        summary["model"], summary["version"], rows_data
+    )
+    if cost_md:
+        md += "\n" + cost_md + "\n"
+        summary["cost"] = cost_json
     slice_md = _render_slice_tables(rows_data)
     if slice_md:
         md += "\n" + slice_md + "\n"

@@ -220,9 +220,16 @@ def main():
     # reformat without also updating the grep + ast.literal_eval path in
     # _print_sweep_summary.py.
     print(f"Evaluation result for {args.task} with {args.model_name}: {result}")
-    # Only for API-based GPT or Gemini models, show cumulative usage and cost
-    # Exclude gpt-oss models as they are Hugging Face models that run locally
-    if (any(k in model_key for k in ["gpt", "gemini"]) and not model_key.startswith("gpt-oss")):
+    # API-based models (GPT, Gemini, HF Inference Providers): print totals
+    # and persist a checkpoint so _print_sweep_summary.py can render a
+    # cost block for the sweep. gpt-oss is excluded because those run
+    # locally on the GPU via HuggingFaceModel; vLLM is excluded for the
+    # same reason. HF Router models reach this branch via is_hf_inference.
+    is_billable_api = (
+        (any(k in model_key for k in ["gpt", "gemini"]) and not model_key.startswith("gpt-oss"))
+        or is_hf_inference
+    )
+    if is_billable_api:
         totals = get_totals()
         print("=== API Usage Totals ===")
         print(f"Input tokens: {totals['input_tokens']}")
@@ -232,6 +239,11 @@ def main():
         print(f"Input cost (USD): {totals['input_cost']:.4f}")
         print(f"Output cost (USD): {totals['output_cost']:.4f}")
         print(f"Total cost (USD): {totals['total_cost']:.4f}")
+        # Persist totals to api_usage_checkpoint.json so the sweep summary
+        # script can pull (input_tokens, output_tokens, total_cost) per
+        # (task, model, version). Previously only saved on KeyboardInterrupt;
+        # adding the success path here is required for the summary block.
+        save_checkpoint(args.task, model_key, version=args.version)
 
     # Clean up model cache at the end to free memory
     if not args.cleanup:
