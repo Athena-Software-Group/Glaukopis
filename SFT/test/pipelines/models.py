@@ -88,8 +88,10 @@ model_mapping = {
     'llama-3-70b-hf':      'meta-llama/Meta-Llama-3-70B-Instruct',
     'llama3.3-70b-hf':     'meta-llama/Llama-3.3-70B-Instruct',
     'deepseek-v3.2-exp-hf': 'deepseek-ai/DeepSeek-V3.2-Exp',
+    'deepseek-v4-pro-hf':  'deepseek-ai/DeepSeek-V4-Pro',
     'kimi-k2.6-hf':        'moonshotai/Kimi-K2.6',
     'gemma-4-31b-hf':      'google/gemma-4-31B-it',
+    'qwen3.5-plus-hf':     'Qwen/Qwen3.5-397B-A17B',
     'athena-cti-cpt-llama31-8b-v1': 'asg-ai/athena-cti-cpt-llama31-8b-v1',
     'llama-3-8b-base': 'meta-llama/Llama-3.1-8B',
 
