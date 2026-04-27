@@ -370,19 +370,27 @@ class HFInferenceModel(BaseModel):
         # Per-model extra_body knobs. Kimi-K2.6 ships with thinking mode on by
         # default; in that mode the OpenAI-compat path on HF Router leaks the
         # (truncated) <think> trace into `content` instead of returning the
-        # final answer, so MCQ accuracy collapses to ~16%. Moonshot's documented
-        # API contract (mirrored by Novita and the Moonshot direct endpoint)
-        # accepts a top-level `thinking` field; vLLM/SGLang use the
-        # `chat_template_kwargs.enable_thinking` shape instead. We set both so
-        # the request works regardless of which provider HF Router auto-routes
-        # to. Providers that don't recognize the foreign field tend to ignore
-        # it; the Together/Fireworks-flavored OpenAI validator that earlier
-        # rejected `chat_template_kwargs` does not serve K2.6 in practice
-        # (K2-Thinking is dedicated-deploy on those), so the `thinking` shape
-        # is the one that matters in routing.
+        # final answer. Moonshot's documented API contract (mirrored by Novita
+        # and the Moonshot direct endpoint) accepts a top-level `thinking`
+        # field; vLLM/SGLang use `chat_template_kwargs.enable_thinking`
+        # instead. The `thinking` shape is the one HF Router's K2.6 provider
+        # honors; the `chat_template_kwargs` shape gets a 400 from the strict
+        # OpenAI validator on Together/Fireworks-flavored providers.
         extra_body = {}
         if "kimi-k2" in self.hf_model_id.lower():
             extra_body["thinking"] = {"type": "disabled"}
+
+        # Raise the max_tokens floor for hosted inference. The per-task cap in
+        # TASK_MAX_NEW_TOKENS (e.g. MCQ=128, RMS/RCM=256) is tuned for terse
+        # local models that emit just an answer letter and stop on EOS. Hosted
+        # models that respond with an analytical preamble before the answer
+        # (Gemma 4 31B IT, Kimi K2.6 with thinking, several reasoning-tuned
+        # variants on HF Router) get truncated mid-analysis at 128/256 tokens
+        # and never emit the final answer, collapsing MCQ accuracy to <25%.
+        # Hosted providers stream and stop at EOS, so the floor only costs
+        # latency on rows where the model would have rambled past the cap
+        # anyway, which is exactly the case where we need the extra room.
+        effective_max_tokens = max(int(max_new_tokens or 0), 2048)
 
         last_err = None
         for attempt in range(5):
@@ -391,7 +399,7 @@ class HFInferenceModel(BaseModel):
                     model=self.hf_model_id,
                     messages=messages,
                     temperature=temperature,
-                    max_tokens=max_new_tokens,
+                    max_tokens=effective_max_tokens,
                 )
                 if extra_body:
                     create_kwargs["extra_body"] = extra_body
