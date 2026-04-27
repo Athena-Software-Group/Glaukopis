@@ -101,6 +101,11 @@ PRICING_PER_1K = {
         "input": [(0, float("inf"), 0.00174)],
         "output": [(0, float("inf"), 0.00348)],
     },
+    "deepseek-v4-flash-hf": {
+        # novita. $0.14 in (cache-miss) / $0.28 out per 1M.
+        "input": [(0, float("inf"), 0.00014)],
+        "output": [(0, float("inf"), 0.00028)],
+    },
     "deepseek-v3.2-exp-hf": {
         # novita. $0.27 in / $0.40 out per 1M.
         "input": [(0, float("inf"), 0.00027)],
