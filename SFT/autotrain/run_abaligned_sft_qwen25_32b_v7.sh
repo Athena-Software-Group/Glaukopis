@@ -36,6 +36,13 @@
 #       2 GPUs -> grad_accum 8
 #       4 GPUs -> grad_accum 4
 #       8 GPUs -> grad_accum 2
+#   - Liger Kernel enabled by default. Qwen2.5's 152K vocab makes the
+#     fp32 cross-entropy buffer ~2.32 GiB at cutoff_len=4096, which OOMs
+#     after ZeRO-3 weights+grads+Adam state on 8x80GB. Liger's fused
+#     linear CE never materializes the full logits tensor.
+#   - PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True exported to keep
+#     the allocator from fragmenting the ~430 MB reserved-but-unused
+#     pool that pushes us over the edge on the larger vocab.
 #   - Final merged model pushed to
 #     hf://${HF_USERNAME}/athena-cti-sft-qwen25-32b-abaligned-v7
 #
@@ -141,7 +148,7 @@ if [[ "${GRAD_ACCUM_DEFAULT}" -lt 1 ]]; then
 fi
 EFFECTIVE_BATCH=$(( BATCH_DEFAULT * GRAD_ACCUM_DEFAULT * EFFECTIVE_GPUS ))
 
-EXTRA_DEFAULT="--deepspeed ${DS_CONFIG} --save_total_limit 10 --save_only_model True"
+EXTRA_DEFAULT="--deepspeed ${DS_CONFIG} --save_total_limit 10 --save_only_model True --enable_liger_kernel True"
 
 if [[ -n "${EXTRA_USER}" ]]; then
     EXTRA_ALL="${EXTRA_DEFAULT} ${EXTRA_USER}"
@@ -175,6 +182,7 @@ if [[ ${DRY_RUN} -eq 1 ]]; then
 fi
 
 export FORCE_TORCHRUN=1
+export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
 
 for var in NNODES NODE_RANK NPROC_PER_NODE MASTER_ADDR MASTER_PORT RDZV_ID MIN_NNODES MAX_NNODES; do
     if [[ -z "${!var:-}" ]]; then
@@ -193,6 +201,8 @@ echo "  packing      : true  (cutoff_len=4096)"
 echo "  eval / save  : every 200 steps"
 echo "  deepspeed    : ${SFT_DIR}/${DS_CONFIG}"
 echo "  cpu offload  : ${OFFLOAD}"
+echo "  liger kernel : on  (fused linear CE; required for Qwen2.5 152K vocab)"
+echo "  alloc conf   : ${PYTORCH_CUDA_ALLOC_CONF}"
 echo "  method       : full-parameter SFT (DeepSpeed ZeRO-3)"
 echo "  launcher     : ${SFT_DIR}/utils/run_train.sh"
 echo "  torchrun     : forced (FORCE_TORCHRUN=1)"
