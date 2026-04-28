@@ -514,7 +514,7 @@ class VLLMModel(BaseModel):
         messages.append({"role": "user", "content": question})
 
         effective_max = max_new_tokens
-        shrunk = False  # one-shot context-overflow recovery per call
+        shrink_attempts = 0  # bounded retries on context overflow per call
         last_err = None
         for attempt in range(5):
             try:
@@ -538,24 +538,28 @@ class VLLMModel(BaseModel):
                     getattr(e, "response", None), "status_code", None)
                 msg = str(e)
                 # Context-overflow recovery: shrink max_tokens to fit the
-                # remaining budget and retry once. Useful for long-context
-                # tasks (cybersoceval-ti) on 32K-native models (Qwen2.5
-                # family) where a fraction of rows sit at the boundary.
-                if status == 400 and not shrunk:
+                # remaining budget and retry. Useful for long-context tasks
+                # (cybersoceval-ti) on 32K-native models (Qwen2.5 family)
+                # where a fraction of rows sit at the boundary. vLLM reports
+                # "prompt contains at least N input tokens" -- the actual
+                # count is sometimes higher, so allow up to 3 shrinks; each
+                # error reveals a tighter bound.
+                if status == 400 and shrink_attempts < 3:
                     m = self._CTX_OVERFLOW_RE.search(msg)
                     if m is not None:
                         ctx_max = int(m.group(1))
                         prompt_tokens = int(m.group(2))
-                        new_max = ctx_max - prompt_tokens - 32
-                        if new_max >= 50:
+                        new_max = ctx_max - prompt_tokens - 128
+                        if new_max >= 50 and new_max < effective_max:
                             print(f"vLLM context overflow ({prompt_tokens}+"
                                   f"{effective_max}>{ctx_max}) on "
                                   f"{self.hf_model_id}; retrying with "
-                                  f"max_tokens={new_max}")
+                                  f"max_tokens={new_max} "
+                                  f"(shrink {shrink_attempts+1}/3)")
                             effective_max = new_max
-                            shrunk = True
+                            shrink_attempts += 1
                             continue  # immediate retry, no backoff
-                        # prompt itself >= ctx; cannot recover.
+                        # prompt itself >= ctx, or no further shrink possible.
                         raise
                 retriable = status in self._TRANSIENT_HTTP or any(
                     s in msg.lower() for s in ("timeout", "rate limit", "temporarily", "connection"))
