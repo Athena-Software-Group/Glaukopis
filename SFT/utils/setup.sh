@@ -165,6 +165,33 @@ install_stack() {
     if [[ "${stack}" == "vllm" ]]; then
         echo "=== Installing vllm + openai client into ${env} ==="
         pip install vllm openai python-dotenv huggingface_hub
+
+        # DeepGEMM: required by vllm's kernel warmup path on Hopper/Blackwell.
+        # vllm imports it unconditionally during engine init when DeepGEMM is
+        # enabled by default (PR vllm-project/vllm#24462), and the probe
+        # raises a hard RuntimeError if the package is missing or outdated --
+        # even for bf16 models that don't actually use FP8 kernels. Pin to
+        # v2.1.1.post3 which is the version recommended in the vllm issue
+        # thread (vllm-project/vllm#29946) for current vllm releases.
+        # Non-fatal: the install needs nvcc + CUDA toolkit and may fail in
+        # CPU-only smoke tests; in that case the user can either rerun
+        # later with toolkit available, or skip the warmup at runtime via
+        # `export VLLM_DEEP_GEMM_WARMUP=skip VLLM_USE_DEEP_GEMM=0`.
+        if [[ "${CUDA_TAG}" != "cpu" ]]; then
+            echo "=== Installing deep_gemm (vllm warmup dep) into ${env} ==="
+            set +e
+            pip install --no-build-isolation \
+                "git+https://github.com/deepseek-ai/DeepGEMM.git@v2.1.1.post3"
+            dg_status=$?
+            set -e
+            if [[ ${dg_status} -ne 0 ]]; then
+                echo "  [WARN] deep_gemm install failed (exit ${dg_status}). vllm"
+                echo "         will crash at engine init unless you set"
+                echo "         VLLM_USE_DEEP_GEMM=0 and VLLM_DEEP_GEMM_WARMUP=skip"
+                echo "         before launching, or rerun this install once nvcc"
+                echo "         + CUDA toolkit are available."
+            fi
+        fi
     fi
 
     if [[ "${stack}" == "train" || "${stack}" == "all" ]]; then
@@ -260,6 +287,11 @@ if stack == "vllm":
         print("vllm              :", getattr(vllm, "__version__", "installed"))
     except Exception as e:
         print("vllm import failed:", e)
+    try:
+        import deep_gemm
+        print("deep_gemm         :", getattr(deep_gemm, "__version__", "installed"))
+    except Exception as e:
+        print("deep_gemm import failed:", e)
 PY
 
     if [[ "${stack}" == "train" || "${stack}" == "all" ]]; then
