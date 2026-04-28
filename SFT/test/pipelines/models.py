@@ -515,8 +515,14 @@ class VLLMModel(BaseModel):
 
         effective_max = max_new_tokens
         shrink_attempts = 0  # bounded retries on context overflow per call
+        max_shrinks = 5
+        max_prompt_seen = 0  # tightest known lower bound on prompt size
+        # Outer loop budget: enough slots for all shrinks plus the transient
+        # retries that follow them. Shrinks are fast (server rejects without
+        # inference) so the inflated cap costs nothing on the happy path.
+        transient_budget = 5
         last_err = None
-        for attempt in range(5):
+        for attempt in range(max_shrinks + transient_budget):
             try:
                 resp = self.client.chat.completions.create(
                     model=self.hf_model_id,
@@ -541,21 +547,29 @@ class VLLMModel(BaseModel):
                 # remaining budget and retry. Useful for long-context tasks
                 # (cybersoceval-ti) on 32K-native models (Qwen2.5 family)
                 # where a fraction of rows sit at the boundary. vLLM reports
-                # "prompt contains at least N input tokens" -- the actual
-                # count is sometimes higher, so allow up to 3 shrinks; each
-                # error reveals a tighter bound.
-                if status == 400 and shrink_attempts < 3:
+                # "prompt contains at least N input tokens" as a lower bound;
+                # the true count after the chat template wraps the input has
+                # been observed to creep up by 100-400 tokens on each retry.
+                # Plan against the tightest bound seen so far (max_prompt_seen)
+                # and grow the margin progressively so we converge instead of
+                # chasing a moving target.
+                if status == 400 and shrink_attempts < max_shrinks:
                     m = self._CTX_OVERFLOW_RE.search(msg)
                     if m is not None:
                         ctx_max = int(m.group(1))
                         prompt_tokens = int(m.group(2))
-                        new_max = ctx_max - prompt_tokens - 128
+                        if prompt_tokens > max_prompt_seen:
+                            max_prompt_seen = prompt_tokens
+                        margin = 128 * (shrink_attempts + 1)
+                        new_max = ctx_max - max_prompt_seen - margin
                         if new_max >= 50 and new_max < effective_max:
                             print(f"vLLM context overflow ({prompt_tokens}+"
                                   f"{effective_max}>{ctx_max}) on "
                                   f"{self.hf_model_id}; retrying with "
                                   f"max_tokens={new_max} "
-                                  f"(shrink {shrink_attempts+1}/3)")
+                                  f"(margin={margin}, prompt_ub="
+                                  f"{max_prompt_seen}, shrink "
+                                  f"{shrink_attempts+1}/{max_shrinks})")
                             effective_max = new_max
                             shrink_attempts += 1
                             continue  # immediate retry, no backoff
@@ -563,11 +577,11 @@ class VLLMModel(BaseModel):
                         raise
                 retriable = status in self._TRANSIENT_HTTP or any(
                     s in msg.lower() for s in ("timeout", "rate limit", "temporarily", "connection"))
-                if not retriable or attempt == 4:
+                if not retriable or attempt == (max_shrinks + transient_budget - 1):
                     raise
                 backoff = min(2 ** attempt, 30)
                 print(f"vLLM transient error ({status or 'err'}) on "
-                      f"{self.hf_model_id}, retry {attempt+1}/5 in {backoff}s: {msg[:200]}")
+                      f"{self.hf_model_id}, retry {attempt+1} in {backoff}s: {msg[:200]}")
                 time.sleep(backoff)
         raise last_err if last_err else RuntimeError("vLLM: unknown failure")
 
