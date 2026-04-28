@@ -5,7 +5,7 @@ from tqdm import tqdm
 from benchmarks.base import Benchmark
 from pipelines.models import get_single_prediction, model_mapping
 from pipelines.post_processing.cti import cti_postprocessing
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 class CYBERMETRIC(Benchmark):
     """Benchmark class for CyberMetric MCQ evaluation."""
@@ -92,14 +92,23 @@ class CYBERMETRIC(Benchmark):
             }
 
         if batch and batch > 1:
+            # as_completed + tqdm mirrors the pattern used by every other
+            # benchmark in this dir (cti_mcq.py, athena_mcq.py, cti_taa.py).
+            # Rows arrive out of input order but each row carries its own
+            # question + GT so downstream scoring is unaffected.
             with ThreadPoolExecutor(max_workers=batch) as executor:
-                # executor.map preserves input order
-                for result in executor.map(process_question, enumerate(remaining_questions, start=start_index)):
+                futures = [
+                    executor.submit(process_question, idx_item)
+                    for idx_item in enumerate(remaining_questions, start=start_index)
+                ]
+                for future in tqdm(as_completed(futures), total=len(futures), desc="Generating responses"):
+                    result = future.result()
                     row_df = pd.DataFrame([result])
                     row_df.to_csv(self.response_file, mode='a', header=False, index=False, encoding='utf-8')
         else:
             # Fallback to sequential processing
-            for idx, item in enumerate(remaining_questions, start=start_index):
+            for idx, item in tqdm(list(enumerate(remaining_questions, start=start_index)),
+                                  desc="Generating responses"):
                 result = process_question((idx, item))
                 row_df = pd.DataFrame([result])
                 row_df.to_csv(self.response_file, mode='a', header=False, index=False, encoding='utf-8')
