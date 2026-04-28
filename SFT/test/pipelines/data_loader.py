@@ -99,14 +99,65 @@ def load_yaml(path: str) -> Dict:
 
 
 def load_jsonl(path: str) -> List[Dict]:
-    """Return a list of JSON objects loaded from a JSONL file."""
+    """Return a list of JSON objects loaded from a JSONL file.
+
+    Malformed lines (e.g., partial writes from a crashed run) are skipped
+    with a warning so that one bad row does not abort scoring on the
+    remaining good rows. Use ``sanitize_jsonl`` to drop them from disk.
+    """
     data: List[Dict] = []
+    bad = 0
+    with open(path, "r", encoding="utf-8") as f:
+        for i, line in enumerate(f, 1):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                data.append(json.loads(line))
+            except json.JSONDecodeError as e:
+                bad += 1
+                print(f"[load_jsonl] WARN: skipping malformed line {i} in {path}: {e.msg}")
+    if bad:
+        print(f"[load_jsonl] WARN: skipped {bad} malformed line(s) in {path}")
+    return data
+
+
+def sanitize_jsonl(path: str) -> int:
+    """Drop malformed/partial lines from a JSONL file, rewriting it in place.
+
+    Intended to be called at the start of a resume-aware generator so that
+    any partial trailing line from a previously-killed run (e.g., ENOSPC,
+    SIGTERM) is removed before append-mode writes resume. Without this,
+    the next ``open(..., "a")`` write would concatenate onto the partial
+    line, producing one giant corrupt record visible to ``load_jsonl``.
+
+    Returns the number of bad lines dropped (0 if the file is clean or
+    does not exist).
+    """
+    if not os.path.exists(path):
+        return 0
+    good: List[str] = []
+    dropped = 0
     with open(path, "r", encoding="utf-8") as f:
         for line in f:
-            line = line.strip()
-            if line:
-                data.append(json.loads(line))
-    return data
+            stripped = line.strip()
+            if not stripped:
+                continue
+            try:
+                json.loads(stripped)
+            except json.JSONDecodeError:
+                dropped += 1
+                continue
+            good.append(stripped + "\n")
+    if dropped:
+        tmp = path + ".sanitize.tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            f.writelines(good)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, path)
+        print(f"[sanitize_jsonl] dropped {dropped} malformed line(s) from {path}")
+    return dropped
 
 
 def load_api_key(var_name: str) -> str:
