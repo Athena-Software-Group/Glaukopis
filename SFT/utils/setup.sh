@@ -214,6 +214,22 @@ install_stack() {
         # compilation (parallel builds) and are required by deepspeed setup.
         echo "=== Installing wandb + huggingface_hub + python-dotenv + ninja ==="
         pip install wandb huggingface_hub python-dotenv packaging ninja
+
+        # liger-kernel: fused linear cross-entropy + RMSNorm/RoPE kernels
+        # that LlamaFactory enables via --enable_liger_kernel. Required for
+        # full SFT of Qwen2.5-32B (152K vocab) on 8x80GB without OOM at the
+        # CE step; also a small throughput win on Llama / Qwen2.5 14B.
+        # Optional at runtime (skip the flag if uninstalled), but baked in
+        # here so the trainer's default extras work out of the box.
+        echo "=== Installing liger-kernel ==="
+        pip install liger-kernel
+
+        # bitsandbytes: 8-bit AdamW (--optim adamw_8bit) cuts the fp32 Adam
+        # momentum + variance (~32 GB/rank for 32B under ZeRO-3) down to
+        # ~8 GB, freeing the headroom needed for the LM-head grad_weight
+        # accumulation on 8x80GB. Required by run_abaligned_sft_qwen25_32b_v7.sh.
+        echo "=== Installing bitsandbytes ==="
+        pip install bitsandbytes
     fi
 
     if [[ "${stack}" == "test" || "${stack}" == "all" ]]; then
@@ -281,6 +297,16 @@ if stack in ("train", "all"):
         print("llamafactory      :", getattr(llamafactory, "__version__", "installed"))
     except Exception as e:
         print("llamafactory import failed:", e)
+    try:
+        import liger_kernel
+        print("liger_kernel      :", getattr(liger_kernel, "__version__", "installed"))
+    except Exception as e:
+        print("liger_kernel import failed:", e)
+    try:
+        import bitsandbytes as bnb
+        print("bitsandbytes      :", getattr(bnb, "__version__", "installed"))
+    except Exception as e:
+        print("bitsandbytes import failed:", e)
 if stack == "vllm":
     try:
         import vllm

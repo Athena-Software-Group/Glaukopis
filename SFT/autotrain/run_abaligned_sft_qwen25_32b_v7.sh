@@ -40,6 +40,14 @@
 #     fp32 cross-entropy buffer ~2.32 GiB at cutoff_len=4096, which OOMs
 #     after ZeRO-3 weights+grads+Adam state on 8x80GB. Liger's fused
 #     linear CE never materializes the full logits tensor.
+#   - 8-bit AdamW (bitsandbytes) enabled by default (--optim adamw_8bit).
+#     Liger alone was insufficient: the LM-head backward step needs to
+#     allocate ~2.9 GiB for the fp32 grad_weight reduction, and ZeRO-3
+#     fp32 Adam momentum+variance pin ~32 GB/rank, leaving ~2.7 GiB free
+#     and triggering OOM in fused_linear_cross_entropy_forward. 8-bit
+#     Adam stores momentum+variance in 8-bit, freeing ~24 GB/rank with
+#     no measurable convergence delta for SFT. Pass --extra "--optim
+#     adamw_torch" to force fp32 Adam (will OOM on 32B / 80 GB).
 #   - PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True exported to keep
 #     the allocator from fragmenting the ~430 MB reserved-but-unused
 #     pool that pushes us over the edge on the larger vocab.
@@ -148,7 +156,7 @@ if [[ "${GRAD_ACCUM_DEFAULT}" -lt 1 ]]; then
 fi
 EFFECTIVE_BATCH=$(( BATCH_DEFAULT * GRAD_ACCUM_DEFAULT * EFFECTIVE_GPUS ))
 
-EXTRA_DEFAULT="--deepspeed ${DS_CONFIG} --save_total_limit 10 --save_only_model True --enable_liger_kernel True"
+EXTRA_DEFAULT="--deepspeed ${DS_CONFIG} --save_total_limit 10 --save_only_model True --enable_liger_kernel True --optim adamw_8bit"
 
 if [[ -n "${EXTRA_USER}" ]]; then
     EXTRA_ALL="${EXTRA_DEFAULT} ${EXTRA_USER}"
@@ -202,6 +210,7 @@ echo "  eval / save  : every 200 steps"
 echo "  deepspeed    : ${SFT_DIR}/${DS_CONFIG}"
 echo "  cpu offload  : ${OFFLOAD}"
 echo "  liger kernel : on  (fused linear CE; required for Qwen2.5 152K vocab)"
+echo "  optimizer    : adamw_8bit  (bitsandbytes; ~24 GB/rank headroom vs fp32 Adam)"
 echo "  alloc conf   : ${PYTORCH_CUDA_ALLOC_CONF}"
 echo "  method       : full-parameter SFT (DeepSpeed ZeRO-3)"
 echo "  launcher     : ${SFT_DIR}/utils/run_train.sh"
