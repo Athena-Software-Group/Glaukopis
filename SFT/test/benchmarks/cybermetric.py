@@ -38,17 +38,19 @@ class CYBERMETRIC(Benchmark):
 
     def generate_responses(self, cleanup=False, use_web_search=False, batch=4):
         questions = self.load_questions()
-        start_index = 0
 
+        # Resume by matching completed question text rather than row count.
+        # The batched path appends rows in completion order (as_completed),
+        # so len(existing) does not correspond to "questions 0..N-1 done".
         if os.path.exists(self.response_file):
             existing = pd.read_csv(self.response_file)
-            start_index = len(existing)
-            print(f"Resuming from question {start_index + 1}")
+            done = set(existing['question'].astype(str))
+            remaining_questions = [q for q in questions if str(q['question']) not in done]
+            print(f"Resuming: {len(done)} done, {len(remaining_questions)} remaining")
         else:
             pd.DataFrame(columns=['question', 'answer', 'raw_response', 'answer_after_post_processing'])\
             .to_csv(self.response_file, index=False, encoding='utf-8')
-
-        remaining_questions = questions[start_index:]
+            remaining_questions = questions
 
         def process_question(idx_item):
             idx, item = idx_item
@@ -99,7 +101,7 @@ class CYBERMETRIC(Benchmark):
             with ThreadPoolExecutor(max_workers=batch) as executor:
                 futures = [
                     executor.submit(process_question, idx_item)
-                    for idx_item in enumerate(remaining_questions, start=start_index)
+                    for idx_item in enumerate(remaining_questions)
                 ]
                 for future in tqdm(as_completed(futures), total=len(futures), desc="Generating responses"):
                     result = future.result()
@@ -107,7 +109,7 @@ class CYBERMETRIC(Benchmark):
                     row_df.to_csv(self.response_file, mode='a', header=False, index=False, encoding='utf-8')
         else:
             # Fallback to sequential processing
-            for idx, item in tqdm(list(enumerate(remaining_questions, start=start_index)),
+            for idx, item in tqdm(list(enumerate(remaining_questions)),
                                   desc="Generating responses"):
                 result = process_question((idx, item))
                 row_df = pd.DataFrame([result])
