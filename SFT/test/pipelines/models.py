@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import torch
 import shutil
@@ -494,6 +495,15 @@ class VLLMModel(BaseModel):
         self.client = OpenAI(api_key=api_key, base_url=self.base_url)
         print(f"vLLM client ready for {self.hf_model_id} (base_url={self.base_url})")
 
+    # vLLM 400 message: "maximum context length is N tokens. However, you
+    # requested M output tokens and your prompt contains at least P input
+    # tokens, for a total of at least N+1 tokens." We parse N and P to
+    # shrink max_tokens to fit, instead of dropping the row.
+    _CTX_OVERFLOW_RE = re.compile(
+        r"maximum context length is (\d+) tokens.*?prompt contains at least (\d+) input tokens",
+        re.DOTALL,
+    )
+
     def generate(self, question, task=None, cleanup_after=False, use_web_search=False,
                  temperature=0.0, max_new_tokens=2048, **kwargs):
         import time
@@ -503,6 +513,8 @@ class VLLMModel(BaseModel):
             messages.append({"role": "system", "content": sys_prompt})
         messages.append({"role": "user", "content": question})
 
+        effective_max = max_new_tokens
+        shrunk = False  # one-shot context-overflow recovery per call
         last_err = None
         for attempt in range(5):
             try:
@@ -510,7 +522,7 @@ class VLLMModel(BaseModel):
                     model=self.hf_model_id,
                     messages=messages,
                     temperature=temperature,
-                    max_tokens=max_new_tokens,
+                    max_tokens=effective_max,
                     top_p=1.0,
                 )
                 # No add_tokens() call here: local vLLM is free and has no
@@ -525,6 +537,26 @@ class VLLMModel(BaseModel):
                 status = getattr(e, "status_code", None) or getattr(
                     getattr(e, "response", None), "status_code", None)
                 msg = str(e)
+                # Context-overflow recovery: shrink max_tokens to fit the
+                # remaining budget and retry once. Useful for long-context
+                # tasks (cybersoceval-ti) on 32K-native models (Qwen2.5
+                # family) where a fraction of rows sit at the boundary.
+                if status == 400 and not shrunk:
+                    m = self._CTX_OVERFLOW_RE.search(msg)
+                    if m is not None:
+                        ctx_max = int(m.group(1))
+                        prompt_tokens = int(m.group(2))
+                        new_max = ctx_max - prompt_tokens - 32
+                        if new_max >= 50:
+                            print(f"vLLM context overflow ({prompt_tokens}+"
+                                  f"{effective_max}>{ctx_max}) on "
+                                  f"{self.hf_model_id}; retrying with "
+                                  f"max_tokens={new_max}")
+                            effective_max = new_max
+                            shrunk = True
+                            continue  # immediate retry, no backoff
+                        # prompt itself >= ctx; cannot recover.
+                        raise
                 retriable = status in self._TRANSIENT_HTTP or any(
                     s in msg.lower() for s in ("timeout", "rate limit", "temporarily", "connection"))
                 if not retriable or attempt == 4:
