@@ -183,8 +183,12 @@ if [[ -n "${CHAT_TEMPLATE}" ]]; then
 fi
 
 if [[ -n "${EXTRA}" ]]; then
-    # shellcheck disable=SC2206
-    extra_arr=(${EXTRA})
+    # Quote-aware split: plain ${EXTRA} word-splitting strips the quoting
+    # around values like --hf-overrides '{"k":"v"}', so vllm receives the
+    # literal single quotes inside the JSON and pydantic rejects it.
+    # eval respects single/double quotes the same way the shell does.
+    # shellcheck disable=SC2294
+    eval "extra_arr=(${EXTRA})"
     args+=("${extra_arr[@]}")
 fi
 
