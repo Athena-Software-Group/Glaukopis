@@ -66,10 +66,12 @@ model_mapping = {
     'athena-cti-sft-llama31-8b-abaligned-v6': 'asg-ai/athena-cti-sft-llama31-8b-abaligned-v6',
     'athena-cti-sft-llama31-8b-abaligned-v7': 'asg-ai/athena-cti-sft-llama31-8b-abaligned-v7',
     'athena-cti-sft-qwen25-14b-abaligned-v7': 'asg-ai/athena-cti-sft-qwen25-14b-abaligned-v7',
+    'athena-cti-sft-qwen25-32b-abaligned-v7': 'asg-ai/athena-cti-sft-qwen25-32b-abaligned-v7',
     #'llama-4-17b': 'meta-llama/Llama-4-Maverick-17B-128E-Instruct',
     'minerva' : "xashru/minerva_v0",
     'llama3.3-70b': 'meta-llama/Llama-3.3-70B-Instruct',
     'qwen2.5-14b': 'Qwen/Qwen2.5-14B-Instruct',
+    'qwen2.5-32b': 'Qwen/Qwen2.5-32B-Instruct',
     'qwen3-4b': 'Qwen/Qwen3-4B-Instruct-2507',
     'qwen3-8b': 'Qwen/Qwen3-8B',
     'qwen3-14b': 'Qwen/Qwen3-14B',
@@ -86,6 +88,7 @@ model_mapping = {
     'deepseek-r1-70b-hf':  'deepseek-ai/DeepSeek-R1-Distill-Llama-70B',
     'qwen3-14b-hf':        'Qwen/Qwen3-14B',
     'qwen2.5-14b-hf':      'Qwen/Qwen2.5-14B-Instruct',
+    'qwen2.5-32b-hf':      'Qwen/Qwen2.5-32B-Instruct',
     'llama-3-70b-hf':      'meta-llama/Meta-Llama-3-70B-Instruct',
     'llama3.3-70b-hf':     'meta-llama/Llama-3.3-70B-Instruct',
     'deepseek-v3.2-exp-hf': 'deepseek-ai/DeepSeek-V3.2-Exp',
@@ -105,6 +108,7 @@ model_mapping = {
     'llama-3-8b-vllm':                         'meta-llama/Meta-Llama-3.1-8B-Instruct',
     'qwen3-4b-vllm':                           'Qwen/Qwen3-4B-Instruct-2507',
     'qwen2.5-14b-vllm':                        'Qwen/Qwen2.5-14B-Instruct',
+    'qwen2.5-32b-vllm':                        'Qwen/Qwen2.5-32B-Instruct',
     'phi-4-vllm':                              'microsoft/phi-4',
     'gemma-2-9b-vllm':                         'google/gemma-2-9b-it',
     'ministral-8b-vllm':                       'mistralai/Ministral-8B-Instruct-2410',
@@ -117,6 +121,7 @@ model_mapping = {
     'athena-cti-sft-llama31-8b-abaligned-v6-vllm': 'asg-ai/athena-cti-sft-llama31-8b-abaligned-v6',
     'athena-cti-sft-llama31-8b-abaligned-v7-vllm': 'asg-ai/athena-cti-sft-llama31-8b-abaligned-v7',
     'athena-cti-sft-qwen25-14b-abaligned-v7-vllm': 'asg-ai/athena-cti-sft-qwen25-14b-abaligned-v7',
+    'athena-cti-sft-qwen25-32b-abaligned-v7-vllm': 'asg-ai/athena-cti-sft-qwen25-32b-abaligned-v7',
     'athena-cti-sft-llama31-8b-abaligned-lora-vllm': 'asg-ai/athena-cti-sft-llama31-8b-abaligned-lora',
 }
 
@@ -126,6 +131,7 @@ def check_disk_space(model_id):
     available_gb = stat.free / (1024 ** 3)
     required_gb = 5
     if '70b' in model_id.lower(): required_gb = 150
+    elif '32b' in model_id.lower(): required_gb = 70
     elif '20b' in model_id.lower(): required_gb = 45
     elif '14b' in model_id.lower(): required_gb = 32
     elif '13b' in model_id.lower(): required_gb = 30
