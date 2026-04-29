@@ -28,6 +28,9 @@
 #              plus the [test] stack into ctibench unless --no-bench-env
 #   7. flash-attn (optional, non-fatal; skipped with --no-flash-attn)
 #   8. Bootstraps SFT/.env from SFT/.env.example on first run
+#   9. Configures global git identity when --git-user-name/--git-user-email
+#      (or GIT_USER_NAME/GIT_USER_EMAIL env vars) are provided; otherwise
+#      warns at the end if no global identity is set on this box
 #
 # Usage:
 #   ./setup.sh [--mode all|train|test|vllm]
@@ -36,6 +39,7 @@
 #              [--extras "metrics deepspeed"] [--no-flash-attn]
 #              [--lfs-pull] [--split-envs] [--no-conda-init]
 #              [--skip-cybersoceval] [--no-bench-env]
+#              [--git-user-name "Your Name"] [--git-user-email you@example.com]
 #
 # Defaults:
 #   --mode all           (creates llm-sft + ctibench; pass --env-name to
@@ -47,6 +51,8 @@
 #   --extras "metrics deepspeed"
 #   (conda init runs by default for your shell; use --no-conda-init to skip)
 #   (vllm mode also installs ctibench by default; --no-bench-env opts out)
+#   (git identity left untouched unless both --git-user-name and
+#    --git-user-email are passed, or GIT_USER_NAME/GIT_USER_EMAIL exported)
 #
 # Dependency note:
 #   LlamaFactory pins datasets<=4.0.0 and transformers<=5.2.0; SFT/test asks
@@ -72,6 +78,13 @@ SPLIT_ENVS=0
 RUN_CONDA_INIT=1
 FETCH_CYBERSOCEVAL=1
 INSTALL_BENCH_WITH_VLLM=1
+# Git identity: empty default. Picks up GIT_USER_NAME / GIT_USER_EMAIL
+# from the environment (so .env or shell exports work) and is overridden
+# by the --git-user-name / --git-user-email flags. Only applied when both
+# values are present; otherwise we just warn at the end so a fresh box
+# doesn't get a surprise empty author on its first commit.
+GIT_USER_NAME="${GIT_USER_NAME:-}"
+GIT_USER_EMAIL="${GIT_USER_EMAIL:-}"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -86,8 +99,10 @@ while [[ $# -gt 0 ]]; do
         --no-conda-init)      RUN_CONDA_INIT=0; shift ;;
         --skip-cybersoceval)  FETCH_CYBERSOCEVAL=0; shift ;;
         --no-bench-env)       INSTALL_BENCH_WITH_VLLM=0; shift ;;
+        --git-user-name)      GIT_USER_NAME="$2"; shift 2 ;;
+        --git-user-email)     GIT_USER_EMAIL="$2"; shift 2 ;;
         -h|--help)
-            sed -n '3,49p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+            sed -n '3,55p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
             exit 0
             ;;
         *) echo "Unknown argument: $1"; exit 1 ;;
@@ -140,6 +155,30 @@ if [[ "${MODE}" == "vllm" ]]; then
     echo "  bench env : $([[ ${INSTALL_BENCH_WITH_VLLM} -eq 1 ]] && echo 'yes (ctibench co-install)' || echo no)"
 fi
 echo
+
+# Git identity ----------------------------------------------------------------
+# Fresh boxes (containers, EC2 spot, Modal, RunPod, etc.) ship with no
+# global git identity, which causes any subsequent `git commit` to fail
+# loudly and any `git pull --rebase` to refuse implicit merges. Set the
+# global config when the operator passed both --git-user-name and
+# --git-user-email (or exported GIT_USER_NAME / GIT_USER_EMAIL); otherwise
+# leave any existing config alone and warn at the end if it's still empty.
+GIT_IDENTITY_WAS_SET=0
+GIT_IDENTITY_MISSING=0
+if command -v git >/dev/null 2>&1; then
+    if [[ -n "${GIT_USER_NAME}" && -n "${GIT_USER_EMAIL}" ]]; then
+        echo "=== Setting global git identity ==="
+        echo "  user.name : ${GIT_USER_NAME}"
+        echo "  user.email: ${GIT_USER_EMAIL}"
+        git config --global user.name  "${GIT_USER_NAME}"
+        git config --global user.email "${GIT_USER_EMAIL}"
+        GIT_IDENTITY_WAS_SET=1
+    elif [[ -z "$(git config --global --get user.name 2>/dev/null)" \
+         || -z "$(git config --global --get user.email 2>/dev/null)" ]]; then
+        GIT_IDENTITY_MISSING=1
+    fi
+    echo
+fi
 
 # 1. Miniconda bootstrap ------------------------------------------------------
 if ! command -v conda >/dev/null 2>&1; then
@@ -519,6 +558,18 @@ elif [[ "${MODE}" != "test" || ${SPLIT_ENVS} -eq 1 ]]; then
     echo "Credentials file: ${ENV_FILE}  (already populated)"
 fi
 echo
+if [[ ${GIT_IDENTITY_MISSING} -eq 1 ]]; then
+    echo "Git identity is not configured globally. Any 'git commit' on this box"
+    echo "will fail until you set it. Either rerun setup with the flags:"
+    echo "    bash SFT/utils/setup.sh --git-user-name 'Your Name' --git-user-email you@example.com ..."
+    echo "or configure manually now:"
+    echo "    git config --global user.name  'Your Name'"
+    echo "    git config --global user.email you@example.com"
+    echo
+elif [[ ${GIT_IDENTITY_WAS_SET} -eq 1 ]]; then
+    echo "Git identity configured: ${GIT_USER_NAME} <${GIT_USER_EMAIL}>"
+    echo
+fi
 echo "Alternative to editing .env: run the interactive CLIs once:"
 echo "    hf auth login            # REQUIRED (Llama-3.1-8B-Instruct is a gated model)"
 echo "    wandb login              # optional, only needed if passing --report-to wandb"
