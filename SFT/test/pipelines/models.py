@@ -125,6 +125,11 @@ model_mapping = {
     'athena-cti-sft-llama31-8b-abaligned-v7-vllm': 'asg-ai/athena-cti-sft-llama31-8b-abaligned-v7',
     'athena-cti-sft-qwen25-14b-abaligned-v7-vllm': 'asg-ai/athena-cti-sft-qwen25-14b-abaligned-v7',
     'athena-cti-sft-qwen25-32b-abaligned-v7-vllm': 'asg-ai/athena-cti-sft-qwen25-32b-abaligned-v7',
+    # v8-small SFT family: 60K stratified mix, 2 epochs, cutoff 8192, full-param.
+    # Pushed by SFT/autotrain/run_abaligned_sft_{llama31_8b,foundation_8b,qwen25_14b}_v8*.sh.
+    'athena-cti-sft-llama31-8b-abaligned-v8-vllm':             'asg-ai/athena-cti-sft-llama31-8b-abaligned-v8',
+    'athena-cti-sft-foundation-8b-instruct-abaligned-v8-vllm': 'asg-ai/athena-cti-sft-foundation-8b-instruct-abaligned-v8',
+    'athena-cti-sft-qwen25-14b-abaligned-v8small-vllm':        'asg-ai/athena-cti-sft-qwen25-14b-abaligned-v8small',
     'athena-cti-sft-llama31-8b-abaligned-lora-vllm': 'asg-ai/athena-cti-sft-llama31-8b-abaligned-lora',
     'minerva-llama31-8b-vllm':                 'asg-ai/minerva-llama3.1-8b',
     # Cisco Foundation-Sec-8B-Reasoning emits <think>...</think> traces; serve
