@@ -1,0 +1,311 @@
+================================================================================
+Sophia CTI Templates -- JSON-output addendum v8 (companion to combined v7)
+================================================================================
+
+Companion to:  SFT/data/ift_data_2026_04_29_json_v8.json   (target ~9.8k rows)
+Trainer:       SFT/autotrain/run_abaligned_sft_qwen25_32b_v8.sh
+Base model:    Qwen/Qwen2.5-32B-Instruct
+Target tasks:  CyberSOCEval VSP/TAA (JSON-shaped responses), CyberMetric
+               recovery (format flexibility), AthenaBench MCQ/ATE/RCM/RMS/TAA
+               JSON variants for cross-format generalisation.
+
+================================================================================
+SECTION A. v7 -> v8 motivation
+================================================================================
+
+The v7 32B SFT model holds a +20 pp lead over the base on AthenaBench but
+regresses ~12 pp on CyberSOCEval and ~6 pp on CyberMetric. Sample inspection
+of v7 responses on the CyberSOCEval malware-TI task identified that the
+trained model:
+
+  - Emits free-form prose where the eval harness expects a top-level JSON
+    object with specific keys ({"correct_answers": [...]} or
+    {"behaviors": [...]}).
+  - Repeats the AthenaBench-aligned narrative pattern ("MITRE ATT&CK
+    classifies ... Therefore, X.") even when the prompt asks for a JSON
+    blob, producing 0% strict-format matches on JSON-graded tasks.
+  - Loses the CyberMetric MCQ shape ("Answer: X") in roughly 6% of rows,
+    substituting v7-style "Therefore, X." closers.
+
+v8 addresses format collapse with a parallel JSON-output corpus that mirrors
+the v7 narrative templates one-for-one in graph coverage but emits a
+top-level JSON object instead of free-form prose. Trained jointly with the
+v7 corpus (see Phase A in the v8 launcher) the model retains the v7 prose
+behaviour for AthenaBench and gains the JSON-emitting behaviour for
+CyberSOCEval and any production tool-call pipeline.
+
+================================================================================
+SECTION B. Sentinel encoding for literal JSON characters
+================================================================================
+
+The tmpl_gen template grammar (tmpl_gen/src/tmpl_gen/tmpl_parser.py
+make_templ_grammar1) reserves the characters `{`, `}`, `[`, `]` for qfield
+and listsection delimiters and provides no escape mechanism in TEXTSECTION
+text (rule TEXTSECTION = `/(?:[^{<[\]]|<(?!\*))+/`). Templates that need to
+emit literal JSON braces or brackets in their Answer body therefore use
+the following sentinel substitutions, which are post-processed to literal
+characters by tmpl_gen/scripts/to_alpaca.py (--unescape-json-sentinels,
+default on as of the v8 release):
+
+    <OBR>   ->  {     open  brace
+    <CBR>   ->  }     close brace
+    <OBK>   ->  [     open  bracket
+    <CBK>   ->  ]     close bracket
+
+These four sentinels survive the parser because each begins with `<X` where
+X is not `*`, satisfying the second alternative of the TEXTSECTION rule
+(`<(?!\*)`), and the remaining characters are all outside the excluded set
+`[^{<[\]]`. They are short, readable, unlikely to appear in CTI source
+data, and reversible by a single str.replace call per sentinel.
+
+The sentinels are NEVER used inside qfields, scopes, or constraints --
+those are parsed normally and emit verbatim graph values into the output
+text. Only TEXTSECTION-level literal JSON characters are sentineled.
+
+================================================================================
+SECTION C. Coverage summary (~8.7k rows total)
+================================================================================
+
+Family   #Templates    Count each   Subtotal     Mirrors v7 family
+-------- ------------- ------------ ------------ ----------------------------
+JS.MCQ.*       3         500/700      1900       AB.MCQ.{1,2,5}
+JS.RCM.*       2            750       1500       AB.RCM.{1,2}
+JS.ATE.*       3            500       1500       AB.ATE.{1,3,4}
+JS.RMS.*       4            400       1600       AB.RMS.3{a..d} (N=1..4)
+JS.TAA.*       3            400       1200       AB.TAA.{1,3,5}
+JS.VSP.*       2            500       1000       AB.VSP.{2,4}
+-------- ------------- ------------ ------------ ----------------------------
+Total         17                       8700
+
+JS.MCQ.* count breakdown: JS.MCQ.{1,5} run at Count: 700, JS.MCQ.2 at
+Count: 500. JS.MCQ.{3,4,6} were dropped from the v8 slate -- all three
+joined long {cve.descriptions}/{cwe.description}/{cap.description} text
+fields against 4-way unrelated Weakness/CAPEC/attack-pattern distractor
+sets, which exceeded the local Neo4j 16GB transaction memory pool and
+ran ~10x slower than the {tactic, course-of-action, attack-pattern}
+sampling templates that survived. The CVE->CWE root-cause signal is
+already covered by JS.RCM.{1,2} (no distractor cartesian product), so
+the loss is purely on the JSON MCQ format axis, not on coverage.
+
+Cardinality cap at N<=4 for JS.RMS.* mirrors the Neo4j ap.mitigates<coa
+edge density observed during the v7 build (4-mitigation rows drop ~25%
+when N=5 and ~60% when N=8 due to limited per-technique coa coverage).
+The v7 RMS slate handled higher-N cardinalities with a long tail of
+explicit per-N templates; v8's JSON RMS is positioned as the format
+canary, not the primary RMS gradient source -- the v7 narrative RMS
+slate still carries the bulk of the RMS signal in the combined Phase A
+training run.
+
+Section D below contains the 18 JSON-output templates in the same
+syntax (Instruction:/Question:/Answer:/Count:) as the v7 templates,
+with sentinel-encoded JSON Answer bodies.
+
+================================================================================
+SECTION C.1 - Templates dropped pre-generation (JS.MCQ.4, JS.MCQ.6)
+================================================================================
+
+Two templates from the original 20-template slate were dropped after the
+2026-04-29 smoke test against the local athena-cti-db Neo4j instance.
+
+JS.MCQ.4 (CWE -> CAPEC):  Question of the form "Which CAPEC primarily
+exploits {cwe}? A) {related CAPEC} B-E) 4 unrelated CAPECs". The
+generator query has a 4-way unrelated-CAPEC cartesian (~559^4 = 9.7e10
+candidate rows) AND an outer ORDER BY rand() over RETURN DISTINCT,
+which forces Neo4j to materialise the full DISTINCT result set before
+sorting. With cwe.description (~1-2 KiB per row) projected through the
+expansion, peak transaction memory exceeds the local 16 GiB
+dbms.memory.transaction.total.max ceiling and the query OOMs. The
+bounded LIMIT-before-RETURN fallback in tmpl_parser.py also returns 0
+rows because the planner pre-evaluates the WHERE-filtered cartesian
+before applying LIMIT.
+
+JS.MCQ.6 (CAPEC -> ATT&CK):  Same shape as JS.MCQ.4, with a 4-way
+unrelated-attack-pattern cartesian (~600^4 = 1.3e11) and primary
+sampled from the ~270 CAPECs that have a :map_ap edge. Same OOM
+mechanism, same 0-row fallback.
+
+Workarounds considered and rejected:
+  - per_primary_grouping=true gencfg (CALL subquery per primary):
+    succeeds in isolation but increases per-template wall time from
+    ~10s to ~50 min for a 500-row template, blowing the end-to-end
+    generation budget for the whole slate.
+  - Stripping description columns from RETURN: did not avoid the OOM
+    because the cartesian itself (regardless of column width) is the
+    memory driver under ORDER BY rand().
+  - Re-architecting tmpl_gen to use a two-stage pre-sample of negative
+    distractors (collect() into a list, then unwind 4 random elements
+    per primary): out of scope for the v8 release; tracked as a future
+    improvement to tmpl_parser.py.
+
+Coverage impact:  CWE/CAPEC and CAPEC/ATT&CK MCQ relationships remain
+covered by the AthenaBench-aligned narrative templates AB.MCQ.{2,4,6}
+(present in the Phase A combined corpus), so v8 retains exposure to
+those mappings -- only the JSON-output variants of those two specific
+mappings are absent.
+
+================================================================================
+SECTION D. JSON-output template slate
+================================================================================
+
+Section D.1 - JS.MCQ.* JSON-output multiple-choice (cyber-soc-eval-vsp / mcq)
+
+JS.MCQ.1 Instruction: You are a cybersecurity analyst at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult MITRE ATT&CK, reason about each option in turn, and then respond with a single JSON object on one line containing the keys "answer" (one of A, B, C, D, E) and "rationale" (one short sentence). Do not output anything before or after the JSON object.
+Question: Which MITRE ATT&CK tactic does technique {ap:attack-pattern.mitre_id} ({ap.name}) achieve? Technique description: {ap.description}
+A) {ta:ap.achieves>x-mitre-tactic.name}
+B) {negtac1:x-mitre-tactic.name}
+C) {negtac2:x-mitre-tactic.name}
+D) {negtac3:x-mitre-tactic.name}
+E) {negtac4:x-mitre-tactic.name}
+Answer: <OBR>"answer": "A", "rationale": "MITRE ATT&CK classifies technique {ap.mitre_id} ({ap.name}) under the {ta.name} tactic."<CBR>
+{force negtac1.mitre_id != ta.mitre_id}
+{force negtac2.mitre_id != ta.mitre_id}
+{force negtac3.mitre_id != ta.mitre_id}
+{force negtac4.mitre_id != ta.mitre_id}
+{force negtac1.mitre_id != negtac2.mitre_id}
+{force negtac1.mitre_id != negtac3.mitre_id}
+{force negtac1.mitre_id != negtac4.mitre_id}
+{force negtac2.mitre_id != negtac3.mitre_id}
+{force negtac2.mitre_id != negtac4.mitre_id}
+{force negtac3.mitre_id != negtac4.mitre_id}
+Sample: ap
+Shuffle: mcq
+Count: 700
+
+JS.MCQ.2 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult MITRE ATT&CK, reason about each option in turn, and then respond with a single JSON object on one line containing the keys "answer" (one of A, B, C, D, E) and "rationale" (one short sentence). Do not output anything before or after the JSON object.
+Question: Which MITRE ATT&CK mitigation addresses technique {ap:attack-pattern.mitre_id} ({ap.name})? Technique description: {ap.description}
+A) {coa:ap.mitigates<course-of-action.mitre_id} ({coa.name})
+B) {negcoa1:course-of-action.mitre_id} ({negcoa1.name})
+C) {negcoa2:course-of-action.mitre_id} ({negcoa2.name})
+D) {negcoa3:course-of-action.mitre_id} ({negcoa3.name})
+E) {negcoa4:course-of-action.mitre_id} ({negcoa4.name})
+Answer: <OBR>"answer": "A", "rationale": "MITRE ATT&CK records mitigation {coa.mitre_id} ({coa.name}) as addressing technique {ap.mitre_id}."<CBR>
+{force negcoa1.mitre_id != coa.mitre_id}
+{force negcoa2.mitre_id != coa.mitre_id}
+{force negcoa3.mitre_id != coa.mitre_id}
+{force negcoa4.mitre_id != coa.mitre_id}
+{force negcoa1.mitre_id != negcoa2.mitre_id}
+{force negcoa1.mitre_id != negcoa3.mitre_id}
+{force negcoa1.mitre_id != negcoa4.mitre_id}
+{force negcoa2.mitre_id != negcoa3.mitre_id}
+{force negcoa2.mitre_id != negcoa4.mitre_id}
+{force negcoa3.mitre_id != negcoa4.mitre_id}
+Sample: ap
+Shuffle: mcq
+Count: 500
+
+JS.MCQ.5 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult MITRE ATT&CK, reason about each option in turn, and then respond with a single JSON object on one line containing the keys "answer" (one of A, B, C, D, E) and "rationale" (one short sentence). Do not output anything before or after the JSON object.
+Question: Which MITRE ATT&CK technique is threat group {grp:intrusion-set.name} ({grp.mitre_id}) documented as using? Group description: {grp.description}
+A) {ap:grp.uses>attack-pattern.mitre_id} ({ap.name})
+B) {negack1:attack-pattern.mitre_id} ({negack1.name})
+C) {negack2:attack-pattern.mitre_id} ({negack2.name})
+D) {negack3:attack-pattern.mitre_id} ({negack3.name})
+E) {negack4:attack-pattern.mitre_id} ({negack4.name})
+Answer: <OBR>"answer": "A", "rationale": "MITRE ATT&CK documents {grp.name} ({grp.mitre_id}) as using technique {ap.mitre_id} ({ap.name})."<CBR>
+{force negack1.mitre_id != ap.mitre_id}
+{force negack2.mitre_id != ap.mitre_id}
+{force negack3.mitre_id != ap.mitre_id}
+{force negack4.mitre_id != ap.mitre_id}
+{force negack1.mitre_id != negack2.mitre_id}
+{force negack1.mitre_id != negack3.mitre_id}
+{force negack1.mitre_id != negack4.mitre_id}
+{force negack2.mitre_id != negack3.mitre_id}
+{force negack2.mitre_id != negack4.mitre_id}
+{force negack3.mitre_id != negack4.mitre_id}
+Sample: grp
+Shuffle: mcq
+Count: 700
+
+Section D.2 - JS.RCM.* JSON-output root-cause mapping (mirrors AB.RCM.{1,2})
+
+JS.RCM.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center performing root-cause mapping. Analyse the following CVE description and identify the most appropriate Common Weakness Enumeration (CWE) that represents the root cause of the vulnerability. Consult the MITRE CVE and CWE knowledge bases, reason about the weakness pattern present in the description, and then respond with a single JSON object on one line containing the keys "cwe" (the CWE identifier in the form "CWE-####") and "rationale" (one short sentence). Do not output anything before or after the JSON object.
+Question: {cve:CVE.descriptions}
+Answer: <OBR>"cwe": "{cwe:cve.problemType>Weakness.id}", "rationale": "The description matches the pattern defined by {cwe.id} ({cwe.name})."<CBR>
+Count: 750
+
+JS.RCM.2 Instruction: You are a vulnerability analyst at an enterprise Security Operations Center performing root-cause mapping for a newly disclosed CVE. Analyse the vulnerability record below and identify the most appropriate CWE. Consult the MITRE CVE and CWE knowledge bases, reason about the underlying weakness before committing to a label, and then respond with a single JSON object on one line containing the keys "cve" (the CVE identifier), "cwe" (the CWE identifier in the form "CWE-####") and "rationale" (one short sentence). Do not output anything before or after the JSON object.
+Question: Vulnerability record for {cve:CVE.id}: {cve.descriptions}
+Answer: <OBR>"cve": "{cve.id}", "cwe": "{cwe:cve.problemType>Weakness.id}", "rationale": "The record describes {cwe.name}, whose defining characteristic matches the vulnerability."<CBR>
+Count: 750
+
+Section D.3 - JS.ATE.* JSON-output technique enumeration (mirrors AB.ATE.{1,3,4})
+
+JS.ATE.1 Instruction: You are a threat hunter at an enterprise Security Operations Center performing attack technique enumeration. Analyse the following attack scenario and identify the single MITRE ATT&CK technique (ID format: T####) that best matches the behaviour described. Consult MITRE ATT&CK, reason about observable indicators in the scenario, and then respond with a single JSON object on one line containing the keys "technique" (the technique ID), "name" (the technique name) and "rationale" (one short sentence). Do not output anything before or after the JSON object.
+Question: {ap:attack-pattern.description}
+Answer: <OBR>"technique": "{ap.mitre_id}", "name": "{ap.name}", "rationale": "The described behaviour matches {ap.name} on platforms {ap.x_mitre_platforms}."<CBR>
+Count: 500
+
+JS.ATE.2 Instruction: You are an incident responder at an enterprise Security Operations Center correlating attacker activity to MITRE ATT&CK. Analyse the following incident narrative, which reflects adversary tradecraft attributed to a documented threat group. Consult MITRE ATT&CK, reason about which technique underpins the observed behaviour, and then respond with a single JSON object on one line containing the keys "technique" (the technique ID, format T####), "name" (the technique name) and "rationale" (one short sentence). Do not output anything before or after the JSON object.
+Question: During an engagement attributed to {grp:intrusion-set.name} ({grp.mitre_id}), analysts observed the following adversary behaviour: {ap:grp.uses>attack-pattern.description}
+Answer: <OBR>"technique": "{ap.mitre_id}", "name": "{ap.name}", "rationale": "The observed behaviour is the documented pattern for {ap.name}, which MITRE ATT&CK records {grp.name} as using."<CBR>
+Count: 500
+
+JS.ATE.3 Instruction: You are a SOC analyst at an enterprise Security Operations Center performing attack technique enumeration from a scenario summary written in natural language. Analyse the following scenario and identify the single MITRE ATT&CK technique (ID format: T####) that best matches. Consult MITRE ATT&CK, reason about what adversary objective the narrative implies before labelling, and then respond with a single JSON object on one line containing the keys "technique" (the technique ID), "name" (the technique name) and "rationale" (one short sentence). Do not output anything before or after the JSON object.
+Question: Scenario: an adversary performed the following action: {ap:attack-pattern.description}
+Answer: <OBR>"technique": "{ap.mitre_id}", "name": "{ap.name}", "rationale": "The scenario describes {ap.name}, the MITRE ATT&CK technique for this adversary action on platforms {ap.x_mitre_platforms}."<CBR>
+Count: 500
+
+
+Section D.4 - JS.RMS.* JSON-output risk mitigation strategies (mirrors AB.RMS.3{a..d})
+
+JS.RMS.1 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend exactly 1 MITRE ATT&CK mitigation ID (format: M####) that addresses the scenario. Consult MITRE ATT&CK, reason about which defensive control is most directly relevant, and then respond with a single JSON object on one line containing the keys "mitigations" (a JSON array of mitigation IDs, length exactly 1) and "rationale" (one short sentence). Do not output anything before or after the JSON object.
+Question: {ap:attack-pattern.description}
+Answer: <OBR>"mitigations": <OBK>"{coa1:ap.mitigates<course-of-action.mitre_id}"<CBK>, "rationale": "To address {ap.name}, the most directly applicable MITRE ATT&CK mitigation is {coa1.mitre_id} ({coa1.name})."<CBR>
+Count: 400
+
+JS.RMS.2 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend exactly 2 MITRE ATT&CK mitigation IDs (format: M####) that address the scenario. Consult MITRE ATT&CK, reason about which defensive controls apply, and then respond with a single JSON object on one line containing the keys "mitigations" (a JSON array of mitigation IDs, length exactly 2) and "rationale" (one short sentence). Do not output anything before or after the JSON object.
+Question: {ap:attack-pattern.description}
+Answer: <OBR>"mitigations": <OBK>"{coa1:ap.mitigates<course-of-action.mitre_id}", "{coa2:ap.mitigates<course-of-action.mitre_id}"<CBK>, "rationale": "To address {ap.name}, the applicable MITRE ATT&CK mitigations are {coa1.mitre_id} ({coa1.name}) and {coa2.mitre_id} ({coa2.name})."<CBR>
+{force coa1.mitre_id != coa2.mitre_id}
+Count: 400
+
+JS.RMS.3 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend exactly 3 MITRE ATT&CK mitigation IDs (format: M####) that address the scenario. Consult MITRE ATT&CK, reason about which defensive controls apply, and then respond with a single JSON object on one line containing the keys "mitigations" (a JSON array of mitigation IDs, length exactly 3) and "rationale" (one short sentence). Do not output anything before or after the JSON object.
+Question: {ap:attack-pattern.description}
+Answer: <OBR>"mitigations": <OBK>"{coa1:ap.mitigates<course-of-action.mitre_id}", "{coa2:ap.mitigates<course-of-action.mitre_id}", "{coa3:ap.mitigates<course-of-action.mitre_id}"<CBK>, "rationale": "To address {ap.name}, the applicable MITRE ATT&CK mitigations are {coa1.mitre_id} ({coa1.name}), {coa2.mitre_id} ({coa2.name}), and {coa3.mitre_id} ({coa3.name})."<CBR>
+{force coa1.mitre_id != coa2.mitre_id}
+{force coa1.mitre_id != coa3.mitre_id}
+{force coa2.mitre_id != coa3.mitre_id}
+Count: 400
+
+JS.RMS.4 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend exactly 4 MITRE ATT&CK mitigation IDs (format: M####) that address the scenario. Consult MITRE ATT&CK, reason about which defensive controls apply, and then respond with a single JSON object on one line containing the keys "mitigations" (a JSON array of mitigation IDs, length exactly 4) and "rationale" (one short sentence). Do not output anything before or after the JSON object.
+Question: {ap:attack-pattern.description}
+Answer: <OBR>"mitigations": <OBK>"{coa1:ap.mitigates<course-of-action.mitre_id}", "{coa2:ap.mitigates<course-of-action.mitre_id}", "{coa3:ap.mitigates<course-of-action.mitre_id}", "{coa4:ap.mitigates<course-of-action.mitre_id}"<CBK>, "rationale": "To address {ap.name}, the applicable MITRE ATT&CK mitigations are {coa1.mitre_id} ({coa1.name}), {coa2.mitre_id} ({coa2.name}), {coa3.mitre_id} ({coa3.name}), and {coa4.mitre_id} ({coa4.name})."<CBR>
+{force coa1.mitre_id != coa2.mitre_id}
+{force coa1.mitre_id != coa3.mitre_id}
+{force coa1.mitre_id != coa4.mitre_id}
+{force coa2.mitre_id != coa3.mitre_id}
+{force coa2.mitre_id != coa4.mitre_id}
+{force coa3.mitre_id != coa4.mitre_id}
+Count: 400
+
+Section D.5 - JS.TAA.* JSON-output threat actor attribution (mirrors AB.TAA.{1,3,5})
+
+JS.TAA.1 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center performing threat actor attribution from observed tradecraft. Analyse the following anonymised incident summary, which reports the MITRE ATT&CK techniques and malware family observed during an intrusion, and identify the responsible named intrusion set. Consult the MITRE ATT&CK groups knowledge base, reason about which documented intrusion set the combination of techniques and tooling matches, and then respond with a single JSON object on one line containing the keys "actor" (the intrusion-set name), "actor_id" (the MITRE ATT&CK group ID, format G####) and "rationale" (one short sentence). Do not output anything before or after the JSON object.
+Question: <*{grp:intrusion-set.name}*>An adversary has been observed employing MITRE ATT&CK techniques {ap1:grp.uses>attack-pattern.name} ({ap1.mitre_id}), {ap2:grp.uses>attack-pattern.name} ({ap2.mitre_id}), and {ap3:grp.uses>attack-pattern.name} ({ap3.mitre_id}), alongside the malware family {mw:grp.uses>malware.name}.
+Answer: <OBR>"actor": "{grp.name}", "actor_id": "{grp.mitre_id}", "rationale": "The joint use of {ap1.name}, {ap2.name}, and {ap3.name} together with {mw.name} matches the documented tradecraft of {grp.name}."<CBR>
+Sample: grp
+Count: 400
+
+JS.TAA.2 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center performing threat actor attribution from observed tradecraft. Analyse the following anonymised incident summary, which reports only the MITRE ATT&CK techniques observed during an intrusion (no malware indicators were recovered), and identify the responsible named intrusion set. Consult the MITRE ATT&CK groups knowledge base, reason about which documented intrusion set the combination of techniques matches, and then respond with a single JSON object on one line containing the keys "actor" (the intrusion-set name), "actor_id" (the MITRE ATT&CK group ID, format G####) and "rationale" (one short sentence). Do not output anything before or after the JSON object.
+Question: <*{grp:intrusion-set.name}*>An adversary was observed employing MITRE ATT&CK techniques {ap1:grp.uses>attack-pattern.name} ({ap1.mitre_id}), {ap2:grp.uses>attack-pattern.name} ({ap2.mitre_id}), and {ap3:grp.uses>attack-pattern.name} ({ap3.mitre_id}).
+Answer: <OBR>"actor": "{grp.name}", "actor_id": "{grp.mitre_id}", "rationale": "The combination of {ap1.name}, {ap2.name}, and {ap3.name} is the documented tradecraft of {grp.name}."<CBR>
+Sample: grp
+Count: 400
+
+JS.TAA.3 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center performing threat actor attribution from tooling and tradecraft telemetry. Analyse the following anonymised summary combining MITRE ATT&CK techniques and the dual-use or custom tool observed, and identify the responsible named intrusion set. Consult the MITRE ATT&CK groups knowledge base, reason about which documented intrusion set the evidence matches, and then respond with a single JSON object on one line containing the keys "actor" (the intrusion-set name), "actor_id" (the MITRE ATT&CK group ID, format G####) and "rationale" (one short sentence). Do not output anything before or after the JSON object.
+Question: <*{grp:intrusion-set.name}*>An adversary was observed employing MITRE ATT&CK techniques {ap1:grp.uses>attack-pattern.name} ({ap1.mitre_id}) and {ap2:grp.uses>attack-pattern.name} ({ap2.mitre_id}), together with the tool {tl:grp.uses>tool.name}.
+Answer: <OBR>"actor": "{grp.name}", "actor_id": "{grp.mitre_id}", "rationale": "Use of {ap1.name} and {ap2.name} together with {tl.name} matches the documented tradecraft of {grp.name}."<CBR>
+Sample: grp
+Count: 400
+
+Section D.6 - JS.VSP.* JSON-output CVSS triage (mirrors AB.VSP.{2,4})
+
+JS.VSP.1 Instruction: You are a vulnerability risk analyst at an enterprise Security Operations Center triaging a newly disclosed CVE by CVSS v3.1 severity. Analyse the vulnerability record below, reason about exploit preconditions and impact, and then respond with a single JSON object on one line containing the keys "cve" (the CVE identifier), "base_score" (the CVSS v3.1 base score as a number) and "vector" (the full CVSS:3.1 vector string). Do not output anything before or after the JSON object.
+Question: Vulnerability record for {cve:CVE.id}: {cve.descriptions}
+Answer: <OBR>"cve": "{cve.id}", "base_score": {cve.cvss3_1_baseScore}, "vector": "{cve.cvss3_1_vectorString}"<CBR> <*{force cve.cvss3_1_vectorString = cve.cvss3_1_vectorString}*>
+Count: 500
+
+JS.VSP.2 Instruction: You are a vulnerability risk analyst at an enterprise Security Operations Center performing same-day CVE triage. Analyse the vulnerability record below with explicit reasoning about exploit preconditions and impact across all eight CVSS v3.1 Base metrics, and then respond with a single JSON object on one line containing the keys "cve" (the CVE identifier), "attack_vector" (the AV value), "base_score" (the CVSS v3.1 base score as a number) and "vector" (the full CVSS:3.1 vector string). Do not output anything before or after the JSON object.
+Question: Vulnerability record for {cve:CVE.id}: {cve.descriptions}
+Answer: <OBR>"cve": "{cve.id}", "attack_vector": "{cve.cvss3_1_attackVector}", "base_score": {cve.cvss3_1_baseScore}, "vector": "{cve.cvss3_1_vectorString}"<CBR> <*{force cve.cvss3_1_vectorString = cve.cvss3_1_vectorString}*>
+Count: 500
+

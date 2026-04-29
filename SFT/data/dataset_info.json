@@ -82,6 +82,30 @@
       "response": "output"
     }
   },
+  "ift_data_2026_04_29_json_v8": {
+    "file_name": "ift_data_2026_04_29_json_v8.json",
+    "columns": {
+      "system": "instruction",
+      "prompt": "input",
+      "response": "output"
+    }
+  },
+  "ift_data_2026_04_29_longctx_v8": {
+    "file_name": "ift_data_2026_04_29_longctx_v8.json",
+    "columns": {
+      "system": "instruction",
+      "prompt": "input",
+      "response": "output"
+    }
+  },
+  "ift_data_2026_04_29_combined_v8small": {
+    "file_name": "ift_data_2026_04_29_combined_v8small.json",
+    "columns": {
+      "system": "instruction",
+      "prompt": "input",
+      "response": "output"
+    }
+  },
   "alpaca_en_demo": {
     "file_name": "alpaca_en_demo.json"
   },
@@ -830,6 +854,21 @@
     "file_name": "cti_corpus_smoke_post2023.jsonl",
     "columns": {
       "prompt": "text"
+    }
+  },
+  "tulu_3_sft_mixture": {
+    "hf_hub_url": "allenai/tulu-3-sft-mixture",
+    "ms_hub_url": "AI-ModelScope/tulu-3-sft-mixture",
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "messages"
+    },
+    "tags": {
+      "role_tag": "role",
+      "content_tag": "content",
+      "user_tag": "user",
+      "assistant_tag": "assistant",
+      "system_tag": "system"
     }
   }
 }

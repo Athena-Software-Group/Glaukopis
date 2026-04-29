@@ -81,6 +81,7 @@ model_mapping = {
     'foundation-8b-reasoning': 'fdtn-ai/Foundation-Sec-8B-Reasoning',       # Cisco Foundation-Sec-8B-Reasoning
     'foundation-8b': 'fdtn-ai/Foundation-Sec-8B',                           # Cisco Foundation-Sec-8B simple model
     'minerva-llama8b':'athena-security/minerva-llama8b',
+    'minerva-llama31-8b': 'asg-ai/minerva-llama3.1-8b',
     'deephat-7b': 'DeepHat/DeepHat-V1-7B',
     'deepseek-r1-14b': 'deepseek-ai/DeepSeek-R1-Distill-Qwen-14B',
 
@@ -124,6 +125,7 @@ model_mapping = {
     'athena-cti-sft-qwen25-14b-abaligned-v7-vllm': 'asg-ai/athena-cti-sft-qwen25-14b-abaligned-v7',
     'athena-cti-sft-qwen25-32b-abaligned-v7-vllm': 'asg-ai/athena-cti-sft-qwen25-32b-abaligned-v7',
     'athena-cti-sft-llama31-8b-abaligned-lora-vllm': 'asg-ai/athena-cti-sft-llama31-8b-abaligned-lora',
+    'minerva-llama31-8b-vllm':                 'asg-ai/minerva-llama3.1-8b',
 }
 
 # --- Centralized Helpers ---

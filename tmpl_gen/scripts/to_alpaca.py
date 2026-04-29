@@ -19,9 +19,19 @@ import dateutil
 
 key_gen_lst = "generated_strings"
 
+# Sentinel substitutions for literal JSON characters in TEXTSECTION bodies.
+# See tmpl_gen/templates/04292026/Sophia-CTI-Templates-JSON-v8.txt section B
+# for the rationale (the tmpl_parser TEXTSECTION rule reserves `{}[]`).
+JSON_SENTINELS = (("<OBR>", "{"), ("<CBR>", "}"), ("<OBK>", "["), ("<CBK>", "]"))
+
+def unescape_json_sentinels(s:str) -> str:
+    for src, dst in JSON_SENTINELS:
+        s = s.replace(src, dst)
+    return s
+
 def help_usage():
     return """
-python3 to_alpaca.py --results_dir results_dir --output ift_data.json 
+python3 to_alpaca.py --results_dir results_dir --output ift_data.json
         --from 2025-03-04T21:22:53.133Z --to 2025-12-05T11:22:53.133Z
 """
 
@@ -81,8 +91,15 @@ def parse_triples(args:argparse.Namespace, jsin) -> list[dict[str, str]]:
     # template whose body legitimately repeats those markers (e.g. an
     # AthenaBench-aligned RMS template whose assistant output ends with
     # a `Answer: M####, M####` final-line directive).
+    # The Question:/Answer: separators are anchored to a preceding newline
+    # because tmpl_gen always renders headers at the start of a line
+    # (verified across v5/v7/v8 outputs: prev-context is always `\n\n`).
+    # The unanchored `\s+Header:` form mis-fires on rendered text whose
+    # CVE/product descriptions legitimately contain the substring
+    # `Answer:` mid-sentence (e.g. CVE-2025-31810 -- PickPlugins "Question
+    # Answer" plugin -- or CVE-2024-36229 -- Adobe AEM XSS description).
     # pattern = r"Instruction: (.*)\s+Question: (.*)\s+Answer: (.*)\s*"
-    pattern = r"Instruction: (.*?)\s+Question: (.*?)\s+Answer: (.*)\s*"
+    pattern = r"Instruction: (.*?)\n\s*Question: (.*?)\n\s*Answer: (.*)\s*"
     lst_out = list()
     shortname = jsin["template_object"].get("shortname", "")
     
@@ -91,12 +108,17 @@ def parse_triples(args:argparse.Namespace, jsin) -> list[dict[str, str]]:
     # take up to count_max triples:    
     lst_txt = jsin[key_gen_lst] if args.count_max < 0 else jsin[key_gen_lst][:args.count_max]
 
+    do_unescape = not getattr(args, "no_unescape_json_sentinels", False)
     for txt in lst_txt:
         m = re.search(pattern, txt, flags=re.S)
         if m:
             instr = m.group(1).strip() if instruction_override == "" else instruction_override
-            d = {"instruction": instr, "input": m.group(2).strip(), 
+            d = {"instruction": instr, "input": m.group(2).strip(),
                  "output": m.group(3).strip()}
+            if do_unescape:
+                d["instruction"] = unescape_json_sentinels(d["instruction"])
+                d["input"] = unescape_json_sentinels(d["input"])
+                d["output"] = unescape_json_sentinels(d["output"])
             if shortname:
                 d["shortname"] = shortname
             lst_out.append(d)
@@ -208,7 +230,14 @@ Usage:
          required=False,
          help="Tags, all required [optional].",
     )
-    
+
+    parser.add_argument(
+         "--no_unescape_json_sentinels",
+         action="store_true",
+         default=False,
+         help="Disable JSON sentinel post-processing (<OBR>/<CBR>/<OBK>/<CBK> -> {}[]).",
+    )
+
     args = parser.parse_args()
     print(args)
     

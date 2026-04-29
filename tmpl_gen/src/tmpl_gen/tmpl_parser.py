@@ -1120,28 +1120,41 @@ class TmplGenNeo4j:
     # Regexes for native MCQ option shuffling (see _shuffle_mcq_options).
     _MCQ_OPT_RE = re.compile(r"^([A-E])\)[ \t]+(.+?)[ \t]*$", re.M)
     _MCQ_ANS_RE = re.compile(r"Therefore,\s+([A-E])\.")
+    # JSON-output MCQ answer marker: "answer": "X" (used by JS.MCQ.* v8 templates
+    # whose Answer body wraps a JSON object in <OBR>..<CBR> sentinels).
+    _MCQ_JSON_ANS_RE = re.compile(r'"answer"\s*:\s*"([A-E])"')
 
     @classmethod
     def _shuffle_mcq_options(cls, text:str) -> str:
         """
         For an MCQ-style rendered triple (5 option lines labelled A)..E) in the
-        Question block and a final "Therefore, <letter>." in the Answer), shuffle
-        the options to a random A-E order and remap the final answer letter to
-        the new position of the originally correct option.
+        Question block and a final answer marker in the Answer), shuffle the
+        options to a random A-E order and remap the answer letter to the new
+        position of the originally correct option.
+
+        Two answer-marker shapes are supported:
+          * narrative form: "Therefore, <letter>."  (legacy AB.MCQ.* templates)
+          * JSON form: '"answer": "<letter>"'       (v8 JS.MCQ.* templates)
 
         The option block is identified as the 5 A-E line-starts immediately
-        preceding the "Therefore, X." tail. This tolerates incidental "A) ..."
-        bullet markers inside CTI description text, which previously caused
-        the global-match version to bail on ~50% of MCQ rows (leaving the
-        template default "Therefore, A." in place and producing a catastrophic
-        position-A training bias).
+        preceding the answer marker. This tolerates incidental "A) ..." bullet
+        markers inside CTI description text, which previously caused the
+        global-match version to bail on ~50% of MCQ rows (leaving the template
+        default answer letter in place and producing a position-A training
+        bias).
 
         Returns the original text unchanged when:
-          * no "Therefore, X." tail is present, or
-          * fewer than 5 A-E line-starts precede the tail, or
-          * the 5 matches immediately before the tail are not A,B,C,D,E in order.
+          * no recognised answer marker is present, or
+          * fewer than 5 A-E line-starts precede the marker, or
+          * the 5 matches immediately before the marker are not A,B,C,D,E in order.
         """
         ans_match = cls._MCQ_ANS_RE.search(text)
+        ans_re = cls._MCQ_ANS_RE
+        ans_fmt = "Therefore, {}."
+        if not ans_match:
+            ans_match = cls._MCQ_JSON_ANS_RE.search(text)
+            ans_re = cls._MCQ_JSON_ANS_RE
+            ans_fmt = '"answer": "{}"'
         if not ans_match:
             return text
 
@@ -1165,7 +1178,7 @@ class TmplGenNeo4j:
         start, end = matches[0].start(), matches[-1].end()
         new_block = "\n".join(f"{chr(ord('A')+i)}) {new_options[i]}" for i in range(5))
         new_text = text[:start] + new_block + text[end:]
-        new_text = cls._MCQ_ANS_RE.sub(f"Therefore, {new_correct_letter}.", new_text, count=1)
+        new_text = ans_re.sub(ans_fmt.format(new_correct_letter), new_text, count=1)
         return new_text
 
     def process_template(self, tmplobj:dict) -> tuple[list[str], str]:
