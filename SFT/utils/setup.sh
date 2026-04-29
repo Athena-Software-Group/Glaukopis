@@ -14,7 +14,10 @@
 #   3. PyTorch matched to the requested CUDA version
 #   4. [train] LlamaFactory (editable install of SFT/) + training extras
 #              (metrics, deepspeed) + wandb + huggingface_hub + python-dotenv
-#   5. [test]  SFT/test requirements + git-lfs
+#   5. [test]  SFT/test requirements + git-lfs + CyberSOCEval data fetch
+#              (Athena/CTI/CyberMetric data are committed regular files; only
+#              CyberSOCEval requires post-checkout downloads, which run via
+#              SFT/test/utils/fetch_cybersoceval_data.py unless --skip-cybersoceval)
 #   6. [vllm]  vllm + openai client into an isolated env (default: vllm)
 #   7. flash-attn (optional, non-fatal; skipped with --no-flash-attn)
 #   8. Bootstraps SFT/.env from SFT/.env.example on first run
@@ -25,6 +28,7 @@
 #              [--env-name NAME] [--python VERSION]
 #              [--extras "metrics deepspeed"] [--no-flash-attn]
 #              [--lfs-pull] [--split-envs] [--no-conda-init]
+#              [--skip-cybersoceval]
 #
 # Defaults:
 #   --mode all           (creates llm-sft + ctibench; pass --env-name to
@@ -58,20 +62,22 @@ INSTALL_FLASH_ATTN=1
 RUN_LFS_PULL=0
 SPLIT_ENVS=0
 RUN_CONDA_INIT=1
+FETCH_CYBERSOCEVAL=1
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --mode)           MODE="$2"; shift 2 ;;
-        --cuda)           CUDA_TAG="$2"; shift 2 ;;
-        --env-name)       ENV_NAME="$2"; ENV_NAME_EXPLICIT=1; shift 2 ;;
-        --python)         PYTHON_VERSION="$2"; shift 2 ;;
-        --extras)         EXTRAS="$2"; shift 2 ;;
-        --no-flash-attn)  INSTALL_FLASH_ATTN=0; shift ;;
-        --lfs-pull)       RUN_LFS_PULL=1; shift ;;
-        --split-envs)     SPLIT_ENVS=1; shift ;;
-        --no-conda-init)  RUN_CONDA_INIT=0; shift ;;
+        --mode)               MODE="$2"; shift 2 ;;
+        --cuda)               CUDA_TAG="$2"; shift 2 ;;
+        --env-name)           ENV_NAME="$2"; ENV_NAME_EXPLICIT=1; shift 2 ;;
+        --python)             PYTHON_VERSION="$2"; shift 2 ;;
+        --extras)             EXTRAS="$2"; shift 2 ;;
+        --no-flash-attn)      INSTALL_FLASH_ATTN=0; shift ;;
+        --lfs-pull)           RUN_LFS_PULL=1; shift ;;
+        --split-envs)         SPLIT_ENVS=1; shift ;;
+        --no-conda-init)      RUN_CONDA_INIT=0; shift ;;
+        --skip-cybersoceval)  FETCH_CYBERSOCEVAL=0; shift ;;
         -h|--help)
-            sed -n '3,37p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+            sed -n '3,38p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
             exit 0
             ;;
         *) echo "Unknown argument: $1"; exit 1 ;;
@@ -119,6 +125,7 @@ echo "  cuda tag  : ${CUDA_TAG}"
 echo "  extras    : ${EXTRAS:-<none>}"
 echo "  flash-attn: $([[ ${INSTALL_FLASH_ATTN} -eq 1 ]] && echo yes || echo no)"
 echo "  git lfs   : $([[ ${RUN_LFS_PULL} -eq 1 ]] && echo yes || echo no)"
+echo "  cybersoce : $([[ ${FETCH_CYBERSOCEVAL} -eq 1 ]] && echo yes || echo no)"
 echo
 
 # 1. Miniconda bootstrap ------------------------------------------------------
@@ -270,6 +277,39 @@ install_stack() {
             fi
         else
             echo "=== Skipping 'git lfs pull' (default; pass --lfs-pull to opt in) ==="
+        fi
+
+        # CyberSOCEval data fetch ------------------------------------------
+        # AthenaBench / CTI-Bench / CyberMetric files are committed regular
+        # git files and need no post-checkout step. CyberSOCEval is the one
+        # benchmark whose corpus must be pulled at install time: the
+        # malware-analysis questions + hybrid-analysis sandbox JSONs come
+        # from CrowdStrike/CyberSOCEval_data, the threat-intel question set
+        # comes from meta-llama/PurpleLlama, and per-question PDFs are
+        # downloaded from the upstream vendors then converted to text via
+        # pypdf (already pinned in SFT/test/requirements.txt). Idempotent
+        # on rerun. Skipped with --skip-cybersoceval (e.g. air-gapped hosts
+        # or training-only nodes that won't run benchmarks).
+        if [[ ${FETCH_CYBERSOCEVAL} -eq 1 ]]; then
+            echo "=== Fetching CyberSOCEval data (CrowdStrike + Meta PurpleLlama) ==="
+            set +e
+            (cd "${TEST_DIR}" && python utils/fetch_cybersoceval_data.py \
+                --out-dir "${TEST_DIR}/benchmark_data/cybersoceval" \
+                --cache-dir "${TEST_DIR}/benchmark_data/cybersoceval/_cyberSOCEval_data")
+            local cse_status=$?
+            set -e
+            if [[ ${cse_status} -ne 0 ]]; then
+                echo "  [WARN] CyberSOCEval fetch exited with status ${cse_status}."
+                echo "         The cybersoceval-malware / cybersoceval-ti benchmarks"
+                echo "         will fail until you rerun:"
+                echo "             cd ${TEST_DIR} && python utils/fetch_cybersoceval_data.py"
+                echo "         Other benchmark suites (athena, ctibench, cybermetric)"
+                echo "         are unaffected."
+            fi
+        else
+            echo "=== Skipping CyberSOCEval data fetch (--skip-cybersoceval) ==="
+            echo "         To populate later:"
+            echo "             cd ${TEST_DIR} && python utils/fetch_cybersoceval_data.py"
         fi
     fi
 

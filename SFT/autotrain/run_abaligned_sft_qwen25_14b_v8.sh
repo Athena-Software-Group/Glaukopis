@@ -23,6 +23,8 @@
 #     - Datasets   : ift_data_2026_04_29_json_v8,ift_data_2026_04_29_longctx_v8
 #     - 1 epoch, lr 5e-6, cutoff 16384, packing OFF
 #     - Effective batch 8 (cutoff 4x => half the effective batch)
+#     - eval/save every 400 steps, group_by_length on (length-bucketed
+#       batching to cut padding waste on the bimodal JSON+longctx mix)
 #     - --model points at Phase A's output dir
 #
 # Only Phase B's final merged model is pushed to HF.
@@ -113,7 +115,8 @@ A_GA=$(( 16 / (A_BATCH * EFFECTIVE_GPUS) )); [[ ${A_GA} -lt 1 ]] && A_GA=1
 B_BATCH=1
 B_GA=$(( 8 / (B_BATCH * EFFECTIVE_GPUS) ));  [[ ${B_GA} -lt 1 ]] && B_GA=1
 
-EXTRA_COMMON="--deepspeed ${DS_CONFIG} --save_total_limit 5 --save_only_model True --enable_liger_kernel True --optim adamw_8bit"
+EXTRA_COMMON="--deepspeed ${DS_CONFIG} --save_total_limit 2 --save_only_model True --enable_liger_kernel True --optim adamw_8bit --load_best_model_at_end True --metric_for_best_model eval_loss --greater_is_better False"
+EXTRA_PHASE_B="${EXTRA_COMMON} --group_by_length True"
 
 export FORCE_TORCHRUN=1
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
@@ -141,10 +144,10 @@ run_phase_b() {
         --model "${PHASE_A_DIR}" \
         --dataset "${PHASE_B_DATASETS}" --template qwen --finetuning full \
         --epochs 1 --lr 5e-06 --batch ${B_BATCH} --grad-accum ${B_GA} \
-        --cutoff 16384 --save-steps 100 --eval-steps 100 --packing false \
+        --cutoff 16384 --save-steps 400 --eval-steps 400 --packing false \
         --max-samples 50000 --report-to "${REPORT_TO}" \
         --output-dir "${PHASE_B_DIR}" --push-to-hf "${REPO_ID}" \
-        --extra "${EXTRA_COMMON}" "${DRY_FLAG[@]}"
+        --extra "${EXTRA_PHASE_B}" "${DRY_FLAG[@]}"
 }
 
 echo "  gpus visible : ${GPU_COUNT}  cpu offload: ${OFFLOAD}"
