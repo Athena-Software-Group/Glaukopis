@@ -452,5 +452,4 @@ SFT/data/
 
 # CyberSOCEval (CrowdStrike + Meta) data: cloned repo + downloaded PDFs +
 # extracted text files. Regenerable via SFT/test/utils/fetch_cybersoceval_data.py.
-SFT/test/benchmark_data/cybersoceval/
-SFT/test/responses/api_usage_checkpoint.json
+SFT/test/benchmark_data/cybersoceval/clear
