@@ -18,28 +18,30 @@
 #   --model foundation-8b-reasoning-vllm --reasoning   # appends
 #       `--reasoning-parser minimax_m2 --trust-remote-code` to vllm extras
 #
-# Each suite re-serves vLLM at the right --max-len for that suite; the
-# alternative (single serve at the largest cutoff) wastes KV cache on the
-# short-context Athena/CyberMetric runs and costs more wall-clock overall.
-# Three serves x ~3 min cold-load = ~9 min overhead, vs ~30-60 min wasted
-# on KV cache budget mismatch when servicing the short suites at 32K.
+# vLLM lifecycle: a single serve_vllm.sh process is launched at the start
+# of the sweep and stays up for every selected suite, then is torn down
+# once on exit (cleanup trap covers normal exit, Ctrl-C and SIGTERM). This
+# trades a small amount of KV-cache headroom on the short suites for ~6 min
+# of saved cold-load + cudagraph-capture overhead per extra serve that the
+# old per-suite design paid.
 #
-# Suite shapes:
-#   1. AthenaBench           : --max-len 8192,  --batch 64    (~30-45 min)
-#   2. CyberMetric (size N)  : --max-len 8192,  --batch 64    (~15-20 min for 2K,
-#                              ~60-90 min for 10K). --cybermetric-size accepts
-#                              a comma-separated list (e.g. 2000,10000) and runs
-#                              each size against the same warm vLLM session.
-#   3. CyberSOCEval          : --max-len 49152, --batch 32    (~2-3 h, TI rows are slow)
-#                              with --gpu-memory-utilization 0.90 --max-num-seqs 32.
-#                              The 49152 cap (vs the 32K natural ceiling on
-#                              Foundation-Sec-8B) leaves headroom over the TI
-#                              report prompts that sit at 32K-32.7K tokens and
-#                              previously triggered cascading 400 BadRequestError
-#                              on the borderline rows. Foundation-Sec-8B inherits
-#                              Llama-3.1-8B's 131K trained context, so 49152 is
-#                              well within range; the only cost is a tighter
-#                              KV-cache budget, hence --max-num-seqs 32.
+# Serve sizing is picked from the union of selected suites:
+#   any cybersoceval selected -> --max-len 49152 --max-num-seqs 32 + --batch 32
+#   otherwise                 -> --max-len 8192  --max-num-seqs 64 + --batch 64
+# 49152 (vs the 32K natural ceiling on Foundation-Sec-8B) leaves headroom
+# over the TI report prompts that sit at 32K-32.7K tokens and previously
+# triggered cascading 400 BadRequestError on the borderline rows.
+# Foundation-Sec-8B inherits Llama-3.1-8B's 131K trained context, so 49152
+# is well within range; the only cost is a tighter KV-cache budget, hence
+# --max-num-seqs 32.
+#
+# Suite shapes (wall-clock estimates on 1xH100, 8B model):
+#   1. AthenaBench           : ~30-45 min
+#   2. CyberMetric size N    : ~15-20 min for 2K, ~60-90 min for 10K.
+#                              --cybermetric-size accepts a comma-separated
+#                              list (default '2000,10000') and runs each
+#                              size as its own task against the warm server.
+#   3. CyberSOCEval          : ~2-3 h (TI rows are slow).
 #
 # Usage:
 #   ./run_foundation_8b_baselines.sh [--model ALIAS] [--tp N]
@@ -102,11 +104,10 @@
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SERVE_AND_BENCH="${SCRIPT_DIR}/serve_and_bench.sh"
 
 MODEL_ALIAS="foundation-8b-instruct-vllm"
 TP="1"
-CYBERMETRIC_SIZE="2000"
+CYBERMETRIC_SIZE="2000,10000"
 SKIP_ATHENA=0
 SKIP_CYBERMETRIC=0
 SKIP_CYBERSOCEVAL=0
@@ -146,8 +147,39 @@ case "${MODE}" in
     retry-errors) MODE_ARGS=( --retry-errors --yes ) ;;
 esac
 
-if [[ ! -x "${SERVE_AND_BENCH}" ]]; then
-    echo "[FAIL] serve_and_bench.sh not found or not executable at ${SERVE_AND_BENCH}" >&2
+SERVE_VLLM="${SCRIPT_DIR}/serve_vllm.sh"
+if [[ ! -f "${SERVE_VLLM}" ]]; then
+    echo "[FAIL] serve_vllm.sh not found at ${SERVE_VLLM}" >&2
+    exit 2
+fi
+
+BENCH_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+# Resolve <alias> -> HF repo id via the same ast parse serve_and_bench.sh
+# uses (avoids importing pipelines.models which pulls in torch/dotenv/HF
+# login). Required because serve_vllm.sh takes the HF repo id, not the
+# bench alias.
+REPO_ID="$(python - "${BENCH_DIR}/pipelines/models.py" "${MODEL_ALIAS}" <<'PY'
+import ast, sys
+path, alias = sys.argv[1], sys.argv[2]
+tree = ast.parse(open(path).read())
+mapping = None
+for node in ast.walk(tree):
+    if isinstance(node, ast.Assign):
+        for t in node.targets:
+            if isinstance(t, ast.Name) and t.id == "model_mapping":
+                mapping = ast.literal_eval(node.value)
+                break
+        if mapping is not None:
+            break
+if mapping is None or alias not in mapping:
+    sys.stderr.write(f"unknown alias: {alias}\n"); sys.exit(2)
+if not alias.endswith("-vllm"):
+    sys.stderr.write(f"alias must end with '-vllm': {alias}\n"); sys.exit(3)
+print(mapping[alias])
+PY
+)"
+if [[ -z "${REPO_ID}" ]]; then
     exit 2
 fi
 
@@ -161,17 +193,103 @@ ROWS_ARG=()
 DRY_ARG=()
 [[ ${DRY_RUN} -eq 1 ]] && DRY_ARG=( --dry-run )
 
+# Pick the union-max serve config: if any suite needs the long-context
+# headroom (cybersoceval-ti rows hover around 32K tokens), serve at
+# 49152 with --max-num-seqs 32 and run the bench client at --batch 32 for
+# every suite so client-side concurrency matches server-side. Otherwise
+# stay at 8192 with the wider batch.
+if [[ ${SKIP_CYBERSOCEVAL} -eq 0 ]]; then
+    SERVE_MAX_LEN=49152
+    SERVE_MAX_SEQS=32
+    BENCH_BATCH=32
+else
+    SERVE_MAX_LEN=8192
+    SERVE_MAX_SEQS=64
+    BENCH_BATCH=64
+fi
+SERVE_EXTRA="--gpu-memory-utilization 0.90 --max-num-seqs ${SERVE_MAX_SEQS}${REASONING_EXTRA}"
+
 UTC="$(date -u +%Y-%m-%dT%H-%M-%SZ)"
 LOG="${SCRIPT_DIR}/foundation_8b_baselines_${UTC}.log"
-echo "[info] log: ${LOG}"
+SAFE_ALIAS="${MODEL_ALIAS//\//_}"
+SERVE_LOG="${SCRIPT_DIR}/${SAFE_ALIAS}_serve_${UTC}.log"
+PORT=8000
+READY_TIMEOUT="${READY_TIMEOUT:-1800}"
+READY_POLL="${READY_POLL:-5}"
+echo "[info] sweep log : ${LOG}"
+echo "[info] serve log : ${SERVE_LOG}"
+echo "[info] serve cfg : --max-len ${SERVE_MAX_LEN} --max-num-seqs ${SERVE_MAX_SEQS} --tp ${TP}"
+echo "[info] bench batch: ${BENCH_BATCH}"
+
+# Launch vLLM once for the whole sweep. setsid puts it in its own process
+# group so cleanup can signal the entire tree (vllm spawns per-TP worker
+# procs that a plain pid kill would orphan).
+echo
+echo "=================================================================="
+echo "  Launching vLLM (single session for the entire sweep)"
+echo "=================================================================="
+setsid bash "${SERVE_VLLM}" --model "${REPO_ID}" --tp "${TP}" \
+    --max-len "${SERVE_MAX_LEN}" --port "${PORT}" \
+    --extra "${SERVE_EXTRA# }" \
+    >"${SERVE_LOG}" 2>&1 &
+SERVE_PID=$!
+SERVE_PGID="$(ps -o pgid= "${SERVE_PID}" | tr -d ' ')"
+
+cleanup() {
+    local rc=$?
+    echo
+    echo "=== tearing down vllm server (pgid=${SERVE_PGID}) ===" | tee -a "${LOG}"
+    kill -TERM "-${SERVE_PGID}" 2>/dev/null || true
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+        kill -0 "${SERVE_PID}" 2>/dev/null || break
+        sleep 1
+    done
+    kill -KILL "-${SERVE_PGID}" 2>/dev/null || true
+    exit "${rc}"
+}
+trap cleanup EXIT INT TERM
+
+echo "=== waiting for http://localhost:${PORT}/v1/models (timeout ${READY_TIMEOUT}s) ===" | tee -a "${LOG}"
+deadline=$(( $(date +%s) + READY_TIMEOUT ))
+while :; do
+    if curl -sf "http://localhost:${PORT}/v1/models" >/dev/null 2>&1; then
+        echo "  ready." | tee -a "${LOG}"
+        break
+    fi
+    if ! kill -0 "${SERVE_PID}" 2>/dev/null; then
+        echo "[FAIL] vllm serve exited before becoming ready. Tail of serve log:" | tee -a "${LOG}"
+        tail -40 "${SERVE_LOG}" | tee -a "${LOG}"
+        exit 3
+    fi
+    if [[ $(date +%s) -ge ${deadline} ]]; then
+        echo "[FAIL] vllm did not become ready within ${READY_TIMEOUT}s." | tee -a "${LOG}"
+        tail -40 "${SERVE_LOG}" | tee -a "${LOG}"
+        exit 4
+    fi
+    sleep "${READY_POLL}"
+done
+
+# Bench-client invoker: wraps run_benchmark.sh with `conda run` when
+# BENCH_CONDA_ENV is set so the bench picks up pandas/transformers/openai
+# from a different env than the one serving vllm (typical case: this
+# wrapper is launched from the isolated `vllm` env).
+BENCH_CONDA_ENV="${BENCH_CONDA_ENV:-}"
+run_bench() {
+    if [[ -n "${BENCH_CONDA_ENV}" ]]; then
+        conda run --no-capture-output -n "${BENCH_CONDA_ENV}" \
+            bash "${SCRIPT_DIR}/run_benchmark.sh" "${MODEL_ALIAS}" "$@"
+    else
+        bash "${SCRIPT_DIR}/run_benchmark.sh" "${MODEL_ALIAS}" "$@"
+    fi
+}
 
 run_suite() {
     local label="$1"; shift
     echo
-    echo "=================================================================="
-    echo "  ${label}"
-    echo "=================================================================="
-    "$@" 2>&1 | tee -a "${LOG}"
+    echo "==================================================================" | tee -a "${LOG}"
+    echo "  ${label}" | tee -a "${LOG}"
+    echo "==================================================================" | tee -a "${LOG}"
+    run_bench "$@" 2>&1 | tee -a "${LOG}"
     local rc=${PIPESTATUS[0]}
     if [[ ${rc} -ne 0 ]]; then
         echo "[WARN] ${label} exited rc=${rc}; continuing with the rest of the sweep." | tee -a "${LOG}"
@@ -180,44 +298,30 @@ run_suite() {
 
 if [[ ${SKIP_ATHENA} -eq 0 ]]; then
     run_suite "AthenaBench / ${MODEL_ALIAS}" \
-        bash "${SERVE_AND_BENCH}" "${MODEL_ALIAS}" --tp "${TP}" --max-len 8192 \
-            ${REASONING_EXTRA:+--extra "${REASONING_EXTRA# }"} \
-            -- --suite athena --version 1 --batch 64 \
-               "${MODE_ARGS[@]}" "${ROWS_ARG[@]}" "${DRY_ARG[@]}"
+        --suite athena --version 1 --batch "${BENCH_BATCH}" \
+        "${MODE_ARGS[@]}" "${ROWS_ARG[@]}" "${DRY_ARG[@]}"
 fi
 
 if [[ ${SKIP_CYBERMETRIC} -eq 0 ]]; then
     # Comma-separated sizes -> one run per size, all against the same warm
-    # vLLM server (serve_and_bench keeps the server up for the duration of
-    # one invocation; we pay one cold-load per size). Order matters when
-    # two sizes overlap (e.g. 10000 contains 2000) but the bench handles
-    # that internally via --cybermetric-size selecting a fixed slice.
+    # vLLM server. Order matters when two sizes overlap (e.g. 10000 contains
+    # 2000) but the bench handles that internally via --cybermetric-size
+    # selecting a fixed slice.
     IFS=',' read -r -a CYBERMETRIC_SIZES <<< "${CYBERMETRIC_SIZE}"
     for cm_size in "${CYBERMETRIC_SIZES[@]}"; do
         cm_size_trimmed="${cm_size// /}"
         [[ -z "${cm_size_trimmed}" ]] && continue
         run_suite "CyberMetric-${cm_size_trimmed} / ${MODEL_ALIAS}" \
-            bash "${SERVE_AND_BENCH}" "${MODEL_ALIAS}" --tp "${TP}" --max-len 8192 \
-                ${REASONING_EXTRA:+--extra "${REASONING_EXTRA# }"} \
-                -- --suite cybermetric --cybermetric-size "${cm_size_trimmed}" \
-                   --version 1 --batch 64 \
-                   "${MODE_ARGS[@]}" "${ROWS_ARG[@]}" "${DRY_ARG[@]}"
+            --suite cybermetric --cybermetric-size "${cm_size_trimmed}" \
+            --version 1 --batch "${BENCH_BATCH}" \
+            "${MODE_ARGS[@]}" "${ROWS_ARG[@]}" "${DRY_ARG[@]}"
     done
 fi
 
 if [[ ${SKIP_CYBERSOCEVAL} -eq 0 ]]; then
-    # 49152 (vs the 32K natural ceiling): adds ~16K headroom over the worst
-    # CyberSOCEval-TI report prompts (observed at 32.5K tokens) so the row
-    # is no longer one chat-template re-wrap away from a 400. Foundation-Sec-8B
-    # is a Llama-3.1-8B derivative trained at 131K context; 49152 is well
-    # within range. KV-cache budget tightens, hence --max-num-seqs 32 (down
-    # from 64) -- still saturates the H100 80GB at --batch 32.
-    SOC_EXTRA="--gpu-memory-utilization 0.90 --max-num-seqs 32${REASONING_EXTRA}"
     run_suite "CyberSOCEval (malware + TI) / ${MODEL_ALIAS}" \
-        bash "${SERVE_AND_BENCH}" "${MODEL_ALIAS}" --tp "${TP}" --max-len 49152 \
-            --extra "${SOC_EXTRA}" \
-            -- --suite cybersoceval --version 1 --batch 32 \
-               "${MODE_ARGS[@]}" "${ROWS_ARG[@]}" "${DRY_ARG[@]}"
+        --suite cybersoceval --version 1 --batch "${BENCH_BATCH}" \
+        "${MODE_ARGS[@]}" "${ROWS_ARG[@]}" "${DRY_ARG[@]}"
 fi
 
 # Aggregate per-suite summary_*.json files into a single model-wide
@@ -225,7 +329,6 @@ fi
 # parse run_benchmark.sh uses (avoids importing pipelines.models, which
 # pulls in torch/dotenv/HF login). Falls back to MODEL_ALIAS verbatim
 # when the alias is not in the mapping.
-BENCH_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 DISPLAY_NAME="$(cd "${BENCH_DIR}" && python - "${MODEL_ALIAS}" <<'PY'
 import ast, pathlib, sys
 name = sys.argv[1]
