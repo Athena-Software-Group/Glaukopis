@@ -92,22 +92,72 @@ def _symlink_or_copy(src: Path, dst: Path) -> None:
             shutil.copy2(src, dst)
 
 
-def _download_pdf(url: str, dst: Path, retries: int = 2) -> Optional[Path]:
+# Per-attempt backoff for retryable PDF fetch failures. Tuned for
+# web.archive.org's burst limiter, which closes the TCP connection after
+# ~10-15 rapid requests and stays unresponsive for ~30-60s before letting
+# new connections through. Five attempts with 5/15/60/180s waits gives a
+# ~4 minute worst-case ceiling per URL while comfortably outlasting a
+# typical IA throttling event.
+_RETRY_BACKOFF_SECS = (5, 15, 60, 180)
+# 4xx codes that mean "the resource is gone / forbidden" -- retrying is
+# pointless and just wastes wall time. Anything else (network errors, 429,
+# 5xx) is treated as transient and retried.
+_TERMINAL_HTTP_CODES = frozenset({400, 401, 403, 404, 410})
+
+
+def _download_pdf(
+    url: str,
+    dst: Path,
+    retries: int = len(_RETRY_BACKOFF_SECS),
+    pacing_delay: float = 0.3,
+) -> Optional[Path]:
     if dst.exists():
         return dst
     dst.parent.mkdir(parents=True, exist_ok=True)
-    for attempt in range(retries + 1):
+    # Inter-URL pacing: cheap insurance against IA's burst limiter
+    # (~10-15 rapid requests then it stops accepting connections). Applied
+    # before the first attempt so the call site doesn't have to sleep
+    # between successful downloads. Skipped when the file is already on
+    # disk via the early return above.
+    if pacing_delay > 0:
+        time.sleep(pacing_delay)
+    total_attempts = retries + 1
+    for attempt in range(total_attempts):
         try:
-            print(f"[pdf ] ({attempt + 1}/{retries + 1}) {url}")
+            print(f"[pdf ] ({attempt + 1}/{total_attempts}) {url}")
             r = requests.get(url, allow_redirects=True, timeout=60)
             if r.status_code == 200:
                 dst.write_bytes(r.content)
                 return dst
             print(f"  -> HTTP {r.status_code}")
+            if r.status_code in _TERMINAL_HTTP_CODES:
+                # No point retrying a 404; bail immediately.
+                return None
+            # Honor server-provided Retry-After when present (seconds or
+            # HTTP-date). Falls through to the backoff schedule when the
+            # header is missing or unparseable.
+            wait_override = _parse_retry_after(r.headers.get("Retry-After"))
         except requests.RequestException as e:
             print(f"  -> {e}")
+            wait_override = None
         if attempt < retries:
-            time.sleep(1)
+            wait = wait_override if wait_override is not None else _RETRY_BACKOFF_SECS[attempt]
+            print(f"  -> backing off {wait}s before retry")
+            time.sleep(wait)
+    return None
+
+
+def _parse_retry_after(value: Optional[str]) -> Optional[float]:
+    """Best-effort parse of a Retry-After header. Returns seconds-to-wait,
+    or None when the header is absent or unparseable."""
+    if not value:
+        return None
+    try:
+        return max(0.0, float(value))
+    except ValueError:
+        pass
+    # HTTP-date form (rare for this use case); fall back to None rather
+    # than pulling in email.utils for a one-shot parse.
     return None
 
 
@@ -133,6 +183,17 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--out-dir", default="SFT/test/benchmark_data/cybersoceval")
     ap.add_argument("--cache-dir", default="SFT/test/benchmark_data/cybersoceval/_cyberSOCEval_data")
+    ap.add_argument(
+        "--max-retries", type=int, default=len(_RETRY_BACKOFF_SECS),
+        help="Per-PDF retry budget on transient failures (default: %(default)s; "
+             "backoff schedule: 5/15/60/180s).",
+    )
+    ap.add_argument(
+        "--pacing-delay", type=float, default=0.3,
+        help="Sleep between successive PDF downloads in seconds (default: %(default)s). "
+             "web.archive.org's burst limiter trips at ~10-15 rapid requests; the "
+             "default pace keeps us comfortably under that ceiling.",
+    )
     args = ap.parse_args()
 
     out = Path(args.out_dir)
@@ -165,7 +226,12 @@ def main() -> int:
         if entry.get("source") == "CrowdStrike":
             pdf = ti_dir / "crowdstrike-reports" / f"{rid}.pdf"
         else:
-            pdf = _download_pdf(entry["url_source"], pdfs_dir / f"{rid}.pdf")
+            pdf = _download_pdf(
+                entry["url_source"],
+                pdfs_dir / f"{rid}.pdf",
+                retries=args.max_retries,
+                pacing_delay=args.pacing_delay,
+            )
         if pdf is None or not pdf.exists():
             missing.append(rid)
             continue
