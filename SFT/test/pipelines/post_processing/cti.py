@@ -152,10 +152,39 @@ class cti_postprocessing:
     def format_cybermetric(self, response_text: str):
         """
         Extract the MCQ answer (A/B/C/D) from CyberMetric LLM response.
-        Returns tuple: (answer, success_flag)
+        Returns tuple: (answer, success_flag).
+
+        Tries the documented `ANSWER: X` form first, then several common
+        alternates seen in practice (LaTeX \\boxed, JSON answer keys,
+        bare leading letter, then any isolated A-D as a last resort).
         """
-        if response_text and response_text.strip():
-            match = re.search(r"ANSWER:?\s*([A-D])\b", response_text, re.IGNORECASE)
-            if match:
-                return match.group(1).upper(), True
+        if not response_text or not response_text.strip():
+            return "X", False
+
+        text = response_text.strip()
+
+        m = re.search(r"ANSWER:?\s*([A-D])\b", text, re.IGNORECASE)
+        if m:
+            return m.group(1).upper(), True
+
+        m = re.search(r"\\boxed\{\s*([A-D])\s*\}", text, re.IGNORECASE)
+        if m:
+            return m.group(1).upper(), True
+
+        m = re.search(
+            r'"(?:correct_)?answers?"\s*:\s*\[?\s*"?([A-D])"?',
+            text,
+            re.IGNORECASE,
+        )
+        if m:
+            return m.group(1).upper(), True
+
+        m = re.match(r"\s*([A-D])\b", text, re.IGNORECASE)
+        if m:
+            return m.group(1).upper(), True
+
+        m = re.search(r"(?:^|[^A-Za-z])([A-D])(?:[^A-Za-z]|$)", text)
+        if m:
+            return m.group(1).upper(), True
+
         return "X", False
