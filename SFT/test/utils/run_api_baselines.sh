@@ -25,7 +25,7 @@
 #   ./run_api_baselines.sh [--rows N] [--batch N] [--no-overwrite]
 #                          [--models "gpt5.5 gpt5.5-pro gemini-3.1-pro ..."]
 #                          [--skip-openai] [--skip-gemini]
-#                          [--suite athena|ctibench|all]
+#                          [--suite athena|cybermetric|cybersoceval|all]
 #                          [--reasoning-effort low|medium|high|xhigh]
 #                          [--dry-run]
 #

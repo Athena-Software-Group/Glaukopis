@@ -4,14 +4,21 @@
 #
 # Supported suites (selected via --suite, default = athena):
 #   athena       athena-mcq athena-rcm athena-vsp athena-ate athena-taa athena-rms
-#   ctibench     mcq rcm vsp ate taa           (CTI-Bench, .tsv responses)
 #   cybermetric  cybermetric                   (CyberMetric MCQ, .csv responses;
 #                                               size selected via --cybermetric-size)
 #   cybersoceval cybersoceval-malware cybersoceval-ti
 #                                              (CrowdStrike+Meta CyberSOCEval, .jsonl
 #                                               responses; data fetched once via
 #                                               utils/fetch_cybersoceval_data.py)
-#   all          athena U ctibench U cybermetric U cybersoceval
+#   all          athena U cybermetric U cybersoceval
+#
+#   ctibench     mcq rcm vsp ate taa           (CTI-Bench, .tsv responses)
+#                DEPRECATED: superseded by AthenaBench (athena-*). Still
+#                runnable explicitly via --suite ctibench for legacy
+#                reproductions; excluded from --suite all and from every
+#                sweep wrapper (run_foundation_8b_baselines.sh,
+#                run_api_baselines.sh) to avoid double-counting against
+#                the AthenaBench successor tasks.
 #
 # --tasks still works and overrides the suite-derived task list. Each task
 # is launched as its own inference.py subprocess so VRAM is freed at process
@@ -27,7 +34,7 @@
 # All stdout/stderr is tee'd to <model-name>.log in this directory.
 #
 # Usage:
-#   ./run_benchmark.sh <model-name> [--suite athena|ctibench|cybermetric|all]
+#   ./run_benchmark.sh <model-name> [--suite athena|cybermetric|cybersoceval|all|ctibench]
 #                                   [--version N] [--rows N]
 #                                   [--tasks "mcq rcm vsp"]
 #                                   [--cybermetric-size 80|500|2000|10000]
@@ -137,15 +144,23 @@ if [[ ${OVERWRITE} -eq 1 && ${RETRY_ERRORS} -eq 1 ]]; then
 fi
 
 # Suite -> task-list preset. --tasks always wins. 'all' is the concatenation
-# of the three research-facing suites; MMLU/GLUE/SuperGLUE/URLHAUS/CVE stay
-# out of the sweep because they're not the CTI research target.
+# of the three research-facing suites that are not deprecated; CTI-Bench is
+# excluded because its tasks (mcq/rcm/vsp/ate/taa) have been superseded by
+# the AthenaBench equivalents (athena-*) and double-counting them inflates
+# headline-metric averages with strongly correlated scores.
+# MMLU/GLUE/SuperGLUE/URLHAUS/CVE also stay out: not the CTI research target.
 case "${SUITE}" in
     athena)       SUITE_TASKS="athena-mcq athena-rcm athena-vsp athena-ate athena-taa athena-rms" ;;
-    ctibench)     SUITE_TASKS="mcq rcm vsp ate taa" ;;
+    ctibench)
+        # Deprecated; still runnable for legacy reproductions.
+        echo "[deprecated] --suite ctibench: superseded by --suite athena (AthenaBench)." >&2
+        echo "             Running anyway for legacy reproduction; not included in --suite all." >&2
+        SUITE_TASKS="mcq rcm vsp ate taa"
+        ;;
     cybermetric)  SUITE_TASKS="cybermetric" ;;
     cybersoceval) SUITE_TASKS="cybersoceval-malware cybersoceval-ti" ;;
-    all)          SUITE_TASKS="athena-mcq athena-rcm athena-vsp athena-ate athena-taa athena-rms mcq rcm vsp ate taa cybermetric cybersoceval-malware cybersoceval-ti" ;;
-    *) echo "Unknown --suite: ${SUITE} (expected athena|ctibench|cybermetric|cybersoceval|all)" >&2; exit 1 ;;
+    all)          SUITE_TASKS="athena-mcq athena-rcm athena-vsp athena-ate athena-taa athena-rms cybermetric cybersoceval-malware cybersoceval-ti" ;;
+    *) echo "Unknown --suite: ${SUITE} (expected athena|cybermetric|cybersoceval|all|ctibench[deprecated])" >&2; exit 1 ;;
 esac
 if [[ -n "${USER_TASKS}" ]]; then
     TASKS="${USER_TASKS}"
