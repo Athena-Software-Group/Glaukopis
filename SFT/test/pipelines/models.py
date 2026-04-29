@@ -126,6 +126,11 @@ model_mapping = {
     'athena-cti-sft-qwen25-32b-abaligned-v7-vllm': 'asg-ai/athena-cti-sft-qwen25-32b-abaligned-v7',
     'athena-cti-sft-llama31-8b-abaligned-lora-vllm': 'asg-ai/athena-cti-sft-llama31-8b-abaligned-lora',
     'minerva-llama31-8b-vllm':                 'asg-ai/minerva-llama3.1-8b',
+    # Cisco Foundation-Sec-8B-Reasoning emits <think>...</think> traces; serve
+    # with `--reasoning-parser minimax_m2 --trust-remote-code` so vLLM strips
+    # the trace into `reasoning_content` and leaves clean answers in `content`.
+    'foundation-8b-reasoning-vllm':            'fdtn-ai/Foundation-Sec-8B-Reasoning',
+    'foundation-8b-vllm':                      'fdtn-ai/Foundation-Sec-8B',
 }
 
 # --- Centralized Helpers ---
