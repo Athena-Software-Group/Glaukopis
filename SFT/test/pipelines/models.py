@@ -79,6 +79,7 @@ model_mapping = {
     'qwen3.5-9b':'Qwen/Qwen3.5-9B',
     'gpt-oss-20b': 'openai/gpt-oss-20b',
     'foundation-8b-reasoning': 'fdtn-ai/Foundation-Sec-8B-Reasoning',       # Cisco Foundation-Sec-8B-Reasoning
+    'foundation-8b-instruct': 'fdtn-ai/Foundation-Sec-8B-Instruct',         # Cisco Foundation-Sec-8B-Instruct (SFT+RLHF, custom <|system|>/<|user|>/<|assistant|> template, Aug 2025)
     'foundation-8b': 'fdtn-ai/Foundation-Sec-8B',                           # Cisco Foundation-Sec-8B simple model
     'minerva-llama8b':'athena-security/minerva-llama8b',
     'minerva-llama31-8b': 'asg-ai/minerva-llama3.1-8b',
@@ -130,6 +131,11 @@ model_mapping = {
     # with `--reasoning-parser minimax_m2 --trust-remote-code` so vLLM strips
     # the trace into `reasoning_content` and leaves clean answers in `content`.
     'foundation-8b-reasoning-vllm':            'fdtn-ai/Foundation-Sec-8B-Reasoning',
+    # Cisco Foundation-Sec-8B-Instruct ships its own jinja chat template
+    # ('<|system|>'/'<|user|>'/'<|assistant|>' markers, baked-in Cisco system
+    # prompt when no system message is provided). vLLM auto-uses it; do NOT
+    # pass `--chat-template` overrides. No reasoning parser needed.
+    'foundation-8b-instruct-vllm':             'fdtn-ai/Foundation-Sec-8B-Instruct',
     'foundation-8b-vllm':                      'fdtn-ai/Foundation-Sec-8B',
 }
 
