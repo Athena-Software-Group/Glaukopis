@@ -8,6 +8,12 @@
 # Use --mode train|test|vllm to install only one side. --split-envs is kept
 # as an explicit alias of the default split behavior.
 #
+# --mode vllm additionally creates the ctibench bench-client env by default,
+# because a vllm server with no client to drive it has no use case in this
+# repo (serve_and_bench.sh requires BENCH_CONDA_ENV=ctibench to run the
+# bench loop while vllm holds the GPU). Pass --no-bench-env to suppress
+# the ctibench co-install (e.g. dedicated serving-only nodes).
+#
 # Installs (as needed):
 #   1. Miniconda (if `conda` is not on PATH)
 #   2. Conda env(s) with Python 3.11
@@ -18,7 +24,8 @@
 #              (Athena/CTI/CyberMetric data are committed regular files; only
 #              CyberSOCEval requires post-checkout downloads, which run via
 #              SFT/test/utils/fetch_cybersoceval_data.py unless --skip-cybersoceval)
-#   6. [vllm]  vllm + openai client into an isolated env (default: vllm)
+#   6. [vllm]  vllm + openai client into an isolated env (default: vllm),
+#              plus the [test] stack into ctibench unless --no-bench-env
 #   7. flash-attn (optional, non-fatal; skipped with --no-flash-attn)
 #   8. Bootstraps SFT/.env from SFT/.env.example on first run
 #
@@ -28,7 +35,7 @@
 #              [--env-name NAME] [--python VERSION]
 #              [--extras "metrics deepspeed"] [--no-flash-attn]
 #              [--lfs-pull] [--split-envs] [--no-conda-init]
-#              [--skip-cybersoceval]
+#              [--skip-cybersoceval] [--no-bench-env]
 #
 # Defaults:
 #   --mode all           (creates llm-sft + ctibench; pass --env-name to
@@ -39,6 +46,7 @@
 #   --python 3.11
 #   --extras "metrics deepspeed"
 #   (conda init runs by default for your shell; use --no-conda-init to skip)
+#   (vllm mode also installs ctibench by default; --no-bench-env opts out)
 #
 # Dependency note:
 #   LlamaFactory pins datasets<=4.0.0 and transformers<=5.2.0; SFT/test asks
@@ -63,6 +71,7 @@ RUN_LFS_PULL=0
 SPLIT_ENVS=0
 RUN_CONDA_INIT=1
 FETCH_CYBERSOCEVAL=1
+INSTALL_BENCH_WITH_VLLM=1
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -76,8 +85,9 @@ while [[ $# -gt 0 ]]; do
         --split-envs)         SPLIT_ENVS=1; shift ;;
         --no-conda-init)      RUN_CONDA_INIT=0; shift ;;
         --skip-cybersoceval)  FETCH_CYBERSOCEVAL=0; shift ;;
+        --no-bench-env)       INSTALL_BENCH_WITH_VLLM=0; shift ;;
         -h|--help)
-            sed -n '3,38p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+            sed -n '3,49p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
             exit 0
             ;;
         *) echo "Unknown argument: $1"; exit 1 ;;
@@ -126,6 +136,9 @@ echo "  extras    : ${EXTRAS:-<none>}"
 echo "  flash-attn: $([[ ${INSTALL_FLASH_ATTN} -eq 1 ]] && echo yes || echo no)"
 echo "  git lfs   : $([[ ${RUN_LFS_PULL} -eq 1 ]] && echo yes || echo no)"
 echo "  cybersoce : $([[ ${FETCH_CYBERSOCEVAL} -eq 1 ]] && echo yes || echo no)"
+if [[ "${MODE}" == "vllm" ]]; then
+    echo "  bench env : $([[ ${INSTALL_BENCH_WITH_VLLM} -eq 1 ]] && echo 'yes (ctibench co-install)' || echo no)"
+fi
 echo
 
 # 1. Miniconda bootstrap ------------------------------------------------------
@@ -420,6 +433,9 @@ PY
 # Dispatch: run install_stack for each requested env/stack pair ---------------
 # --split-envs ignores MODE and always runs both stacks in two separate envs
 # (llm-sft for training, ctibench for testing), preserving the legacy layout.
+# --mode vllm additionally installs the test stack into ctibench so the bench
+# client (run_benchmark.sh / inference.py) has a runnable env to drive the
+# server from. Suppressed by --no-bench-env.
 INSTALLED_ENVS=()
 if [[ ${SPLIT_ENVS} -eq 1 ]]; then
     install_stack "llm-sft"  "train"
@@ -428,6 +444,14 @@ if [[ ${SPLIT_ENVS} -eq 1 ]]; then
 else
     install_stack "${ENV_NAME}" "${MODE}"
     INSTALLED_ENVS=("${ENV_NAME}")
+    if [[ "${MODE}" == "vllm" && ${INSTALL_BENCH_WITH_VLLM} -eq 1 ]]; then
+        if [[ "${ENV_NAME}" == "ctibench" ]]; then
+            echo "  [WARN] --env-name ctibench collides with bench co-install; skipping."
+        else
+            install_stack "ctibench" "test"
+            INSTALLED_ENVS+=("ctibench")
+        fi
+    fi
 fi
 
 # Shell integration -----------------------------------------------------------
@@ -511,11 +535,28 @@ if [[ "${MODE}" == "test" || "${MODE}" == "all" || ${SPLIT_ENVS} -eq 1 ]]; then
     echo "        --data_path benchmark_data/athena_bench/athena-mcq.tsv"
 fi
 if [[ "${MODE}" == "vllm" ]]; then
-    echo "Launch a vLLM server (terminal 1):"
-    echo "    conda activate ${ENV_NAME}"
-    echo "    bash ${TEST_DIR}/utils/serve_vllm.sh --model <hf-repo-id> --tp 2"
-    echo
-    echo "Run a benchmark against it (terminal 2, in the ctibench/llm-sft env):"
-    echo "    cd ${TEST_DIR}/utils"
-    echo "    ./run_benchmark.sh <alias>-vllm --batch 64"
+    if [[ ${INSTALL_BENCH_WITH_VLLM} -eq 1 ]]; then
+        echo "One-shot serve+bench (vllm holds the GPU, ctibench drives the client):"
+        echo "    cd ${TEST_DIR}"
+        echo "    BENCH_CONDA_ENV=ctibench ./utils/serve_and_bench.sh <alias>-vllm \\"
+        echo "        --tp 1 --max-len 8192 \\"
+        echo "        -- --suite all --version 1 --batch 64 --overwrite --yes"
+        echo
+        echo "Or split it across two terminals:"
+        echo "    # terminal 1 (vllm env)"
+        echo "    conda activate ${ENV_NAME}"
+        echo "    bash ${TEST_DIR}/utils/serve_vllm.sh --model <hf-repo-id> --tp 1"
+        echo "    # terminal 2 (ctibench env)"
+        echo "    conda activate ctibench"
+        echo "    cd ${TEST_DIR}/utils"
+        echo "    ./run_benchmark.sh <alias>-vllm --batch 64"
+    else
+        echo "Launch a vLLM server (terminal 1):"
+        echo "    conda activate ${ENV_NAME}"
+        echo "    bash ${TEST_DIR}/utils/serve_vllm.sh --model <hf-repo-id> --tp 2"
+        echo
+        echo "Run a benchmark against it (terminal 2, in the ctibench/llm-sft env):"
+        echo "    cd ${TEST_DIR}/utils"
+        echo "    ./run_benchmark.sh <alias>-vllm --batch 64"
+    fi
 fi
