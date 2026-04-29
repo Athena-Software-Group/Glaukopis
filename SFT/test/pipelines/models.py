@@ -130,6 +130,12 @@ model_mapping = {
     'athena-cti-sft-llama31-8b-abaligned-v8-vllm':             'asg-ai/athena-cti-sft-llama31-8b-abaligned-v8',
     'athena-cti-sft-foundation-8b-instruct-abaligned-v8-vllm': 'asg-ai/athena-cti-sft-foundation-8b-instruct-abaligned-v8',
     'athena-cti-sft-qwen25-14b-abaligned-v8small-vllm':        'asg-ai/athena-cti-sft-qwen25-14b-abaligned-v8small',
+    # HF Inference Providers route. Custom community fine-tunes are not in the
+    # default Together/Fireworks/Novita/etc. catalogs; this alias only resolves
+    # if the model is exposed via an HF Inference Endpoint or the legacy
+    # 'hf-inference' warm tier picks it up. Set HF_INFERENCE_ENDPOINT_URL to
+    # bypass auto-routing and target a dedicated endpoint URL directly.
+    'athena-cti-sft-llama31-8b-abaligned-v8-hf':               'asg-ai/athena-cti-sft-llama31-8b-abaligned-v8',
     'athena-cti-sft-llama31-8b-abaligned-lora-vllm': 'asg-ai/athena-cti-sft-llama31-8b-abaligned-lora',
     'minerva-llama31-8b-vllm':                 'asg-ai/minerva-llama3.1-8b',
     # Cisco Foundation-Sec-8B-Reasoning emits <think>...</think> traces; serve
@@ -384,9 +390,27 @@ class HFInferenceModel(BaseModel):
                 "requires an HF token with inference scope and billing enabled."
             )
         self.hf_model_id = model_mapping.get(model_name, model_name)
-        # provider=None => server-side auto-routing on router.huggingface.co/v1
-        self.client = InferenceClient(api_key=hf_token)
-        print(f"HF Inference client ready for {self.hf_model_id} (provider=auto)")
+        # HF_INFERENCE_ENDPOINT_URL points InferenceClient at a dedicated
+        # endpoint (https://<id>.<region>.aws.endpoints.huggingface.cloud) and
+        # bypasses the router's catalog lookup. Required for custom community
+        # fine-tunes (e.g. asg-ai/*) that are not in any provider's preloaded
+        # catalog. Per-model overrides take precedence so multiple endpoints
+        # can coexist in the same .env.
+        per_model_env = (
+            f"HF_INFERENCE_ENDPOINT_URL_{model_name.replace('-', '_').upper()}"
+        )
+        endpoint_url = (
+            os.getenv(per_model_env)
+            or os.getenv("HF_INFERENCE_ENDPOINT_URL")
+        )
+        if endpoint_url:
+            self.client = InferenceClient(model=endpoint_url, api_key=hf_token)
+            print(f"HF Inference client ready for {self.hf_model_id} "
+                  f"(dedicated endpoint: {endpoint_url})")
+        else:
+            # provider=None => server-side auto-routing on router.huggingface.co/v1
+            self.client = InferenceClient(api_key=hf_token)
+            print(f"HF Inference client ready for {self.hf_model_id} (provider=auto)")
 
     def generate(self, question, task=None, cleanup_after=False, use_web_search=False,
                  temperature=0.0, max_new_tokens=2048, **kwargs):
