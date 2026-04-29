@@ -27,13 +27,19 @@
 #
 # Serve sizing is picked from the union of selected suites:
 #   any cybersoceval selected -> --max-len 49152 --max-num-seqs 32 + --batch 32
-#   otherwise                 -> --max-len 8192  --max-num-seqs 64 + --batch 64
+#   otherwise                 -> --max-len 16384 --max-num-seqs 64 + --batch 64
 # 49152 (vs the 32K natural ceiling on Foundation-Sec-8B) leaves headroom
 # over the TI report prompts that sit at 32K-32.7K tokens and previously
 # triggered cascading 400 BadRequestError on the borderline rows.
-# Foundation-Sec-8B inherits Llama-3.1-8B's 131K trained context, so 49152
-# is well within range; the only cost is a tighter KV-cache budget, hence
-# --max-num-seqs 32.
+# 16384 (vs the prior 8192) is the new non-cybersoceval floor: AthenaBench
+# rows in athena-vsp/-rcm/-rms can carry CVE descriptions that push the
+# wrapped prompt to ~7900 tokens, leaving zero generation budget under
+# 8192 and triggering 400s that no client-side max_tokens shrink can
+# recover from (the vLLM error reports a derived lower bound, not the
+# real prompt size). Doubling to 16384 gives ~8K of generation headroom
+# on the worst row and is comfortably within H100 KV-cache budget at
+# --max-num-seqs 64. Foundation-Sec-8B and Llama-3.1-8B both have 131K
+# trained context, so the cap is purely a serve-side memory choice.
 #
 # Suite shapes (wall-clock estimates on 1xH100, 8B model):
 #   1. AthenaBench           : ~30-45 min
@@ -197,13 +203,15 @@ DRY_ARG=()
 # headroom (cybersoceval-ti rows hover around 32K tokens), serve at
 # 49152 with --max-num-seqs 32 and run the bench client at --batch 32 for
 # every suite so client-side concurrency matches server-side. Otherwise
-# stay at 8192 with the wider batch.
+# stay at 16384 (was 8192; bumped to fit the worst AthenaBench row at
+# ~7900 prompt tokens with non-zero generation budget) with the wider
+# batch.
 if [[ ${SKIP_CYBERSOCEVAL} -eq 0 ]]; then
     SERVE_MAX_LEN=49152
     SERVE_MAX_SEQS=32
     BENCH_BATCH=32
 else
-    SERVE_MAX_LEN=8192
+    SERVE_MAX_LEN=16384
     SERVE_MAX_SEQS=64
     BENCH_BATCH=64
 fi

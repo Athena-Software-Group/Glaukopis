@@ -539,20 +539,21 @@ class VLLMModel(BaseModel):
 
     # vLLM 400 message: "maximum context length is N tokens. However, you
     # requested M output tokens and your prompt contains at least P input
-    # tokens, for a total of at least N+1 tokens." We parse N and P to
-    # shrink max_tokens to fit, instead of dropping the row.
+    # tokens, for a total of at least N+1 tokens." We parse N to drop
+    # max_tokens to a small floor and retry, instead of dropping the row.
     _CTX_OVERFLOW_RE = re.compile(
         r"maximum context length is (\d+) tokens.*?prompt contains at least (\d+) input tokens",
         re.DOTALL,
     )
-    # vLLM's reported prompt count is a true lower bound -- the chat-template
-    # re-wrap adds 100-400 tokens on the next attempt (system role markers,
-    # assistant prelude, BOS/EOS). Without an upfront pad the shrink loop
-    # converges in two iterations to a value that's still over the ceiling
-    # and exhausts. 256 is large enough to cover the worst Llama-3 / Qwen
-    # template envelopes observed on cybersoceval-ti and small enough to
-    # leave room for a non-trivial generation budget.
-    _PROMPT_REWRAP_PAD = 256
+    # The "input_tokens >= P" figure in vLLM's error is NOT the true prompt
+    # size; it is a derived lower bound P = N - max_tokens + 1 that just
+    # tightens as we shrink max_tokens. Iterative bisection is therefore
+    # provably non-convergent: each retry only re-confirms the same overflow
+    # at a tighter bound. Strategy is one-shot instead -- on the first 400,
+    # drop max_tokens straight to the floor (so the generation slice is the
+    # smallest the bench can still post-process). If that still overflows,
+    # the prompt itself is >= ctx and no retry can save the row; bail.
+    _CTX_OVERFLOW_FLOOR = 64
     _MIN_GENERATION_BUDGET = 32
 
     def generate(self, question, task=None, cleanup_after=False, use_web_search=False,
@@ -565,15 +566,12 @@ class VLLMModel(BaseModel):
         messages.append({"role": "user", "content": question})
 
         effective_max = max_new_tokens
-        shrink_attempts = 0  # bounded retries on context overflow per call
-        max_shrinks = 5
-        max_prompt_seen = 0  # tightest known lower bound on prompt size
-        # Outer loop budget: enough slots for all shrinks plus the transient
-        # retries that follow them. Shrinks are fast (server rejects without
-        # inference) so the inflated cap costs nothing on the happy path.
+        shrunk = False  # one-shot drop-to-floor on context overflow per call
         transient_budget = 5
         last_err = None
-        for attempt in range(max_shrinks + transient_budget):
+        # +1 outer slot to cover the post-shrink retry on top of the transient
+        # budget. Shrink is one-shot so this caps total attempts at 7.
+        for attempt in range(transient_budget + 2):
             try:
                 resp = self.client.chat.completions.create(
                     model=self.hf_model_id,
@@ -594,53 +592,48 @@ class VLLMModel(BaseModel):
                 status = getattr(e, "status_code", None) or getattr(
                     getattr(e, "response", None), "status_code", None)
                 msg = str(e)
-                # Context-overflow recovery: shrink max_tokens to fit the
-                # remaining budget and retry. Useful for long-context tasks
-                # (cybersoceval-ti) on 32K-native models (Qwen2.5 family)
-                # where a fraction of rows sit at the boundary. vLLM reports
-                # "prompt contains at least N input tokens" as a lower bound;
-                # the true count after the chat template wraps the input has
-                # been observed to creep up by 100-400 tokens on each retry.
-                # Plan against the tightest bound seen so far (max_prompt_seen)
-                # and grow the margin progressively so we converge instead of
-                # chasing a moving target.
-                if status == 400 and shrink_attempts < max_shrinks:
+                # Context-overflow recovery: drop max_tokens straight to the
+                # floor on the first 400 and retry once. The "input_tokens >=
+                # P" figure in the error is just N - max_tokens + 1 (a derived
+                # lower bound that tightens as we shrink), so iterative
+                # shrinking provably can't reveal the true prompt size --
+                # one-shot to floor is the only convergent strategy. If the
+                # retry also overflows, the prompt itself is >= ctx and no
+                # max_tokens value can save the row; bail with a short notice
+                # and tag the exception so get_single_prediction can suppress
+                # its full traceback.
+                if status == 400:
                     m = self._CTX_OVERFLOW_RE.search(msg)
                     if m is not None:
                         ctx_max = int(m.group(1))
-                        prompt_tokens = int(m.group(2))
-                        if prompt_tokens > max_prompt_seen:
-                            max_prompt_seen = prompt_tokens
-                        # Pad the lower-bound prompt count with the re-wrap
-                        # pad so the next attempt aims under the true ceiling
-                        # rather than under vLLM's pre-template estimate.
-                        prompt_estimate = max_prompt_seen + self._PROMPT_REWRAP_PAD
-                        margin = 64 * (shrink_attempts + 1)
-                        new_max = ctx_max - prompt_estimate - margin
-                        if new_max >= self._MIN_GENERATION_BUDGET and new_max < effective_max:
+                        prompt_lb = int(m.group(2))
+                        if not shrunk and self._CTX_OVERFLOW_FLOOR < effective_max:
                             print(f"vLLM ctx-shrink {self.hf_model_id}: "
-                                  f"prompt>={prompt_tokens}, ctx={ctx_max}, "
-                                  f"max_tokens {effective_max}->{new_max} "
-                                  f"(pad={self._PROMPT_REWRAP_PAD}, margin={margin}, "
-                                  f"shrink {shrink_attempts+1}/{max_shrinks})",
+                                  f"prompt>={prompt_lb}, ctx={ctx_max}, "
+                                  f"max_tokens {effective_max}->{self._CTX_OVERFLOW_FLOOR} "
+                                  f"(one-shot to floor)",
                                   file=sys.stderr)
-                            effective_max = new_max
-                            shrink_attempts += 1
+                            effective_max = self._CTX_OVERFLOW_FLOOR
+                            shrunk = True
                             continue  # immediate retry, no backoff
-                        # Prompt itself >= ctx (or within MIN_GENERATION_BUDGET
-                        # of it). No retry can save this row -- bail with a
-                        # short notice and let get_single_prediction's
-                        # try/except convert to a per-row error string. Avoids
-                        # spamming a 30-line traceback per overflow.
+                        # Either we already shrunk and still overflowed, or
+                        # the floor is already >= effective_max. Either way
+                        # the prompt is genuinely larger than ctx; mark the
+                        # exception so the caller can log a one-liner instead
+                        # of a 30-line stack trace per offending row.
                         print(f"vLLM ctx-overflow giving up on "
-                              f"{self.hf_model_id}: prompt>={max_prompt_seen} "
-                              f"in ctx={ctx_max}, no remaining generation "
-                              f"budget after pad+margin",
+                              f"{self.hf_model_id}: prompt>={prompt_lb} "
+                              f"in ctx={ctx_max} with max_tokens={effective_max}; "
+                              f"prompt exceeds served context",
                               file=sys.stderr)
+                        try:
+                            setattr(e, "_vllm_ctx_overflow", True)
+                        except Exception:
+                            pass
                         raise
                 retriable = status in self._TRANSIENT_HTTP or any(
                     s in msg.lower() for s in ("timeout", "rate limit", "temporarily", "connection"))
-                if not retriable or attempt == (max_shrinks + transient_budget - 1):
+                if not retriable or attempt == (transient_budget + 1):
                     raise
                 backoff = min(2 ** attempt, 30)
                 print(f"vLLM transient error ({status or 'err'}) on "
@@ -1011,10 +1004,16 @@ def get_single_prediction(question, model_name, task=None, cleanup_after=False, 
         )
         
     except Exception as e:
-        # Print detailed error info for debugging
-        print(f" Error generating response from {model_name}: {e}")
-        traceback.print_exc()
-        response = f"Error generating response: {e}"
+        # vLLM ctx-overflow already emitted a one-liner from VLLMModel.generate;
+        # the full stack here is pure noise (every overflow row would print 30+
+        # lines of openai/_base_client internals). Other exceptions still get
+        # a traceback for debugging.
+        if getattr(e, "_vllm_ctx_overflow", False):
+            response = f"Error generating response: ctx-overflow ({e.__class__.__name__})"
+        else:
+            print(f" Error generating response from {model_name}: {e}")
+            traceback.print_exc()
+            response = f"Error generating response: {e}"
 
     # Only cleanup if explicitly requested (this will remove from cache)
     if cleanup_after and isinstance(model, HuggingFaceModel):
