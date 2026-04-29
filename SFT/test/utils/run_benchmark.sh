@@ -45,8 +45,15 @@
 #   --overwrite   Delete existing response files for the selected (tasks,
 #                 rows, version, model) tuple before running, forcing a
 #                 fresh run instead of resume-from-checkpoint.
+#   --retry-errors
+#                 Resume mode: keep existing rows but scrub any row whose
+#                 response is an error sentinel ("Error", "Error: ...",
+#                 or empty raw_response for cybermetric) so the per-bench
+#                 resume logic re-processes only those rows on the next
+#                 run. Mutually exclusive with --overwrite.
 #   --yes / -y    Skip the interactive confirmation prompt when --overwrite
-#                 is set (required for nohup / non-interactive runs).
+#                 or --retry-errors is set (required for nohup /
+#                 non-interactive runs).
 #   --reasoning-effort EFFORT
 #                 Pass --reasoning_effort EFFORT to inference.py. Honored by
 #                 the OpenAI responses-API reasoning family (gpt5.2, gpt5.5,
@@ -92,6 +99,7 @@ SUITE="athena"
 USER_TASKS=""
 CYBERMETRIC_SIZE="80"
 OVERWRITE=0
+RETRY_ERRORS=0
 ASSUME_YES=0
 SINGLE_GPU=0
 SINGLE_GPU_IDX="0"
@@ -106,6 +114,7 @@ while [[ $# -gt 0 ]]; do
         --tasks)     USER_TASKS="$2"; shift 2 ;;
         --cybermetric-size) CYBERMETRIC_SIZE="$2"; shift 2 ;;
         --overwrite) OVERWRITE=1; shift ;;
+        --retry-errors) RETRY_ERRORS=1; shift ;;
         --yes|-y)    ASSUME_YES=1; shift ;;
         --reasoning-effort) REASONING_EFFORT="$2"; shift 2 ;;
         --single-gpu)
@@ -121,6 +130,11 @@ while [[ $# -gt 0 ]]; do
         *) echo "Unknown argument: $1" >&2; exit 1 ;;
     esac
 done
+
+if [[ ${OVERWRITE} -eq 1 && ${RETRY_ERRORS} -eq 1 ]]; then
+    echo "ERROR: --overwrite and --retry-errors are mutually exclusive." >&2
+    exit 2
+fi
 
 # Suite -> task-list preset. --tasks always wins. 'all' is the concatenation
 # of the three research-facing suites; MMLU/GLUE/SuperGLUE/URLHAUS/CVE stay
@@ -296,6 +310,46 @@ if [[ ${OVERWRITE} -eq 1 ]]; then
     fi
 fi
 
+# --retry-errors: scrub error rows from existing response files in-place
+# so the per-bench resume logic re-processes only those rows. Same prompt
+# / --yes contract as --overwrite because the operation mutates files.
+declare -a SCRUBBED_FILES=()
+if [[ ${RETRY_ERRORS} -eq 1 ]]; then
+    existing=()
+    for f in "${TARGET_FILES[@]}"; do
+        [[ -e "$f" ]] && existing+=("$f")
+    done
+    if [[ ${#existing[@]} -eq 0 ]]; then
+        echo "[retry-errors] no pre-existing response files match this run; nothing to scrub."
+    else
+        echo "[retry-errors] the following response files will be SCRUBBED in place"
+        echo "                (rows with error sentinels removed; survivors kept):"
+        for f in "${existing[@]}"; do echo "  - ${f#${BENCH_DIR}/}"; done
+        if [[ ${ASSUME_YES} -eq 1 ]]; then
+            reply="y"
+            echo "[retry-errors] --yes given; proceeding without prompt."
+        else
+            if [[ ! -t 0 ]]; then
+                echo "[retry-errors] ERROR: --retry-errors requires an interactive terminal or --yes." >&2
+                exit 2
+            fi
+            printf "[retry-errors] Proceed with in-place scrub? [y/N] " >&2
+            read -r reply || reply=""
+        fi
+        case "${reply}" in
+            y|Y|yes|YES)
+                python "${SCRIPT_DIR}/_scrub_response_errors.py" "${existing[@]}" \
+                    || { echo "[retry-errors] scrub helper failed" >&2; exit 2; }
+                SCRUBBED_FILES=("${existing[@]}")
+                ;;
+            *)
+                echo "[retry-errors] aborted by user; exiting without running the sweep."
+                exit 1
+                ;;
+        esac
+    fi
+fi
+
 # Run everything inside a single block so we can tee both stdout and stderr
 # to the log in one shot.
 {
@@ -322,6 +376,7 @@ fi
         echo "  single-gpu  : no (inherits CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-<unset>})"
     fi
     echo "  overwrite   : $([[ ${OVERWRITE} -eq 1 ]] && echo yes || echo no)"
+    echo "  retry-errs  : $([[ ${RETRY_ERRORS} -eq 1 ]] && echo yes || echo no)"
     echo "  started     : $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
     echo
 
@@ -334,6 +389,11 @@ fi
             echo "[overwrite] failed to delete ${#SKIPPED_FILES[@]} file(s):"
             for f in "${SKIPPED_FILES[@]}"; do echo "  - ${f#${BENCH_DIR}/}"; done
         fi
+        echo
+    fi
+    if [[ ${RETRY_ERRORS} -eq 1 && ${#SCRUBBED_FILES[@]} -gt 0 ]]; then
+        echo "[retry-errors] scrubbed ${#SCRUBBED_FILES[@]} response file(s) in place:"
+        for f in "${SCRUBBED_FILES[@]}"; do echo "  - ${f#${BENCH_DIR}/}"; done
         echo
     fi
 
@@ -429,11 +489,18 @@ fi
     # dropped next to the response files. Handed off to Python so we can
     # literal-eval the metrics dicts and format percentages consistently.
     # Summary filename is namespaced by suite so running multiple suites
-    # against the same model keeps one artifact per suite.
+    # against the same model keeps one artifact per suite. CyberMetric
+    # additionally namespaces by size so running e.g. --cybermetric-size
+    # 2000 then 10000 produces two distinct summary files instead of the
+    # second clobbering the first.
     summary_dir="${BENCH_DIR}/responses/${DISPLAY_NAME}"
     mkdir -p "${summary_dir}"
-    summary_json="${summary_dir}/summary_${SUITE}_${ROWS_STR}_v${VERSION}.json"
-    summary_md="${summary_dir}/summary_${SUITE}_${ROWS_STR}_v${VERSION}.md"
+    summary_stem="${SUITE}"
+    if [[ "${SUITE}" == "cybermetric" ]]; then
+        summary_stem="${SUITE}_${CYBERMETRIC_SIZE}"
+    fi
+    summary_json="${summary_dir}/summary_${summary_stem}_${ROWS_STR}_v${VERSION}.json"
+    summary_md="${summary_dir}/summary_${summary_stem}_${ROWS_STR}_v${VERSION}.md"
 
     # Hand data to Python via environment (bash arrays -> newline-joined strings).
     export RB_MODEL="${MODEL_NAME}"

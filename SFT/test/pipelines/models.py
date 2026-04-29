@@ -516,6 +516,15 @@ class VLLMModel(BaseModel):
         r"maximum context length is (\d+) tokens.*?prompt contains at least (\d+) input tokens",
         re.DOTALL,
     )
+    # vLLM's reported prompt count is a true lower bound -- the chat-template
+    # re-wrap adds 100-400 tokens on the next attempt (system role markers,
+    # assistant prelude, BOS/EOS). Without an upfront pad the shrink loop
+    # converges in two iterations to a value that's still over the ceiling
+    # and exhausts. 256 is large enough to cover the worst Llama-3 / Qwen
+    # template envelopes observed on cybersoceval-ti and small enough to
+    # leave room for a non-trivial generation budget.
+    _PROMPT_REWRAP_PAD = 256
+    _MIN_GENERATION_BUDGET = 32
 
     def generate(self, question, task=None, cleanup_after=False, use_web_search=False,
                  temperature=0.0, max_new_tokens=2048, **kwargs):
@@ -573,20 +582,32 @@ class VLLMModel(BaseModel):
                         prompt_tokens = int(m.group(2))
                         if prompt_tokens > max_prompt_seen:
                             max_prompt_seen = prompt_tokens
-                        margin = 128 * (shrink_attempts + 1)
-                        new_max = ctx_max - max_prompt_seen - margin
-                        if new_max >= 50 and new_max < effective_max:
-                            print(f"vLLM context overflow ({prompt_tokens}+"
-                                  f"{effective_max}>{ctx_max}) on "
-                                  f"{self.hf_model_id}; retrying with "
-                                  f"max_tokens={new_max} "
-                                  f"(margin={margin}, prompt_ub="
-                                  f"{max_prompt_seen}, shrink "
-                                  f"{shrink_attempts+1}/{max_shrinks})")
+                        # Pad the lower-bound prompt count with the re-wrap
+                        # pad so the next attempt aims under the true ceiling
+                        # rather than under vLLM's pre-template estimate.
+                        prompt_estimate = max_prompt_seen + self._PROMPT_REWRAP_PAD
+                        margin = 64 * (shrink_attempts + 1)
+                        new_max = ctx_max - prompt_estimate - margin
+                        if new_max >= self._MIN_GENERATION_BUDGET and new_max < effective_max:
+                            print(f"vLLM ctx-shrink {self.hf_model_id}: "
+                                  f"prompt>={prompt_tokens}, ctx={ctx_max}, "
+                                  f"max_tokens {effective_max}->{new_max} "
+                                  f"(pad={self._PROMPT_REWRAP_PAD}, margin={margin}, "
+                                  f"shrink {shrink_attempts+1}/{max_shrinks})",
+                                  file=sys.stderr)
                             effective_max = new_max
                             shrink_attempts += 1
                             continue  # immediate retry, no backoff
-                        # prompt itself >= ctx, or no further shrink possible.
+                        # Prompt itself >= ctx (or within MIN_GENERATION_BUDGET
+                        # of it). No retry can save this row -- bail with a
+                        # short notice and let get_single_prediction's
+                        # try/except convert to a per-row error string. Avoids
+                        # spamming a 30-line traceback per overflow.
+                        print(f"vLLM ctx-overflow giving up on "
+                              f"{self.hf_model_id}: prompt>={max_prompt_seen} "
+                              f"in ctx={ctx_max}, no remaining generation "
+                              f"budget after pad+margin",
+                              file=sys.stderr)
                         raise
                 retriable = status in self._TRANSIENT_HTTP or any(
                     s in msg.lower() for s in ("timeout", "rate limit", "temporarily", "connection"))
