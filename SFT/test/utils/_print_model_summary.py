@@ -69,16 +69,63 @@ def _suite_label(summary: dict) -> str:
     return suite
 
 
+def _dedupe_key(s: dict) -> tuple:
+    """Group key for collapsing redundant per-suite summaries.
+
+    Two summary files describing the same suite + same task set + same
+    row counts are treated as duplicates (typical case: a stale pre-
+    namespacing `summary_cybermetric_<rows>_v<V>.json` from before the
+    cybermetric size was added to the filename, plus a fresh
+    `summary_cybermetric_<size>_<rows>_v<V>.json` from the latest run).
+    Different cybermetric sizes produce different task row counts, so
+    they get distinct keys and both survive.
+    """
+    suite = _suite_label(s)
+    tasks = tuple(sorted(
+        (t.get("task", ""), int(t.get("rows", 0) or 0))
+        for t in (s.get("tasks") or [])
+    ))
+    return (suite, tasks)
+
+
 def _collect(model_dir: Path) -> list[dict]:
     if not model_dir.is_dir():
         return []
-    out: list[dict] = []
+    raw: list[tuple[Path, dict]] = []
     for path in sorted(model_dir.glob("summary_*.json")):
+        # Skip the model-wide aggregate this script writes; otherwise a
+        # second invocation would feed its own previous output back in.
+        if path.name == "summary_model.json":
+            continue
         try:
-            out.append(json.loads(path.read_text(encoding="utf-8")))
+            raw.append((path, json.loads(path.read_text(encoding="utf-8"))))
         except (OSError, ValueError) as e:
             print(f"[model-summary] WARN: skipping {path}: {e}", file=sys.stderr)
-    return out
+
+    # Dedupe by (suite, tasks-fingerprint), keep the entry with the latest
+    # `finished` ISO timestamp; fall back to file mtime when missing/equal.
+    best: dict[tuple, tuple[str, float, Path, dict]] = {}
+    for path, s in raw:
+        key = _dedupe_key(s)
+        finished = str(s.get("finished") or "")
+        mtime = path.stat().st_mtime
+        cand = (finished, mtime, path, s)
+        prev = best.get(key)
+        if prev is None or cand[:2] > prev[:2]:
+            best[key] = cand
+
+    # Warn when we dropped a duplicate so a stale file isn't silently masked.
+    seen_paths = {c[2] for c in best.values()}
+    for path, s in raw:
+        if path not in seen_paths:
+            print(
+                f"[model-summary] note: ignoring stale duplicate "
+                f"{path.name} (superseded by a newer run for "
+                f"suite='{_suite_label(s)}')",
+                file=sys.stderr,
+            )
+
+    return [c[3] for c in best.values()]
 
 
 def _build_md(display_name: str, summaries: list[dict]) -> tuple[str, dict]:
