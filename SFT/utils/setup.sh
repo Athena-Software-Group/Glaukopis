@@ -184,7 +184,12 @@ install_stack() {
 
     if [[ "${stack}" == "vllm" ]]; then
         echo "=== Installing vllm + openai client into ${env} ==="
-        pip install vllm openai python-dotenv huggingface_hub
+        # pypdf: utils/fetch_cybersoceval_data.py extracts text from the
+        # CyberSOCEval threat-intel PDFs and is the only opt-in step that
+        # may run from within this env (the data fetch is otherwise driven
+        # from the ctibench env). Cheap dep, no torch interaction, so we
+        # bake it in unconditionally rather than gate behind --no-bench-env.
+        pip install vllm openai python-dotenv huggingface_hub "pypdf>=5.0.0"
 
         # DeepGEMM: required by vllm's kernel warmup path on Hopper/Blackwell.
         # vllm imports it unconditionally during engine init when DeepGEMM is
