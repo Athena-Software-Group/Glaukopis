@@ -15,30 +15,44 @@
 #   example-passes vs v7's ~540K and v8's ~262K -- a ~3-6x compute deficit
 #   on the broad-knowledge surface that drives CKT/ATE/RCM/CyberMetric.
 #
-# Phase shape (Phase A identical to v8; Phase B adds v8.1 RMS slice):
+# Phase shape (Phase A identical to v8; Phase B adds v9 RMS slice):
 #   Phase A -- broad knowledge re-anchor.
 #     - Datasets   : ift_data_2026_04_26_combined_v7,tulu_3_sft_mixture,alpaca_en_demo
 #     - 1 epoch, lr 1e-5, cutoff 4096, packing on
 #     - Effective batch 16
 #   Phase B -- format + long-context + RMS catalog drills.
 #     - Datasets   : ift_data_2026_04_29_json_v8,ift_data_2026_04_29_longctx_v8,
-#                    ift_data_2026_04_30_v81_rms
+#                    ift_data_2026_04_30_v9_rms
 #     - 1 epoch, lr 5e-6, cutoff 16384, packing OFF
 #     - Effective batch 8 (cutoff 4x => half the effective batch)
 #     - eval/save every 400 steps, group_by_length on
 #     - --model points at Phase A's output dir
 #
-#   The Phase B RMS slice is built as a one-shot from v8.1 with:
-#     python -c "
-#       import json
-#       d = json.load(open('SFT/data/ift_data_2026_04_30_v81.json'))
-#       keep = [r for r in d if (r.get('shortname') or '').startswith(('AB.RMS.', 'JS.RMS.'))]
-#       json.dump(keep, open('SFT/data/ift_data_2026_04_30_v81_rms.json', 'w'), ensure_ascii=False)
-#     "
-#   This pulls the 12,158 catalog-drill rows (10,433 AB.RMS.* +
-#   1,725 JS.RMS.*) that v8.1's stratified_subsample.py preserved at
-#   100% retention; the rest of v8.1 is intentionally dropped because
-#   its broad-knowledge slice is the regression source.
+#   The Phase B RMS slice is built first-class from its own template
+#   manifest (the AB.RMS.* / JS.RMS.* templates lifted verbatim from
+#   v8.1 into a self-contained file) and run through the standard
+#   tmpl_gen pipeline so the v9 build does not depend on any v8.1
+#   output artefact:
+#
+#     python tmpl_gen/scripts/tmpl_docx2json.py \
+#         -i tmpl_gen/templates/04302026/Sophia-CTI-Templates-v9_rms.txt \
+#         -o tmpl_gen/data_generation/Sophia-CTI-Templates-v9_rms.json \
+#         --count_limit 1500
+#     bash tmpl_gen/data_generation/make_dataset.sh \
+#         tmpl_gen/templates/04302026/Sophia-CTI-Templates-v9_rms.txt \
+#         _v9_rms_build/triples \
+#         SFT/data/ift_data_2026_04_30_v9_rms.raw.json \
+#         10 1500
+#     python tmpl_gen/scripts/stratified_subsample.py \
+#         --in  SFT/data/ift_data_2026_04_30_v9_rms.raw.json \
+#         --out SFT/data/ift_data_2026_04_30_v9_rms.json \
+#         --cap 170
+#
+#   stratified_subsample.py is mostly inert here because every
+#   shortname in the manifest is in PRESERVE_FULL_PREFIXES; the step
+#   is run for parity with v8.1 and to keep the post-processing
+#   pipeline byte-for-byte identical between the two corpora. Final
+#   dataset is ~12,158 rows (10,433 AB.RMS.* + 1,725 JS.RMS.*).
 #
 # Only Phase B's final merged model is pushed to HF.
 #
@@ -73,7 +87,7 @@ while [[ $# -gt 0 ]]; do
         --dry-run)      DRY_RUN=1;         shift ;;
         --offload)      OFFLOAD="on";      shift ;;
         --no-offload)   OFFLOAD="off";     shift ;;
-        -h|--help) sed -n '3,48p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) sed -n '3,65p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "Unknown argument: $1" >&2; exit 1 ;;
     esac
 done
@@ -95,15 +109,15 @@ SAFE_MODEL="Qwen_Qwen2.5-14B-Instruct"
 [[ -z "${PHASE_B_DIR}" ]] && PHASE_B_DIR="${SFT_DIR}/saves/${SAFE_MODEL}/full/v9_phase_b_${TIMESTAMP}"
 
 PHASE_A_DATASETS="ift_data_2026_04_26_combined_v7,tulu_3_sft_mixture,alpaca_en_demo"
-PHASE_B_DATASETS="ift_data_2026_04_29_json_v8,ift_data_2026_04_29_longctx_v8,ift_data_2026_04_30_v81_rms"
+PHASE_B_DATASETS="ift_data_2026_04_29_json_v8,ift_data_2026_04_29_longctx_v8,ift_data_2026_04_30_v9_rms"
 
 if [[ "${PHASE}" != "a" ]]; then
-    for ds in ift_data_2026_04_29_json_v8 ift_data_2026_04_29_longctx_v8 ift_data_2026_04_30_v81_rms; do
+    for ds in ift_data_2026_04_29_json_v8 ift_data_2026_04_29_longctx_v8 ift_data_2026_04_30_v9_rms; do
         if [[ ! -f "${SFT_DIR}/data/${ds}.json" ]]; then
             echo "[FAIL] Phase B dataset missing: SFT/data/${ds}.json" >&2
             echo "       json_v8 / longctx_v8 are produced by tmpl_gen + stitch_long_context.py;" >&2
-            echo "       v81_rms is the AB.RMS.* / JS.RMS.* slice of ift_data_2026_04_30_v81.json" >&2
-            echo "       (see header comment for the one-shot build recipe)." >&2
+            echo "       v9_rms is built from tmpl_gen/templates/04302026/Sophia-CTI-Templates-v9_rms.txt" >&2
+            echo "       (see header comment for the docx2json -> make_dataset.sh -> stratified_subsample chain)." >&2
             exit 2
         fi
     done

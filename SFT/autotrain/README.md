@@ -246,24 +246,41 @@ knowledge surface that drives CKT/ATE/RCM/CyberMetric.
 | Phase | Datasets | Recipe |
 |---|---|---|
 | **A** | `ift_data_2026_04_26_combined_v7,tulu_3_sft_mixture,alpaca_en_demo` | 1 epoch, lr 1e-5, cutoff 4096, packing on, eff. batch 16 (identical to v8 Phase A) |
-| **B** | `ift_data_2026_04_29_json_v8,ift_data_2026_04_29_longctx_v8,ift_data_2026_04_30_v81_rms` | 1 epoch, lr 5e-6, cutoff 16384, packing off, eff. batch 8, `group_by_length` on |
+| **B** | `ift_data_2026_04_29_json_v8,ift_data_2026_04_29_longctx_v8,ift_data_2026_04_30_v9_rms` | 1 epoch, lr 5e-6, cutoff 16384, packing off, eff. batch 8, `group_by_length` on |
 
-The `ift_data_2026_04_30_v81_rms` dataset is the
-`AB.RMS.*` + `JS.RMS.*` slice of the v8.1 corpus (12,158 rows: 10,433
-catalog drills + 1,725 JSON-shaped variants). It is built as a
-one-shot from the v8.1 file:
+The `ift_data_2026_04_30_v9_rms` dataset is the AB.RMS.* + JS.RMS.*
+catalog-drill corpus (~12,158 rows: 10,433 catalog drills + 1,725
+JSON-shaped variants). It is built first-class from its own template
+manifest -- not filtered out of any prior build artefact -- so the v9
+pipeline is fully reproducible from the source manifest alone:
 
 ```bash
-python -c "
-import json
-d = json.load(open('SFT/data/ift_data_2026_04_30_v81.json'))
-keep = [r for r in d if (r.get('shortname') or '').startswith(('AB.RMS.', 'JS.RMS.'))]
-json.dump(keep, open('SFT/data/ift_data_2026_04_30_v81_rms.json', 'w'), ensure_ascii=False)
-"
+# 1. Compile the manifest into the per-template JSON the build consumes.
+python tmpl_gen/scripts/tmpl_docx2json.py \
+    -i tmpl_gen/templates/04302026/Sophia-CTI-Templates-v9_rms.txt \
+    -o tmpl_gen/data_generation/Sophia-CTI-Templates-v9_rms.json \
+    --count_limit 1500
+
+# 2. Drive iftgen.py per-template (handled by make_dataset.sh).
+bash tmpl_gen/data_generation/make_dataset.sh \
+    tmpl_gen/templates/04302026/Sophia-CTI-Templates-v9_rms.txt \
+    _v9_rms_build/triples \
+    SFT/data/ift_data_2026_04_30_v9_rms.raw.json \
+    10 1500
+
+# 3. Stratified subsample (cap 170 per shortname; AB.RMS / JS.RMS
+#    preserved at 100% by PRESERVE_FULL_PREFIXES, so this step is
+#    mostly inert here -- run for parity with v8.1 / v8 builds).
+python tmpl_gen/scripts/stratified_subsample.py \
+    --in  SFT/data/ift_data_2026_04_30_v9_rms.raw.json \
+    --out SFT/data/ift_data_2026_04_30_v9_rms.json \
+    --cap 170
 ```
 
-Registered in `SFT/data/dataset_info.json` under the
-`ift_data_2026_04_30_v81_rms` key.
+The 21-template manifest is documented in
+`tmpl_gen/templates/04302026/README.md` Section 5 and registered in
+`SFT/data/dataset_info.json` under the `ift_data_2026_04_30_v9_rms`
+key.
 
 ### Reproducing v9
 
@@ -272,7 +289,7 @@ Registered in `SFT/data/dataset_info.json` under the
 ls -lh SFT/data/ift_data_2026_04_26_combined_v7.json \
        SFT/data/ift_data_2026_04_29_json_v8.json \
        SFT/data/ift_data_2026_04_29_longctx_v8.json \
-       SFT/data/ift_data_2026_04_30_v81_rms.json
+       SFT/data/ift_data_2026_04_30_v9_rms.json
 
 conda activate llm-sft
 cd SFT/autotrain

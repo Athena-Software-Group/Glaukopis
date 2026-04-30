@@ -1,16 +1,23 @@
-# Sophia CTI Templates -- v8.1 (April 30, 2026)
+# Sophia CTI Templates -- v8.1 + v9 RMS slice (April 30, 2026)
 
-This directory holds the v8.1 SFT template manifest, a single-pass rework
-of the v8 program that targets the Risk Mitigation Strategy (RMS)
-catalog-collapse regression observed on the v8-large 14B checkpoint.
-The v8.1 corpus retrains Qwen2.5-14B-Instruct (and the 32B variant
-shares the same source) from one consolidated template file rather than
-the v8-large two-phase chain.
+This directory holds two related SFT template manifests:
+
+  * **v8.1** -- single-pass rework of the v8 program targeting the RMS
+    catalog-collapse regression observed on the v8-large 14B
+    checkpoint. v8.1 recovered RMS but regressed every other broad-
+    knowledge benchmark (CKT/ATE/RCM/CyberMetric) because its
+    `cap=170` stratified subsample starved the catalog tail.
+  * **v9 RMS slice** -- self-contained AB.RMS.* + JS.RMS.* manifest
+    extracted from v8.1, used as the third dataset in Phase B of the
+    v9 two-phase 14B launcher. Keeps the v9 build pipeline first-
+    class (template manifest -> Neo4j -> Alpaca JSON) rather than
+    depending on a filter pass over a prior v8.1 build artefact.
 
 ```
 04302026/
-  Sophia-CTI-Templates-v8_1.txt   self-contained v8.1 manifest (206 templates)
-  README.md                       this document
+  Sophia-CTI-Templates-v8_1.txt    self-contained v8.1 manifest (206 templates)
+  Sophia-CTI-Templates-v9_rms.txt  v9 Phase-B RMS slice (21 templates)
+  README.md                        this document (Sections 1-4 = v8.1, Section 5 = v9)
 ```
 
 Unlike the v8 (04292026) consolidated `v8_{small,large}` manifests --
@@ -441,3 +448,103 @@ after the stratified subsample step. The pre-recovery snapshot is
 preserved at `SFT/data/ift_data_2026_04_30_v81.pre_failed_recovery.json`
 for diff verification.
 
+
+## 5. v9 RMS slice -- companion manifest for the v9 14B launcher
+
+`Sophia-CTI-Templates-v9_rms.txt` is a 21-template manifest containing
+the `AB.RMS.*` and `JS.RMS.*` template bodies lifted byte-for-byte
+from `Sophia-CTI-Templates-v8_1.txt`. It exists so the v9 14B
+launcher (`SFT/autotrain/run_abaligned_sft_qwen25_14b_v9.sh`) can
+graft the RMS catalog drills onto Phase B without depending on any
+v8.1 build artefact -- the v9 dataset
+(`SFT/data/ift_data_2026_04_30_v9_rms.json`) is built from this
+manifest through the same Neo4j pipeline as v8.1, in isolation.
+
+### 5.1 Why a separate manifest
+
+The v9 launcher restores the v8 broad-knowledge baseline (Phase A on
+the v7 corpus + Tulu + Alpaca) and grafts the RMS catalog drills
+onto Phase B. The drills themselves are exactly the AB.RMS / JS.RMS
+slate v8.1 perfected. There are two ways to feed them to the v9
+build:
+
+  a) **Filter the v8.1 output JSON** -- one-line Python that pulls
+     `r['shortname'].startswith(('AB.RMS.', 'JS.RMS.'))` out of
+     `ift_data_2026_04_30_v81.json`.
+  b) **Compile a parallel template manifest** -- this directory's
+     v9_rms.txt, run through `tmpl_docx2json.py` ->
+     `make_dataset.sh` -> `stratified_subsample.py`.
+
+(a) is brittle: if `ift_data_2026_04_30_v81.json` is ever lost or
+edited, the v9 build cannot be reproduced. (b) keeps every v9
+training input traceable to a `.txt` template manifest in version
+control, which is the project's reproducibility contract. v9 takes
+path (b).
+
+### 5.2 Contents (21 templates, ~12,158 rows post-build)
+
+| Template family       | Template count | Rows  | Source section in v8_1.txt |
+|-----------------------|---------------:|------:|----------------------------|
+| `AB.RMS.{1,2}`        | 2              | ~1,700 (variable, no Count:) | Section 5 (lines 526-533)         |
+| `AB.RMS.3{a..h}`      | 8              | 5,800 | Section F (lines 1600-1740)       |
+| `AB.RMS.{4,5}`        | 2              | 1,200 | Section F (lines 1742-1750)       |
+| `AB.RMS.6`            | 1              | 1,500 | Section F (lines 1752-1760)       |
+| `JS.RMS.{1..8}`       | 8              | 1,725 | Section D.4 (lines 2014-2138)     |
+| **total**             | **21**         | **~12,158** |                              |
+
+The `AB.RMS.{1,2}` legacy v5-format templates (no "Answer:" terminator)
+are retained as low-volume coverage for prose-style mitigation
+answers, matching the v8.1 corpus exactly. The cardinality ladder
+(`AB.RMS.3a..3h`, `JS.RMS.1..8`) covers N=1..8 mitigations matching
+the athena-rms benchmark prompt distribution. `AB.RMS.4` /
+`AB.RMS.5` are the M-id <-> name catalog flashcards;
+`AB.RMS.6` is the negative-discrimination drill ("which is NOT
+recommended").
+
+### 5.3 Build pipeline (one-shot, reproducible)
+
+```bash
+# 1. Compile the manifest into the per-template JSON the build consumes.
+python tmpl_gen/scripts/tmpl_docx2json.py \
+    -i tmpl_gen/templates/04302026/Sophia-CTI-Templates-v9_rms.txt \
+    -o tmpl_gen/data_generation/Sophia-CTI-Templates-v9_rms.json \
+    --count_limit 1500
+
+# 2. Drive iftgen.py per-template (handled by make_dataset.sh).
+bash tmpl_gen/data_generation/make_dataset.sh \
+    tmpl_gen/templates/04302026/Sophia-CTI-Templates-v9_rms.txt \
+    _v9_rms_build/triples \
+    SFT/data/ift_data_2026_04_30_v9_rms.raw.json \
+    10 1500
+
+# 3. Stratified subsample (cap 170 per shortname; PRESERVE_FULL_PREFIXES
+#    keeps every AB.RMS / JS.RMS shortname at 100% retention -- the cap
+#    is mostly inert here. Run for parity with the v8.1 build recipe).
+python tmpl_gen/scripts/stratified_subsample.py \
+    --in  SFT/data/ift_data_2026_04_30_v9_rms.raw.json \
+    --out SFT/data/ift_data_2026_04_30_v9_rms.json \
+    --cap 170
+
+# 4. Verbatim-overlap dedup against the eval suite (informational).
+python tmpl_gen/scripts/dedup_against_evals.py \
+    --input    SFT/data/ift_data_2026_04_30_v9_rms.json \
+    --eval-dir SFT/test/benchmark_data \
+    --n 13 --hit-threshold 1 \
+    --report   SFT/data/ift_data_2026_04_30_v9_rms.dedup.json
+```
+
+The contamination posture in Section 2 carries forward unchanged: the
+catalog-recall templates intentionally share short MITRE catalog
+phrases with `athena-cti-rms.jsonl` by design (see Section 2.1 for
+the full audit trail).
+
+### 5.4 Wiring
+
+| Component                              | v9 reference                                                |
+|----------------------------------------|-------------------------------------------------------------|
+| Manifest                               | `tmpl_gen/templates/04302026/Sophia-CTI-Templates-v9_rms.txt` |
+| Compiled template JSON                 | `tmpl_gen/data_generation/Sophia-CTI-Templates-v9_rms.json` |
+| Final dataset                          | `SFT/data/ift_data_2026_04_30_v9_rms.json`                  |
+| Trainer config key (`dataset_info.json`) | `ift_data_2026_04_30_v9_rms`                              |
+| Launcher                               | `SFT/autotrain/run_abaligned_sft_qwen25_14b_v9.sh` (Phase B, third dataset) |
+| Final HF artefact                      | `${HF_USERNAME}/athena-cti-sft-qwen25-14b-abaligned-v9`     |
