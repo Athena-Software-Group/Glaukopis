@@ -172,13 +172,16 @@ def extract_templates_from_txt(args) -> list[dict]:
             print(f"\n@@@ Template {t_id} at line {src_line}: missing Question — skipping.\n")
             continue
 
-        # Collect Answer (may span multiple lines, including embedded blank
-        # lines and a second "Answer: ..." final-line directive). Stop only
-        # at: the next template's ID line, a {force ...} constraint, or one
-        # of the Summary/Schema/Sample/Shuffle/Count directives. Trailing
-        # blank lines are stripped. Single-line answers (the legacy norm)
-        # are unaffected -- the loop terminates at the first sentinel and
-        # produces the same t_a as before.
+        # Collect Answer.  After the initial "Answer: <text>" line we accept
+        # additional "Answer: <text>" continuation lines (the AB.RMS.3*
+        # convention: a long human rationale followed by a strict-format
+        # final-answer directive on its own "Answer: ..." line).  Blank
+        # lines between continuations are preserved.  Any other non-blank,
+        # non-sentinel line (e.g. a section banner like "EPSS Templates"
+        # or "Section 5 - ...") terminates the answer -- it is treated as
+        # stray prose belonging to the file's outer structure, not the
+        # template body.  Stop also at: next template's ID line, a
+        # {force ...} constraint, or Summary/Schema/Sample/Shuffle/Count.
         _ANS_SENTINEL_PREFIXES = ("{force", "Summary: ", "Schema: ",
                                   "Sample: ", "Shuffle: ", "Count: ")
         t_a = None
@@ -197,8 +200,21 @@ def extract_templates_from_txt(args) -> list[dict]:
                 continue
             if l.startswith(_ANS_SENTINEL_PREFIXES):
                 break
-            ans_lines.append(l)
-            i += 1
+            if l == "":
+                ans_lines.append("")
+                i += 1
+                continue
+            if l.startswith("Answer:"):
+                # Preserve the literal "Answer:" prefix on continuation
+                # lines: AthenaBench scorers (athena-rms / athena-ate /
+                # athena-rcm / athena-vsp / athena-taa) match a final
+                # "Answer: <ID>" sentinel in the model output.
+                ans_lines.append(l)
+                i += 1
+                continue
+            # Stray non-Answer prose between templates (section banner /
+            # horizontal rule / commentary) -- end the answer here.
+            break
 
         if t_a is None:
             print(f"\n@@@ Template {t_id} at line {src_line}: missing Answer — skipping.\n")

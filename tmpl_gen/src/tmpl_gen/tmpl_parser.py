@@ -1396,16 +1396,29 @@ class TmplGenNeo4j:
         if self.gencfg.get("verbose", 0) > 0:
             print(f"\nMatch query:\n{match_query}\n")
 
-        # a sequence of results
+        # a sequence of results.  the primary form is sampled for diversity but
+        # can stall on heavy cartesians; gencfg "primary_query_timeout_s" (default
+        # 90.0) bounds wall time and triggers the bounded fallback on timeout or
+        # transaction-memory exhaustion.
+        primary_timeout = self.gencfg.get("primary_query_timeout_s", 90.0)
         try:
-            qry_results = self.neo4j_driver.run_query_collect(match_query)
-        except neo4j.exceptions.TransientError as e:
+            qry_results = self.neo4j_driver.run_query_collect(match_query, timeout=primary_timeout)
+        except (neo4j.exceptions.TransientError, neo4j.exceptions.ClientError, neo4j.exceptions.DriverError) as e:
             msg = str(e)
-            if "MemoryPool" in msg or "memory pool" in msg.lower():
-                print(f"  WARN: primary query exceeded Neo4j transaction memory; falling back to bounded form")
+            is_memory = "MemoryPool" in msg or "memory pool" in msg.lower()
+            is_timeout = ("TransactionTimedOut" in msg or "transaction has been terminated"
+                          in msg.lower() or "timed out" in msg.lower())
+            if is_memory or is_timeout:
+                reason = "transaction memory" if is_memory else f"timeout (>{primary_timeout:.0f}s)"
+                print(f"  WARN: primary query hit {reason}; falling back to bounded form")
                 if self.gencfg.get("verbose", 0) > 0:
                     print(f"\nFallback query:\n{match_query_fallback}\n")
-                qry_results = self.neo4j_driver.run_query_collect(match_query_fallback)
+                # Bound the fallback too: without a tx timeout it can only be
+                # cleared by an external watchdog, which in turn surfaces as an
+                # uncaught "Explicitly terminated by the user" ClientError that
+                # poisons the whole template (e.g. Q.MSR.1, AB.MCQ.3).
+                qry_results = self.neo4j_driver.run_query_collect(
+                    match_query_fallback, timeout=primary_timeout)
             else:
                 raise
         

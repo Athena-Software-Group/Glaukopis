@@ -92,8 +92,21 @@ class Neo4jDriver:
             node_results = session.run(query)
             return node_results
     
-    def run_query_collect(self, query:str, qry_params:dict=None) -> list[Record]:
+    def run_query_collect(self, query:str, qry_params:dict=None, timeout:float=None) -> list[Record]:
         with self.session() as session:
+            if timeout is not None:
+                tx = session.begin_transaction(timeout=timeout)
+                try:
+                    node_results = tx.run(query, qry_params)
+                    rows = list(node_results)
+                    tx.commit()
+                    return rows
+                except Exception:
+                    try:
+                        tx.close()
+                    except Exception:
+                        pass
+                    raise
             node_results = session.run(query, qry_params)
             return list(node_results)
     
