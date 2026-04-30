@@ -53,10 +53,19 @@
 #   ./run_foundation_8b_baselines.sh [--model ALIAS] [--tp N]
 #                                    [--cybermetric-size N[,N...]]   # 80|500|2000|10000
 #                                    [--reasoning]
+#                                    [--max-len N]               # override serve --max-len
 #                                    [--skip-athena] [--skip-cybermetric] [--skip-cybersoceval]
 #                                    [--rows N]                  # pass-through to run_benchmark.sh
 #                                    [--mode resume|overwrite|retry-errors]
 #                                    [--dry-run]
+#
+# --max-len overrides the auto-pick (49152 with cybersoceval, 16384 without).
+# Required for model families whose max_position_embeddings is below the
+# auto-pick: Qwen2.5-* tops out at 32768, and vLLM rejects --max-len above
+# the model's native ctx (RoPE produces NaN past it). Drop to 32768 for
+# Qwen2.5-14B/32B full sweep -- cybersoceval-TI rows that exceed 32K are
+# caught by the client-side ctx-overflow path in pipelines/models.py and
+# bail with a one-line notice instead of crashing the suite.
 #
 # --mode controls what each sub-suite does with pre-existing response files:
 #   resume         (default) keep existing rows, only run rows that have
@@ -121,6 +130,7 @@ REASONING=0
 ROWS=""
 DRY_RUN=0
 MODE="resume"
+MAX_LEN_OVERRIDE=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -128,13 +138,14 @@ while [[ $# -gt 0 ]]; do
         --tp)                TP="$2"; shift 2 ;;
         --cybermetric-size)  CYBERMETRIC_SIZE="$2"; shift 2 ;;
         --reasoning)         REASONING=1; shift ;;
+        --max-len)           MAX_LEN_OVERRIDE="$2"; shift 2 ;;
         --skip-athena)       SKIP_ATHENA=1; shift ;;
         --skip-cybermetric)  SKIP_CYBERMETRIC=1; shift ;;
         --skip-cybersoceval) SKIP_CYBERSOCEVAL=1; shift ;;
         --rows)              ROWS="$2"; shift 2 ;;
         --mode)              MODE="$2"; shift 2 ;;
         --dry-run)           DRY_RUN=1; shift ;;
-        -h|--help) sed -n '3,46p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) sed -n '3,68p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "Unknown argument: $1" >&2; exit 1 ;;
     esac
 done
@@ -214,6 +225,14 @@ else
     SERVE_MAX_LEN=16384
     SERVE_MAX_SEQS=64
     BENCH_BATCH=64
+fi
+if [[ -n "${MAX_LEN_OVERRIDE}" ]]; then
+    if ! [[ "${MAX_LEN_OVERRIDE}" =~ ^[0-9]+$ ]] || [[ "${MAX_LEN_OVERRIDE}" -lt 1024 ]]; then
+        echo "[FAIL] --max-len must be a positive integer >= 1024 (got: ${MAX_LEN_OVERRIDE})" >&2
+        exit 2
+    fi
+    echo "[info] --max-len override: ${SERVE_MAX_LEN} -> ${MAX_LEN_OVERRIDE}"
+    SERVE_MAX_LEN="${MAX_LEN_OVERRIDE}"
 fi
 SERVE_EXTRA="--gpu-memory-utilization 0.90 --max-num-seqs ${SERVE_MAX_SEQS}${REASONING_EXTRA}"
 
