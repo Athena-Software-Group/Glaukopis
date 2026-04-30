@@ -31,6 +31,12 @@
 #   9. Configures global git identity when --git-user-name/--git-user-email
 #      (or GIT_USER_NAME/GIT_USER_EMAIL env vars) are provided; otherwise
 #      warns at the end if no global identity is set on this box
+#  10. Reclaims disk after install: prunes pip cache, conda package tarballs,
+#      apt cache, stale serve/bench logs (>7 days), /tmp scratch dirs, and
+#      vacuums journald to 200 MB. HF model caches under ~/.cache/huggingface
+#      are NEVER touched (use --no-disk-cleanup to skip entirely; the post-
+#      cleanup summary lists the largest HF cache entries so manual pruning
+#      can be done deliberately).
 #
 # Usage:
 #   ./setup.sh [--mode all|train|test|vllm]
@@ -40,6 +46,7 @@
 #              [--lfs-pull] [--split-envs] [--no-conda-init]
 #              [--skip-cybersoceval] [--no-bench-env]
 #              [--git-user-name "Your Name"] [--git-user-email you@example.com]
+#              [--no-disk-cleanup]
 #
 # Defaults:
 #   --mode all           (creates llm-sft + ctibench; pass --env-name to
@@ -78,6 +85,7 @@ SPLIT_ENVS=0
 RUN_CONDA_INIT=1
 FETCH_CYBERSOCEVAL=1
 INSTALL_BENCH_WITH_VLLM=1
+RUN_DISK_CLEANUP=1
 # Git identity: empty default. Picks up GIT_USER_NAME / GIT_USER_EMAIL
 # from the environment (so .env or shell exports work) and is overridden
 # by the --git-user-name / --git-user-email flags. Only applied when both
@@ -99,6 +107,7 @@ while [[ $# -gt 0 ]]; do
         --no-conda-init)      RUN_CONDA_INIT=0; shift ;;
         --skip-cybersoceval)  FETCH_CYBERSOCEVAL=0; shift ;;
         --no-bench-env)       INSTALL_BENCH_WITH_VLLM=0; shift ;;
+        --no-disk-cleanup)    RUN_DISK_CLEANUP=0; shift ;;
         --git-user-name)      GIT_USER_NAME="$2"; shift 2 ;;
         --git-user-email)     GIT_USER_EMAIL="$2"; shift 2 ;;
         -h|--help)
@@ -607,6 +616,89 @@ if [[ -f "${ENV_FILE:-}" ]] && [[ ${NEEDS_ENV_EDIT} -eq 0 ]]; then
             fi
         done
     fi
+fi
+
+# Disk cleanup ---------------------------------------------------------------
+# Conda + pip leave behind several GB of redundant tarballs/wheels after a
+# fresh env build, and prior bench/serve sessions accumulate /tmp scratch,
+# stale logs, and journald spool. None of these are needed at runtime; pip
+# and conda redownload on demand. HF model caches under ~/.cache/huggingface
+# are intentionally left alone — those are large but they are exactly the
+# artefacts the bench client needs to load. The summary at the end lists
+# the top 10 HF cache entries so the operator can prune deliberately.
+# Skipped with --no-disk-cleanup.
+cleanup_disk() {
+    local label="$1"
+    if command -v df >/dev/null 2>&1; then
+        echo "  [${label}] $(df -h /home / 2>/dev/null | awk 'NR==1 || /\/home$|\/$/' | tr '\n' ' | ')"
+    fi
+}
+
+if [[ ${RUN_DISK_CLEANUP} -eq 1 ]]; then
+    echo
+    echo "=== Disk cleanup (safe targets only; HF model cache untouched) ==="
+    cleanup_disk "before"
+
+    # pip wheel cache. Frees 1-5 GB after a fresh vllm/torch install.
+    if command -v pip >/dev/null 2>&1; then
+        pip cache purge >/dev/null 2>&1 \
+            && echo "  ok: pip cache purged" \
+            || echo "  skip: pip cache purge failed (non-fatal)"
+    fi
+
+    # conda's redundant package tarballs (already extracted into envs/).
+    # Frees 2-10 GB after building llm-sft + ctibench + vllm envs.
+    if command -v conda >/dev/null 2>&1; then
+        conda clean --all --yes >/dev/null 2>&1 \
+            && echo "  ok: conda package tarballs cleaned" \
+            || echo "  skip: conda clean failed (non-fatal)"
+    fi
+
+    # apt cache (Debian/Ubuntu only, root only). Frees 100 MB - 1 GB.
+    if command -v apt-get >/dev/null 2>&1 && [[ $(id -u) -eq 0 ]]; then
+        apt-get clean >/dev/null 2>&1 \
+            && echo "  ok: apt cache cleaned" \
+            || echo "  skip: apt-get clean failed (non-fatal)"
+    fi
+
+    # Old serve/bench logs (>7 days) under SFT/test. Each run produces two
+    # multi-MB logs; on a long-lived bench host these add up.
+    if [[ -d "${TEST_DIR}" ]]; then
+        REMOVED_LOGS=0
+        REMOVED_LOGS=$(find "${TEST_DIR}" -maxdepth 1 -name '*_serve_*.log' -mtime +7 -print -delete 2>/dev/null | wc -l)
+        REMOVED_LOGS=$((REMOVED_LOGS + $(find "${TEST_DIR}" -maxdepth 1 -name '*_bench_*.log' -mtime +7 -print -delete 2>/dev/null | wc -l)))
+        echo "  ok: pruned ${REMOVED_LOGS} stale serve/bench log(s) older than 7 days"
+    fi
+
+    # Stale /tmp scratch from prior runs. torchinductor caches per-shape
+    # kernels here; vllm's CUDA_VISIBLE_DEVICES probes leave _v81_probe etc.
+    rm -rf /tmp/torchinductor_* /tmp/_v81_probe /tmp/v81_train.log 2>/dev/null \
+        && echo "  ok: pruned /tmp scratch (torchinductor, probes)" \
+        || true
+
+    # journald spool (root only on systems with journalctl).
+    if command -v journalctl >/dev/null 2>&1 && [[ $(id -u) -eq 0 ]]; then
+        journalctl --vacuum-size=200M >/dev/null 2>&1 \
+            && echo "  ok: journald vacuumed to 200M" \
+            || echo "  skip: journalctl vacuum failed (non-fatal)"
+    fi
+
+    cleanup_disk "after "
+
+    # Surface the HF cache footprint so the operator can decide whether to
+    # prune individual model dirs by hand. We don't auto-delete here because
+    # the operator may legitimately have multiple bench targets cached.
+    HF_HUB_DIR="${HF_HOME:-${HOME}/.cache/huggingface}/hub"
+    if [[ -d "${HF_HUB_DIR}" ]]; then
+        echo
+        echo "  HF model cache footprint (largest 10 entries; prune manually if needed):"
+        du -sh "${HF_HUB_DIR}"/* 2>/dev/null | sort -rh | head -10 | sed 's/^/    /'
+        echo "  Total: $(du -sh "${HF_HUB_DIR}" 2>/dev/null | awk '{print $1}')"
+        echo "  To remove a single model: rm -rf ${HF_HUB_DIR}/models--<org>--<name>"
+    fi
+else
+    echo
+    echo "=== Disk cleanup skipped (--no-disk-cleanup) ==="
 fi
 
 echo
