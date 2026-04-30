@@ -37,11 +37,16 @@
 #                     run_benchmark.sh invocation is wrapped with
 #                     `conda run -n $BENCH_CONDA_ENV` so the bench picks up
 #                     pandas/transformers/openai from a different env than
-#                     the one serving vllm. Required when this script is
-#                     launched from the isolated 'vllm' env (which has no
-#                     test-stack deps); leave unset when serving + benching
-#                     happen in the same combined env (e.g. setup --mode all
-#                     plus a manual vllm install).
+#                     the one serving vllm. When unset, this script auto-
+#                     detects: it first tries the currently active shell,
+#                     then probes 'ctibench' and 'llm-sft' (the names
+#                     created by SFT/utils/setup.sh), and uses the first
+#                     env that can import the critical deps (pandas,
+#                     openai, transformers, tqdm). If none qualify, the
+#                     script aborts BEFORE starting vllm so the user does
+#                     not waste a 10-minute warm-up on a doomed bench step.
+#                     Pass BENCH_CONDA_ENV=<name> explicitly to override
+#                     the auto-detection.
 
 set -euo pipefail
 
@@ -54,24 +59,103 @@ READY_POLL="${READY_POLL:-5}"
 BENCH_CONDA_ENV="${BENCH_CONDA_ENV:-}"
 
 if [[ $# -lt 1 || "$1" == "-h" || "$1" == "--help" ]]; then
-    sed -n '3,40p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    sed -n '3,49p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
     exit 0
 fi
 
-# If BENCH_CONDA_ENV is set, make sure `conda` is on PATH and the named env
-# actually exists before we burn 10+ min loading vllm only to fail at the
-# bench step. `conda env list` is cheap and works without activating.
+# --- Bench env resolution -------------------------------------------------
+# The bench client needs pandas / openai / transformers / tqdm. When this
+# script is launched from the isolated 'vllm' env (which omits those by
+# design), running run_benchmark.sh directly fails on the first import
+# AFTER vllm has already finished its 5-15 min warm-up -- a costly silent
+# trap. Resolution rules (in order):
+#   1. If BENCH_CONDA_ENV is set: validate it exists AND has the deps;
+#      fail closed if either check fails.
+#   2. If BENCH_CONDA_ENV is unset: probe the current shell first, then
+#      'ctibench', then 'llm-sft' (the env names produced by setup.sh).
+#      First candidate that imports the deps wins. If none qualify,
+#      abort with a clear actionable error.
+# All probes happen BEFORE serve_vllm.sh is launched so a doomed run dies
+# in <2 s, not >15 min.
+
+_BENCH_PROBE_IMPORTS='import pandas, openai, transformers, tqdm'
+
+# Probe a single env (or the current shell when name is empty). Echoes
+# nothing on success; emits a one-line failure diagnostic to stderr on
+# failure. Returns 0 iff all critical imports succeed.
+_env_has_bench_deps() {
+    local env_name="$1"
+    if [[ -z "${env_name}" ]]; then
+        python -c "${_BENCH_PROBE_IMPORTS}" >/dev/null 2>&1
+        return $?
+    fi
+    if ! command -v conda >/dev/null 2>&1; then
+        return 1
+    fi
+    # `conda run` returns the inner command's exit code; suppress its own
+    # stderr noise (which prepends 'CondaError:' on missing-env failures
+    # we already handle separately) so the caller sees only the verdict.
+    conda run -n "${env_name}" python -c "${_BENCH_PROBE_IMPORTS}" \
+        >/dev/null 2>&1
+}
+
+# Convenience: does the named env exist at all? Used to give better error
+# messages (missing env vs. env exists but missing deps).
+_conda_env_exists() {
+    local env_name="$1"
+    command -v conda >/dev/null 2>&1 || return 1
+    conda env list 2>/dev/null | awk '{print $1}' | grep -qx "${env_name}"
+}
+
 if [[ -n "${BENCH_CONDA_ENV}" ]]; then
+    # User-supplied: must exist AND import the deps. No fallback -- an
+    # explicit override should never silently pick a different env.
     if ! command -v conda >/dev/null 2>&1; then
         echo "ERROR: BENCH_CONDA_ENV='${BENCH_CONDA_ENV}' set but 'conda' not on PATH." >&2
         exit 5
     fi
-    if ! conda env list 2>/dev/null | awk '{print $1}' | grep -qx "${BENCH_CONDA_ENV}"; then
+    if ! _conda_env_exists "${BENCH_CONDA_ENV}"; then
         echo "ERROR: conda env '${BENCH_CONDA_ENV}' not found. Available envs:" >&2
         conda env list >&2 || true
         exit 6
     fi
+    if ! _env_has_bench_deps "${BENCH_CONDA_ENV}"; then
+        echo "ERROR: conda env '${BENCH_CONDA_ENV}' is missing one or more bench-client deps." >&2
+        echo "       Required: pandas openai transformers tqdm" >&2
+        echo "       Reproduce: conda run -n ${BENCH_CONDA_ENV} python -c '${_BENCH_PROBE_IMPORTS}'" >&2
+        echo "       Fix     : conda run -n ${BENCH_CONDA_ENV} pip install -r ${TEST_DIR}/requirements.txt" >&2
+        exit 7
+    fi
+    BENCH_ENV_RESOLUTION="explicit (BENCH_CONDA_ENV=${BENCH_CONDA_ENV})"
+else
+    # Auto-detect. Try the inheriting path first so users with a single
+    # combined env (--mode all into one --env-name) keep the existing
+    # zero-config behaviour. Then probe the canonical setup.sh env names.
+    BENCH_ENV_RESOLUTION=""
+    if _env_has_bench_deps ""; then
+        BENCH_CONDA_ENV=""
+        BENCH_ENV_RESOLUTION="auto: inherit current shell (${CONDA_DEFAULT_ENV:-<no conda env active>}) -- imports OK"
+    else
+        for _candidate in ctibench llm-sft; do
+            if _conda_env_exists "${_candidate}" \
+                && _env_has_bench_deps "${_candidate}"; then
+                BENCH_CONDA_ENV="${_candidate}"
+                BENCH_ENV_RESOLUTION="auto: '${_candidate}' (current shell '${CONDA_DEFAULT_ENV:-<none>}' lacked deps)"
+                break
+            fi
+        done
+    fi
+    if [[ -z "${BENCH_ENV_RESOLUTION}" ]]; then
+        echo "ERROR: could not find a conda env (or current shell) with the bench-client deps." >&2
+        echo "       Probed: current shell '${CONDA_DEFAULT_ENV:-<none>}', then 'ctibench', then 'llm-sft'." >&2
+        echo "       Required: pandas openai transformers tqdm" >&2
+        echo "       Fix options:" >&2
+        echo "         a) bash ${SFT_DIR}/utils/setup.sh --mode test         # creates 'ctibench'" >&2
+        echo "         b) BENCH_CONDA_ENV=<your-env> $(basename "${BASH_SOURCE[0]}") ..." >&2
+        exit 8
+    fi
 fi
+# --------------------------------------------------------------------------
 
 ALIAS="$1"; shift
 
@@ -150,6 +234,7 @@ echo "  port       : ${PORT}"
 echo "  serve args : ${serve_args[*]}"
 echo "  bench args : ${bench_args[*]}"
 echo "  bench env  : ${BENCH_CONDA_ENV:-<inherit current shell>}"
+echo "  bench resv : ${BENCH_ENV_RESOLUTION}"
 echo "  serve log  : ${SERVE_LOG}"
 echo "  bench log  : ${BENCH_LOG}"
 echo
