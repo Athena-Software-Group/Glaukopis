@@ -108,6 +108,12 @@ def parse_args():
     p.add_argument("--include-checkpoints", action="store_true",
                    help="Upload intermediate checkpoint-* and global_step* dirs too "
                         "(default: filtered out to keep repo size ~model-weights only).")
+    p.add_argument("--readme-base-model", default=None,
+                   help="HF model id to write into README.md's `base_model:` YAML field "
+                        "when LLaMA-Factory's auto-generated card has a local filesystem "
+                        "path there (e.g. 2-phase SFT runs whose Phase B reads from a "
+                        "Phase A checkpoint dir). If omitted and the existing value is "
+                        "invalid, the line is stripped.")
     p.add_argument("--dry-run", action="store_true", help="Print commands without executing.")
     return p.parse_args()
 
@@ -146,7 +152,83 @@ DEFAULT_IGNORE_PATTERNS = [
 ]
 
 
-def upload(folder, repo_id, token, private, dry_run, ignore_patterns=None):
+def _looks_like_hf_model_id(value):
+    """True if value matches the `<org-or-user>/<name>` HF Hub repo id shape."""
+    if not value or not isinstance(value, str):
+        return False
+    v = value.strip().strip('"').strip("'")
+    if not v or v.startswith(("/", "~", ".")) or ".." in v:
+        return False
+    if "\\" in v or " " in v:
+        return False
+    if v.count("/") != 1:
+        return False
+    org, name = v.split("/", 1)
+    return bool(org) and bool(name)
+
+
+def _sanitize_readme(folder, override_base_model, dry_run):
+    """Rewrite README.md's YAML frontmatter so HF's validate-yaml accepts it.
+
+    LLaMA-Factory's auto-generated model card writes whatever was passed as
+    --model_name_or_path into `base_model:`. For 2-phase SFT runs (Phase B
+    chained from a Phase A local checkpoint), that value is a filesystem
+    path which the Hub rejects with 400 BadRequest. Replace it with the
+    --readme-base-model override if given, otherwise strip the line.
+    """
+    readme = Path(folder) / "README.md"
+    if not readme.is_file():
+        return
+    try:
+        text = readme.read_text(encoding="utf-8")
+    except Exception as exc:
+        print(f"[readme] skip sanitize ({exc.__class__.__name__}: {exc})")
+        return
+    lines = text.splitlines()
+    if not lines or lines[0].strip() != "---":
+        return
+    end = None
+    for i in range(1, len(lines)):
+        if lines[i].strip() == "---":
+            end = i
+            break
+    if end is None:
+        return
+
+    changed = False
+    new_lines = list(lines)
+    for i in range(1, end):
+        line = new_lines[i]
+        stripped = line.lstrip()
+        if not stripped.startswith("base_model:"):
+            continue
+        _, _, value = stripped.partition(":")
+        value = value.strip()
+        if _looks_like_hf_model_id(value):
+            continue
+        indent = line[: len(line) - len(stripped)]
+        if override_base_model and _looks_like_hf_model_id(override_base_model):
+            new_lines[i] = f"{indent}base_model: {override_base_model}"
+            print(f"[readme] base_model: {value!r} -> {override_base_model!r}")
+        else:
+            new_lines[i] = None
+            print(f"[readme] base_model: {value!r} stripped (no valid override)")
+        changed = True
+
+    if not changed:
+        return
+    new_lines = [ln for ln in new_lines if ln is not None]
+    new_text = "\n".join(new_lines)
+    if text.endswith("\n") and not new_text.endswith("\n"):
+        new_text += "\n"
+    if dry_run:
+        print(f"[readme] dry-run; not writing {readme}")
+        return
+    readme.write_text(new_text, encoding="utf-8")
+
+
+def upload(folder, repo_id, token, private, dry_run, ignore_patterns=None,
+           readme_base_model=None):
     if not token:
         sys.exit(
             "No HF token found. Provide one of:\n"
@@ -160,6 +242,7 @@ def upload(folder, repo_id, token, private, dry_run, ignore_patterns=None):
     print(f"[upload] {folder} -> {repo_id} (private={private})")
     if patterns:
         print(f"[upload] ignore_patterns={patterns}")
+    _sanitize_readme(folder, readme_base_model, dry_run)
     if dry_run:
         return
     from huggingface_hub import HfApi, login
@@ -213,7 +296,8 @@ def main():
     token = _resolve_token(args.token)
     ignore_patterns = [] if args.include_checkpoints else None
     upload(upload_folder_path, args.repo_id, token, private=not args.public,
-           dry_run=args.dry_run, ignore_patterns=ignore_patterns)
+           dry_run=args.dry_run, ignore_patterns=ignore_patterns,
+           readme_base_model=args.readme_base_model)
     print(f"[done] https://huggingface.co/{args.repo_id}")
 
 
