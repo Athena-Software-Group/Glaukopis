@@ -143,7 +143,17 @@ A_GA=$(( 16 / (A_BATCH * EFFECTIVE_GPUS) )); [[ ${A_GA} -lt 1 ]] && A_GA=1
 B_BATCH=1
 B_GA=$(( 8 / (B_BATCH * EFFECTIVE_GPUS) ));  [[ ${B_GA} -lt 1 ]] && B_GA=1
 
-EXTRA_COMMON="--deepspeed ${DS_CONFIG} --save_total_limit 2 --save_only_model True --enable_liger_kernel True --optim adamw_8bit --load_best_model_at_end True --metric_for_best_model eval_loss --greater_is_better False"
+# --save_only_model True keeps checkpoints to model weights only (no
+# optimizer state) so a 14B run fits inside save_total_limit 2 without
+# eating ~110 GB per checkpoint. The Phase B handoff only consumes model
+# weights from PHASE_A_DIR, so dropping optimizer state is safe.
+#
+# We deliberately do NOT pass --load_best_model_at_end: current
+# transformers refuses that flag together with --save_only_model under
+# DeepSpeed (full optimizer state required to restore the best checkpoint),
+# and at 1 epoch with cosine LR 1e-5 / 5e-6 the final-step weights are
+# effectively the best eval-loss weights anyway.
+EXTRA_COMMON="--deepspeed ${DS_CONFIG} --save_total_limit 2 --save_only_model True --enable_liger_kernel True --optim adamw_8bit"
 EXTRA_PHASE_B="${EXTRA_COMMON} --group_by_length True"
 
 export FORCE_TORCHRUN=1
