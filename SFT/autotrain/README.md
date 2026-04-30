@@ -25,7 +25,11 @@ for the full rationale).
 | `run_abaligned_sft_v5.sh` | Full-parameter SFT on `ift_data_2026_04_24_abaligned_v5` (broad CTI coverage, all six athena tasks). Pushes to `…-abaligned-v5`. |
 | `run_abaligned_sft_v5_lora.sh` | LoRA variant of the v5 recipe. Pushes to `…-abaligned-v5-lora`. |
 | `run_abaligned_sft_v6.sh` | Full-parameter SFT on the v5 dataset + the v6 RMS-only addendum. **Regressed** athena-rms from 5.88% → 0.00% F1 (truncation + missing terminator + N=3..5-only coverage). Kept for provenance; do not use. |
-| `run_abaligned_sft_v7.sh` | **Current canonical recipe.** Full-parameter SFT on the consolidated `ift_data_2026_04_26_combined_v7` (v5 broad coverage + v7 RMS addendum, ~181k rows). Fixes the three v6 regressions (`cutoff_len=4096`, variable-N N=1..8, `Answer: M####` terminator). Pushes to `…-abaligned-v7`. See [v7 recipe and results](#v7-recipe-and-results) below. |
+| `run_abaligned_sft_v7.sh` | Llama-3.1-8B v7 baseline. Full-parameter SFT on `ift_data_2026_04_26_combined_v7` (~181k rows). Pushes to `…-abaligned-v7`. See [v7 recipe and results](#v7-recipe-and-results) below. |
+| `run_abaligned_sft_qwen25_14b_v7.sh` | Qwen2.5-14B v7 capacity test. Same dataset and recipe as the 8B v7 launcher, base swapped to `Qwen/Qwen2.5-14B-Instruct`. |
+| `run_abaligned_sft_qwen25_14b_v8.sh` | Two-phase Qwen2.5-14B v8. Phase A re-anchors on the v7 corpus; Phase B specialises on `ift_data_2026_04_29_json_v8` + `ift_data_2026_04_29_longctx_v8` at cutoff 16384. Pushes to `…-abaligned-v8`. **Superseded** at 14B by v9 because Phase B dropped the AB.RMS catalog drills (RMS catalog-collapse regression). |
+| `run_abaligned_sft_qwen25_14b_v81.sh` | Single-pass Qwen2.5-14B v8.1. Trains on `ift_data_2026_04_30_v81` (~42k rows, cap=170 stratified subsample with AB.RMS / JS.RMS preserved at 100%). Recovered RMS but regressed CKT/ATE/RCM/CyberMetric because the cap=170 rule starved every other catalog family (V/W/X/S/P/M cut to 0.09–0.16× of v7). **Superseded** by v9. |
+| `run_abaligned_sft_qwen25_14b_v9.sh` | **Current canonical 14B recipe.** Two-phase: Phase A identical to v8 (broad-knowledge re-anchor), Phase B grafts the v8.1 `AB.RMS.*` + `JS.RMS.*` slice (~12.2k rows) onto v8's JSON + long-context mix. Pushes to `…-abaligned-v9`. See [v9 recipe](#v9-recipe) below. |
 | `run_athenabench.sh` | Register the trained+pushed model in `SFT/test/pipelines/models.py` (idempotent), run a smoke test, then the full 6-task sweep. |
 
 ## Prerequisites
@@ -207,6 +211,78 @@ On exit 0 the merged full-weight checkpoint is at
 `hf://${HF_USERNAME}/athena-cti-sft-llama31-8b-abaligned-v7`. The
 benchmark sweep above can then be run from any host with vLLM and a
 single H100.
+
+## v9 recipe
+
+`run_abaligned_sft_qwen25_14b_v9.sh` is the current canonical 14B
+launcher. It supersedes both `run_abaligned_sft_qwen25_14b_v8.sh`
+(RMS catalog-collapse in Phase B) and
+`run_abaligned_sft_qwen25_14b_v81.sh` (broad regression on
+CKT/ATE/RCM/CyberMetric driven by the cap=170 stratified subsample).
+
+### Why v9 exists
+
+The v8.1 14B sweep recovered athena-rms (+8.9 pp F1 over v8) but
+regressed the broad knowledge tasks vs the v8 14B baseline:
+
+| Task | v8 14B | v8.1 14B | Δ |
+|---|---:|---:|---:|
+| CKT | 77.6 | 63.2 | **−14.4** |
+| ATE | 47.6 | 30.2 | **−17.4** |
+| RCM | 64.5 | 54.0 | **−10.5** |
+| CyberMetric (avg 2k/10k) | 88.2 | 83.1 | **−5.1** |
+| RMS (F1) | 36.0 | 44.9 | +8.9 |
+
+Root cause was traced to `tmpl_gen/scripts/stratified_subsample.py
+--cap 170` with `AB.RMS.*` / `JS.RMS.*` hard-coded as 100%-retained.
+Every other catalog family was capped at 170 rows/shortname, cutting
+V/W/X/S/P/M from 9–35k rows down to ~1–4k each (0.09–0.16× of v7).
+Combined with Tulu/Alpaca dilution, v8.1 saw ~85k CTI example-passes
+vs v7's ~540k and v8's ~262k — a 3–6× compute deficit on exactly the
+knowledge surface that drives CKT/ATE/RCM/CyberMetric.
+
+### Phase shape (v8 broad-knowledge baseline + v8.1 RMS slice)
+
+| Phase | Datasets | Recipe |
+|---|---|---|
+| **A** | `ift_data_2026_04_26_combined_v7,tulu_3_sft_mixture,alpaca_en_demo` | 1 epoch, lr 1e-5, cutoff 4096, packing on, eff. batch 16 (identical to v8 Phase A) |
+| **B** | `ift_data_2026_04_29_json_v8,ift_data_2026_04_29_longctx_v8,ift_data_2026_04_30_v81_rms` | 1 epoch, lr 5e-6, cutoff 16384, packing off, eff. batch 8, `group_by_length` on |
+
+The `ift_data_2026_04_30_v81_rms` dataset is the
+`AB.RMS.*` + `JS.RMS.*` slice of the v8.1 corpus (12,158 rows: 10,433
+catalog drills + 1,725 JSON-shaped variants). It is built as a
+one-shot from the v8.1 file:
+
+```bash
+python -c "
+import json
+d = json.load(open('SFT/data/ift_data_2026_04_30_v81.json'))
+keep = [r for r in d if (r.get('shortname') or '').startswith(('AB.RMS.', 'JS.RMS.'))]
+json.dump(keep, open('SFT/data/ift_data_2026_04_30_v81_rms.json', 'w'), ensure_ascii=False)
+"
+```
+
+Registered in `SFT/data/dataset_info.json` under the
+`ift_data_2026_04_30_v81_rms` key.
+
+### Reproducing v9
+
+```bash
+# On the training host (>=2x 80 GB GPUs recommended; 4x for no offload).
+ls -lh SFT/data/ift_data_2026_04_26_combined_v7.json \
+       SFT/data/ift_data_2026_04_29_json_v8.json \
+       SFT/data/ift_data_2026_04_29_longctx_v8.json \
+       SFT/data/ift_data_2026_04_30_v81_rms.json
+
+conda activate llm-sft
+cd SFT/autotrain
+./run_abaligned_sft_qwen25_14b_v9.sh --dry-run    # inspect both phases
+./run_abaligned_sft_qwen25_14b_v9.sh              # both phases, push to HF on exit 0
+```
+
+On exit 0 the merged Phase B checkpoint is at
+`hf://${HF_USERNAME}/athena-cti-sft-qwen25-14b-abaligned-v9`. Phase A
+is intermediate; only Phase B is pushed.
 
 ## Troubleshooting
 
