@@ -558,6 +558,57 @@ if [[ "${MODE}" != "test" || ${SPLIT_ENVS} -eq 1 ]]; then
     fi
 fi
 
+# Persist HF + wandb auth at the box level -----------------------------------
+# Sourcing SFT/.env in every wrapper script is fragile (each new tool has to
+# remember to do it; multi-process spawns sometimes lose the env). Persist
+# the credentials globally instead:
+#   * HF_TOKEN  -> ~/.cache/huggingface/token   (read by huggingface_hub
+#                  for *every* Python process on the box, no env required)
+#   * WANDB_API_KEY -> ~/.netrc                  (same idea for wandb)
+# Skipped silently when the value is the .env.example placeholder, when
+# .env doesn't exist, or when the relevant CLI isn't installed (e.g. test
+# mode without the train stack).
+if [[ -f "${ENV_FILE:-}" ]] && [[ ${NEEDS_ENV_EDIT} -eq 0 ]]; then
+    set -a
+    # shellcheck source=/dev/null
+    source "${ENV_FILE}"
+    set +a
+
+    # HF: prefer the new `hf` CLI (huggingface_hub >=0.27); fall back to
+    # huggingface-cli for older installs. Either path writes the same token
+    # file, so downstream code paths don't care.
+    if [[ -n "${HF_TOKEN:-}" && "${HF_TOKEN}" != "hf_xxx_replace_me" ]]; then
+        for stack_env in "${INSTALLED_ENVS[@]}"; do
+            if conda run --no-capture-output -n "${stack_env}" \
+                    python -c "import huggingface_hub" 2>/dev/null; then
+                echo "=== Persisting HF_TOKEN to ~/.cache/huggingface/token via '${stack_env}' env ==="
+                conda run --no-capture-output -n "${stack_env}" \
+                    python -c "from huggingface_hub import login; login(token='${HF_TOKEN}', add_to_git_credential=False)" \
+                    >/dev/null 2>&1 \
+                    && echo "  ok." \
+                    || echo "  [WARN] hf login failed; export HF_TOKEN manually if downloads fail."
+                break
+            fi
+        done
+    fi
+
+    # wandb: only persist if explicitly set (and not the placeholder). wandb
+    # login writes to ~/.netrc which any wandb client picks up.
+    if [[ -n "${WANDB_API_KEY:-}" && "${WANDB_API_KEY}" != "wandb_xxx_replace_me" ]]; then
+        for stack_env in "${INSTALLED_ENVS[@]}"; do
+            if conda run --no-capture-output -n "${stack_env}" \
+                    python -c "import wandb" 2>/dev/null; then
+                echo "=== Persisting WANDB_API_KEY to ~/.netrc via '${stack_env}' env ==="
+                conda run --no-capture-output -n "${stack_env}" \
+                    wandb login --relogin "${WANDB_API_KEY}" >/dev/null 2>&1 \
+                    && echo "  ok." \
+                    || echo "  [WARN] wandb login failed; export WANDB_API_KEY manually if needed."
+                break
+            fi
+        done
+    fi
+fi
+
 echo
 echo "=== Setup complete ==="
 if [[ ${RUN_CONDA_INIT} -eq 1 && -n "${target_shell:-}" ]]; then
