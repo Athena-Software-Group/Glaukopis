@@ -161,8 +161,28 @@ echo
 # global git identity, which causes any subsequent `git commit` to fail
 # loudly and any `git pull --rebase` to refuse implicit merges. Set the
 # global config when the operator passed both --git-user-name and
-# --git-user-email (or exported GIT_USER_NAME / GIT_USER_EMAIL); otherwise
-# leave any existing config alone and warn at the end if it's still empty.
+# --git-user-email (or exported GIT_USER_NAME / GIT_USER_EMAIL, including
+# via SFT/.env); otherwise leave any existing config alone and warn at the
+# end if it's still empty.
+#
+# Source SFT/.env early so GIT_USER_NAME / GIT_USER_EMAIL persisted there
+# are visible here. Done before the bootstrap further down because that
+# bootstrap only creates the file from .env.example (no real values in it
+# yet) and because the git identity logic must run before any later step
+# that might invoke `git`. CLI flags (--git-user-name / --git-user-email)
+# and pre-existing shell exports take precedence over .env values; we
+# snapshot whatever was set before sourcing and restore afterwards.
+if [[ -f "${SFT_DIR}/.env" ]]; then
+    _git_user_name_pre="${GIT_USER_NAME:-}"
+    _git_user_email_pre="${GIT_USER_EMAIL:-}"
+    set -a
+    # shellcheck source=/dev/null
+    source "${SFT_DIR}/.env"
+    set +a
+    [[ -n "${_git_user_name_pre}"  ]] && GIT_USER_NAME="${_git_user_name_pre}"
+    [[ -n "${_git_user_email_pre}" ]] && GIT_USER_EMAIL="${_git_user_email_pre}"
+    unset _git_user_name_pre _git_user_email_pre
+fi
 GIT_IDENTITY_WAS_SET=0
 GIT_IDENTITY_MISSING=0
 if command -v git >/dev/null 2>&1; then
