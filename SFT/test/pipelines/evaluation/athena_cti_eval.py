@@ -285,10 +285,23 @@ class ATHENAEvaluate:
         return formatted
 
     def evaluate_file(self, task: str, preds_path: Path, out_path: Path, vsp_denominator: float = 7.7) -> Dict[str, float]:
-        if out_path.exists() and out_path.stat().st_size > 0:
+        # Cache freshness: the scored file is only reusable when it is at least
+        # as recent as the predictions file. Otherwise (e.g. after
+        # `run_benchmark.sh --retry-errors` scrubbed error rows and the next
+        # run regenerated them) the cached scores reflect a stale snapshot of
+        # the responses and silently re-emit broken metrics.
+        cache_fresh = (
+            out_path.exists()
+            and out_path.stat().st_size > 0
+            and preds_path.exists()
+            and out_path.stat().st_mtime >= preds_path.stat().st_mtime
+        )
+        if cache_fresh:
             print(f"[Cache] Using existing scored file: {out_path}")
             records = load_jsonl(str(out_path))
         else:
+            if out_path.exists() and out_path.stat().st_size > 0:
+                print(f"[Cache] Stale (predictions newer); re-scoring: {out_path}")
             print(f"[Scoring] Computing scores from predictions: {preds_path}")
             raw_records = load_jsonl(str(preds_path))
             records = []
