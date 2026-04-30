@@ -7,16 +7,20 @@ neo4j>=5.0.0
 psycopg2-binary>=2.9.0
 
 # HTTP requests library for Neo4j API calls
-requests>=2.28.0
+# CVE bumps: GHSA-9hjg-9r4m-mvj7 / 9wx4-h78v-vm56 / gc5v-m9x4-r6x2
+requests>=2.33.0
 
 # HTTP retry and connection pooling
-urllib3>=1.26.0
+# CVE bumps: GHSA-2xpw-w6gg-jr37 / 38jv-5279-wg99 / gm62-xv2j-4w53 (CVSS 8.9 each)
+# Major v1->v2: API surface used here (urllib3 transitively via requests/aiohttp) is unchanged.
+urllib3>=2.6.3
 
 # Type hints support (for Python < 3.9)
 typing-extensions>=4.0.0
 
 # Async HTTP client for CVE daemon
-aiohttp>=3.8.0
+# CVE bumps: GHSA-63hf-3vf5-4wqf (CVSS 9.1) + 14 other CVEs across 3.8.x..3.13.x
+aiohttp>=3.13.4
 
 # STIX2 library for MITRE ATT&CK data processing
 stix2>=3.0.0

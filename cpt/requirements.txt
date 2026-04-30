@@ -3,12 +3,14 @@
 #   pip install -r cpt/requirements.txt
 
 # HTTP + feed parsing
-requests>=2.31
+# CVE bumps: GHSA-9hjg-9r4m-mvj7 / 9wx4-h78v-vm56 / gc5v-m9x4-r6x2
+requests>=2.33.0
 feedparser>=6.0.11
 
 # HTML extraction (main-content only, avoids nav/footer noise)
 trafilatura>=1.12
-lxml>=5.2
+# CVE bump: GHSA-vfmq-68hx-4jfw (major v5->v6; trafilatura is version-agnostic)
+lxml>=6.1.0
 
 # PDF extraction
 pymupdf>=1.24
@@ -21,4 +23,5 @@ xxhash>=3.4
 pyyaml>=6.0
 
 # Progress bars (already pulled by transformers, pinned here for clarity)
-tqdm>=4.66
+# CVE bump: GHSA-g7vv-2v7x-gj9p
+tqdm>=4.66.3
