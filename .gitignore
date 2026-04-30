@@ -439,6 +439,14 @@ tmpl_gen/utils/_db_schema.json
 
 tmpl_gen/data_generation/
 
+# v8.1 build scratch dirs (regeneratable via tmpl_gen/data_generation/make_dataset.sh)
+_v81_build/
+_failed_test/
+_qmsr1_test/
+_smoketest_v81/
+_smoketest_v81_run/
+_per_primary_test/
+
 *.safetensors
 
 SFT/merged/
