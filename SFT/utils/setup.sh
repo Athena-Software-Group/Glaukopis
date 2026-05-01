@@ -26,7 +26,10 @@
 #              SFT/test/utils/fetch_cybersoceval_data.py unless --skip-cybersoceval)
 #   6. [vllm]  vllm + openai client into an isolated env (default: vllm),
 #              plus the [test] stack into ctibench unless --no-bench-env
-#   7. flash-attn (optional, non-fatal; skipped with --no-flash-attn)
+#   7. flash-attn (only for the train stack; optional, non-fatal; skipped
+#      with --no-flash-attn). The vllm stack uses its own attention kernels
+#      and the test/bench stack drives vllm over HTTP, so neither imports
+#      flash-attn -- avoids a 30-60 min source build with no runtime impact.
 #   8. Bootstraps SFT/.env from SFT/.env.example on first run
 #   9. Configures global git identity when --git-user-name/--git-user-email
 #      (or GIT_USER_NAME/GIT_USER_EMAIL env vars) are provided; otherwise
@@ -423,9 +426,12 @@ install_stack() {
         align_torch_family
     fi
 
-    # flash-attn is only meaningful for the training / transformers-based
-    # inference paths. vllm bundles its own attention kernels internally.
-    if [[ "${stack}" != "vllm" && ${INSTALL_FLASH_ATTN} -eq 1 && "${CUDA_TAG}" != "cpu" ]]; then
+    # flash-attn is only meaningful for the training stack (LlamaFactory SFT).
+    # vllm bundles its own attention kernels internally, and the bench client
+    # (test stack) just drives the vllm server over HTTP -- it never imports
+    # flash-attn. Skipping it for non-train stacks avoids a 30-60 min source
+    # build that has no runtime impact on benchmarking.
+    if [[ ( "${stack}" == "train" || "${stack}" == "all" ) && ${INSTALL_FLASH_ATTN} -eq 1 && "${CUDA_TAG}" != "cpu" ]]; then
         echo "=== Installing flash-attn (v${FLASH_ATTN_VERSION}) — optional, non-fatal ==="
         set +e
         install_flash_attn
@@ -438,6 +444,8 @@ install_stack() {
         fi
     elif [[ "${CUDA_TAG}" == "cpu" ]]; then
         echo "=== Skipping flash-attn (CPU build) ==="
+    elif [[ "${stack}" != "train" && "${stack}" != "all" ]]; then
+        echo "=== Skipping flash-attn (stack=${stack}; only installed for train/all) ==="
     fi
 
     if [[ "${stack}" == "test" || "${stack}" == "all" ]]; then
