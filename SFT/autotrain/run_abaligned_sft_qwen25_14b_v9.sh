@@ -25,7 +25,7 @@
 #                    ift_data_2026_04_30_v9_rms
 #     - 1 epoch, lr 5e-6, cutoff 16384, packing OFF
 #     - Effective batch 8 (cutoff 4x => half the effective batch)
-#     - eval/save every 400 steps, group_by_length on
+#     - eval/save every 400 steps
 #     - --model points at Phase A's output dir
 #
 #   The Phase B RMS slice is built first-class from its own template
@@ -153,8 +153,14 @@ B_GA=$(( 8 / (B_BATCH * EFFECTIVE_GPUS) ));  [[ ${B_GA} -lt 1 ]] && B_GA=1
 # DeepSpeed (full optimizer state required to restore the best checkpoint),
 # and at 1 epoch with cosine LR 1e-5 / 5e-6 the final-step weights are
 # effectively the best eval-loss weights anyway.
+#
+# We also deliberately do NOT pass --group_by_length: removed in
+# transformers>=5.2 (the env on the v9 training box ships 5.2.0). The
+# variable-length batching speedup it provided is forfeited; padding
+# overhead at cutoff=16384 packing=off is the cost. Reintroducing it
+# would require pinning transformers<5.2.
 EXTRA_COMMON="--deepspeed ${DS_CONFIG} --save_total_limit 2 --save_only_model True --enable_liger_kernel True --optim adamw_8bit"
-EXTRA_PHASE_B="${EXTRA_COMMON} --group_by_length True"
+EXTRA_PHASE_B="${EXTRA_COMMON}"
 
 export FORCE_TORCHRUN=1
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"

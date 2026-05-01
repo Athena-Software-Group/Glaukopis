@@ -111,6 +111,13 @@ PRICING_PER_1K = {
         "input": [(0, float("inf"), 0.00027)],
         "output": [(0, float("inf"), 0.00040)],
     },
+    "qwen2.5-14b-hf": {
+        # fireworks-ai (HF Router primary route). $0.20 in / $0.20 out per 1M.
+        # Together-ai fallback list at $0.80/$0.80; SiliconFlow at $0.10/$0.10
+        # but rarely selected by the router. Fireworks is the canonical price.
+        "input": [(0, float("inf"), 0.00020)],
+        "output": [(0, float("inf"), 0.00020)],
+    },
 }
 
 # Models we've already warned about for missing pricing, so we only emit one
