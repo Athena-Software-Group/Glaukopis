@@ -136,6 +136,9 @@ model_mapping = {
     # v8.1 single-pass recipe on 14B (consolidated 41.8K-row corpus; pushed by
     # SFT/autotrain/run_abaligned_sft_qwen25_14b_v81.sh).
     'athena-cti-sft-qwen25-14b-abaligned-v81-vllm':            'asg-ai/athena-cti-sft-qwen25-14b-abaligned-v81',
+    # v9 two-phase 14B (Phase A v8-broad baseline -> Phase B v8.1 RMS slice;
+    # pushed by SFT/autotrain/run_abaligned_sft_qwen25_14b_v9.sh).
+    'athena-cti-sft-qwen25-14b-abaligned-v9-vllm':             'asg-ai/athena-cti-sft-qwen25-14b-abaligned-v9',
     # HF Inference Providers route. Custom community fine-tunes are not in the
     # default Together/Fireworks/Novita/etc. catalogs; this alias only resolves
     # if the model is exposed via an HF Inference Endpoint or the legacy
