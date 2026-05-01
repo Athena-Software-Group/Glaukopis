@@ -37,14 +37,19 @@
 #   ./run_benchmark.sh <model-name> [--suite athena|cybermetric|cybersoceval|all|ctibench]
 #                                   [--version N] [--rows N]
 #                                   [--tasks "mcq rcm vsp"]
-#                                   [--cybermetric-size 80|500|2000|10000]
+#                                   [--cybermetric-size 80|500|2000|10000|N1,N2,...]
 #                                   [--batch N] [--overwrite] [--yes]
 #                                   [--reasoning-effort none|low|medium|high|xhigh]
 #
 # Flags:
 #   --suite NAME  Preset task list. Default: athena. Ignored when --tasks set.
-#   --cybermetric-size N
-#                 Which CyberMetric-<N>-v1.json to evaluate on (default 80).
+#   --cybermetric-size N[,N...]
+#                 Which CyberMetric-<N>-v1.json files to evaluate on (default 80).
+#                 Accepts a comma-separated list to run multiple sizes against
+#                 the same served model in one sweep, e.g. --cybermetric-size 2000,10000
+#                 expands the 'cybermetric' task into back-to-back runs whose
+#                 results are recorded under labels 'cybermetric-2000' and
+#                 'cybermetric-10000' in the summary.
 #   --batch N     Run N concurrent requests per task. Supported for
 #                 GPT/Gemini, HF Inference ('*-hf'), and local vLLM
 #                 ('*-vllm') models. Use 16-64 for hosted-API runs and
@@ -168,15 +173,33 @@ else
     TASKS="${SUITE_TASKS}"
 fi
 
-CYBERMETRIC_STEM="CyberMetric-${CYBERMETRIC_SIZE}-v1"
-CYBERMETRIC_DATA_PATH="benchmark_data/cybermetricdataset/${CYBERMETRIC_STEM}.json"
+# --cybermetric-size accepts a comma-separated list (e.g. "2000,10000") so
+# a single sweep can score the model on multiple CyberMetric splits without
+# re-launching vllm. The arrays below are kept index-aligned: CYBERMETRIC_SIZES[i]
+# <-> CYBERMETRIC_STEMS[i] <-> CYBERMETRIC_DATA_PATHS[i]. CYBERMETRIC_STEM /
+# CYBERMETRIC_DATA_PATH retain their pre-multi-size meaning (the first size in
+# the list) for callers that read them directly (the banner, the legacy summary
+# stem path).
+IFS=',' read -ra CYBERMETRIC_SIZES <<< "${CYBERMETRIC_SIZE}"
+declare -a CYBERMETRIC_STEMS=()
+declare -a CYBERMETRIC_DATA_PATHS=()
+for _sz in "${CYBERMETRIC_SIZES[@]}"; do
+    CYBERMETRIC_STEMS+=("CyberMetric-${_sz}-v1")
+    CYBERMETRIC_DATA_PATHS+=("benchmark_data/cybermetricdataset/CyberMetric-${_sz}-v1.json")
+done
+unset _sz
+CYBERMETRIC_STEM="${CYBERMETRIC_STEMS[0]}"
+CYBERMETRIC_DATA_PATH="${CYBERMETRIC_DATA_PATHS[0]}"
 if [[ "${TASKS}" == *"cybermetric"* ]]; then
-    if [[ ! -f "${BENCH_DIR}/${CYBERMETRIC_DATA_PATH}" ]]; then
-        echo "CyberMetric data file not found: ${CYBERMETRIC_DATA_PATH}" >&2
-        echo "Available sizes under benchmark_data/cybermetricdataset/:" >&2
-        ls "${BENCH_DIR}/benchmark_data/cybermetricdataset/" 2>/dev/null >&2 || true
-        exit 1
-    fi
+    for _path in "${CYBERMETRIC_DATA_PATHS[@]}"; do
+        if [[ ! -f "${BENCH_DIR}/${_path}" ]]; then
+            echo "CyberMetric data file not found: ${_path}" >&2
+            echo "Available sizes under benchmark_data/cybermetricdataset/:" >&2
+            ls "${BENCH_DIR}/benchmark_data/cybermetricdataset/" 2>/dev/null >&2 || true
+            exit 1
+        fi
+    done
+    unset _path
 fi
 
 # Sanitize model name for use as a filename (e.g. "meta-llama/Llama-3" -> "meta-llama_Llama-3")
@@ -239,6 +262,10 @@ ROWS_STR="${ROWS:-all}"
 # the empty string for tasks with no fixed pattern, e.g. glue/superglue).
 resolve_resp_file() {
     local task="$1"
+    # Optional 2nd arg: cybermetric stem (e.g. CyberMetric-2000-v1). Defaults
+    # to CYBERMETRIC_STEM (the first --cybermetric-size value) so single-size
+    # callers don't have to thread it through.
+    local cm_stem="${2:-${CYBERMETRIC_STEM}}"
     local base="${BENCH_DIR}/responses/${DISPLAY_NAME}/${task}"
     case "${task}" in
         athena-*)
@@ -246,7 +273,7 @@ resolve_resp_file() {
         mcq|rcm|vsp|ate|taa)
             echo "${base}/${task}_${ROWS_STR}_v${VERSION}_${DISPLAY_NAME}_response.tsv" ;;
         cybermetric)
-            echo "${base}/${task}_${CYBERMETRIC_STEM}_${ROWS_STR}_v${VERSION}_${DISPLAY_NAME}_response.csv" ;;
+            echo "${base}/${task}_${cm_stem}_${ROWS_STR}_v${VERSION}_${DISPLAY_NAME}_response.csv" ;;
         cybersoceval-*)
             echo "${base}/${task}_${ROWS_STR}_v${VERSION}_${DISPLAY_NAME}_response.jsonl" ;;
         *)
@@ -271,8 +298,18 @@ count_resp_rows() {
 
 declare -a TARGET_FILES=()
 for task in ${TASKS}; do
-    rf="$(resolve_resp_file "${task}")"
-    [[ -n "${rf}" ]] && TARGET_FILES+=("${rf}")
+    if [[ "${task}" == "cybermetric" ]]; then
+        # One target file per configured CyberMetric size (so --overwrite
+        # / --retry-errors covers all sizes the sweep is about to write).
+        for _stem in "${CYBERMETRIC_STEMS[@]}"; do
+            rf="$(resolve_resp_file "${task}" "${_stem}")"
+            [[ -n "${rf}" ]] && TARGET_FILES+=("${rf}")
+        done
+        unset _stem
+    else
+        rf="$(resolve_resp_file "${task}")"
+        [[ -n "${rf}" ]] && TARGET_FILES+=("${rf}")
+    fi
 done
 
 # --overwrite: prompt the user (unless --yes), then delete any existing
@@ -383,7 +420,15 @@ fi
     echo "  reasoning   : ${REASONING_EFFORT:-<none>}"
     echo "  tasks       : ${TASKS}"
     if [[ "${TASKS}" == *"cybermetric"* ]]; then
-        echo "  cybermetric : ${CYBERMETRIC_STEM} (${CYBERMETRIC_DATA_PATH})"
+        if [[ ${#CYBERMETRIC_SIZES[@]} -gt 1 ]]; then
+            echo "  cybermetric : ${#CYBERMETRIC_SIZES[@]} sizes (one back-to-back run per size)"
+            for _i in "${!CYBERMETRIC_SIZES[@]}"; do
+                echo "                  - ${CYBERMETRIC_STEMS[$_i]} (${CYBERMETRIC_DATA_PATHS[$_i]})"
+            done
+            unset _i
+        else
+            echo "  cybermetric : ${CYBERMETRIC_STEM} (${CYBERMETRIC_DATA_PATH})"
+        fi
     fi
     if [[ ${SINGLE_GPU} -eq 1 ]]; then
         echo "  single-gpu  : yes (CUDA_VISIBLE_DEVICES=${SINGLE_GPU_IDX})"
@@ -429,66 +474,107 @@ fi
 
     overall_status=0
     for task in ${TASKS}; do
-        echo
-        echo "----- task: ${task} -----"
-        task_started_iso="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-        echo "  started : ${task_started_iso}"
-        task_start=$(date +%s)
-
-        # Task-specific extras (mainly cybermetric which needs an explicit
-        # --data_path when the user picks a non-default size).
-        task_extra=()
+        # cybermetric expands to one inference.py run per configured size
+        # (back-to-back against the same served model). Every other task
+        # runs exactly once. iter_sizes carries the list to iterate; the
+        # empty-string sentinel for non-cybermetric tasks keeps the loop
+        # body uniform without per-task conditionals later.
+        declare -a iter_sizes=()
         if [[ "${task}" == "cybermetric" ]]; then
-            task_extra+=(--data_path "${CYBERMETRIC_DATA_PATH}")
-        fi
-
-        # Capture the task's stdout+stderr in a temp file so we can parse the
-        # "Evaluation result for ... : {...}" line while still streaming output
-        # through the outer tee unchanged.
-        task_out_file="$(mktemp -t athena_task.XXXXXX)"
-        set +e
-        set -o pipefail
-        # Pin to a single GPU if --single-gpu was requested. Scoped to this
-        # subshell so the parent script's environment is untouched.
-        if [[ ${SINGLE_GPU} -eq 1 ]]; then
-            (
-                export CUDA_VISIBLE_DEVICES="${SINGLE_GPU_IDX}"
-                python inference.py "${task}" "${MODEL_NAME}" "${extra_args[@]}" "${task_extra[@]}" 2>&1
-            ) | tee "${task_out_file}"
+            iter_sizes=("${CYBERMETRIC_SIZES[@]}")
         else
-            python inference.py "${task}" "${MODEL_NAME}" "${extra_args[@]}" "${task_extra[@]}" 2>&1 \
-                | tee "${task_out_file}"
+            iter_sizes=("")
         fi
-        task_status=${PIPESTATUS[0]}
-        set +o pipefail
-        set -e
 
-        task_end=$(date +%s)
-        elapsed=$(( task_end - task_start ))
-        task_finished_iso="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-        echo "  finished: ${task_finished_iso} (elapsed ${elapsed}s, exit ${task_status})"
+        for iter_size in "${iter_sizes[@]}"; do
+            # Build per-iteration label / data path. The label is what
+            # appears in the summary table (e.g. cybermetric-2000); the
+            # underlying inference.py task name stays 'cybermetric' so the
+            # benchmark + evaluator code paths are unchanged.
+            iter_label="${task}"
+            iter_stem=""
+            iter_data_path=""
+            if [[ "${task}" == "cybermetric" ]]; then
+                # Only suffix the label with the size when more than one size
+                # is being run in this sweep. Single-size invocations keep the
+                # legacy 'cybermetric' label so downstream consumers that grep
+                # for ^cybermetric$ in the summary table don't break.
+                if [[ ${#CYBERMETRIC_SIZES[@]} -gt 1 ]]; then
+                    iter_label="cybermetric-${iter_size}"
+                fi
+                iter_stem="CyberMetric-${iter_size}-v1"
+                iter_data_path="benchmark_data/cybermetricdataset/${iter_stem}.json"
+            fi
 
-        # Extract the metrics dict printed by inference.py. Line looks like:
-        #   Evaluation result for athena-mcq with deepseek-v3.2-exp-hf: {'accuracy': '78.42%'}
-        metrics_raw="$(grep -E "^Evaluation result for ${task} with " "${task_out_file}" | tail -1 | sed -E "s/^Evaluation result for ${task} with [^:]+: //" || true)"
-        rm -f "${task_out_file}"
+            echo
+            echo "----- task: ${iter_label} -----"
+            task_started_iso="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+            echo "  started : ${task_started_iso}"
+            task_start=$(date +%s)
 
-        # Count rows actually written (evaluator's authoritative input file).
-        resp_file="$(resolve_resp_file "${task}")"
-        row_count="$(count_resp_rows "${resp_file}")"
+            # Task-specific extras (cybermetric needs an explicit --data_path
+            # for the size selected this iteration).
+            task_extra=()
+            if [[ "${task}" == "cybermetric" ]]; then
+                task_extra+=(--data_path "${iter_data_path}")
+            fi
 
-        RES_TASKS+=("${task}")
-        RES_ELAPSED+=("${elapsed}")
-        RES_EXIT+=("${task_status}")
-        RES_METRICS+=("${metrics_raw}")
-        RES_ROWS+=("${row_count}")
-        RES_STARTED+=("${task_started_iso}")
-        RES_FINISHED+=("${task_finished_iso}")
+            # Capture the task's stdout+stderr in a temp file so we can parse the
+            # "Evaluation result for ... : {...}" line while still streaming output
+            # through the outer tee unchanged.
+            task_out_file="$(mktemp -t athena_task.XXXXXX)"
+            set +e
+            set -o pipefail
+            # Pin to a single GPU if --single-gpu was requested. Scoped to this
+            # subshell so the parent script's environment is untouched.
+            if [[ ${SINGLE_GPU} -eq 1 ]]; then
+                (
+                    export CUDA_VISIBLE_DEVICES="${SINGLE_GPU_IDX}"
+                    python inference.py "${task}" "${MODEL_NAME}" "${extra_args[@]}" "${task_extra[@]}" 2>&1
+                ) | tee "${task_out_file}"
+            else
+                python inference.py "${task}" "${MODEL_NAME}" "${extra_args[@]}" "${task_extra[@]}" 2>&1 \
+                    | tee "${task_out_file}"
+            fi
+            task_status=${PIPESTATUS[0]}
+            set +o pipefail
+            set -e
 
-        if [[ ${task_status} -ne 0 ]]; then
-            overall_status=${task_status}
-            echo "  [WARN] task '${task}' exited non-zero; continuing with remaining tasks"
-        fi
+            task_end=$(date +%s)
+            elapsed=$(( task_end - task_start ))
+            task_finished_iso="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+            echo "  finished: ${task_finished_iso} (elapsed ${elapsed}s, exit ${task_status})"
+
+            # Extract the metrics dict printed by inference.py. Line looks like:
+            #   Evaluation result for athena-mcq with deepseek-v3.2-exp-hf: {'accuracy': '78.42%'}
+            # inference.py emits the underlying task name (cybermetric, not the
+            # size-tagged label), so we match against ${task} here.
+            metrics_raw="$(grep -E "^Evaluation result for ${task} with " "${task_out_file}" | tail -1 | sed -E "s/^Evaluation result for ${task} with [^:]+: //" || true)"
+            rm -f "${task_out_file}"
+
+            # Count rows actually written (evaluator's authoritative input file).
+            # cybermetric: pass the iteration's stem so resolve_resp_file picks
+            # the right per-size response file.
+            if [[ "${task}" == "cybermetric" ]]; then
+                resp_file="$(resolve_resp_file "${task}" "${iter_stem}")"
+            else
+                resp_file="$(resolve_resp_file "${task}")"
+            fi
+            row_count="$(count_resp_rows "${resp_file}")"
+
+            RES_TASKS+=("${iter_label}")
+            RES_ELAPSED+=("${elapsed}")
+            RES_EXIT+=("${task_status}")
+            RES_METRICS+=("${metrics_raw}")
+            RES_ROWS+=("${row_count}")
+            RES_STARTED+=("${task_started_iso}")
+            RES_FINISHED+=("${task_finished_iso}")
+
+            if [[ ${task_status} -ne 0 ]]; then
+                overall_status=${task_status}
+                echo "  [WARN] task '${iter_label}' exited non-zero; continuing with remaining tasks"
+            fi
+        done
     done
 
     sweep_end_epoch=$(date +%s)
@@ -512,7 +598,10 @@ fi
     mkdir -p "${summary_dir}"
     summary_stem="${SUITE}"
     if [[ "${SUITE}" == "cybermetric" ]]; then
-        summary_stem="${SUITE}_${CYBERMETRIC_SIZE}"
+        # Multi-size: join with '_' (e.g. cybermetric_2000_10000) so the
+        # summary file name reflects every CyberMetric split that ran.
+        _join_underscore() { local IFS=_; echo -n "$*"; }
+        summary_stem="${SUITE}_$(_join_underscore "${CYBERMETRIC_SIZES[@]}")"
     fi
     summary_json="${summary_dir}/summary_${summary_stem}_${ROWS_STR}_v${VERSION}.json"
     summary_md="${summary_dir}/summary_${summary_stem}_${ROWS_STR}_v${VERSION}.md"
