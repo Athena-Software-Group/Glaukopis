@@ -43,7 +43,7 @@
 #
 # Usage:
 #   ./setup.sh [--mode all|train|test|vllm]
-#              [--cuda cu124|cu121|cu118|cpu]
+#              [--cuda cu130|cu128|cu126|cu124|cu121|cu118|cpu|auto]
 #              [--env-name NAME] [--python VERSION]
 #              [--extras "metrics deepspeed"] [--no-flash-attn]
 #              [--lfs-pull] [--split-envs] [--no-conda-init]
@@ -55,7 +55,8 @@
 # Defaults:
 #   --mode all           (creates llm-sft + ctibench; pass --env-name to
 #                         force everything into a single named env instead)
-#   --cuda cu124
+#   --cuda cu124       (pass --cuda auto to pick the tag matching system nvcc;
+#                       cu126/cu128/cu130 are also accepted for newer toolkits)
 #   --env-name <unset>   (train -> llm-sft, test -> ctibench, vllm -> vllm,
 #                         all -> llm-sft + ctibench)
 #   --python 3.11
@@ -79,6 +80,7 @@ TEST_DIR="${SFT_DIR}/test"
 
 MODE="all"
 CUDA_TAG="cu124"
+CUDA_TAG_EXPLICIT=0
 ENV_NAME=""
 ENV_NAME_EXPLICIT=0
 PYTHON_VERSION="3.11"
@@ -107,7 +109,7 @@ GITHUB_TOKEN="${GITHUB_TOKEN:-}"
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --mode)               MODE="$2"; shift 2 ;;
-        --cuda)               CUDA_TAG="$2"; shift 2 ;;
+        --cuda)               CUDA_TAG="$2"; CUDA_TAG_EXPLICIT=1; shift 2 ;;
         --env-name)           ENV_NAME="$2"; ENV_NAME_EXPLICIT=1; shift 2 ;;
         --python)             PYTHON_VERSION="$2"; shift 2 ;;
         --extras)             EXTRAS="$2"; shift 2 ;;
@@ -154,10 +156,50 @@ if [[ -z "${ENV_NAME}" ]]; then
     esac
 fi
 
+# Auto-detect from nvcc when --cuda was not explicitly passed (or set to
+# "auto"). Falls back to the prior cu124 default when nvcc is missing or
+# reports a CUDA whose tag isn't supported by PyTorch's wheel index. This
+# is the fix for the torchvision/torchaudio mismatch we keep hitting on
+# fresh boxes: the default cu124 index ships torch<=2.6, but
+# SFT/test/requirements.txt pins torch>=2.8.0 (CVE), which forces pip to
+# yank a +cu130 torch from PyPI later -- orphaning torchvision/torchaudio
+# at the older cu124 wheels and producing the canonical
+# "RuntimeError: operator torchvision::nms does not exist" trip.
+if [[ "${CUDA_TAG}" == "auto" || ${CUDA_TAG_EXPLICIT} -eq 0 ]]; then
+    detected_cu=""
+    if command -v nvcc >/dev/null 2>&1; then
+        detected_cu="$(nvcc --version 2>/dev/null \
+            | grep -oE 'release [0-9]+\.[0-9]+' \
+            | awk '{print $2}' \
+            | head -1 \
+            | tr -d .)"
+    fi
+    if [[ -n "${detected_cu}" ]]; then
+        candidate="cu${detected_cu}"
+        case "${candidate}" in
+            cu130|cu128|cu126|cu124|cu121|cu118)
+                if [[ "${CUDA_TAG}" == "auto" || "${candidate}" != "${CUDA_TAG}" ]]; then
+                    echo "  [auto-detect] system nvcc reports CUDA ${detected_cu}; using --cuda ${candidate}"
+                fi
+                CUDA_TAG="${candidate}"
+                ;;
+            *)
+                echo "  [auto-detect] system nvcc reports CUDA ${detected_cu} (no matching PyTorch wheel index); keeping --cuda ${CUDA_TAG}"
+                ;;
+        esac
+    elif [[ "${CUDA_TAG}" == "auto" ]]; then
+        echo "  [auto-detect] nvcc not on PATH; falling back to --cuda cu124"
+        CUDA_TAG="cu124"
+    fi
+fi
 case "${CUDA_TAG}" in
-    cu124|cu121|cu118) TORCH_INDEX_URL="https://download.pytorch.org/whl/${CUDA_TAG}" ;;
-    cpu)               TORCH_INDEX_URL="https://download.pytorch.org/whl/cpu" ;;
-    *) echo "Unsupported --cuda value: ${CUDA_TAG} (expected cu124|cu121|cu118|cpu)"; exit 1 ;;
+    cu130|cu128|cu126|cu124|cu121|cu118)
+        TORCH_INDEX_URL="https://download.pytorch.org/whl/${CUDA_TAG}" ;;
+    cpu)
+        TORCH_INDEX_URL="https://download.pytorch.org/whl/cpu" ;;
+    *)
+        echo "Unsupported --cuda value: ${CUDA_TAG} (expected cu118|cu121|cu124|cu126|cu128|cu130|cpu|auto)"
+        exit 1 ;;
 esac
 
 echo "=== SFT unified setup ==="
@@ -367,6 +409,18 @@ install_stack() {
     if [[ "${stack}" == "test" || "${stack}" == "all" ]]; then
         echo "=== Installing SFT/test requirements into ${env} ==="
         pip install -r "${TEST_DIR}/requirements.txt"
+
+        # SFT/test/requirements.txt pins torch>=2.8.0 (CVE), which is newer
+        # than what the cu124 PyTorch wheel index ships. When that pin
+        # forces pip to upgrade torch from PyPI (typically to a +cu130
+        # wheel), torchvision/torchaudio installed earlier from the cu-tag
+        # index get left behind and ABI-mismatch the new torch -- producing
+        # the canonical "operator torchvision::nms does not exist" RuntimeError
+        # on `from transformers import pipeline`. align_torch_family detects
+        # the mismatch and re-anchors the two satellites to torch's actual
+        # cu build with --no-deps so this doesn't ripple back into torch.
+        echo "=== Aligning torchvision/torchaudio with installed torch in ${env} ==="
+        align_torch_family
     fi
 
     # flash-attn is only meaningful for the training / transformers-based
@@ -483,6 +537,33 @@ if stack == "vllm":
         print("deep_gemm         :", getattr(deep_gemm, "__version__", "installed"))
     except Exception as e:
         print("deep_gemm import failed:", e)
+if stack in ("test", "all"):
+    # Smoke-test the two imports that recur as bench-client failure modes:
+    #   - torchvision.ops.nms: trips the torch/torchvision ABI mismatch
+    #     ("operator torchvision::nms does not exist") at the dispatcher
+    #     registration step before any model code runs.
+    #   - transformers.pipeline: pulls torchvision transitively via
+    #     image_processing_utils, so a broken torchvision shows up as a
+    #     ModuleNotFoundError("Could not import module 'pipeline'").
+    # Both must succeed for run_benchmark.sh to reach the first request.
+    # Hard-exit on either failure so a broken env is caught at install
+    # time, not 4 seconds into the first benchmark task.
+    try:
+        from torchvision.ops import nms  # noqa: F401
+        import torchvision
+        print("torchvision OK    :", torchvision.__version__)
+    except Exception as e:
+        print("torchvision FAIL  :", repr(e))
+        print("                    -> torch/torchvision ABI mismatch; rerun setup.sh")
+        print("                       or: pip install --upgrade --force-reinstall --no-deps \\")
+        print("                              torchvision torchaudio --index-url <torch-cu-index>")
+        sys.exit(1)
+    try:
+        from transformers import pipeline  # noqa: F401
+        print("transformers OK   : from transformers import pipeline")
+    except Exception as e:
+        print("transformers FAIL :", repr(e))
+        sys.exit(1)
 PY
 
     if [[ "${stack}" == "train" || "${stack}" == "all" ]]; then
@@ -498,6 +579,79 @@ PY
         else
             echo "  [WARN] vllm cli not on PATH after install"
         fi
+    fi
+}
+
+# torchvision/torchaudio alignment helper ------------------------------------
+# SFT/test/requirements.txt pins torch>=2.8.0 (CVE), but the default cu124
+# PyTorch wheel index ships at most torch 2.6. When pip resolves the pin it
+# yanks a newer torch (typically +cu130) from PyPI, leaving torchvision and
+# torchaudio at the original cu-tag wheels installed earlier. The two then
+# fail to register their C++ ops against the new torch dispatcher and any
+# `from torchvision.ops import nms` (or `from transformers import pipeline`,
+# which imports torchvision transitively) explodes with:
+#     RuntimeError: operator torchvision::nms does not exist
+# Re-anchoring with --no-deps to torch's actual cu build resolves it without
+# perturbing torch itself.
+align_torch_family() {
+    local info
+    info="$(python - <<'PY' 2>/dev/null || true
+try:
+    import torch
+    print(torch.__version__, torch.version.cuda or "")
+except Exception:
+    print("", "")
+PY
+)"
+    local torch_full torch_cuda
+    read -r torch_full torch_cuda <<< "${info}"
+
+    if [[ -z "${torch_full}" ]]; then
+        echo "  [WARN] torch not importable in this env; skipping torchvision/torchaudio alignment"
+        return 0
+    fi
+    if [[ -z "${torch_cuda}" ]]; then
+        echo "  [info] torch is CPU-only (${torch_full}); skipping cu alignment"
+        return 0
+    fi
+
+    local cu_tag="cu${torch_cuda//./}"
+    local target_index="https://download.pytorch.org/whl/${cu_tag}"
+
+    # If both satellites import cleanly the env is already aligned -- skip
+    # the reinstall to keep idempotent reruns fast.
+    if python -c "from torchvision.ops import nms" 2>/dev/null \
+       && python -c "import torchaudio" 2>/dev/null; then
+        echo "  [info] torch/torchvision/torchaudio already aligned (torch ${torch_full}, ${cu_tag})"
+        return 0
+    fi
+
+    echo "  [repair] torchvision/torchaudio mismatched against torch ${torch_full}; reinstalling from ${target_index}"
+    set +e
+    pip install --upgrade --force-reinstall --no-deps \
+        torchvision torchaudio \
+        --index-url "${target_index}"
+    local rc=$?
+    set -e
+    if [[ ${rc} -ne 0 ]]; then
+        echo "  [WARN] torchvision/torchaudio reinstall from ${target_index} failed (exit ${rc})."
+        echo "         The PyTorch ${cu_tag} wheel index may not have wheels matching this torch yet."
+        echo "         Fallbacks (in order of preference):"
+        echo "           1) pip install --upgrade --force-reinstall --no-deps \\"
+        echo "                  torchvision torchaudio   # try latest from PyPI default"
+        echo "           2) pip uninstall -y torchvision torchaudio   # transformers handles"
+        echo "                  # their absence for text-only models (>=4.45)"
+        return 0
+    fi
+
+    if python -c "from torchvision.ops import nms" 2>/dev/null; then
+        local tv_ver
+        tv_ver="$(python -c 'import torchvision; print(torchvision.__version__)' 2>/dev/null)"
+        echo "  [repair] alignment ok (torchvision ${tv_ver})"
+    else
+        echo "  [WARN] torchvision still failing after reinstall."
+        echo "         Consider: pip uninstall -y torchvision   (text-only bench code"
+        echo "         doesn't use torchvision; transformers >= 4.45 imports it lazily)."
     fi
 }
 
