@@ -30,7 +30,10 @@
 #   8. Bootstraps SFT/.env from SFT/.env.example on first run
 #   9. Configures global git identity when --git-user-name/--git-user-email
 #      (or GIT_USER_NAME/GIT_USER_EMAIL env vars) are provided; otherwise
-#      warns at the end if no global identity is set on this box
+#      warns at the end if no global identity is set on this box. Also wires
+#      up `credential.helper store` + ~/.git-credentials when --git-token
+#      (or GITHUB_TOKEN env / .env) is provided so HTTPS pulls/pushes against
+#      the private repo work without per-invocation prompts.
 #  10. Reclaims disk after install: prunes pip cache, conda package tarballs,
 #      apt cache, stale serve/bench logs (>7 days), /tmp scratch dirs, and
 #      vacuums journald to 200 MB. HF model caches under ~/.cache/huggingface
@@ -46,6 +49,7 @@
 #              [--lfs-pull] [--split-envs] [--no-conda-init]
 #              [--skip-cybersoceval] [--no-bench-env]
 #              [--git-user-name "Your Name"] [--git-user-email you@example.com]
+#              [--git-token ghp_xxx]
 #              [--no-disk-cleanup]
 #
 # Defaults:
@@ -93,6 +97,12 @@ RUN_DISK_CLEANUP=1
 # doesn't get a surprise empty author on its first commit.
 GIT_USER_NAME="${GIT_USER_NAME:-}"
 GIT_USER_EMAIL="${GIT_USER_EMAIL:-}"
+# GitHub PAT: empty default. Picks up GITHUB_TOKEN from the environment
+# (so .env or shell exports work) and is overridden by --git-token. When
+# present (and not the .env.example placeholder), enables credential.helper
+# store and writes ~/.git-credentials so private-repo HTTPS pulls don't
+# fail with "Password authentication is not supported" on fresh boxes.
+GITHUB_TOKEN="${GITHUB_TOKEN:-}"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -110,6 +120,7 @@ while [[ $# -gt 0 ]]; do
         --no-disk-cleanup)    RUN_DISK_CLEANUP=0; shift ;;
         --git-user-name)      GIT_USER_NAME="$2"; shift 2 ;;
         --git-user-email)     GIT_USER_EMAIL="$2"; shift 2 ;;
+        --git-token)          GITHUB_TOKEN="$2"; shift 2 ;;
         -h|--help)
             sed -n '3,55p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
             exit 0
@@ -184,16 +195,19 @@ echo
 if [[ -f "${SFT_DIR}/.env" ]]; then
     _git_user_name_pre="${GIT_USER_NAME:-}"
     _git_user_email_pre="${GIT_USER_EMAIL:-}"
+    _github_token_pre="${GITHUB_TOKEN:-}"
     set -a
     # shellcheck source=/dev/null
     source "${SFT_DIR}/.env"
     set +a
     [[ -n "${_git_user_name_pre}"  ]] && GIT_USER_NAME="${_git_user_name_pre}"
     [[ -n "${_git_user_email_pre}" ]] && GIT_USER_EMAIL="${_git_user_email_pre}"
-    unset _git_user_name_pre _git_user_email_pre
+    [[ -n "${_github_token_pre}"   ]] && GITHUB_TOKEN="${_github_token_pre}"
+    unset _git_user_name_pre _git_user_email_pre _github_token_pre
 fi
 GIT_IDENTITY_WAS_SET=0
 GIT_IDENTITY_MISSING=0
+GIT_CREDENTIAL_WAS_SET=0
 if command -v git >/dev/null 2>&1; then
     if [[ -n "${GIT_USER_NAME}" && -n "${GIT_USER_EMAIL}" ]]; then
         echo "=== Setting global git identity ==="
@@ -205,6 +219,31 @@ if command -v git >/dev/null 2>&1; then
     elif [[ -z "$(git config --global --get user.name 2>/dev/null)" \
          || -z "$(git config --global --get user.email 2>/dev/null)" ]]; then
         GIT_IDENTITY_MISSING=1
+    fi
+
+    # GitHub HTTPS auth: write ~/.git-credentials so the private repo can be
+    # pulled/pushed without per-invocation prompts. GitHub disabled password
+    # auth in 2021, so HTTPS clones of private repos require either a PAT
+    # or SSH keys. We use the canonical 'x-access-token' username (any
+    # non-empty string actually works, but this is what GitHub recommends).
+    # Skipped silently when the value is the .env.example placeholder so a
+    # fresh `cp .env.example .env` doesn't write a useless credential.
+    if [[ -n "${GITHUB_TOKEN}" && "${GITHUB_TOKEN}" != "ghp_xxx_replace_me" ]]; then
+        echo "=== Configuring GitHub HTTPS credential helper ==="
+        git config --global credential.helper store
+        GIT_CREDENTIALS_FILE="${HOME}/.git-credentials"
+        # Strip any pre-existing github.com line so re-runs replace stale tokens.
+        if [[ -f "${GIT_CREDENTIALS_FILE}" ]]; then
+            grep -v '@github.com' "${GIT_CREDENTIALS_FILE}" \
+                > "${GIT_CREDENTIALS_FILE}.tmp" 2>/dev/null || true
+            mv "${GIT_CREDENTIALS_FILE}.tmp" "${GIT_CREDENTIALS_FILE}"
+        fi
+        ( umask 077 && \
+          printf 'https://x-access-token:%s@github.com\n' "${GITHUB_TOKEN}" \
+              >> "${GIT_CREDENTIALS_FILE}" )
+        chmod 600 "${GIT_CREDENTIALS_FILE}" 2>/dev/null || true
+        GIT_CREDENTIAL_WAS_SET=1
+        echo "  ok (helper=store, file=${GIT_CREDENTIALS_FILE})."
     fi
     echo
 fi
@@ -468,8 +507,14 @@ PY
 # to a specific torch x cuda x python combo and often ABI-mismatch against the
 # version pip resolves. flash-attn's setup.py also has an EXDEV bug when
 # $CONDA_PREFIX and $PIP_CACHE_DIR live on different filesystems (e.g. RunPod:
-# /root vs /home), which is why we try a prebuilt wheel first. The runtime
-# defaults to SDPA when flash-attn is absent, so this is best-effort.
+# /root vs /home), which is why we try a prebuilt wheel first.
+#
+# Source-build fallback is gated on torch's compiled CUDA matching the system
+# nvcc CUDA. torch's cpp_extension._check_cuda_version aborts the build with
+# the verbose 5-page "RuntimeError: ('The detected CUDA version mismatches...')"
+# traceback when these differ, so attempting the build under a known mismatch
+# is pure noise. The runtime defaults to SDPA when flash-attn is absent, so
+# this is best-effort.
 FLASH_ATTN_VERSION="${FLASH_ATTN_VERSION:-2.8.3}"
 
 install_flash_attn() {
@@ -478,13 +523,15 @@ install_flash_attn() {
 import torch, sys
 tv = torch.__version__.split("+")[0]
 tv_mm = ".".join(tv.split(".")[:2])
-cu = (torch.version.cuda or "").replace(".", "")
-cu_major = cu[:2] if cu else ""
+cu = (torch.version.cuda or "")
+cu_compact = cu.replace(".", "")
+cu_major = cu_compact[:2] if cu_compact else ""
 py_tag = f"cp{sys.version_info.major}{sys.version_info.minor}"
-print(f"{tv_mm} {cu_major} {py_tag}")
+print(f"{tv_mm} {cu_major} {py_tag} {cu}")
 PY
 )"
-    read -r TORCH_MM CU_MAJOR PY_TAG <<< "${info}"
+    local TORCH_MM CU_MAJOR PY_TAG TORCH_CUDA
+    read -r TORCH_MM CU_MAJOR PY_TAG TORCH_CUDA <<< "${info}"
 
     if [[ -z "${CU_MAJOR}" ]]; then
         echo "  [WARN] torch has no CUDA build; skipping flash-attn"
@@ -493,11 +540,41 @@ PY
 
     local wheel_url="https://github.com/Dao-AILab/flash-attention/releases/download/v${FLASH_ATTN_VERSION}/flash_attn-${FLASH_ATTN_VERSION}+cu${CU_MAJOR}torch${TORCH_MM}cxx11abiFALSE-${PY_TAG}-${PY_TAG}-linux_x86_64.whl"
     echo "  Trying prebuilt wheel: ${wheel_url}"
-    if pip install --no-build-isolation "${wheel_url}"; then
+    if pip install --no-build-isolation "${wheel_url}" 2>&1 | tail -20; then
+        # tail returned 0 even on 404; verify flash_attn actually imports
+        if python -c "import flash_attn" 2>/dev/null; then
+            return 0
+        fi
+    fi
+    echo "  [WARN] Prebuilt wheel unavailable for torch ${TORCH_MM}+cu${CU_MAJOR} / ${PY_TAG}."
+
+    # Gate the source-build fallback on a CUDA version match. nvcc's reported
+    # "release X.Y" must match torch's compile-time CUDA major.minor or torch's
+    # cpp_extension will abort with a multi-page RuntimeError.
+    local nvcc_cuda=""
+    if command -v nvcc >/dev/null 2>&1; then
+        nvcc_cuda="$(nvcc --version 2>/dev/null \
+            | grep -oE 'release [0-9]+\.[0-9]+' \
+            | awk '{print $2}' \
+            | head -1)"
+    fi
+    if [[ -z "${nvcc_cuda}" ]]; then
+        echo "  [WARN] nvcc not found on PATH; skipping source-build fallback."
+        echo "         flash-attn requires a system CUDA toolkit matching torch ${TORCH_CUDA}."
+        return 0
+    fi
+    if [[ "${nvcc_cuda}" != "${TORCH_CUDA}" ]]; then
+        echo "  [WARN] CUDA mismatch detected (system nvcc=${nvcc_cuda}, torch=${TORCH_CUDA});"
+        echo "         skipping source-build fallback because torch.utils.cpp_extension"
+        echo "         would abort with a verbose RuntimeError. To enable flash-attn here,"
+        echo "         either install a torch wheel matching CUDA ${nvcc_cuda} or upgrade"
+        echo "         the system CUDA toolkit to ${TORCH_CUDA}. flash-attn is optional;"
+        echo "         vllm bundles its own attention kernels and the benchmark client"
+        echo "         doesn't import flash-attn at all."
         return 0
     fi
 
-    echo "  Prebuilt wheel failed; retrying standard install with pinned TMPDIR/PIP_CACHE_DIR..."
+    echo "  CUDA versions agree (${nvcc_cuda}); attempting source build..."
     export TMPDIR="${HOME}/tmp" PIP_CACHE_DIR="${HOME}/.cache/pip"
     mkdir -p "${TMPDIR}" "${PIP_CACHE_DIR}"
     pip install "flash-attn==${FLASH_ATTN_VERSION}" --no-build-isolation
@@ -732,6 +809,23 @@ if [[ ${GIT_IDENTITY_MISSING} -eq 1 ]]; then
 elif [[ ${GIT_IDENTITY_WAS_SET} -eq 1 ]]; then
     echo "Git identity configured: ${GIT_USER_NAME} <${GIT_USER_EMAIL}>"
     echo
+fi
+if [[ ${GIT_CREDENTIAL_WAS_SET} -eq 1 ]]; then
+    echo "GitHub HTTPS credential helper active: 'git pull/push' against the"
+    echo "private repo will use ${GIT_CREDENTIALS_FILE} (perms 0600)."
+    echo
+elif command -v git >/dev/null 2>&1 && [[ -d "${SFT_DIR}/../.git" ]]; then
+    if ! git -C "${SFT_DIR}/.." config --get-all credential.helper >/dev/null 2>&1 \
+       && [[ ! -f "${HOME}/.git-credentials" ]]; then
+        echo "GitHub HTTPS auth not configured. Private-repo 'git pull' will"
+        echo "fail with 'Password authentication is not supported'. Either"
+        echo "rerun setup with --git-token ghp_xxx (or set GITHUB_TOKEN in"
+        echo "SFT/.env) or configure manually:"
+        echo "    git config --global credential.helper store"
+        echo "    echo 'https://x-access-token:ghp_xxx@github.com' >> ~/.git-credentials"
+        echo "    chmod 600 ~/.git-credentials"
+        echo
+    fi
 fi
 echo "Alternative to editing .env: run the interactive CLIs once:"
 echo "    hf auth login            # REQUIRED (Llama-3.1-8B-Instruct is a gated model)"
