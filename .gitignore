@@ -453,3 +453,11 @@ SFT/data/
 # extracted text files. Regenerable via SFT/test/utils/fetch_cybersoceval_data.py.
 SFT/test/benchmark_data/cybersoceval/
 SFT/test/responses/fdtn-ai_Foundation-Sec-8B-Reasoning
+
+# Per-version corpus build directories (_v10_build, _v11_build, ...): keep the
+# orchestration script (watcher.sh), per-phase logs, and final status json
+# tracked so a build is reproducible; ignore bulky intermediates (per-template
+# triples, full dedup report) and transient pid files.
+_v*_build/triples/
+_v*_build/dedup_report.json
+_v*_build/*.pid

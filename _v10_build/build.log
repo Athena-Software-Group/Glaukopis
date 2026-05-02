@@ -1,0 +1,503 @@
+=== [1/3] docx → JSON templates ===
+  Input : tmpl_gen/templates/05012026/Sophia-CTI-Templates-v10.txt
+  Output: /Users/pietro/code/Glaukopis/tmpl_gen/data_generation/Sophia-CTI-Templates-v10.json
+  count_limit=10
+
+    Loaded template AB.MCQ.1
+    Loaded template AB.MCQ.2
+    Loaded template AB.MCQ.3
+    Loaded template AB.MCQ.4
+    Loaded template AB.MCQ.5
+    Loaded template AB.MCQ.6
+    Loaded template AB.RCM.1
+    Loaded template AB.RCM.2
+    Loaded template AB.VSP.1
+    Loaded template AB.VSP.2
+    Loaded template AB.VSP.3
+    Loaded template AB.VSP.4
+    Loaded template AB.ATE.1
+    Loaded template AB.ATE.2
+    Loaded template AB.ATE.3
+    Loaded template AB.ATE.4
+    Loaded template AB.ATE.5
+    Loaded template AB.RMS.1
+    Loaded template AB.RMS.2
+    Loaded template AB.TAA.1
+    Loaded template AB.TAA.2
+    Loaded template AB.TAA.3
+    Loaded template AB.TAA.4
+    Loaded template AB.TAA.5
+    Loaded template M.1
+    Loaded template M.2
+    Loaded template M.3
+    Loaded template M.4
+    Loaded template M.5
+    Loaded template M.6
+    Loaded template M.7
+    Loaded template M.8
+    Loaded template A.1
+    Loaded template A.2
+    Loaded template A.3
+    Loaded template A.4
+    Loaded template A.5
+    Loaded template A.6
+    Loaded template A.7
+    Loaded template A.8
+    Loaded template W.1
+    Loaded template W.2
+    Loaded template W.3
+    Loaded template W.4
+    Loaded template W.5
+    Loaded template W.6
+    Loaded template W.7
+    Loaded template W.8
+    Loaded template V.1
+    Loaded template V.2
+    Loaded template V.3
+    Loaded template V.4
+    Loaded template V.5
+    Loaded template V.6
+    Loaded template V.7
+    Loaded template V.8
+    Loaded template S.1
+    Loaded template S.2
+    Loaded template S.3
+    Loaded template S.4
+    Loaded template S.5
+    Loaded template S.6
+    Loaded template S.7
+    Loaded template S.8
+    Loaded template P.1
+    Loaded template P.2
+    Loaded template P.3
+    Loaded template P.4
+    Loaded template P.5
+    Loaded template P.6
+    Loaded template P.7
+    Loaded template P.8
+    Loaded template E.1
+    Loaded template E.2
+    Loaded template E.3
+    Loaded template E.4
+    Loaded template E.5
+    Loaded template E.6
+    Loaded template E.7
+    Loaded template E.8
+    Loaded template X.1
+    Loaded template X.2
+    Loaded template X.3
+    Loaded template X.4
+    Loaded template X.5
+    Loaded template X.6
+    Loaded template X.7
+    Loaded template X.8
+    Loaded template X.VW.1
+    Loaded template X.VW.2
+    Loaded template X.VW.3
+    Loaded template X.WA.1
+    Loaded template X.WA.2
+    Loaded template X.AM.1
+    Loaded template X.MT.1
+    Loaded template X.MT.2
+    Loaded template X.MM.1
+    Loaded template X.MN.1
+    Loaded template X.MN.2
+    Loaded template X.GM.1
+    Loaded template X.GM.2
+    Loaded template X.GS.1
+    Loaded template X.VP.1
+    Loaded template X.VK.1
+    Loaded template X.VWA.1
+    Loaded template X.TMN.1
+    Loaded template YN.VW.P.1
+    Loaded template YN.VW.N.1
+    Loaded template YN.WA.P.1
+    Loaded template YN.WA.N.1
+    Loaded template YN.MT.P.1
+    Loaded template YN.MT.N.1
+    Loaded template YN.GM.P.1
+    Loaded template YN.GM.N.1
+    Loaded template YN.MN.P.1
+    Loaded template YN.MN.N.1
+    Loaded template Q.VW.1
+    Loaded template Q.WA.1
+    Loaded template Q.MT.1
+    Loaded template Q.MN.1
+    Loaded template Q.GM.1
+    Loaded template Q.AM.1
+    Loaded template CL.V.1
+    Loaded template CL.V.2
+    Loaded template CL.M.1
+    Loaded template CL.A.1
+    Loaded template CL.G.1
+    Loaded template SU.V.1
+    Loaded template SU.W.1
+    Loaded template SU.M.1
+    Loaded template SU.G.1
+    Loaded template V.CPE.1
+    Loaded template V.CPE.2
+    Loaded template V.CPE.3
+    Loaded template V.CPE.4
+    Loaded template SR.1
+    Loaded template SR.2
+    Loaded template SR.3
+    Loaded template SR.4
+    Loaded template SR.5
+    Loaded template SR.6
+    Loaded template SR.7
+    Loaded template SR.8
+    Loaded template EDB.1
+    Loaded template EDB.2
+    Loaded template EDB.3
+    Loaded template EDB.4
+    Loaded template EDB.5
+    Loaded template POC.1
+    Loaded template POC.2
+    Loaded template POC.3
+    Loaded template POC.4
+    Loaded template X.VEDB.1
+    Loaded template X.VPOC.1
+    Loaded template X.MSR.1
+    Loaded template X.VSR.1
+    Loaded template X.VEDB.2
+    Loaded template YN.MSR.P.1
+    Loaded template YN.MSR.N.1
+    Loaded template YN.VEDB.P.1
+    Loaded template YN.VEDB.N.1
+    Loaded template YN.VPOC.P.1
+    Loaded template YN.VPOC.N.1
+    Loaded template YN.CPE.P.1
+    Loaded template Q.MSR.1
+    Loaded template Q.VEDB.1
+    Loaded template Q.VPOC.1
+    Loaded template CL.SR.1
+    Loaded template CL.SR.2
+    Loaded template CL.EDB.1
+    Loaded template SU.SR.1
+    Loaded template SU.EDB.1
+    Loaded template SU.POC.1
+    Loaded template AB.RMS.3a
+    Loaded template AB.RMS.3b
+    Loaded template AB.RMS.3c
+    Loaded template AB.RMS.3d
+    Loaded template AB.RMS.3e
+    Loaded template AB.RMS.3f
+    Loaded template AB.RMS.3g
+    Loaded template AB.RMS.3h
+    Loaded template AB.RMS.4
+    Loaded template AB.RMS.5
+    Loaded template AB.RMS.6
+    Loaded template JS.MCQ.1
+    Loaded template JS.MCQ.2
+    Loaded template JS.MCQ.5
+    Loaded template JS.RCM.1
+    Loaded template JS.RCM.2
+    Loaded template JS.ATE.1
+    Loaded template JS.ATE.2
+    Loaded template JS.ATE.3
+    Loaded template JS.RMS.1
+    Loaded template JS.RMS.2
+    Loaded template JS.RMS.3
+    Loaded template JS.RMS.4
+    Loaded template JS.RMS.5
+    Loaded template JS.RMS.6
+    Loaded template JS.RMS.7
+    Loaded template JS.RMS.8
+    Loaded template JS.TAA.1
+    Loaded template JS.TAA.2
+    Loaded template JS.TAA.3
+    Loaded template JS.VSP.1
+    Loaded template JS.VSP.2
+    Loaded template AB.TAA.IE.1
+    Loaded template AB.TAA.IE.2
+    Loaded template AB.TAA.NEG.1
+    Loaded template JS.TAA.IE.1
+    Loaded template JS.TAA.NEG.1
+    Loaded template AB.MS.GRP.1
+    Loaded template AB.MS.GRP.2
+    Loaded template AB.MS.GRP.3
+    Loaded template AB.MS.MAL.1
+    Loaded template AB.MS.MAL.2
+    Loaded template AB.MS.MAL.3
+
+Wrote 216 templates to file /Users/pietro/code/Glaukopis/tmpl_gen/data_generation/Sophia-CTI-Templates-v10.json
+
+=== [1/3] done ===
+
+=== [2/3] templates → triples ===
+  Input     : /Users/pietro/code/Glaukopis/tmpl_gen/data_generation/Sophia-CTI-Templates-v10.json
+  Output dir: _v10_build/triples  (WILL BE ERASED)
+  count_max=1500
+
+/Users/pietro/code/Glaukopis/tmpl_gen/src/tmpl_gen/tmpl_parser.py:77: MarkupResemblesLocatorWarning: The input passed in on this line looks more like a URL than HTML or XML.
+
+If you meant to use Beautiful Soup to parse the web page found at a certain URL, then something has gone wrong. You should use an Python package like 'requests' to fetch the content behind the URL. Once you have the content as a string, you can feed that string into Beautiful Soup.
+
+However, if you want to parse some data that happens to look like a URL, then nothing has gone wrong: you are using Beautiful Soup correctly, and this warning is spurious and can be filtered. To make this warning go away, run this code before calling the BeautifulSoup constructor:
+
+    from bs4 import MarkupResemblesLocatorWarning
+    import warnings
+
+    warnings.filterwarnings("ignore", category=MarkupResemblesLocatorWarning)
+    
+  text = BeautifulSoup(raw_text, "html.parser").get_text(separator="\n")
+Namespace(cmd='generate', genconf='/Users/pietro/code/Glaukopis/tmpl_gen/data_generation/gencfg_default_neo4j.json', dbconf='/Users/pietro/code/Glaukopis/tmpl_gen/data_generation/neo4j-local-config.json', tmpl='/Users/pietro/code/Glaukopis/tmpl_gen/data_generation/Sophia-CTI-Templates-v10.json', results_dir='_v10_build/triples', mitre_file='data/enterprise-attack.json', out='', count_max=1500, verbose=0)
+Neo4jDriver: Connection to Neo4j 'athena-cti-db' database successful.
+  WARN: primary query hit transaction memory; falling back to bounded form
+  WARN: primary query hit transaction memory; falling back to bounded form
+  WARN: primary query hit transaction memory; falling back to bounded form
+  WARN: primary query hit transaction memory; falling back to bounded form
+  WARN: primary query hit transaction memory; falling back to bounded form
+  WARN: primary query hit transaction memory; falling back to bounded form
+  WARN: primary query hit transaction memory; falling back to bounded form
+  WARN: primary query hit transaction memory; falling back to bounded form
+  WARN: primary query hit transaction memory; falling back to bounded form
+  WARN: primary query hit transaction memory; falling back to bounded form
+  WARN: primary query hit transaction memory; falling back to bounded form
+  WARN: primary query hit transaction memory; falling back to bounded form
+  WARN: primary query hit transaction memory; falling back to bounded form
+  WARN: primary query hit transaction memory; falling back to bounded form
+  WARN: primary query hit transaction memory; falling back to bounded form
+  WARN: primary query hit transaction memory; falling back to bounded form
+  WARN: primary query hit transaction memory; falling back to bounded form
+  WARN: primary query hit transaction memory; falling back to bounded form
+  WARN: primary query hit transaction memory; falling back to bounded form
+  WARN: primary query hit transaction memory; falling back to bounded form
+  WARN: primary query hit transaction memory; falling back to bounded form
+  WARN: primary query hit transaction memory; falling back to bounded form
+  WARN: primary query hit transaction memory; falling back to bounded form
+  WARN: primary query hit transaction memory; falling back to bounded form
+  WARN: primary query hit transaction memory; falling back to bounded form
+  WARN: primary query hit transaction memory; falling back to bounded form
+  WARN: primary query hit transaction memory; falling back to bounded form
+  WARN: primary query hit transaction memory; falling back to bounded form
+  WARN: primary query hit transaction memory; falling back to bounded form
+  WARN: primary query hit transaction memory; falling back to bounded form
+  WARN: primary query hit transaction memory; falling back to bounded form
+  WARN: primary query hit transaction memory; falling back to bounded form
+  WARN: primary query hit transaction memory; falling back to bounded form
+Generated: 209  failed: 7
+Results saved in directory _v10_build/triples
+Neo4jDriver: Connection to Neo4j 'athena-cti-db' database closed.
+
+=== [2/3] done ===
+
+=== [3/3] triples → Alpaca dataset ===
+  Input : _v10_build/triples
+  Output: SFT/data/ift_data_2026_05_01_v10.raw.json
+
+Namespace(results_dir='_v10_build/triples', output='SFT/data/ift_data_2026_05_01_v10.raw.json', instruction='', count_max=-1, from='', to='', tags_any='', tags_all='', no_unescape_json_sentinels=False)
+Processing: _v10_build/triples/t_00205_AB.TAA.IE.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00084_X.5.json: Converted to Alpaca 75 triples.
+Processing: _v10_build/triples/t_00088_X.VW.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00112_YN.GM.P.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00177_AB.RMS.3e.json: Converted to Alpaca 750 triples.
+Processing: _v10_build/triples/t_00116_Q.VW.1.json: Converted to Alpaca 0 triples.
+Processing: _v10_build/triples/t_00122_CL.V.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00057_S.2.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00045_W.6.json: Converted to Alpaca 1436 triples.
+Processing: _v10_build/triples/t_00026_M.3.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00071_P.8.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00145_EDB.3.json: Converted to Alpaca 339 triples.
+Processing: _v10_build/triples/t_00055_V.8.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00176_AB.RMS.3d.json: Converted to Alpaca 1100 triples.
+Processing: _v10_build/triples/t_00214_AB.MS.MAL.2.json: Converted to Alpaca 1000 triples.
+Processing: _v10_build/triples/t_00148_POC.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00107_YN.VW.N.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00147_EDB.5.json: Converted to Alpaca 337 triples.
+Processing: _v10_build/triples/t_00038_A.7.json: Converted to Alpaca 615 triples.
+Processing: _v10_build/triples/t_00139_SR.5.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00022_AB.TAA.4.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00153_X.VPOC.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00143_EDB.1.json: Converted to Alpaca 335 triples.
+Processing: _v10_build/triples/t_00167_CL.SR.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00162_YN.VPOC.N.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00036_A.5.json: Converted to Alpaca 33 triples.
+Processing: _v10_build/triples/t_00077_E.6.json: Converted to Alpaca 13 triples.
+Processing: _v10_build/triples/t_00206_AB.TAA.IE.2.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00016_AB.ATE.5.json: Converted to Alpaca 835 triples.
+Processing: _v10_build/triples/t_00140_SR.6.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00174_AB.RMS.3b.json: Converted to Alpaca 1100 triples.
+Processing: _v10_build/triples/t_00015_AB.ATE.4.json: Converted to Alpaca 835 triples.
+Processing: _v10_build/triples/t_00064_P.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00180_AB.RMS.3h.json: Converted to Alpaca 150 triples.
+Processing: _v10_build/triples/t_00094_X.MT.1.json: Converted to Alpaca 1089 triples.
+Processing: _v10_build/triples/t_00175_AB.RMS.3c.json: Converted to Alpaca 1100 triples.
+Processing: _v10_build/triples/t_00069_P.6.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00082_X.3.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00074_E.3.json: Converted to Alpaca 51 triples.
+Processing: _v10_build/triples/t_00152_X.VEDB.1.json: Converted to Alpaca 339 triples.
+Processing: _v10_build/triples/t_00010_AB.VSP.3.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00091_X.WA.1.json: Converted to Alpaca 1212 triples.
+Processing: _v10_build/triples/t_00111_YN.MT.N.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00079_E.8.json: Converted to Alpaca 685 triples.
+Processing: _v10_build/triples/t_00061_S.6.json: Converted to Alpaca 27 triples.
+Processing: _v10_build/triples/t_00067_P.4.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00171_SU.EDB.1.json: Converted to Alpaca 339 triples.
+Processing: _v10_build/triples/t_00041_W.2.json: Converted to Alpaca 969 triples.
+Processing: _v10_build/triples/t_00052_V.5.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00123_CL.V.2.json: Converted to Alpaca 372 triples.
+Processing: _v10_build/triples/t_00201_JS.TAA.2.json: Converted to Alpaca 300 triples.
+Processing: _v10_build/triples/t_00021_AB.TAA.3.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00149_POC.2.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00150_POC.3.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00089_X.VW.2.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00119_Q.MN.1.json: Converted to Alpaca 250 triples.
+Processing: _v10_build/triples/t_00128_SU.W.1.json: Converted to Alpaca 1212 triples.
+Processing: _v10_build/triples/t_00000_AB.MCQ.1.json: Converted to Alpaca 800 triples.
+Processing: _v10_build/triples/t_00212_AB.MS.GRP.3.json: Converted to Alpaca 500 triples.
+Processing: _v10_build/triples/t_00197_JS.RMS.6.json: Converted to Alpaca 150 triples.
+Processing: _v10_build/triples/t_00202_JS.TAA.3.json: Converted to Alpaca 300 triples.
+Processing: _v10_build/triples/t_00080_X.1.json: Converted to Alpaca 28 triples.
+Processing: _v10_build/triples/t_00090_X.VW.3.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00032_A.1.json: Converted to Alpaca 615 triples.
+Processing: _v10_build/triples/t_00141_SR.7.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00196_JS.RMS.5.json: Converted to Alpaca 200 triples.
+Processing: _v10_build/triples/t_00066_P.3.json: Converted to Alpaca 372 triples.
+Processing: _v10_build/triples/t_00001_AB.MCQ.2.json: Converted to Alpaca 800 triples.
+Processing: _v10_build/triples/t_00031_M.8.json: Converted to Alpaca 132 triples.
+Processing: _v10_build/triples/t_00165_Q.VEDB.1.json: Converted to Alpaca 250 triples.
+Processing: _v10_build/triples/t_00063_S.8.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00110_YN.MT.P.1.json: Converted to Alpaca 1089 triples.
+Processing: _v10_build/triples/t_00209_JS.TAA.NEG.1.json: Converted to Alpaca 500 triples.
+Processing: _v10_build/triples/t_00002_AB.MCQ.3.json: Converted to Alpaca 100 triples.
+Processing: _v10_build/triples/t_00200_JS.TAA.1.json: Converted to Alpaca 300 triples.
+Processing: _v10_build/triples/t_00125_CL.A.1.json: Converted to Alpaca 1212 triples.
+Processing: _v10_build/triples/t_00170_SU.SR.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00075_E.4.json: Converted to Alpaca 9 triples.
+Processing: _v10_build/triples/t_00195_JS.RMS.4.json: Converted to Alpaca 300 triples.
+Processing: _v10_build/triples/t_00083_X.4.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00019_AB.TAA.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00008_AB.VSP.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00027_M.4.json: Converted to Alpaca 477 triples.
+Processing: _v10_build/triples/t_00047_W.8.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00099_X.GM.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00095_X.MT.2.json: Converted to Alpaca 1089 triples.
+Processing: _v10_build/triples/t_00029_M.6.json: Converted to Alpaca 1089 triples.
+Processing: _v10_build/triples/t_00097_X.MN.1.json: Converted to Alpaca 1445 triples.
+Processing: _v10_build/triples/t_00113_YN.GM.N.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00121_Q.AM.1.json: Converted to Alpaca 250 triples.
+Processing: _v10_build/triples/t_00073_E.2.json: Converted to Alpaca 77 triples.
+Processing: _v10_build/triples/t_00138_SR.4.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00024_M.1.json: Converted to Alpaca 835 triples.
+Processing: _v10_build/triples/t_00204_JS.VSP.2.json: Converted to Alpaca 375 triples.
+Processing: _v10_build/triples/t_00190_JS.ATE.2.json: Converted to Alpaca 375 triples.
+Processing: _v10_build/triples/t_00154_X.MSR.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00168_CL.SR.2.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00160_YN.VEDB.N.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00120_Q.GM.1.json: Converted to Alpaca 250 triples.
+Processing: _v10_build/triples/t_00126_CL.G.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00104_X.VWA.1.json: Converted to Alpaca 894 triples.
+Processing: _v10_build/triples/t_00096_X.MM.1.json: Converted to Alpaca 477 triples.
+Processing: _v10_build/triples/t_00086_X.7.json: Converted to Alpaca 287 triples.
+Processing: _v10_build/triples/t_00163_YN.CPE.P.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00049_V.2.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00142_SR.8.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00106_YN.VW.P.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00009_AB.VSP.2.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00046_W.7.json: Converted to Alpaca 615 triples.
+Processing: _v10_build/triples/t_00025_M.2.json: Converted to Alpaca 1445 triples.
+Processing: _v10_build/triples/t_00108_YN.WA.P.1.json: Converted to Alpaca 1212 triples.
+Processing: _v10_build/triples/t_00169_CL.EDB.1.json: Converted to Alpaca 335 triples.
+Processing: _v10_build/triples/t_00131_V.CPE.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00127_SU.V.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00151_POC.4.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00048_V.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00115_YN.MN.N.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00146_EDB.4.json: Converted to Alpaca 339 triples.
+Processing: _v10_build/triples/t_00035_A.4.json: Converted to Alpaca 366 triples.
+Processing: _v10_build/triples/t_00157_YN.MSR.P.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00020_AB.TAA.2.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00144_EDB.2.json: Converted to Alpaca 335 triples.
+Processing: _v10_build/triples/t_00028_M.5.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00161_YN.VPOC.P.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00137_SR.3.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00072_E.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00087_X.8.json: Converted to Alpaca 1221 triples.
+Processing: _v10_build/triples/t_00059_S.4.json: Converted to Alpaca 1252 triples.
+Processing: _v10_build/triples/t_00050_V.3.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00133_V.CPE.3.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00018_AB.RMS.2.json: Converted to Alpaca 1445 triples.
+Processing: _v10_build/triples/t_00043_W.4.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00033_A.2.json: Converted to Alpaca 615 triples.
+Processing: _v10_build/triples/t_00191_JS.ATE.3.json: Converted to Alpaca 375 triples.
+Processing: _v10_build/triples/t_00166_Q.VPOC.1.json: Converted to Alpaca 250 triples.
+Processing: _v10_build/triples/t_00093_X.AM.1.json: Converted to Alpaca 270 triples.
+Processing: _v10_build/triples/t_00188_JS.RCM.2.json: Converted to Alpaca 565 triples.
+Processing: _v10_build/triples/t_00014_AB.ATE.3.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00130_SU.G.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00013_AB.ATE.2.json: Converted to Alpaca 835 triples.
+Processing: _v10_build/triples/t_00184_JS.MCQ.1.json: Converted to Alpaca 525 triples.
+Processing: _v10_build/triples/t_00040_W.1.json: Converted to Alpaca 969 triples.
+Processing: _v10_build/triples/t_00053_V.6.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00011_AB.VSP.4.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00012_AB.ATE.1.json: Converted to Alpaca 835 triples.
+Processing: _v10_build/triples/t_00185_JS.MCQ.2.json: Converted to Alpaca 375 triples.
+Processing: _v10_build/triples/t_00132_V.CPE.2.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00062_S.7.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00155_X.VSR.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00030_M.7.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00092_X.WA.2.json: Converted to Alpaca 1212 triples.
+Processing: _v10_build/triples/t_00203_JS.VSP.1.json: Converted to Alpaca 375 triples.
+Processing: _v10_build/triples/t_00117_Q.WA.1.json: Converted to Alpaca 250 triples.
+Processing: _v10_build/triples/t_00081_X.2.json: Converted to Alpaca 328 triples.
+Processing: _v10_build/triples/t_00068_P.5.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00164_Q.MSR.1.json: Converted to Alpaca 100 triples.
+Processing: _v10_build/triples/t_00101_X.GS.1.json: Converted to Alpaca 647 triples.
+Processing: _v10_build/triples/t_00098_X.MN.2.json: Converted to Alpaca 1445 triples.
+Processing: _v10_build/triples/t_00103_X.VK.1.json: Converted to Alpaca 372 triples.
+Processing: _v10_build/triples/t_00006_AB.RCM.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00159_YN.VEDB.P.1.json: Converted to Alpaca 339 triples.
+Processing: _v10_build/triples/t_00187_JS.RCM.1.json: Converted to Alpaca 565 triples.
+Processing: _v10_build/triples/t_00192_JS.RMS.1.json: Converted to Alpaca 300 triples.
+Processing: _v10_build/triples/t_00118_Q.MT.1.json: Converted to Alpaca 250 triples.
+Processing: _v10_build/triples/t_00172_SU.POC.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00156_X.VEDB.2.json: Converted to Alpaca 45 triples.
+Processing: _v10_build/triples/t_00129_SU.M.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00023_AB.TAA.5.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00173_AB.RMS.3a.json: Converted to Alpaca 1100 triples.
+Processing: _v10_build/triples/t_00060_S.5.json: Converted to Alpaca 372 triples.
+Processing: _v10_build/triples/t_00134_V.CPE.4.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00042_W.3.json: Converted to Alpaca 969 triples.
+Processing: _v10_build/triples/t_00017_AB.RMS.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00051_V.4.json: Converted to Alpaca 372 triples.
+Processing: _v10_build/triples/t_00076_E.5.json: Converted to Alpaca 204 triples.
+Processing: _v10_build/triples/t_00003_AB.MCQ.4.json: Converted to Alpaca 250 triples.
+Processing: _v10_build/triples/t_00193_JS.RMS.2.json: Converted to Alpaca 300 triples.
+Processing: _v10_build/triples/t_00158_YN.MSR.N.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00065_P.2.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00007_AB.RCM.2.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00078_E.7.json: Converted to Alpaca 1344 triples.
+Processing: _v10_build/triples/t_00135_SR.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00100_X.GM.2.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00194_JS.RMS.3.json: Converted to Alpaca 300 triples.
+Processing: _v10_build/triples/t_00102_X.VP.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00124_CL.M.1.json: Converted to Alpaca 1089 triples.
+Processing: _v10_build/triples/t_00114_YN.MN.P.1.json: Converted to Alpaca 1445 triples.
+Processing: _v10_build/triples/t_00136_SR.2.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00208_JS.TAA.IE.1.json: Converted to Alpaca 1000 triples.
+Processing: _v10_build/triples/t_00179_AB.RMS.3g.json: Converted to Alpaca 225 triples.
+Processing: _v10_build/triples/t_00199_JS.RMS.8.json: Converted to Alpaca 75 triples.
+Processing: _v10_build/triples/t_00182_AB.RMS.5.json: Converted to Alpaca 44 triples.
+Processing: _v10_build/triples/t_00178_AB.RMS.3f.json: Converted to Alpaca 375 triples.
+Processing: _v10_build/triples/t_00181_AB.RMS.4.json: Converted to Alpaca 44 triples.
+Processing: _v10_build/triples/t_00198_JS.RMS.7.json: Converted to Alpaca 100 triples.
+Processing: _v10_build/triples/t_00054_V.7.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00070_P.7.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00207_AB.TAA.NEG.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00037_A.6.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00109_YN.WA.N.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00058_S.3.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00189_JS.ATE.1.json: Converted to Alpaca 375 triples.
+Processing: _v10_build/triples/t_00085_X.6.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00039_A.8.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00105_X.TMN.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00183_AB.RMS.6.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00056_S.1.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00044_W.5.json: Converted to Alpaca 1500 triples.
+Processing: _v10_build/triples/t_00034_A.3.json: Converted to Alpaca 1212 triples.
+Total converted 208077 triples.
+
+=== [3/3] done ===
+
+Dataset ready: SFT/data/ift_data_2026_05_01_v10.raw.json

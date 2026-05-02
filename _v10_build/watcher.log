@@ -1,0 +1,20 @@
+[2026-05-02T03:47:30Z] watcher starting; build_pid=99384
+[2026-05-02T03:47:30Z] build still running; triples=69/216
+[2026-05-02T03:48:30Z] build still running; triples=118/216
+[2026-05-02T03:49:30Z] build still running; triples=162/216
+[2026-05-02T03:50:30Z] build still running; triples=176/216
+[2026-05-02T03:51:30Z] build still running; triples=184/216
+[2026-05-02T03:52:30Z] build still running; triples=184/216
+[2026-05-02T03:53:30Z] build still running; triples=197/216
+[2026-05-02T03:54:30Z] build still running; triples=206/216
+[2026-05-02T03:55:30Z] build still running; triples=207/216
+[2026-05-02T03:56:30Z] build still running; triples=207/216
+[2026-05-02T03:57:30Z] build still running; triples=207/216
+[2026-05-02T03:58:30Z] build still running; triples=207/216
+[2026-05-02T03:59:30Z] build still running; triples=208/216
+[2026-05-02T04:00:30Z] build still running; triples=209/216
+[2026-05-02T04:01:30Z] build still running; triples=209/216
+[2026-05-02T04:02:30Z] build process 99384 has exited
+[2026-05-02T04:02:31Z] build OK; raw rows=208077
+[2026-05-02T04:02:31Z] running taa_actor_balance.py (cap=8, floor=150)...
+[2026-05-02T04:02:31Z] FAIL: taa_actor_balance.py exit 2; see _v10_build/balance.log

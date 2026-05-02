@@ -114,6 +114,14 @@ def main():
     p.add_argument("--report", help="Optional JSON path to write per-row hits.")
     p.add_argument("--max-fail", type=int, default=0,
                    help="Allow up to this many flagged rows before exit 1.")
+    p.add_argument("--filter-output",
+                   help="If set, write a filtered Alpaca JSON with flagged "
+                        "rows removed to this path (does not overwrite --input).")
+    p.add_argument("--drop-threshold", type=int, default=None,
+                   help="Drop rows whose max shared n-gram count with any "
+                        "single eval row meets-or-exceeds this. Defaults to "
+                        "--hit-threshold. Use a higher value to keep rows "
+                        "with only incidental shared CTI vocabulary.")
     p.add_argument("--self-test", action="store_true")
     args = p.parse_args()
 
@@ -136,6 +144,17 @@ def main():
 
     if args.report:
         Path(args.report).write_text(json.dumps(hits, indent=2))
+
+    if args.filter_output:
+        drop_thr = args.drop_threshold if args.drop_threshold is not None \
+            else args.hit_threshold
+        drop_idx = {h["row_index"] for h in hits
+                    if max((c for _k, c in h["matches"]), default=0) >= drop_thr}
+        kept = [r for i, r in enumerate(rows) if i not in drop_idx]
+        Path(args.filter_output).write_text(json.dumps(kept, indent=2))
+        print(f"dropped {len(drop_idx)} rows (max_shared >= {drop_thr}); "
+              f"wrote {len(kept)} of {len(rows)} to {args.filter_output}")
+
     if len(hits) > args.max_fail:
         for h in hits[:10]:
             print("  hit:", h)
