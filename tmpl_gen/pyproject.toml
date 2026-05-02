@@ -14,7 +14,8 @@ dependencies = [
     "python-docx",
     "openpyxl",
     "pandas",
-    "python-dateutil"
+    "python-dateutil",
+    "beautifulsoup4"
 ]
 
 [tool.setuptools.packages.find]

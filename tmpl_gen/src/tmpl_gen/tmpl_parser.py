@@ -38,8 +38,51 @@ from .utils import parse_datetime, format_datetime, readfile, seq_in, seq_find
 from .neo4j_utils import save_schema_to_json, SchemaGraph, neo4j_get_db_schema
 from .neo4j_utils import Neo4jDriver, DebugNeo4jDriver, neo4j_safe_identif
 
+# Optional dependency: BeautifulSoup is used by clean_cti_description() to
+# strip HTML/XML markup out of freeform CTI text fields (description, notes,
+# detection, etc.) before they are substituted into a template. If bs4 is
+# missing we degrade to a regex-only HTML-tag strip so the build still runs.
+try:
+    from bs4 import BeautifulSoup
+    _HAS_BS4 = True
+except ImportError:
+    BeautifulSoup = None
+    _HAS_BS4 = False
+
+# Freeform multi-line node properties whose substituted values are passed
+# through clean_cti_description() in format_prop_val(). Short-string
+# properties (name, mitre_id, cvss_*, etc.) are intentionally NOT in this
+# set: they don't contain HTML and any whitespace collapse is wasted work.
+# Keep this list in sync with the v10 manifest's <desc>...</desc> wrapping
+# convention (Sophia-CTI-Templates-v10.txt v8.1 -> v10 delta (5)).
+FREEFORM_PROPS = {
+    "description", "descriptions", "extended_description", "notes", "detection",
+}
+
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
+_MULTI_BLANK_LINE_RE = re.compile(r"\n[ \t]*\n[ \t\n]*")
+
+
+def clean_cti_description(raw_text: str) -> str:
+    """
+    Sanitise a freeform CTI text field prior to template substitution.
+    Strips HTML/XML tags and collapses runs of blank lines so the trained
+    model sees compact prose rather than markup-laden multi-page blobs.
+
+    Idempotent and safe on already-clean text.
+    """
+    if not raw_text:
+        return raw_text
+    if _HAS_BS4:
+        text = BeautifulSoup(raw_text, "html.parser").get_text(separator="\n")
+    else:
+        text = _HTML_TAG_RE.sub("", raw_text)
+    text = _MULTI_BLANK_LINE_RE.sub("\n\n", text)
+    return text.strip()
+
+
 # public identifiers:
-__all__ = ["TmplParser", "tool_tmplgen"]
+__all__ = ["TmplParser", "tool_tmplgen", "clean_cti_description", "FREEFORM_PROPS"]
 
 ## These were used for testing. 
 # Read neo4j connecion configuration from JSON file.
@@ -1099,6 +1142,11 @@ class TmplGenNeo4j:
             pv = dt_utc.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
         else:
             pv = str(propval)
+            # Sanitise freeform CTI text fields (description, descriptions,
+            # extended_description, notes, detection) before substitution.
+            # See FREEFORM_PROPS / clean_cti_description() module-level docs.
+            if propspec.propname in FREEFORM_PROPS:
+                pv = clean_cti_description(pv)
         return pv
     
     def OLD_format_prop_val(self, propname:str, propval:str|list) -> str:

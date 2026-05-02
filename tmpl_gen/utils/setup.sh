@@ -188,6 +188,29 @@ if [[ ${RUN_INSTALL} -eq 1 ]]; then
     echo "[3/4] Installing tmpl_gen (editable) + dependencies..."
     "${PYTHON_BIN}" -m pip install --upgrade pip >/dev/null
     "${PYTHON_BIN}" -m pip install -e "${REPO_DIR}"
+    # Postinstall import check: surface a missing dep here rather than at
+    # iftgen runtime. bs4 backs the v10+ description sanitizer in
+    # tmpl_parser.format_prop_val; lark/neo4j are core; the sanitizer import
+    # exercises tmpl_gen package wiring end-to-end.
+    "${PYTHON_BIN}" - <<'PYEOF'
+import sys
+mods = ["lark", "neo4j", "bs4", "tmpl_gen"]
+missing = []
+for m in mods:
+    try:
+        __import__(m)
+    except ImportError as e:
+        missing.append(f"{m}: {e}")
+if missing:
+    print("ERROR: postinstall import check failed:", file=sys.stderr)
+    for line in missing:
+        print(f"  - {line}", file=sys.stderr)
+    sys.exit(1)
+from tmpl_gen.tmpl_parser import clean_cti_description, FREEFORM_PROPS
+assert FREEFORM_PROPS, "FREEFORM_PROPS allowlist is empty"
+print(f"      postinstall: lark, neo4j, bs4, tmpl_gen importable; "
+      f"sanitizer covers {sorted(FREEFORM_PROPS)}")
+PYEOF
 else
     echo "[3/4] Install SKIPPED (--skip-install)"
 fi

@@ -44,6 +44,25 @@ v8.1 -> v10 deltas
       a >=150-distinct-actor floor and <=8-row-per-actor cap on
       AB.TAA.{1..5} / JS.TAA.{1..3} (NOT TAA.IE / TAA.NEG, which carry
       synthetic answers by design).
+  (5) Multi-line freeform node properties (description, descriptions,
+      extended_description, notes, detection) are wrapped in
+      <desc>...</desc> markers on the Question side of every template
+      that surfaces them as the analysed content. Wrapping is applied
+      only where the property is the primary content being reasoned
+      about (e.g. "Question: {ap:attack-pattern.description}" or
+      "... Technique description: {ap.description}"); short inline
+      parentheticals ("CVE-X ({cve.descriptions}) ...") and Answer-side
+      narrative ("... covers {ta.description}. Therefore, A.") are NOT
+      wrapped. The Answer side is intentionally left tag-free so the
+      trained model does not learn to emit <desc> markers in its own
+      generations. Pre-substitution sanitisation (HTML/XML strip via
+      BeautifulSoup, blank-line collapse) is applied in
+      tmpl_gen/src/tmpl_gen/tmpl_parser.format_prop_val() to the same
+      allowlist of properties (FREEFORM_PROPS in that module).
+      Rationale: the v9-rms review flagged that unmarked multi-line
+      .description text "swamps" the I/Q/A structural attention of the
+      LLM and risks prompt leaking when a description body contains
+      the literal substring "Answer:".
 
 It supersedes the chain of older includes (Sophia-CTI-Templates-04022026
 -> 04022026-benchmark-addendum -> AthenaBench-aligned -> Detections-Exploits-
@@ -375,7 +394,7 @@ ID convention:
 Section 1 - AB.MCQ.* Multiple-Choice Questions (athena-mcq)
 
 AB.MCQ.1 Instruction: You are a cybersecurity analyst at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult MITRE ATT&CK, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
-Question: Which MITRE ATT&CK tactic does technique {ap:attack-pattern.mitre_id} ({ap.name}) achieve? Technique description: {ap.description}
+Question: Which MITRE ATT&CK tactic does technique {ap:attack-pattern.mitre_id} ({ap.name}) achieve? Technique description: <desc>{ap.description}</desc>
 A) {ta:ap.achieves>x-mitre-tactic.name}
 B) {negtac1:x-mitre-tactic.name}
 C) {negtac2:x-mitre-tactic.name}
@@ -397,7 +416,7 @@ Shuffle: mcq
 Count: 800
 
 AB.MCQ.2 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult MITRE ATT&CK, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
-Question: Which MITRE ATT&CK mitigation addresses technique {ap:attack-pattern.mitre_id} ({ap.name})? Technique description: {ap.description}
+Question: Which MITRE ATT&CK mitigation addresses technique {ap:attack-pattern.mitre_id} ({ap.name})? Technique description: <desc>{ap.description}</desc>
 A) {coa:ap.mitigates<course-of-action.mitre_id} ({coa.name})
 B) {negcoa1:course-of-action.mitre_id} ({negcoa1.name})
 C) {negcoa2:course-of-action.mitre_id} ({negcoa2.name})
@@ -419,7 +438,7 @@ Shuffle: mcq
 Count: 800
 
 AB.MCQ.3 Instruction: You are a CTI analyst at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult the MITRE CVE and CWE knowledge bases, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
-Question: What is the root-cause CWE of the following vulnerability? {cve:CVE.id}: {cve.descriptions}
+Question: What is the root-cause CWE of the following vulnerability? {cve:CVE.id}: <desc>{cve.descriptions}</desc>
 A) {cwe:cve.problemType>Weakness.id} ({cwe.name})
 B) {negw1:Weakness.id} ({negw1.name})
 C) {negw2:Weakness.id} ({negw2.name})
@@ -441,7 +460,7 @@ Shuffle: mcq
 Count: 100
 
 AB.MCQ.4 Instruction: You are a CTI analyst at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult the MITRE CWE and CAPEC knowledge bases, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
-Question: Which CAPEC attack pattern primarily exploits {cwe:Weakness.id} ({cwe.name})? Weakness description: {cwe.description}
+Question: Which CAPEC attack pattern primarily exploits {cwe:Weakness.id} ({cwe.name})? Weakness description: <desc>{cwe.description}</desc>
 A) CAPEC-{cap:cwe.related_attack_pattern>CAPEC.id} ({cap.name})
 B) CAPEC-{negcap1:CAPEC.id} ({negcap1.name})
 C) CAPEC-{negcap2:CAPEC.id} ({negcap2.name})
@@ -463,7 +482,7 @@ Shuffle: mcq
 Count: 250
 
 AB.MCQ.5 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult MITRE ATT&CK, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
-Question: Which MITRE ATT&CK technique is threat group {grp:intrusion-set.name} ({grp.mitre_id}) documented as using? Group description: {grp.description}
+Question: Which MITRE ATT&CK technique is threat group {grp:intrusion-set.name} ({grp.mitre_id}) documented as using? Group description: <desc>{grp.description}</desc>
 A) {ap:grp.uses>attack-pattern.mitre_id} ({ap.name})
 B) {negack1:attack-pattern.mitre_id} ({negack1.name})
 C) {negack2:attack-pattern.mitre_id} ({negack2.name})
@@ -485,7 +504,7 @@ Shuffle: mcq
 Count: 250
 
 AB.MCQ.6 Instruction: You are a CTI analyst at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult the MITRE CAPEC and ATT&CK knowledge bases, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
-Question: Which MITRE ATT&CK technique corresponds to CAPEC-{cap:CAPEC.id} ({cap.name})? Attack pattern description: {cap.description}
+Question: Which MITRE ATT&CK technique corresponds to CAPEC-{cap:CAPEC.id} ({cap.name})? Attack pattern description: <desc>{cap.description}</desc>
 A) {ap:cap.map_ap>attack-pattern.mitre_id} ({ap.name})
 B) {negack1:attack-pattern.mitre_id} ({negack1.name})
 C) {negack2:attack-pattern.mitre_id} ({negack2.name})
@@ -509,62 +528,62 @@ Count: 250
 Section 2 - AB.RCM.* Root-Cause Mapping (athena-rcm)
 
 AB.RCM.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center performing root-cause mapping. Analyse the following CVE description and identify the most appropriate Common Weakness Enumeration (CWE) that represents the root cause of the vulnerability. Consult the MITRE CVE and CWE knowledge bases, reason step by step about the weakness pattern present in the description, and then state the CWE identifier.
-Question: {cve:CVE.descriptions}
+Question: <desc>{cve:CVE.descriptions}</desc>
 Answer: The description indicates the class of weakness captured by {cwe:cve.problemType>Weakness.name}: {cwe.description}. Therefore, the root cause is {cwe.id}.
 
 AB.RCM.2 Instruction: You are a vulnerability analyst at an enterprise Security Operations Center performing root-cause mapping for a newly disclosed CVE. Analyse the vulnerability record below and identify the most appropriate CWE. Consult the MITRE CVE and CWE knowledge bases, reason about the underlying weakness before committing to a label, and then state the CWE identifier.
-Question: Vulnerability record for {cve:CVE.id}: {cve.descriptions}
+Question: Vulnerability record for {cve:CVE.id}: <desc>{cve.descriptions}</desc>
 Answer: The record describes {cwe:cve.problemType>Weakness.name}, whose defining characteristic is {cwe.description}. Therefore, the root cause is {cwe.id}.
 
 Section 3 - AB.VSP.* Vulnerability Severity Prediction (athena-vsp)
 
 AB.VSP.1 Instruction: You are a vulnerability risk analyst at an enterprise Security Operations Center computing CVSS v3.1 Base metrics. Analyse the following CVE description and derive the values for each base metric (AV, AC, PR, UI, S, C, I, A). Consult the CVSS v3.1 specification, reason about each metric in turn, and then state the resulting CVSS:3.1 vector.
-Question: {cve:CVE.descriptions}
+Question: <desc>{cve:CVE.descriptions}</desc>
 Answer: The exploit preconditions and impact implied by the description correspond to a CVSS v3.1 base score of {cve.cvss3_1_baseScore}. Therefore, the CVSS v3.1 vector is {cve.cvss3_1_vectorString}. <*{force cve.cvss3_1_vectorString = cve.cvss3_1_vectorString}*>
 
 AB.VSP.2 Instruction: You are a vulnerability risk analyst at an enterprise Security Operations Center triaging a newly disclosed CVE by CVSS v3.1 severity. Analyse the vulnerability record below, reason about exploit preconditions and impact, and then state the CVSS v3.1 base score followed by the full vector.
-Question: Vulnerability record for {cve:CVE.id}: {cve.descriptions}
+Question: Vulnerability record for {cve:CVE.id}: <desc>{cve.descriptions}</desc>
 Answer: The exploit preconditions and impact implied by the description justify a CVSS v3.1 base score of {cve.cvss3_1_baseScore}. Therefore, the full vector is {cve.cvss3_1_vectorString}. <*{force cve.cvss3_1_vectorString = cve.cvss3_1_vectorString}*>
 
 AB.VSP.3 Instruction: You are a vulnerability risk analyst at an enterprise Security Operations Center producing a CVSS v3.1 Base vector with per-metric justification. Analyse the following CVE description, reason explicitly about each of the eight base metrics (Attack Vector, Attack Complexity, Privileges Required, User Interaction, Scope, Confidentiality, Integrity, Availability), and then state the resulting CVSS:3.1 vector.
-Question: {cve:CVE.descriptions}
+Question: <desc>{cve:CVE.descriptions}</desc>
 Answer: Reasoning through each base metric: Attack Vector of {cve.cvss3_1_attackVector} is indicated by how the attacker reaches the vulnerable component; Attack Complexity is implied by the conditions required to weaponise the flaw; Privileges Required and User Interaction follow from whether authentication or victim action is needed; Scope, Confidentiality, Integrity, and Availability follow from the impact described. The resulting CVSS v3.1 base score is {cve.cvss3_1_baseScore}. Therefore, the CVSS v3.1 vector is {cve.cvss3_1_vectorString}. <*{force cve.cvss3_1_vectorString = cve.cvss3_1_vectorString}*>
 
 AB.VSP.4 Instruction: You are a vulnerability risk analyst at an enterprise Security Operations Center performing same-day CVE triage. Analyse the vulnerability record below with explicit reasoning about exploit preconditions and impact across all eight CVSS v3.1 Base metrics, and then state the full CVSS:3.1 vector.
-Question: Vulnerability record for {cve:CVE.id}: {cve.descriptions}
+Question: Vulnerability record for {cve:CVE.id}: <desc>{cve.descriptions}</desc>
 Answer: Triage reasoning: exploit preconditions (AV/AC/PR/UI) and impact (S/C/I/A) in the description together justify a CVSS v3.1 base score of {cve.cvss3_1_baseScore} with primary Attack Vector {cve.cvss3_1_attackVector}. Therefore, the full vector is {cve.cvss3_1_vectorString}. <*{force cve.cvss3_1_vectorString = cve.cvss3_1_vectorString}*>
 
 Section 4 - AB.ATE.* Attack Technique Enumeration (athena-ate)
 
 AB.ATE.1 Instruction: You are a threat hunter at an enterprise Security Operations Center performing attack technique enumeration. Analyse the following attack scenario and identify the single MITRE ATT&CK technique (ID format: T####) that best matches the behaviour described. Consult MITRE ATT&CK, reason about observable indicators in the scenario, and then state the technique identifier.
-Question: {ap:attack-pattern.description}
+Question: <desc>{ap:attack-pattern.description}</desc>
 Answer: The described behaviour matches {ap.name}, which MITRE ATT&CK documents on platforms {ap.x_mitre_platforms} with detection guidance: {ap.x_mitre_detection}. Therefore, the technique is {ap.mitre_id}.
 
 AB.ATE.2 Instruction: You are a detection engineer at an enterprise Security Operations Center performing attack technique enumeration from telemetry narratives. Analyse the following scenario and identify the single MITRE ATT&CK technique (ID format: T####) that best matches. Consult MITRE ATT&CK, reason about the adversary action implied by the narrative, and then state the technique identifier.
-Question: {ap:attack-pattern.description}
+Question: <desc>{ap:attack-pattern.description}</desc>
 Answer: The action sequence in the narrative is the defining behaviour of {ap.name}, collected from data sources {ap.x_mitre_data_sources}. Therefore, the technique is {ap.mitre_id}.
 
 AB.ATE.3 Instruction: You are an incident responder at an enterprise Security Operations Center correlating attacker activity to MITRE ATT&CK. Analyse the following incident narrative, which reflects adversary tradecraft attributed to a documented threat group. Consult MITRE ATT&CK, reason about which technique underpins the observed behaviour, and then state the technique identifier (ID format: T####).
-Question: During an engagement attributed to {grp:intrusion-set.name} ({grp.mitre_id}), analysts observed the following adversary behaviour: {ap:grp.uses>attack-pattern.description}
+Question: During an engagement attributed to {grp:intrusion-set.name} ({grp.mitre_id}), analysts observed the following adversary behaviour: <desc>{ap:grp.uses>attack-pattern.description}</desc>
 Answer: The observed behaviour is the documented pattern for {ap.name}, which MITRE ATT&CK records {grp.name} as using. Therefore, the technique is {ap.mitre_id}.
 
 AB.ATE.4 Instruction: You are a SOC analyst at an enterprise Security Operations Center performing attack technique enumeration from a scenario summary written in natural language. Analyse the following scenario and identify the single MITRE ATT&CK technique (ID format: T####) that best matches. Consult MITRE ATT&CK, reason about what adversary objective the narrative implies before labelling, and then state the technique identifier.
-Question: Scenario: an adversary performed the following action: {ap:attack-pattern.description}
+Question: Scenario: an adversary performed the following action: <desc>{ap:attack-pattern.description}</desc>
 Answer: The scenario describes {ap.name}, which is the MITRE ATT&CK technique for this adversary action on platforms {ap.x_mitre_platforms}. Therefore, the technique is {ap.mitre_id}.
 
 AB.ATE.5 Instruction: You are a detection engineer at an enterprise Security Operations Center mapping a telemetry-driven behaviour to MITRE ATT&CK. Analyse the following data-source-framed behaviour description and identify the single MITRE ATT&CK technique (ID format: T####) that best matches. Reason about which technique the telemetry reveals, and then state the technique identifier.
-Question: Based on observations collected from data sources {ap:attack-pattern.x_mitre_data_sources}, the following behaviour was recorded: {ap.description}
+Question: Based on observations collected from data sources {ap:attack-pattern.x_mitre_data_sources}, the following behaviour was recorded: <desc>{ap.description}</desc>
 Answer: The telemetry pattern matches {ap.name}, whose defining behaviour is captured by those data sources. Therefore, the technique is {ap.mitre_id}.
 
 Section 5 - AB.RMS.* Risk Mitigation Strategy (athena-rms)
 
 AB.RMS.1 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend multiple MITRE ATT&CK mitigation identifiers (format: M10xx) that together address the adversary behaviour. Consult MITRE ATT&CK, reason about which defensive controls apply, and then state the mitigation identifiers as a comma-separated list.
-Question: {ap:attack-pattern.description}
+Question: <desc>{ap:attack-pattern.description}</desc>
 Answer: Effective controls against {ap.name} include {coa1:ap.mitigates<course-of-action.mitre_id} ({coa1.name}), which {coa1.description}, and {coa2:ap.mitigates<course-of-action.mitre_id} ({coa2.name}), which {coa2.description}. Therefore, the recommended mitigations are {coa1.mitre_id}, {coa2.mitre_id}.
 {force coa1.mitre_id != coa2.mitre_id}
 
 AB.RMS.2 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending a primary risk mitigation strategy. Analyse the following attack scenario and recommend the single most appropriate MITRE ATT&CK mitigation identifier (format: M10xx) that addresses the adversary behaviour. Consult MITRE ATT&CK, reason about which defensive control is most directly relevant, and then state the mitigation identifier.
-Question: {ap:attack-pattern.description}
+Question: <desc>{ap:attack-pattern.description}</desc>
 Answer: The most direct control for {ap.name} is {coa:ap.mitigates<course-of-action.mitre_id} ({coa.name}): {coa.description}. Therefore, the recommended mitigation is {coa.mitre_id}.
 
 Section 6 - AB.TAA.* Threat Actor Attribution (athena-taa)
@@ -585,7 +604,7 @@ Answer: The combination of {ap1.name}, {ap2.name}, and {ap3.name} is the documen
 Sample: grp
 
 AB.TAA.4 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center reviewing a documented campaign attribution. Analyse the following campaign summary and identify the responsible named intrusion set. Consult the MITRE ATT&CK groups and campaigns knowledge bases, reason about which documented intrusion set owns the campaign, and then state the adversary name.
-Question: <*{grp:intrusion-set.name}*>During the {cp:grp.attributed-to<campaign.name} campaign ({cp.mitre_id}), operators employed MITRE ATT&CK techniques {ap1:cp.uses>attack-pattern.name} ({ap1.mitre_id}) and {ap2:cp.uses>attack-pattern.name} ({ap2.mitre_id}). Campaign description: {cp.description}
+Question: <*{grp:intrusion-set.name}*>During the {cp:grp.attributed-to<campaign.name} campaign ({cp.mitre_id}), operators employed MITRE ATT&CK techniques {ap1:cp.uses>attack-pattern.name} ({ap1.mitre_id}) and {ap2:cp.uses>attack-pattern.name} ({ap2.mitre_id}). Campaign description: <desc>{cp.description}</desc>
 Answer: MITRE ATT&CK attributes the {cp.name} campaign to {grp.name} ({grp.mitre_id}); the observed techniques {ap1.name} and {ap2.name} match the group's documented tradecraft. Therefore, the adversary is {grp.name}.
 Sample: grp
 
@@ -939,7 +958,7 @@ filter candidate bindings by cosine similarity to the correct answer.
 Section 1 - Cross-Framework Path Templates (Gap 1)
 
 X.VW.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center correlating vulnerabilities to their root-cause weaknesses. Consult the MITRE CVE and CWE knowledge bases to infer the correct answer.
-Question: CVE-{cve:CVE.id} is described as: {cve.descriptions}. Which CWE is its root cause?
+Question: CVE-{cve:CVE.id} is described as: <desc>{cve.descriptions}</desc>. Which CWE is its root cause?
 Answer: The root cause of CVE-{cve.id} is CWE-{cve.problemType.id} ({cve.problemType.name}). The CVE description matches the pattern defined by CWE-{cve.problemType.id}: {cve.problemType.description}.
 
 X.VW.2 Instruction: You are a vulnerability analyst at an enterprise Security Operations Center classifying CVEs by weakness category. Consult the MITRE CVE and CWE knowledge bases to infer the correct answer.
@@ -1170,7 +1189,7 @@ Count: 250
 Section 4 - Classification Templates (Gap 3)
 
 CL.V.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center classifying vulnerabilities by weakness category. Consult the MITRE CVE and CWE knowledge bases to determine the correct weakness, then respond with the CWE identifier only.
-Question: Classify the following vulnerability: {cve:CVE.descriptions}
+Question: Classify the following vulnerability: <desc>{cve:CVE.descriptions}</desc>
 Answer: CWE-{cve.problemType.id}
 
 CL.V.2 Instruction: You are a CTI triage analyst at an enterprise Security Operations Center screening vulnerabilities for active exploitation. Consult the CISA Known Exploited Vulnerabilities (KEV) catalog to decide, then reply with one of: KEV, NON-KEV.
@@ -1178,11 +1197,11 @@ Question: Is CVE-{cve:CVE.id} ({cve.descriptions}) known to be exploited in the 
 Answer: KEV. CVE-{cve.id} is listed in CISA KEV as {kev:cve.known_exploit>KEV.vulnerabilityName}, required action: {kev.requiredAction}.
 
 CL.M.1 Instruction: You are a threat hunter at an enterprise Security Operations Center mapping techniques to their tactics. Consult MITRE ATT&CK to determine the correct tactic, then respond with the tactic name only.
-Question: Classify MITRE ATT&CK technique {ap:attack-pattern.mitre_id} ({ap.name}) by tactic: {ap.description}
+Question: Classify MITRE ATT&CK technique {ap:attack-pattern.mitre_id} ({ap.name}) by tactic: <desc>{ap.description}</desc>
 Answer: {ta:ap.achieves>x-mitre-tactic.name}
 
 CL.A.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center categorising attack patterns by the weakness they target. Consult the MITRE CAPEC and CWE knowledge bases to determine the correct weakness, then respond with the CWE identifier only.
-Question: Classify CAPEC-{cap:CAPEC.id} ({cap.name}) by primary target weakness: {cap.description}
+Question: Classify CAPEC-{cap:CAPEC.id} ({cap.name}) by primary target weakness: <desc>{cap.description}</desc>
 Answer: CWE-{cwe:cap.exploits>Weakness.id}
 
 CL.G.1 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center identifying which adversaries employ a given technique. Consult MITRE ATT&CK to determine the correct attribution, then respond with the threat group name only.
@@ -1192,11 +1211,11 @@ Answer: {grp:ap.uses<intrusion-set.name}
 Section 5 - Summarization Templates (Gap 3)
 
 SU.V.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center briefing leadership on a newly disclosed vulnerability. Consult the MITRE CVE and CWE knowledge bases and produce a one-sentence executive summary covering impact and root cause.
-Question: Summarise CVE-{cve:CVE.id} in a single sentence covering impact and root cause: {cve.descriptions}
+Question: Summarise CVE-{cve:CVE.id} in a single sentence covering impact and root cause: <desc>{cve.descriptions}</desc>
 Answer: CVE-{cve.id} is a {cve.problemType.name} (CWE-{cve.problemType.id}) vulnerability allowing {cve.descriptions}.
 
 SU.W.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center briefing leadership on a weakness class. Consult the MITRE CWE and CAPEC knowledge bases and produce a one-sentence executive summary that names a representative attack pattern.
-Question: Summarise CWE-{cwe:Weakness.id} ({cwe.name}) for an executive audience: {cwe.description}
+Question: Summarise CWE-{cwe:Weakness.id} ({cwe.name}) for an executive audience: <desc>{cwe.description}</desc>
 Answer: CWE-{cwe.id} ({cwe.name}) is a weakness class in which {cwe.description}, commonly exploited via CAPEC-{cap:cwe.related_attack_pattern>CAPEC.id} ({cap.name}).
 
 SU.M.1 Instruction: You are a threat hunter at an enterprise Security Operations Center briefing defenders on a MITRE ATT&CK technique. Consult MITRE ATT&CK and produce a one-sentence summary that names the associated tactic and a concrete mitigation.
@@ -1282,7 +1301,7 @@ Design notes:
 Section 1 - V.CPE.* CVE Affected-Products Templates (new cpe_matches property)
 
 V.CPE.1 Instruction: You are a vulnerability analyst at an enterprise Security Operations Center determining which products are impacted by a CVE. Consult the NVD CPE applicability statements and state the affected vendor-product-version tuples from the CPE 2.3 criteria recorded for the CVE.
-Question: Which products and versions are affected by CVE {cve:CVE.id}? Vulnerability description: {cve.descriptions}
+Question: Which products and versions are affected by CVE {cve:CVE.id}? Vulnerability description: <desc>{cve.descriptions}</desc>
 Answer: NVD records the following CPE 2.3 applicability statements for CVE {cve.id}: {cve.cpe_matches}. Each "cpe:2.3:a:<vendor>:<product>:<version>:*" entry in that list identifies an affected vendor, product, and version range. Therefore, the affected products are those enumerated by the cpe_matches criteria.
 
 V.CPE.2 Instruction: You are a CTI analyst at an enterprise Security Operations Center extracting vendor-level exposure for a newly disclosed CVE. Consult the NVD CPE applicability statements on the CVE record and identify the vendors whose products appear in the cpe_matches list.
@@ -1435,7 +1454,7 @@ Answer: CVE {cve.id} carries the following cpe_matches content: {cve.cpe_matches
 Section 7 - Q.* 5-Option Multiple-Choice Templates
 
 Q.MSR.1 Instruction: You are a detection engineer at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult the SigmaHQ rule repository and the (SigmaRule)-detects->(attack-pattern) mappings, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
-Question: Which MITRE ATT&CK technique does Sigma rule {sr:SigmaRule.id} ({sr.title}) detect? Rule description: {sr.description}
+Question: Which MITRE ATT&CK technique does Sigma rule {sr:SigmaRule.id} ({sr.title}) detect? Rule description: <desc>{sr.description}</desc>
 A) {ap:sr.detects>attack-pattern.mitre_id} ({ap.name})
 B) {negap1:attack-pattern.mitre_id} ({negap1.name})
 C) {negap2:attack-pattern.mitre_id} ({negap2.name})
@@ -1457,7 +1476,7 @@ Shuffle: mcq
 Count: 100
 
 Q.VEDB.1 Instruction: You are a vulnerability risk analyst at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult the ExploitDB archive and the (CVE)-has_weaponized_exploit->(ExploitDBEntry) mapping, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
-Question: Which ExploitDB entry is the published weaponised exploit for CVE {cve:CVE.id}? Vulnerability description: {cve.descriptions}
+Question: Which ExploitDB entry is the published weaponised exploit for CVE {cve:CVE.id}? Vulnerability description: <desc>{cve.descriptions}</desc>
 A) {edb:cve.has_weaponized_exploit>ExploitDBEntry.id} ({edb.title})
 B) {negedb1:ExploitDBEntry.id} ({negedb1.title})
 C) {negedb2:ExploitDBEntry.id} ({negedb2.title})
@@ -1479,7 +1498,7 @@ Shuffle: mcq
 Count: 250
 
 Q.VPOC.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult the nomi-sec/PoC-in-GitHub index and the (CVE)-has_poc->(GithubPoC) mapping, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
-Question: Which GitHub PoC repository is indexed as a proof-of-concept reference for CVE {cve:CVE.id}? Vulnerability description: {cve.descriptions}
+Question: Which GitHub PoC repository is indexed as a proof-of-concept reference for CVE {cve:CVE.id}? Vulnerability description: <desc>{cve.descriptions}</desc>
 A) {poc:cve.has_poc>GithubPoC.id} ({poc.title})
 B) {negpoc1:GithubPoC.id} ({negpoc1.title})
 C) {negpoc2:GithubPoC.id} ({negpoc2.title})
@@ -1504,11 +1523,11 @@ Count: 250
 Section 8 - CL.* Classification Templates (closed-list)
 
 CL.SR.1 Instruction: You are a detection engineer at an enterprise Security Operations Center classifying Sigma rules by their publication status. Consult the rule's status field and assign the single status label from the SigmaHQ closed list.
-Question: What is the publication status of Sigma rule {sr:SigmaRule.id} ({sr.title})? Description: {sr.description}
+Question: What is the publication status of Sigma rule {sr:SigmaRule.id} ({sr.title})? Description: <desc>{sr.description}</desc>
 Answer: The SigmaHQ status field on rule {sr.id} is {sr.status}. Therefore, the classification is {sr.status}.
 
 CL.SR.2 Instruction: You are a detection engineer at an enterprise Security Operations Center classifying Sigma rules by their declared severity. Consult the rule's level field and assign the severity label from the SigmaHQ closed list.
-Question: What severity level does Sigma rule {sr:SigmaRule.id} ({sr.title}) carry? Description: {sr.description}
+Question: What severity level does Sigma rule {sr:SigmaRule.id} ({sr.title}) carry? Description: <desc>{sr.description}</desc>
 Answer: The SigmaHQ level field on rule {sr.id} is {sr.level}. Therefore, the severity classification is {sr.level}.
 
 CL.EDB.1 Instruction: You are a vulnerability analyst at an enterprise Security Operations Center classifying ExploitDB artefacts by exploit type. Consult the entry's type field and assign the single type label from the ExploitDB closed list (remote / local / webapps / dos / shellcode).
@@ -1627,14 +1646,14 @@ Coverage by N (target counts; Neo4j cardinality may cap N>=4):
 Section 4 - AB.RMS.* Risk Mitigation Strategy (athena-rms)
 
 AB.RMS.3a Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend the most appropriate MITRE ATT&CK mitigation ID (format: M10xx) that addresses the scenario. Return exactly 1 mitigation ID. Briefly justify your choice. Only ATT&CK mitigations (M10xx) -- do not output techniques (T####), groups, or generic advice. The final line of your response must begin with "Answer:" and contain only the mitigation ID, with no extra commentary.
-Question: {ap:attack-pattern.description}
+Question: <desc>{ap:attack-pattern.description}</desc>
 Answer: To address {ap.name}, the most directly applicable MITRE ATT&CK mitigation is {coa1:ap.mitigates<course-of-action.mitre_id} ({coa1.name}).
 
 Answer: {coa1.mitre_id}
 Count: 1100
 
 AB.RMS.3b Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend the most appropriate MITRE ATT&CK mitigation IDs (format: M10xx) that address the scenario. Return exactly 2 mitigation IDs as a comma-separated list. Briefly justify your choice. Only ATT&CK mitigations (M10xx) -- do not output techniques (T####), groups, or generic advice. The final line of your response must begin with "Answer:" and contain only the mitigation IDs, with no extra commentary.
-Question: {ap:attack-pattern.description}
+Question: <desc>{ap:attack-pattern.description}</desc>
 Answer: To address {ap.name}, the applicable MITRE ATT&CK mitigations are {coa1:ap.mitigates<course-of-action.mitre_id} ({coa1.name}) and {coa2:ap.mitigates<course-of-action.mitre_id} ({coa2.name}).
 
 Answer: {coa1.mitre_id}, {coa2.mitre_id}
@@ -1642,7 +1661,7 @@ Answer: {coa1.mitre_id}, {coa2.mitre_id}
 Count: 1100
 
 AB.RMS.3c Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend the most appropriate MITRE ATT&CK mitigation IDs (format: M10xx) that address the scenario. Return exactly 3 mitigation IDs as a comma-separated list. Briefly justify your choice. Only ATT&CK mitigations (M10xx) -- do not output techniques (T####), groups, or generic advice. The final line of your response must begin with "Answer:" and contain only the mitigation IDs, with no extra commentary.
-Question: {ap:attack-pattern.description}
+Question: <desc>{ap:attack-pattern.description}</desc>
 Answer: To address {ap.name}, the applicable MITRE ATT&CK mitigations are {coa1:ap.mitigates<course-of-action.mitre_id} ({coa1.name}), {coa2:ap.mitigates<course-of-action.mitre_id} ({coa2.name}), and {coa3:ap.mitigates<course-of-action.mitre_id} ({coa3.name}).
 
 Answer: {coa1.mitre_id}, {coa2.mitre_id}, {coa3.mitre_id}
@@ -1653,7 +1672,7 @@ Count: 1100
 
 
 AB.RMS.3d Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend the most appropriate MITRE ATT&CK mitigation IDs (format: M10xx) that address the scenario. Return exactly 4 mitigation IDs as a comma-separated list. Briefly justify your choice. Only ATT&CK mitigations (M10xx) -- do not output techniques (T####), groups, or generic advice. The final line of your response must begin with "Answer:" and contain only the mitigation IDs, with no extra commentary.
-Question: {ap:attack-pattern.description}
+Question: <desc>{ap:attack-pattern.description}</desc>
 Answer: To address {ap.name}, the applicable MITRE ATT&CK mitigations are {coa1:ap.mitigates<course-of-action.mitre_id} ({coa1.name}), {coa2:ap.mitigates<course-of-action.mitre_id} ({coa2.name}), {coa3:ap.mitigates<course-of-action.mitre_id} ({coa3.name}), and {coa4:ap.mitigates<course-of-action.mitre_id} ({coa4.name}).
 
 Answer: {coa1.mitre_id}, {coa2.mitre_id}, {coa3.mitre_id}, {coa4.mitre_id}
@@ -1666,7 +1685,7 @@ Answer: {coa1.mitre_id}, {coa2.mitre_id}, {coa3.mitre_id}, {coa4.mitre_id}
 Count: 1100
 
 AB.RMS.3e Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend the most appropriate MITRE ATT&CK mitigation IDs (format: M10xx) that address the scenario. Return exactly 5 mitigation IDs as a comma-separated list. Briefly justify your choice. Only ATT&CK mitigations (M10xx) -- do not output techniques (T####), groups, or generic advice. The final line of your response must begin with "Answer:" and contain only the mitigation IDs, with no extra commentary.
-Question: {ap:attack-pattern.description}
+Question: <desc>{ap:attack-pattern.description}</desc>
 Answer: To address {ap.name}, the applicable MITRE ATT&CK mitigations are {coa1:ap.mitigates<course-of-action.mitre_id} ({coa1.name}), {coa2:ap.mitigates<course-of-action.mitre_id} ({coa2.name}), {coa3:ap.mitigates<course-of-action.mitre_id} ({coa3.name}), {coa4:ap.mitigates<course-of-action.mitre_id} ({coa4.name}), and {coa5:ap.mitigates<course-of-action.mitre_id} ({coa5.name}).
 
 Answer: {coa1.mitre_id}, {coa2.mitre_id}, {coa3.mitre_id}, {coa4.mitre_id}, {coa5.mitre_id}
@@ -1683,7 +1702,7 @@ Answer: {coa1.mitre_id}, {coa2.mitre_id}, {coa3.mitre_id}, {coa4.mitre_id}, {coa
 Count: 750
 
 AB.RMS.3f Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend the most appropriate MITRE ATT&CK mitigation IDs (format: M10xx) that address the scenario. Return exactly 6 mitigation IDs as a comma-separated list. Briefly justify your choice. Only ATT&CK mitigations (M10xx) -- do not output techniques (T####), groups, or generic advice. The final line of your response must begin with "Answer:" and contain only the mitigation IDs, with no extra commentary.
-Question: {ap:attack-pattern.description}
+Question: <desc>{ap:attack-pattern.description}</desc>
 Answer: To address {ap.name}, the applicable MITRE ATT&CK mitigations are {coa1:ap.mitigates<course-of-action.mitre_id} ({coa1.name}), {coa2:ap.mitigates<course-of-action.mitre_id} ({coa2.name}), {coa3:ap.mitigates<course-of-action.mitre_id} ({coa3.name}), {coa4:ap.mitigates<course-of-action.mitre_id} ({coa4.name}), {coa5:ap.mitigates<course-of-action.mitre_id} ({coa5.name}), and {coa6:ap.mitigates<course-of-action.mitre_id} ({coa6.name}).
 
 Answer: {coa1.mitre_id}, {coa2.mitre_id}, {coa3.mitre_id}, {coa4.mitre_id}, {coa5.mitre_id}, {coa6.mitre_id}
@@ -1706,7 +1725,7 @@ Count: 375
 
 
 AB.RMS.3g Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend the most appropriate MITRE ATT&CK mitigation IDs (format: M10xx) that address the scenario. Return exactly 7 mitigation IDs as a comma-separated list. Briefly justify your choice. Only ATT&CK mitigations (M10xx) -- do not output techniques (T####), groups, or generic advice. The final line of your response must begin with "Answer:" and contain only the mitigation IDs, with no extra commentary.
-Question: {ap:attack-pattern.description}
+Question: <desc>{ap:attack-pattern.description}</desc>
 Answer: To address {ap.name}, the applicable MITRE ATT&CK mitigations are {coa1:ap.mitigates<course-of-action.mitre_id} ({coa1.name}), {coa2:ap.mitigates<course-of-action.mitre_id} ({coa2.name}), {coa3:ap.mitigates<course-of-action.mitre_id} ({coa3.name}), {coa4:ap.mitigates<course-of-action.mitre_id} ({coa4.name}), {coa5:ap.mitigates<course-of-action.mitre_id} ({coa5.name}), {coa6:ap.mitigates<course-of-action.mitre_id} ({coa6.name}), and {coa7:ap.mitigates<course-of-action.mitre_id} ({coa7.name}).
 
 Answer: {coa1.mitre_id}, {coa2.mitre_id}, {coa3.mitre_id}, {coa4.mitre_id}, {coa5.mitre_id}, {coa6.mitre_id}, {coa7.mitre_id}
@@ -1734,7 +1753,7 @@ Answer: {coa1.mitre_id}, {coa2.mitre_id}, {coa3.mitre_id}, {coa4.mitre_id}, {coa
 Count: 225
 
 AB.RMS.3h Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend the most appropriate MITRE ATT&CK mitigation IDs (format: M10xx) that address the scenario. Return exactly 8 mitigation IDs as a comma-separated list. Briefly justify your choice. Only ATT&CK mitigations (M10xx) -- do not output techniques (T####), groups, or generic advice. The final line of your response must begin with "Answer:" and contain only the mitigation IDs, with no extra commentary.
-Question: {ap:attack-pattern.description}
+Question: <desc>{ap:attack-pattern.description}</desc>
 Answer: To address {ap.name}, the applicable MITRE ATT&CK mitigations are {coa1:ap.mitigates<course-of-action.mitre_id} ({coa1.name}), {coa2:ap.mitigates<course-of-action.mitre_id} ({coa2.name}), {coa3:ap.mitigates<course-of-action.mitre_id} ({coa3.name}), {coa4:ap.mitigates<course-of-action.mitre_id} ({coa4.name}), {coa5:ap.mitigates<course-of-action.mitre_id} ({coa5.name}), {coa6:ap.mitigates<course-of-action.mitre_id} ({coa6.name}), {coa7:ap.mitigates<course-of-action.mitre_id} ({coa7.name}), and {coa8:ap.mitigates<course-of-action.mitre_id} ({coa8.name}).
 
 Answer: {coa1.mitre_id}, {coa2.mitre_id}, {coa3.mitre_id}, {coa4.mitre_id}, {coa5.mitre_id}, {coa6.mitre_id}, {coa7.mitre_id}, {coa8.mitre_id}
@@ -1945,7 +1964,7 @@ SECTION D. JSON-output template slate
 Section D.1 - JS.MCQ.* JSON-output multiple-choice (cyber-soc-eval-vsp / mcq)
 
 JS.MCQ.1 Instruction: You are a cybersecurity analyst at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult MITRE ATT&CK, reason about each option in turn, and then respond with a single JSON object on one line containing the keys "answer" (one of A, B, C, D, E) and "rationale" (one short sentence). Do not output anything before or after the JSON object.
-Question: Which MITRE ATT&CK tactic does technique {ap:attack-pattern.mitre_id} ({ap.name}) achieve? Technique description: {ap.description}
+Question: Which MITRE ATT&CK tactic does technique {ap:attack-pattern.mitre_id} ({ap.name}) achieve? Technique description: <desc>{ap.description}</desc>
 A) {ta:ap.achieves>x-mitre-tactic.name}
 B) {negtac1:x-mitre-tactic.name}
 C) {negtac2:x-mitre-tactic.name}
@@ -1967,7 +1986,7 @@ Shuffle: mcq
 Count: 525
 
 JS.MCQ.2 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult MITRE ATT&CK, reason about each option in turn, and then respond with a single JSON object on one line containing the keys "answer" (one of A, B, C, D, E) and "rationale" (one short sentence). Do not output anything before or after the JSON object.
-Question: Which MITRE ATT&CK mitigation addresses technique {ap:attack-pattern.mitre_id} ({ap.name})? Technique description: {ap.description}
+Question: Which MITRE ATT&CK mitigation addresses technique {ap:attack-pattern.mitre_id} ({ap.name})? Technique description: <desc>{ap.description}</desc>
 A) {coa:ap.mitigates<course-of-action.mitre_id} ({coa.name})
 B) {negcoa1:course-of-action.mitre_id} ({negcoa1.name})
 C) {negcoa2:course-of-action.mitre_id} ({negcoa2.name})
@@ -1989,7 +2008,7 @@ Shuffle: mcq
 Count: 375
 
 JS.MCQ.5 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult MITRE ATT&CK, reason about each option in turn, and then respond with a single JSON object on one line containing the keys "answer" (one of A, B, C, D, E) and "rationale" (one short sentence). Do not output anything before or after the JSON object.
-Question: Which MITRE ATT&CK technique is threat group {grp:intrusion-set.name} ({grp.mitre_id}) documented as using? Group description: {grp.description}
+Question: Which MITRE ATT&CK technique is threat group {grp:intrusion-set.name} ({grp.mitre_id}) documented as using? Group description: <desc>{grp.description}</desc>
 A) {ap:grp.uses>attack-pattern.mitre_id} ({ap.name})
 B) {negack1:attack-pattern.mitre_id} ({negack1.name})
 C) {negack2:attack-pattern.mitre_id} ({negack2.name})
@@ -2013,29 +2032,29 @@ Count: 525
 Section D.2 - JS.RCM.* JSON-output root-cause mapping (mirrors AB.RCM.{1,2})
 
 JS.RCM.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center performing root-cause mapping. Analyse the following CVE description and identify the most appropriate Common Weakness Enumeration (CWE) that represents the root cause of the vulnerability. Consult the MITRE CVE and CWE knowledge bases, reason about the weakness pattern present in the description, and then respond with a single JSON object on one line containing the keys "cwe" (the CWE identifier in the form "CWE-####") and "rationale" (one short sentence). Do not output anything before or after the JSON object.
-Question: {cve:CVE.descriptions}
+Question: <desc>{cve:CVE.descriptions}</desc>
 Answer: <OBR>"cwe": "{cwe:cve.problemType>Weakness.id}", "rationale": "The description matches the pattern defined by {cwe.id} ({cwe.name})."<CBR>
 Count: 565
 
 JS.RCM.2 Instruction: You are a vulnerability analyst at an enterprise Security Operations Center performing root-cause mapping for a newly disclosed CVE. Analyse the vulnerability record below and identify the most appropriate CWE. Consult the MITRE CVE and CWE knowledge bases, reason about the underlying weakness before committing to a label, and then respond with a single JSON object on one line containing the keys "cve" (the CVE identifier), "cwe" (the CWE identifier in the form "CWE-####") and "rationale" (one short sentence). Do not output anything before or after the JSON object.
-Question: Vulnerability record for {cve:CVE.id}: {cve.descriptions}
+Question: Vulnerability record for {cve:CVE.id}: <desc>{cve.descriptions}</desc>
 Answer: <OBR>"cve": "{cve.id}", "cwe": "{cwe:cve.problemType>Weakness.id}", "rationale": "The record describes {cwe.name}, whose defining characteristic matches the vulnerability."<CBR>
 Count: 565
 
 Section D.3 - JS.ATE.* JSON-output technique enumeration (mirrors AB.ATE.{1,3,4})
 
 JS.ATE.1 Instruction: You are a threat hunter at an enterprise Security Operations Center performing attack technique enumeration. Analyse the following attack scenario and identify the single MITRE ATT&CK technique (ID format: T####) that best matches the behaviour described. Consult MITRE ATT&CK, reason about observable indicators in the scenario, and then respond with a single JSON object on one line containing the keys "technique" (the technique ID), "name" (the technique name) and "rationale" (one short sentence). Do not output anything before or after the JSON object.
-Question: {ap:attack-pattern.description}
+Question: <desc>{ap:attack-pattern.description}</desc>
 Answer: <OBR>"technique": "{ap.mitre_id}", "name": "{ap.name}", "rationale": "The described behaviour matches {ap.name} on platforms {ap.x_mitre_platforms}."<CBR>
 Count: 375
 
 JS.ATE.2 Instruction: You are an incident responder at an enterprise Security Operations Center correlating attacker activity to MITRE ATT&CK. Analyse the following incident narrative, which reflects adversary tradecraft attributed to a documented threat group. Consult MITRE ATT&CK, reason about which technique underpins the observed behaviour, and then respond with a single JSON object on one line containing the keys "technique" (the technique ID, format T####), "name" (the technique name) and "rationale" (one short sentence). Do not output anything before or after the JSON object.
-Question: During an engagement attributed to {grp:intrusion-set.name} ({grp.mitre_id}), analysts observed the following adversary behaviour: {ap:grp.uses>attack-pattern.description}
+Question: During an engagement attributed to {grp:intrusion-set.name} ({grp.mitre_id}), analysts observed the following adversary behaviour: <desc>{ap:grp.uses>attack-pattern.description}</desc>
 Answer: <OBR>"technique": "{ap.mitre_id}", "name": "{ap.name}", "rationale": "The observed behaviour is the documented pattern for {ap.name}, which MITRE ATT&CK records {grp.name} as using."<CBR>
 Count: 375
 
 JS.ATE.3 Instruction: You are a SOC analyst at an enterprise Security Operations Center performing attack technique enumeration from a scenario summary written in natural language. Analyse the following scenario and identify the single MITRE ATT&CK technique (ID format: T####) that best matches. Consult MITRE ATT&CK, reason about what adversary objective the narrative implies before labelling, and then respond with a single JSON object on one line containing the keys "technique" (the technique ID), "name" (the technique name) and "rationale" (one short sentence). Do not output anything before or after the JSON object.
-Question: Scenario: an adversary performed the following action: {ap:attack-pattern.description}
+Question: Scenario: an adversary performed the following action: <desc>{ap:attack-pattern.description}</desc>
 Answer: <OBR>"technique": "{ap.mitre_id}", "name": "{ap.name}", "rationale": "The scenario describes {ap.name}, the MITRE ATT&CK technique for this adversary action on platforms {ap.x_mitre_platforms}."<CBR>
 Count: 375
 
@@ -2043,18 +2062,18 @@ Count: 375
 Section D.4 - JS.RMS.* JSON-output risk mitigation strategies (mirrors AB.RMS.3{a..d})
 
 JS.RMS.1 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend exactly 1 MITRE ATT&CK mitigation ID (format: M####) that addresses the scenario. Consult MITRE ATT&CK, reason about which defensive control is most directly relevant, and then respond with a single JSON object on one line containing the keys "mitigations" (a JSON array of mitigation IDs, length exactly 1) and "rationale" (one short sentence). Do not output anything before or after the JSON object.
-Question: {ap:attack-pattern.description}
+Question: <desc>{ap:attack-pattern.description}</desc>
 Answer: <OBR>"mitigations": <OBK>"{coa1:ap.mitigates<course-of-action.mitre_id}"<CBK>, "rationale": "To address {ap.name}, the most directly applicable MITRE ATT&CK mitigation is {coa1.mitre_id} ({coa1.name})."<CBR>
 Count: 300
 
 JS.RMS.2 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend exactly 2 MITRE ATT&CK mitigation IDs (format: M####) that address the scenario. Consult MITRE ATT&CK, reason about which defensive controls apply, and then respond with a single JSON object on one line containing the keys "mitigations" (a JSON array of mitigation IDs, length exactly 2) and "rationale" (one short sentence). Do not output anything before or after the JSON object.
-Question: {ap:attack-pattern.description}
+Question: <desc>{ap:attack-pattern.description}</desc>
 Answer: <OBR>"mitigations": <OBK>"{coa1:ap.mitigates<course-of-action.mitre_id}", "{coa2:ap.mitigates<course-of-action.mitre_id}"<CBK>, "rationale": "To address {ap.name}, the applicable MITRE ATT&CK mitigations are {coa1.mitre_id} ({coa1.name}) and {coa2.mitre_id} ({coa2.name})."<CBR>
 {force coa1.mitre_id != coa2.mitre_id}
 Count: 300
 
 JS.RMS.3 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend exactly 3 MITRE ATT&CK mitigation IDs (format: M####) that address the scenario. Consult MITRE ATT&CK, reason about which defensive controls apply, and then respond with a single JSON object on one line containing the keys "mitigations" (a JSON array of mitigation IDs, length exactly 3) and "rationale" (one short sentence). Do not output anything before or after the JSON object.
-Question: {ap:attack-pattern.description}
+Question: <desc>{ap:attack-pattern.description}</desc>
 Answer: <OBR>"mitigations": <OBK>"{coa1:ap.mitigates<course-of-action.mitre_id}", "{coa2:ap.mitigates<course-of-action.mitre_id}", "{coa3:ap.mitigates<course-of-action.mitre_id}"<CBK>, "rationale": "To address {ap.name}, the applicable MITRE ATT&CK mitigations are {coa1.mitre_id} ({coa1.name}), {coa2.mitre_id} ({coa2.name}), and {coa3.mitre_id} ({coa3.name})."<CBR>
 {force coa1.mitre_id != coa2.mitre_id}
 {force coa1.mitre_id != coa3.mitre_id}
@@ -2062,7 +2081,7 @@ Answer: <OBR>"mitigations": <OBK>"{coa1:ap.mitigates<course-of-action.mitre_id}"
 Count: 300
 
 JS.RMS.4 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend exactly 4 MITRE ATT&CK mitigation IDs (format: M####) that address the scenario. Consult MITRE ATT&CK, reason about which defensive controls apply, and then respond with a single JSON object on one line containing the keys "mitigations" (a JSON array of mitigation IDs, length exactly 4) and "rationale" (one short sentence). Do not output anything before or after the JSON object.
-Question: {ap:attack-pattern.description}
+Question: <desc>{ap:attack-pattern.description}</desc>
 Answer: <OBR>"mitigations": <OBK>"{coa1:ap.mitigates<course-of-action.mitre_id}", "{coa2:ap.mitigates<course-of-action.mitre_id}", "{coa3:ap.mitigates<course-of-action.mitre_id}", "{coa4:ap.mitigates<course-of-action.mitre_id}"<CBK>, "rationale": "To address {ap.name}, the applicable MITRE ATT&CK mitigations are {coa1.mitre_id} ({coa1.name}), {coa2.mitre_id} ({coa2.name}), {coa3.mitre_id} ({coa3.name}), and {coa4.mitre_id} ({coa4.name})."<CBR>
 {force coa1.mitre_id != coa2.mitre_id}
 {force coa1.mitre_id != coa3.mitre_id}
@@ -2073,7 +2092,7 @@ Answer: <OBR>"mitigations": <OBK>"{coa1:ap.mitigates<course-of-action.mitre_id}"
 Count: 300
 
 JS.RMS.5 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend exactly 5 MITRE ATT&CK mitigation IDs (format: M####) that address the scenario. Consult MITRE ATT&CK, reason about which defensive controls apply, and then respond with a single JSON object on one line containing the keys "mitigations" (a JSON array of mitigation IDs, length exactly 5) and "rationale" (one short sentence). Do not output anything before or after the JSON object.
-Question: {ap:attack-pattern.description}
+Question: <desc>{ap:attack-pattern.description}</desc>
 Answer: <OBR>"mitigations": <OBK>"{coa1:ap.mitigates<course-of-action.mitre_id}", "{coa2:ap.mitigates<course-of-action.mitre_id}", "{coa3:ap.mitigates<course-of-action.mitre_id}", "{coa4:ap.mitigates<course-of-action.mitre_id}", "{coa5:ap.mitigates<course-of-action.mitre_id}"<CBK>, "rationale": "To address {ap.name}, the applicable MITRE ATT&CK mitigations are {coa1.mitre_id} ({coa1.name}), {coa2.mitre_id} ({coa2.name}), {coa3.mitre_id} ({coa3.name}), {coa4.mitre_id} ({coa4.name}), and {coa5.mitre_id} ({coa5.name})."<CBR>
 {force coa1.mitre_id != coa2.mitre_id}
 {force coa1.mitre_id != coa3.mitre_id}
@@ -2088,7 +2107,7 @@ Answer: <OBR>"mitigations": <OBK>"{coa1:ap.mitigates<course-of-action.mitre_id}"
 Count: 200
 
 JS.RMS.6 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend exactly 6 MITRE ATT&CK mitigation IDs (format: M####) that address the scenario. Consult MITRE ATT&CK, reason about which defensive controls apply, and then respond with a single JSON object on one line containing the keys "mitigations" (a JSON array of mitigation IDs, length exactly 6) and "rationale" (one short sentence). Do not output anything before or after the JSON object.
-Question: {ap:attack-pattern.description}
+Question: <desc>{ap:attack-pattern.description}</desc>
 Answer: <OBR>"mitigations": <OBK>"{coa1:ap.mitigates<course-of-action.mitre_id}", "{coa2:ap.mitigates<course-of-action.mitre_id}", "{coa3:ap.mitigates<course-of-action.mitre_id}", "{coa4:ap.mitigates<course-of-action.mitre_id}", "{coa5:ap.mitigates<course-of-action.mitre_id}", "{coa6:ap.mitigates<course-of-action.mitre_id}"<CBK>, "rationale": "To address {ap.name}, the applicable MITRE ATT&CK mitigations are {coa1.mitre_id} ({coa1.name}), {coa2.mitre_id} ({coa2.name}), {coa3.mitre_id} ({coa3.name}), {coa4.mitre_id} ({coa4.name}), {coa5.mitre_id} ({coa5.name}), and {coa6.mitre_id} ({coa6.name})."<CBR>
 {force coa1.mitre_id != coa2.mitre_id}
 {force coa1.mitre_id != coa3.mitre_id}
@@ -2108,7 +2127,7 @@ Answer: <OBR>"mitigations": <OBK>"{coa1:ap.mitigates<course-of-action.mitre_id}"
 Count: 150
 
 JS.RMS.7 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend exactly 7 MITRE ATT&CK mitigation IDs (format: M####) that address the scenario. Consult MITRE ATT&CK, reason about which defensive controls apply, and then respond with a single JSON object on one line containing the keys "mitigations" (a JSON array of mitigation IDs, length exactly 7) and "rationale" (one short sentence). Do not output anything before or after the JSON object.
-Question: {ap:attack-pattern.description}
+Question: <desc>{ap:attack-pattern.description}</desc>
 Answer: <OBR>"mitigations": <OBK>"{coa1:ap.mitigates<course-of-action.mitre_id}", "{coa2:ap.mitigates<course-of-action.mitre_id}", "{coa3:ap.mitigates<course-of-action.mitre_id}", "{coa4:ap.mitigates<course-of-action.mitre_id}", "{coa5:ap.mitigates<course-of-action.mitre_id}", "{coa6:ap.mitigates<course-of-action.mitre_id}", "{coa7:ap.mitigates<course-of-action.mitre_id}"<CBK>, "rationale": "To address {ap.name}, the applicable MITRE ATT&CK mitigations are {coa1.mitre_id} ({coa1.name}), {coa2.mitre_id} ({coa2.name}), {coa3.mitre_id} ({coa3.name}), {coa4.mitre_id} ({coa4.name}), {coa5.mitre_id} ({coa5.name}), {coa6.mitre_id} ({coa6.name}), and {coa7.mitre_id} ({coa7.name})."<CBR>
 {force coa1.mitre_id != coa2.mitre_id}
 {force coa1.mitre_id != coa3.mitre_id}
@@ -2134,7 +2153,7 @@ Answer: <OBR>"mitigations": <OBK>"{coa1:ap.mitigates<course-of-action.mitre_id}"
 Count: 100
 
 JS.RMS.8 Instruction: You are a cybersecurity architect at an enterprise Security Operations Center recommending risk mitigation strategies. Analyse the following attack scenario and recommend exactly 8 MITRE ATT&CK mitigation IDs (format: M####) that address the scenario. Consult MITRE ATT&CK, reason about which defensive controls apply, and then respond with a single JSON object on one line containing the keys "mitigations" (a JSON array of mitigation IDs, length exactly 8) and "rationale" (one short sentence). Do not output anything before or after the JSON object.
-Question: {ap:attack-pattern.description}
+Question: <desc>{ap:attack-pattern.description}</desc>
 Answer: <OBR>"mitigations": <OBK>"{coa1:ap.mitigates<course-of-action.mitre_id}", "{coa2:ap.mitigates<course-of-action.mitre_id}", "{coa3:ap.mitigates<course-of-action.mitre_id}", "{coa4:ap.mitigates<course-of-action.mitre_id}", "{coa5:ap.mitigates<course-of-action.mitre_id}", "{coa6:ap.mitigates<course-of-action.mitre_id}", "{coa7:ap.mitigates<course-of-action.mitre_id}", "{coa8:ap.mitigates<course-of-action.mitre_id}"<CBK>, "rationale": "To address {ap.name}, the applicable MITRE ATT&CK mitigations are {coa1.mitre_id} ({coa1.name}), {coa2.mitre_id} ({coa2.name}), {coa3.mitre_id} ({coa3.name}), {coa4.mitre_id} ({coa4.name}), {coa5.mitre_id} ({coa5.name}), {coa6.mitre_id} ({coa6.name}), {coa7.mitre_id} ({coa7.name}), and {coa8.mitre_id} ({coa8.name})."<CBR>
 {force coa1.mitre_id != coa2.mitre_id}
 {force coa1.mitre_id != coa3.mitre_id}
@@ -2190,12 +2209,12 @@ Count: 300
 Section D.6 - JS.VSP.* JSON-output CVSS triage (mirrors AB.VSP.{2,4})
 
 JS.VSP.1 Instruction: You are a vulnerability risk analyst at an enterprise Security Operations Center triaging a newly disclosed CVE by CVSS v3.1 severity. Analyse the vulnerability record below, reason about exploit preconditions and impact, and then respond with a single JSON object on one line containing the keys "cve" (the CVE identifier), "base_score" (the CVSS v3.1 base score as a number) and "vector" (the full CVSS:3.1 vector string). Do not output anything before or after the JSON object.
-Question: Vulnerability record for {cve:CVE.id}: {cve.descriptions}
+Question: Vulnerability record for {cve:CVE.id}: <desc>{cve.descriptions}</desc>
 Answer: <OBR>"cve": "{cve.id}", "base_score": {cve.cvss3_1_baseScore}, "vector": "{cve.cvss3_1_vectorString}"<CBR> <*{force cve.cvss3_1_vectorString = cve.cvss3_1_vectorString}*>
 Count: 375
 
 JS.VSP.2 Instruction: You are a vulnerability risk analyst at an enterprise Security Operations Center performing same-day CVE triage. Analyse the vulnerability record below with explicit reasoning about exploit preconditions and impact across all eight CVSS v3.1 Base metrics, and then respond with a single JSON object on one line containing the keys "cve" (the CVE identifier), "attack_vector" (the AV value), "base_score" (the CVSS v3.1 base score as a number) and "vector" (the full CVSS:3.1 vector string). Do not output anything before or after the JSON object.
-Question: Vulnerability record for {cve:CVE.id}: {cve.descriptions}
+Question: Vulnerability record for {cve:CVE.id}: <desc>{cve.descriptions}</desc>
 Answer: <OBR>"cve": "{cve.id}", "attack_vector": "{cve.cvss3_1_attackVector}", "base_score": {cve.cvss3_1_baseScore}, "vector": "{cve.cvss3_1_vectorString}"<CBR> <*{force cve.cvss3_1_vectorString = cve.cvss3_1_vectorString}*>
 Count: 375
 
@@ -2457,7 +2476,7 @@ Section G.2 - AB.MS.* multi-select MCQ (cardinality 2 / 3 / 1 correct out of 5)
 ================================================================================
 
 AB.MS.GRP.1 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center answering a multi-select Cyber Threat Intelligence question. Consult MITRE ATT&CK and select all options that are correct (there may be one, two, or three). Reason about each option in turn and then state the answer letters as a comma-separated list. The final line of your response must begin with "Answer:" and contain only the selected letters separated by commas, with no extra commentary.
-Question: Which of the following MITRE ATT&CK techniques is threat group {grp:intrusion-set.name} ({grp.mitre_id}) documented as using? Select all that apply. Group description: {grp.description}
+Question: Which of the following MITRE ATT&CK techniques is threat group {grp:intrusion-set.name} ({grp.mitre_id}) documented as using? Select all that apply. Group description: <desc>{grp.description}</desc>
 A) {ap1:grp.uses>attack-pattern.mitre_id} ({ap1.name})
 B) {ap2:grp.uses>attack-pattern.mitre_id} ({ap2.name})
 C) {negap1:attack-pattern.mitre_id} ({negap1.name})
@@ -2480,7 +2499,7 @@ Sample: grp
 Count: 1500
 
 AB.MS.GRP.2 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center answering a multi-select Cyber Threat Intelligence question. Consult MITRE ATT&CK and select all options that are correct (there may be one, two, or three). Reason about each option in turn and then state the answer letters as a comma-separated list. The final line of your response must begin with "Answer:" and contain only the selected letters separated by commas, with no extra commentary.
-Question: Which of the following MITRE ATT&CK techniques is threat group {grp:intrusion-set.name} ({grp.mitre_id}) documented as using? Select all that apply. Group description: {grp.description}
+Question: Which of the following MITRE ATT&CK techniques is threat group {grp:intrusion-set.name} ({grp.mitre_id}) documented as using? Select all that apply. Group description: <desc>{grp.description}</desc>
 A) {ap1:grp.uses>attack-pattern.mitre_id} ({ap1.name})
 B) {ap2:grp.uses>attack-pattern.mitre_id} ({ap2.name})
 C) {negap1:attack-pattern.mitre_id} ({negap1.name})
@@ -2503,7 +2522,7 @@ Sample: grp
 Count: 1000
 
 AB.MS.GRP.3 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center answering a multi-select Cyber Threat Intelligence question. Consult MITRE ATT&CK and select all options that are correct (there may be one, two, or three). Reason about each option in turn and then state the answer letters as a comma-separated list. The final line of your response must begin with "Answer:" and contain only the selected letters separated by commas, with no extra commentary.
-Question: Which of the following MITRE ATT&CK techniques is threat group {grp:intrusion-set.name} ({grp.mitre_id}) documented as using? Select all that apply. Group description: {grp.description}
+Question: Which of the following MITRE ATT&CK techniques is threat group {grp:intrusion-set.name} ({grp.mitre_id}) documented as using? Select all that apply. Group description: <desc>{grp.description}</desc>
 A) {negap1:attack-pattern.mitre_id} ({negap1.name})
 B) {negap2:attack-pattern.mitre_id} ({negap2.name})
 C) {ap1:grp.uses>attack-pattern.mitre_id} ({ap1.name})
@@ -2526,7 +2545,7 @@ Sample: grp
 Count: 500
 
 AB.MS.MAL.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center answering a multi-select Cyber Threat Intelligence question. Consult MITRE ATT&CK and select all options that are correct (there may be one, two, or three). Reason about each option in turn and then state the answer letters as a comma-separated list. The final line of your response must begin with "Answer:" and contain only the selected letters separated by commas, with no extra commentary.
-Question: Which of the following malware families is threat group {grp:intrusion-set.name} ({grp.mitre_id}) documented as using? Select all that apply. Group description: {grp.description}
+Question: Which of the following malware families is threat group {grp:intrusion-set.name} ({grp.mitre_id}) documented as using? Select all that apply. Group description: <desc>{grp.description}</desc>
 A) {mw1:grp.uses>malware.mitre_id} ({mw1.name})
 B) {mw2:grp.uses>malware.mitre_id} ({mw2.name})
 C) {negmw1:malware.mitre_id} ({negmw1.name})
@@ -2549,7 +2568,7 @@ Sample: grp
 Count: 1500
 
 AB.MS.MAL.2 Instruction: You are a CTI analyst at an enterprise Security Operations Center answering a multi-select Cyber Threat Intelligence question. Consult MITRE ATT&CK and select all options that are correct (there may be one, two, or three). Reason about each option in turn and then state the answer letters as a comma-separated list. The final line of your response must begin with "Answer:" and contain only the selected letters separated by commas, with no extra commentary.
-Question: Which of the following malware families is threat group {grp:intrusion-set.name} ({grp.mitre_id}) documented as using? Select all that apply. Group description: {grp.description}
+Question: Which of the following malware families is threat group {grp:intrusion-set.name} ({grp.mitre_id}) documented as using? Select all that apply. Group description: <desc>{grp.description}</desc>
 A) {mw1:grp.uses>malware.mitre_id} ({mw1.name})
 B) {mw2:grp.uses>malware.mitre_id} ({mw2.name})
 C) {negmw1:malware.mitre_id} ({negmw1.name})
@@ -2572,7 +2591,7 @@ Sample: grp
 Count: 1000
 
 AB.MS.MAL.3 Instruction: You are a CTI analyst at an enterprise Security Operations Center answering a multi-select Cyber Threat Intelligence question. Consult MITRE ATT&CK and select all options that are correct (there may be one, two, or three). Reason about each option in turn and then state the answer letters as a comma-separated list. The final line of your response must begin with "Answer:" and contain only the selected letters separated by commas, with no extra commentary.
-Question: Which of the following malware families is threat group {grp:intrusion-set.name} ({grp.mitre_id}) documented as using? Select all that apply. Group description: {grp.description}
+Question: Which of the following malware families is threat group {grp:intrusion-set.name} ({grp.mitre_id}) documented as using? Select all that apply. Group description: <desc>{grp.description}</desc>
 A) {negmw1:malware.mitre_id} ({negmw1.name})
 B) {negmw2:malware.mitre_id} ({negmw2.name})
 C) {mw1:grp.uses>malware.mitre_id} ({mw1.name})
