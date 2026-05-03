@@ -4,6 +4,11 @@
 Created on Wed Nov 12 21:37:52 2025
 
 @author: icardei
+
+Changes:
+    05/01/2026: added default support for non-empty property values with command line option
+                --allow_nullprops (default False). Set to True to allow "" or null property values.
+
 """
 
 import os
@@ -32,7 +37,8 @@ def task_generate(args):
             "neo4j_conf_file": args.dbconf,
             "results_dir": args.results_dir,
             "count_max": args.count_max,
-            "verbose": args.verbose
+            "verbose": args.verbose,
+            "allow_nullprops": args.allow_nullprops
             }
         
     tool_tmplgen(options)
@@ -75,11 +81,11 @@ def main():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawTextHelpFormatter,
         description="""Template-based generation tool for neo4j DB.
-Example to generate strings from template file:
+Example to generate strings from template file, allowing null/empty/N/A property values:
 
     python3 iftgen.py --cmd generate --genconf gencfg_default_neo4j.json \\
         --dbconf neo4j-TEST-config.json --tmpl sample-tmpl-attack.json \\
-        --results_dir results-dir
+        --results_dir results-dir --allow_nullprops
 
 Example to create test neo4j DB from MITRE ATT&CK Enterprise JSON file:
     python3 iftgen.py --cmd create_db --dbconf neo4j-TEST-config.json 
@@ -91,6 +97,9 @@ Example to create test neo4j DB from MITRE ATT&CK Enterprise JSON file:
 Example to extract DB schema to JSON file and to generate graph figure:
     python3 iftgen.py --cmd get_schema --dbconf neo4j-TEST-config.json --out schema.json
         
+    
+Use command line option --allow_nullprops to permit null, "N/A" or "" property values. 
+Default it is False.
 """        
     )
     
@@ -124,8 +133,7 @@ Example to extract DB schema to JSON file and to generate graph figure:
          "--tmpl",
          "-t",
          type=str,
-         required=False,
-         default="",
+         required=True,
          help="Templates file name (JSON format).",
     )
     
@@ -145,6 +153,7 @@ Example to extract DB schema to JSON file and to generate graph figure:
          required=False,
          default=mitre_ent_attack_filename,
          help="Source MITRE ATT&CK JSON file needed to create a neo4j DB. \n\
+Only used by create_db command.\n\
 CAUTION: The neo4j DB will be wiped out and recreated.",
     )
 
@@ -153,7 +162,7 @@ CAUTION: The neo4j DB will be wiped out and recreated.",
          "-o",
          type=str,
          required=False,
-         default="",
+         default="schema-graph.json",
          help="Output file name for get_schema command.",
     )
 
@@ -164,6 +173,13 @@ CAUTION: The neo4j DB will be wiped out and recreated.",
          required=False,
          default=-1,
          help="Override count limit generation property: generate max. this many triples for each template.",
+    )
+
+    parser.add_argument(
+         "--allow_nullprops",
+         action='store_true',
+         required=False,
+         help='Include --allow_nullprop to allow null or empty/"" or "N/A" property values. Default it is False.',
     )
 
     parser.add_argument('--verbose', '-v', action='count', default=0,

@@ -160,59 +160,6 @@ QSTRING_SQ:   /(?:[^'\\]|\\.)*/
     return grammar
 
 
-def make_templ_grammar2():
-    """
-        Old version. NOT USED.
-        Template grammar with vardef(varname, CNAME).
-    """
-    grammar = r"""
-template:   topfield+
-
-topfield:    qfield | TEXTSECTION | invsection | listsection
-
-qfield:      "{" vardef? scope? cnameseq subscript? "}" 
-
-cnameseq:    CNAME ("." CNAME)*
-
-vardef:      VNAME ":" CNAME "."
-scope:       CNAME "#" CNAME "."
-
-subscript:   "[" subscr_exp "]"
-
-subscr_exp:    QUANTIFIER | (QUANTIFIER SUBSCR_OP QSTRING)
-
-invsection:  "<*" (INVCONTENT | qfield)* "*>"
-
-listsection: "[" (TEXTSECTION | qfield)* "]"
-
-INVCONTENT:   /(?:[^*{]|\*(?!>))+/
-QFTEXT:       /(?:[^}])+/
-TEXTSECTION:  /(?:[^{<[\]]|<(?!\*))+/
-                     
-                     
-DIGIT:        "0".."9"                     
-CNAMELETTER:  "a".."z" | "A".."Z" | "_"
-CNAMECHAR:    CNAMELETTER | "-"
-CNAME:        CNAMELETTER (CNAMECHAR|DIGIT)*
-
-// variable names should not use '-'
-VNAME:        CNAMELETTER (CNAMELETTER | DIGIT)*
-
-QUANTIFIER:   QUANTIF_ANY | QUANTIF_ALL 
-QUANTIF_ANY:  "?"
-QUANTIF_ALL:  "*"    
-SUBSCR_OP:    "!=" | "="
-QSTRING:      "\"" QSTRING_DQ "\"" | "'" QSTRING_SQ "'"
-QSTRING_DQ:   /(?:[^"\\]|\\.)*/
-QSTRING_SQ:   /(?:[^'\\]|\\.)*/
-//QSTRING_DQ:   /"(?:[^"\\]|\\.)*"/
-//QSTRING_SQ:   /'(?:[^'\\]|\\.)*'/
-
-//TEXTSECTION:  /(?:[^{<]|<(?!\*))+/
-"""
-    return grammar
-
-
     
 def tool_tmplgen(options:dict):
     """
@@ -1247,8 +1194,8 @@ class TmplGenNeo4j:
         """
         lst_prs_results = self.tmpl_parser.parse(tmplobj["text"])
 
-        # lst_prs_results  is a list of TextSection alternating with Pathspec objects
-        # a Pathspec objects embeds a list of [Nodespec, [Relspec, Nodespec]*, Propspec(prop)]
+        # lst_prs_results  is a list of TextSection alternating with Pathspec objects.
+        # A Pathspec object embeds a list of [Nodespec, [Relspec, Nodespec]*, Propspec(prop)]
         # Each Pathspec will be replaced by nd.prop where nd is the target node on the
         # Pathspec chain and prop is the last (and only) property.
         
@@ -1287,8 +1234,17 @@ class TmplGenNeo4j:
         lst_text_struct = list()        # it has its structure of the template; fill it with record fields
         set_edge_qrs = set()            # MATCH 2-edge paths, e.g. "(a0:a) -[:r] -> (b0:b)"
         set_returns = set()          
+
         # above  sets are needed bc. neo4j prohibits repeating MATCH and RETURN parameters
         #   ... we need to check for them before adding to the query text        
+        
+        # Add support to filter out null or empty or N/A property values:
+        # this is a list with factors in a conjunction for property values != null && != "" && != "N/A":
+        lst_filter_notnulls = list()
+        
+        # allow_nullprops is True if we allow property values to be null, "", or "N/A". It is False by default.
+        allow_nullprops = self.options.get('allow_nullprops', False)
+
         
         is_invisible_counter = 0        # if > 0 then don't include parse results in generated text  
         
@@ -1306,6 +1262,11 @@ class TmplGenNeo4j:
                     nodespec, propspec = self.find_node_prop_specs(pr)
                     # propspec = Propspec(f"{lst[-2].varname}.{lst[-1].propname}", None)
                     return_spec = f"{nodespec.varname}.{propspec.propname}"
+                    
+                    # add support to filter out null or empty or N/A property values:
+                    if not allow_nullprops:
+                        lst_filter_notnulls.append(f'{return_spec} IS NOT NULL AND {return_spec} <> "" AND \
+{return_spec} <> "N/A"')
                     
                     # remember template structure
                     # lst_text_struct.append(propspec)
@@ -1343,8 +1304,13 @@ class TmplGenNeo4j:
         # no WITH yet
         str_with = ""
         
-        # generate WHERE expression for filter subscript operator on property value
+        # generate WHERE expression for filters on property values:
         lst_filters = []
+        
+        # add support to filter out null or empty or N/A property values:        
+        if not allow_nullprops:
+            str_filter_notnulls = " AND ".join(lst_filter_notnulls)
+            lst_filters.append(str_filter_notnulls)
         
         str_modif_constraints = self.qry_make_modif_constraints(lst_prs_results)
         if str_modif_constraints: 
@@ -1368,6 +1334,7 @@ class TmplGenNeo4j:
         if len(lst_filters) > 0:
             str_where = "WHERE " + " AND ".join(lst_filters)
         
+        # ORDER clause:
         str_order = self.qry_make_order(tmplobj)
 
         # Optional primary-node pre-sampling: if the template declares
@@ -1441,8 +1408,9 @@ class TmplGenNeo4j:
             match_query = f"{str_sample_prefix}MATCH {str_match}     {str_where}{str_with}     RETURN DISTINCT {str_return}     {str_order}     LIMIT {limit}"
             match_query_fallback = f"{str_sample_prefix}MATCH {str_match}     {str_where}{str_with}     LIMIT {limit}     RETURN DISTINCT {str_return}     {str_order}"
 
-        if self.gencfg.get("verbose", 0) > 0:
-            print(f"\nMatch query:\n{match_query}\n")
+        # moved verbose print query statements to respective brancehes below:            
+        ## if self.gencfg.get("verbose", 0) > 0:
+        ##     print(f"\nMatch query:\n{match_query}\n")
 
         # a sequence of results.  the primary form is sampled for diversity but
         # can stall on heavy cartesians; gencfg "primary_query_timeout_s" (default
@@ -1450,7 +1418,12 @@ class TmplGenNeo4j:
         # transaction-memory exhaustion.
         primary_timeout = self.gencfg.get("primary_query_timeout_s", 90.0)
         try:
+            if self.gencfg.get("verbose", 0) > 0:
+                print(f"\nMatch query:\n{match_query}\n")
             qry_results = self.neo4j_driver.run_query_collect(match_query, timeout=primary_timeout)
+            
+            # return query string for debugging & testing:
+            used_query = match_query
         except (neo4j.exceptions.TransientError, neo4j.exceptions.ClientError, neo4j.exceptions.DriverError) as e:
             msg = str(e)
             is_memory = "MemoryPool" in msg or "memory pool" in msg.lower()
@@ -1461,12 +1434,16 @@ class TmplGenNeo4j:
                 print(f"  WARN: primary query hit {reason}; falling back to bounded form")
                 if self.gencfg.get("verbose", 0) > 0:
                     print(f"\nFallback query:\n{match_query_fallback}\n")
+                                                            
                 # Bound the fallback too: without a tx timeout it can only be
                 # cleared by an external watchdog, which in turn surfaces as an
                 # uncaught "Explicitly terminated by the user" ClientError that
                 # poisons the whole template (e.g. Q.MSR.1, AB.MCQ.3).
                 qry_results = self.neo4j_driver.run_query_collect(
                     match_query_fallback, timeout=primary_timeout)
+
+                # return query string for debugging & testing:
+                used_query = match_query_fallback
             else:
                 raise
         
@@ -1507,7 +1484,9 @@ class TmplGenNeo4j:
             if shuffle_mode == "mcq":
                 gentext = self._shuffle_mcq_options(gentext)
             lst_gentext.append(gentext)
-        return [lst_gentext, match_query]
+            
+        # return query string for debugging & testing:
+        return [lst_gentext, used_query]
 
         
     def gen_edge_info(self, ps:Pathspec) -> str:
@@ -2075,7 +2054,7 @@ def make_graph_test():
 
 
 def test_parsing():
-    tmpl_parser = Lark(make_templ_grammar2, start='template')
+    tmpl_parser = Lark(make_templ_grammar1, start='template')
     
     templates = [
     #     "abcd efgh {qf1} ijk {qf2} lmn",
@@ -2121,7 +2100,7 @@ def test_parsing_neo4j():
     
     schemagraph = SchemaGraph(schema_dict["adj_lst"])
 
-    tmpl_grammar = make_templ_grammar2()
+    tmpl_grammar = make_templ_grammar1()
     tmpl_parser = Lark(tmpl_grammar, start='template')
     parsecfg = make_parsecfg_test()
     
@@ -2156,7 +2135,7 @@ def test_parsing_dummy():
     schemagraph = make_graph_test()
     # schemagraph = SchemaGraph(schema_dict["adj_lst"])
 
-    tmpl_grammar = make_templ_grammar2()
+    tmpl_grammar = make_templ_grammar1()
     tmpl_parser = Lark(tmpl_grammar, start='template')
     parsecfg = make_parsecfg_test()
     
