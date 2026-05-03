@@ -1,5 +1,5 @@
 import argparse
-from benchmarks import CTIMCQ, CTIRCM, CTIVSP, CTIATE, CTITAA, URLHAUS, CVE, GLUE, SUPERGLUE, MMLU, ATHENAATE, ATHENARCM, ATHENARMS, ATHENATAA, ATHENAVSP, CYBERMETRIC, ATHENAMCQ, CYBERSOCEVALMALWARE, CYBERSOCEVALTI
+from benchmarks import CTIMCQ, CTIRCM, CTIVSP, CTIATE, CTITAA, URLHAUS, CVE, GLUE, SUPERGLUE, MMLU, MMLUPRO, ATHENAATE, ATHENARCM, ATHENARMS, ATHENATAA, ATHENAVSP, CYBERMETRIC, ATHENAMCQ, CYBERSOCEVALMALWARE, CYBERSOCEVALTI
 from pipelines.models import model_mapping, cleanup_model_cache, get_cached_model
 from pipelines.api_usage import get_totals, save_checkpoint, restore_checkpoint
 import os
@@ -63,7 +63,7 @@ def _print_pretty_result(task: str, model: str, result) -> None:
 
 def main():
     parser = argparse.ArgumentParser(description="Run inference for CTI tasks.")
-    parser.add_argument("task", choices=["mcq", "rcm", "vsp", "ate", "taa", "urlhaus", "cve", "glue", "superglue", "mmlu",
+    parser.add_argument("task", choices=["mcq", "rcm", "vsp", "ate", "taa", "urlhaus", "cve", "glue", "superglue", "mmlu", "mmlu-pro",
                                          "athena-ate", "athena-rcm", "athena-rms", "athena-taa", "athena-vsp","athena-mcq", "cybermetric",
                                          "cybersoceval-malware", "cybersoceval-ti"],
                         help="Task to evaluate (mcq, rcm, vsp, ate, taa)")
@@ -116,6 +116,7 @@ def main():
         'glue': GLUE,
         'superglue': SUPERGLUE,
         'mmlu': MMLU,
+        'mmlu-pro': MMLUPRO,
         'athena-ate': ATHENAATE,
         'athena-rcm': ATHENARCM,
         'athena-rms': ATHENARMS,
@@ -192,6 +193,8 @@ def main():
         result = benchmark.evaluate_superglue()
     elif args.task == 'mmlu':
         result = benchmark.evaluate_mmlu()
+    elif args.task == 'mmlu-pro':
+        result = benchmark.evaluate_mmlu_pro()
     elif args.task == 'athena-ate':
         result = benchmark.evaluate_athena_ate()
     elif args.task == 'athena-rcm':

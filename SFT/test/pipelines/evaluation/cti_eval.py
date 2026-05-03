@@ -119,6 +119,43 @@ class CTIEvaluate:
                       for _, r in df.iterrows())
         return correct / len(df) if len(df) > 0 else 0.0
 
+    # ---------- MMLU-Pro ----------
+    def compute_mmlu_pro_accuracy(self, csv_file: str):
+        """Overall + per-category accuracy for MMLU-Pro responses.
+
+        Returns a dict shaped like the cybersoceval-* evaluators so the
+        inference.py pretty-printer renders the per-category breakdown
+        below the headline accuracy line.
+        """
+        df = pd.read_csv(csv_file)
+        n = len(df)
+        if n == 0:
+            return {"accuracy": 0.0, "n": 0, "parse_error_pct": 0.0, "by_category": {}}
+        preds = df["prediction"].astype(str).str.strip().str.upper()
+        gts = df["ground_truth"].astype(str).str.strip().str.upper()
+        parse_errs = (preds == "NOT_FOUND").sum()
+        correct = (preds == gts).sum()
+        by_cat = {}
+        if "category" in df.columns:
+            for cat, sub in df.groupby("category"):
+                p = sub["prediction"].astype(str).str.strip().str.upper()
+                g = sub["ground_truth"].astype(str).str.strip().str.upper()
+                pe = int((p == "NOT_FOUND").sum())
+                c = int((p == g).sum())
+                total = int(len(sub))
+                by_cat[str(cat)] = {
+                    "answered": total - pe,
+                    "parse_errors": pe,
+                    "avg_score": (c / total * 100.0) if total else 0.0,
+                    "correct_mc_pct": (c / total * 100.0) if total else 0.0,
+                }
+        return {
+            "accuracy": float(correct) / n * 100.0,
+            "n": int(n),
+            "parse_error_pct": float(parse_errs) / n * 100.0,
+            "by_category": by_cat,
+        }
+
     # ---------- RCM ----------
     def compute_rcm_accuracy(self, fname, col):
         df = pd.read_csv(fname, sep='\t')

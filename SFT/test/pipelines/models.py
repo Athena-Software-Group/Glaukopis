@@ -76,6 +76,7 @@ model_mapping = {
     'qwen3-4b': 'Qwen/Qwen3-4B-Instruct-2507',
     'qwen3-8b': 'Qwen/Qwen3-8B',
     'qwen3-14b': 'Qwen/Qwen3-14B',
+    'qwen3-32b': 'Qwen/Qwen3-32B',
     'qwen3.5-9b':'Qwen/Qwen3.5-9B',
     'gpt-oss-20b': 'openai/gpt-oss-20b',
     'foundation-8b-reasoning': 'fdtn-ai/Foundation-Sec-8B-Reasoning',       # Cisco Foundation-Sec-8B-Reasoning
@@ -90,6 +91,7 @@ model_mapping = {
     'deepseek-r1-14b-hf':  'deepseek-ai/DeepSeek-R1-Distill-Qwen-14B',
     'deepseek-r1-70b-hf':  'deepseek-ai/DeepSeek-R1-Distill-Llama-70B',
     'qwen3-14b-hf':        'Qwen/Qwen3-14B',
+    'qwen3-32b-hf':        'Qwen/Qwen3-32B',
     'qwen2.5-14b-hf':      'Qwen/Qwen2.5-14B-Instruct',
     'qwen2.5-32b-hf':      'Qwen/Qwen2.5-32B-Instruct',
     'llama-3-70b-hf':      'meta-llama/Meta-Llama-3-70B-Instruct',
@@ -110,6 +112,7 @@ model_mapping = {
     'llama-3-8b-base-vllm':                    'meta-llama/Llama-3.1-8B',
     'llama-3-8b-vllm':                         'meta-llama/Meta-Llama-3.1-8B-Instruct',
     'qwen3-4b-vllm':                           'Qwen/Qwen3-4B-Instruct-2507',
+    'qwen3-32b-vllm':                          'Qwen/Qwen3-32B',
     'qwen2.5-14b-vllm':                        'Qwen/Qwen2.5-14B-Instruct',
     'qwen2.5-32b-vllm':                        'Qwen/Qwen2.5-32B-Instruct',
     'phi-4-vllm':                              'microsoft/phi-4',
@@ -969,6 +972,12 @@ TASK_MAX_NEW_TOKENS: dict[str, int] = {
     "glue":          256,
     "superglue":     256,
     "mmlu":          256,
+    # MMLU-Pro is zero-shot CoT: model writes a multi-step chain
+    # ("Let's think step by step...") before "The answer is (X)".
+    # 256 truncates the chain mid-reasoning on most rows; 1024 leaves
+    # comfortable headroom for hard math/physics rows without inflating
+    # latency on easy subjects (model EOSes once it emits the answer).
+    "mmlu-pro":     1024,
     # CyberSOCEval malware/TI emit a JSON object {"correct_answers":["A","B"]}
     # but Llama-3.1-8B-Instruct (and similar) preface the JSON with a verbose
     # bulleted MITRE/IOC walkthrough. The malware baseline at 256 tokens hit a

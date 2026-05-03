@@ -9,7 +9,7 @@ from pipelines.evaluation.athena_cti_eval import ATHENAEvaluate
 def main():
     parser = argparse.ArgumentParser(description='Evaluate benchmark results.')
     parser.add_argument('--task', choices=['mcq', 'rcm', 'vsp', 'taa', 'ate', 'urlhaus', 'cve',
-                                           'glue', 'superglue', 'mmlu','athena', 'athena-ate','athena-rcm',
+                                           'glue', 'superglue', 'mmlu', 'mmlu-pro', 'athena', 'athena-ate','athena-rcm',
                                            'athena-rms','athena-taa','athena-vsp','athena-mcq','cybermetric'],
                         help='Task to evaluate')
     parser.add_argument('--model', required=True,
@@ -140,6 +140,10 @@ def main():
     elif args.task == 'mmlu':
         accuracy = eval.compute_mmlu_accuracy(args.response_file)
         print(f"MMLU Benchmark Accuracy: {accuracy:.4f}")
+
+    elif args.task == 'mmlu-pro':
+        result = eval.compute_mmlu_pro_accuracy(args.response_file)
+        print(f"MMLU-Pro Benchmark Result: {result}")
 
     elif args.task == 'cybermetric':
         accuracy = eval.compute_cybermetric_accuracy(args.response_file)

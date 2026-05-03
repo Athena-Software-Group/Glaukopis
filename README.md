@@ -24,7 +24,7 @@ Within this repository, the pipeline covers:
 | [`athena_cti_db/`](athena_cti_db/) | Populates a Neo4j graph database with CTI data from MITRE ATT&CK, CAPEC, CWE, CVE, CISA KEV, FIRST EPSS, and MITRE ENGAGE. Produces the graph that feeds `tmpl_gen`. | [`athena_cti_db/README.md`](athena_cti_db/README.md) |
 | [`tmpl_gen/`](tmpl_gen/) | Generates structured text (IFT Alpaca-format triples) from graph-based Sophia CTI templates over the Neo4j CTI DB. Produces training data for `SFT`. | [`tmpl_gen/README.md`](tmpl_gen/README.md) |
 | [`SFT/`](SFT/) | LlamaFactory-based SFT / LoRA training pipeline for Qwen2.5-14B-Instruct and Llama-3.1-8B-Instruct on the IFT dataset, plus the `SFT/test/` benchmarking suite. | [`SFT/README.md`](SFT/README.md) |
-| [`SFT/test/`](SFT/test/) | Benchmarking framework for evaluating LLMs on CTI tasks (ATHENA-RCM/VSP/ATE/TAA/RMS/MCQ) and general NLP tasks (GLUE, SuperGLUE, MMLU, CyberMetric, URLhaus, NVD CVE). | [`SFT/test/README.md`](SFT/test/README.md) |
+| [`SFT/test/`](SFT/test/) | Benchmarking framework for evaluating LLMs on CTI tasks (ATHENA-RCM/VSP/ATE/TAA/RMS/MCQ) and general NLP tasks (GLUE, SuperGLUE, MMLU, MMLU-Pro, CyberMetric, URLhaus, NVD CVE). | [`SFT/test/README.md`](SFT/test/README.md) |
 
 ---
 

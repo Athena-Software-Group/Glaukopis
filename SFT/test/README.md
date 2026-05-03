@@ -4,7 +4,7 @@ A benchmarking framework for evaluating Large Language Models (LLMs) on Cyber Th
 
 ## Overview
 
-Athena CTI Bench provides a comprehensive evaluation suite for assessing Large Language Model (LLM) performance across fourteen key Cyber Threat Intelligence (CTI) and general reasoning tasks.
+Athena CTI Bench provides a comprehensive evaluation suite for assessing Large Language Model (LLM) performance across fifteen key Cyber Threat Intelligence (CTI) and general reasoning tasks.
 
 #### Core CTI Benchmarks:
 
@@ -31,6 +31,7 @@ Athena CTI Bench provides a comprehensive evaluation suite for assessing Large L
 - **GLUE (General Language Understanding Evaluation):** Evaluates language understanding tasks like sentence similarity, entailment, and sentiment.
 - **SUPERGLUE (Advanced NLP Evaluation):** A more challenging version of GLUE focusing on reasoning and comprehension.
 - **MMLU (Massive Multitask Language Understanding):** Tests broad knowledge across academic and professional subjects.
+- **MMLU-Pro (Robust MMLU Successor):** Harder, reasoning-focused successor to MMLU from TIGER-AI-Lab; ~12K questions across 14 academic domains, up to 10 answer options per question, evaluated zero-shot CoT against the upstream "The answer is (X)" extraction contract.
 
 ## Setup
 
@@ -156,7 +157,7 @@ python inference.py task subtask model_name --athena-cti-lnd --batch N --rows N 
 
 Parameters:
 - `task`: One of `mcq`, `rcm`, `vsp`, `ate`, `taa`, `cve`, `urlhaus`,`cybermetric`, `athena-ate`, `athena-taa`, `athena-rcm`, `athena-rms`, `athena-vsp`,
-`athena-mcq`, `glue`, `superglue`, `mmlu`
+`athena-mcq`, `glue`, `superglue`, `mmlu`, `mmlu-pro`
 - `subtask`: (Optional) Subtask name for GLUE or SUPERGLUE (e.g., cola, sst2).
 - `model_name`: Model identifier (e.g., `gpt4`, `gemini-2.5-flash`, `llama-3-70b`)
 - `--athena-cti-lnd`: (Optional) Enables the web search preview tool, used only for CVE tasks with GPT-5 or Gemini models.
@@ -230,6 +231,7 @@ step is needed.
 | `deepseek-r1-14b-hf` | `deepseek-ai/DeepSeek-R1-Distill-Qwen-14B` |
 | `deepseek-r1-70b-hf` | `deepseek-ai/DeepSeek-R1-Distill-Llama-70B` |
 | `qwen3-14b-hf`       | `Qwen/Qwen3-14B` |
+| `qwen3-32b-hf`       | `Qwen/Qwen3-32B` |
 | `qwen2.5-14b-hf`     | `Qwen/Qwen2.5-14B-Instruct` |
 | `llama-3-70b-hf`     | `meta-llama/Meta-Llama-3-70B-Instruct` |
 | `llama3.3-70b-hf`    | `meta-llama/Llama-3.3-70B-Instruct` |
@@ -340,6 +342,7 @@ producing misleading 0% baselines.
 |---|---|
 | `llama-3-8b-base-vllm`                    | `meta-llama/Llama-3.1-8B`                         |
 | `llama-3-8b-vllm`                         | `meta-llama/Meta-Llama-3.1-8B-Instruct`           |
+| `qwen3-32b-vllm`                          | `Qwen/Qwen3-32B`                                  |
 | `athena-cti-cpt-llama31-8b-v1-vllm`       | `asg-ai/athena-cti-cpt-llama31-8b-v1`             |
 | `athena-cti-sft-llama31-8b-abaligned-v4-vllm` | `asg-ai/athena-cti-sft-llama31-8b-abaligned-v4` |
 
@@ -377,6 +380,7 @@ Results are automatically evaluated after inference and saved in the responses/<
 - ATHENA-TAA, TAA: Correct and Plausible Accuracy
 - GLUE: Accuracy,F1-score,Pearson,Spearmanr
 - SUPERGLUE: Accuracy, F1-score, Exact Match
+- MMLU-Pro: Overall accuracy, per-category accuracy, parse-error rate (returns a nested dict so the per-task pretty-printer renders the 14-domain breakdown beneath the headline number)
 
 Evaluate predictions separately (optional):
 The task_evaluation.py script can be used to manually evaluate model outputs after inference.

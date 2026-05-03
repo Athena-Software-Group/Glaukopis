@@ -9,6 +9,7 @@ from .cve_nvd import CVE
 from .glue import GLUE
 from .superglue import SUPERGLUE
 from .mmlu import MMLU
+from .mmlu_pro import MMLUPRO
 from .athena_ate import ATHENAATE
 from .athena_rcm import ATHENARCM
 from .athena_rms import ATHENARMS
