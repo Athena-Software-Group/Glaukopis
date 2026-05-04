@@ -183,12 +183,17 @@ if [[ -n "${CHAT_TEMPLATE}" ]]; then
 fi
 
 if [[ -n "${EXTRA}" ]]; then
-    # Quote-aware split: plain ${EXTRA} word-splitting strips the quoting
-    # around values like --hf-overrides '{"k":"v"}', so vllm receives the
-    # literal single quotes inside the JSON and pydantic rejects it.
-    # eval respects single/double quotes the same way the shell does.
+    # Quote-aware split + brace-expansion guard: plain ${EXTRA} word-splitting
+    # strips the quoting around values like --hf-overrides '{"k":"v"}', and
+    # bare eval brace-expands JSON-shaped values like
+    # --rope-scaling {"a":"b","c":"d"} into separate words (commas inside the
+    # braces look like brace-list separators to bash). set +B disables brace
+    # expansion for the eval; quoting behavior is otherwise unchanged so
+    # eval still honors single/double quotes the same way the shell does.
     # shellcheck disable=SC2294
+    set +B
     eval "extra_arr=(${EXTRA})"
+    set -B
     args+=("${extra_arr[@]}")
 fi
 
