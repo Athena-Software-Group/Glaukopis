@@ -69,6 +69,10 @@ def _get_bolt_driver():
         _bolt_driver = GraphDatabase.driver(neo4j_url, auth=(neo4j_user, neo4j_password))
     return _bolt_driver
 
+# D3FEND ontology release version. Pinned for reproducibility; bump to upgrade.
+# Releases listed at https://d3fend.mitre.org/resources/ontology/
+D3FEND_VERSION = "1.4.0"
+
 # Data source URLs
 DATA_SOURCES = {
     "attack": "https://github.com/mitre/cti.git",
@@ -81,7 +85,9 @@ DATA_SOURCES = {
     "nvd": "https://nvd.nist.gov/feeds/json/cve/2.0",
     "sigma": "https://github.com/SigmaHQ/sigma.git",
     "exploitdb": "https://gitlab.com/exploit-database/exploitdb.git",
-    "poc_github": "https://github.com/nomi-sec/PoC-in-GitHub.git"
+    "poc_github": "https://github.com/nomi-sec/PoC-in-GitHub.git",
+    "d3fend": "https://d3fend.mitre.org/ontologies/d3fend/{version}/d3fend.json",
+    "d3fend_mappings": "https://d3fend.mitre.org/ontologies/d3fend/{version}/d3fend-full-mappings.json"
 }
 
 # Configure retry strategy
@@ -338,6 +344,24 @@ def download_and_extract_data():
         logger.info("Sigma rules cloned successfully")
     else:
         logger.info("Sigma data already exists - skipping download")
+
+    # Download D3FEND ontology + ATT&CK inferred-mappings (versioned MITRE static files)
+    d3fend_dir = data_dir / "d3fend"
+    d3fend_dir.mkdir(exist_ok=True)
+    for fname, src_key in (("d3fend.json", "d3fend"), ("d3fend-full-mappings.json", "d3fend_mappings")):
+        target = d3fend_dir / fname
+        if target.exists():
+            logger.info(f"D3FEND {fname} already exists - skipping download")
+            continue
+        url = DATA_SOURCES[src_key].format(version=D3FEND_VERSION)
+        logger.info(f"Downloading D3FEND {fname} (v{D3FEND_VERSION}) from {url}")
+        with open(target, 'wb') as f:
+            with session.get(url, stream=True, timeout=120) as resp:
+                resp.raise_for_status()
+                for chunk in resp.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+        logger.info(f"D3FEND {fname} saved ({target.stat().st_size:,} bytes)")
 
     # Clone ExploitDB (sparse: files_exploits.csv only)
     exploitdb_dir = data_dir / "exploitdb"
@@ -2673,6 +2697,174 @@ def process_sigma_data(sigma_dir: Path) -> List[Dict]:
     return queries
 
 
+# Canonical D3FEND tactics. Stable IDs synthesized as D3-T-<LocalName> since the
+# tactic concepts in the ontology graph do not carry their own d3f:d3fend-id.
+D3FEND_TACTICS = ["Model", "Harden", "Detect", "Isolate", "Deceive", "Evict", "Restore"]
+
+
+def process_d3fend_data(d3fend_dir: Path) -> List[Dict]:
+    """Process MITRE D3FEND ontology — creates D3FENDTactic + D3FENDTechnique nodes,
+    a parent-of hierarchy, and [:counters] edges to ATT&CK attack-pattern nodes.
+
+    Two source files (downloaded from d3fend.mitre.org under DATA_SOURCES):
+      - d3fend.json: JSON-LD @graph (~7k entities); we keep the ~500 with d3f:d3fend-id
+        and use rdfs:subClassOf to derive the technique hierarchy.
+      - d3fend-full-mappings.json: SPARQL JSON results (~14k bindings) linking D3FEND
+        defensive techniques to ATT&CK offensive techniques via shared artifacts.
+    """
+    queries: List[Dict] = []
+
+    onto_path = d3fend_dir / "d3fend.json"
+    map_path = d3fend_dir / "d3fend-full-mappings.json"
+
+    if not onto_path.exists():
+        logger.warning(f"D3FEND ontology not found: {onto_path}")
+        return queries
+
+    with onto_path.open("r", encoding="utf-8") as f:
+        ontology = json.load(f)
+    graph = ontology.get("@graph", [])
+
+    # Build local-name -> entity map and d3fend_id collection
+    graph_by_local: Dict[str, Dict] = {}
+    for e in graph:
+        eid = e.get("@id", "")
+        if eid.startswith("d3f:"):
+            graph_by_local[eid.split(":", 1)[-1]] = e
+
+    techniques: Dict[str, Dict] = {}     # d3fend_id -> properties
+    local_to_id: Dict[str, str] = {}     # 'TokenBinding' -> 'D3-TKB'
+    for local, entity in graph_by_local.items():
+        d3id = entity.get("d3f:d3fend-id")
+        label = entity.get("rdfs:label")
+        if not d3id or not label:
+            continue
+        local_to_id[local] = d3id
+
+        sc = entity.get("rdfs:subClassOf", []) or []
+        if isinstance(sc, dict):
+            sc = [sc]
+        parents: List[str] = []
+        for p in sc:
+            pid = (p or {}).get("@id", "") if isinstance(p, dict) else ""
+            if pid.startswith("d3f:"):
+                parents.append(pid.split(":", 1)[-1])
+
+        syn = entity.get("d3f:synonym", []) or []
+        if isinstance(syn, str):
+            syn = [syn]
+
+        techniques[d3id] = {
+            "d3fend_id": d3id,
+            "name": str(label)[:300],
+            "local_name": local,
+            "definition": str(entity.get("d3f:definition", "") or "")[:2000],
+            "synonyms": [str(s) for s in syn],
+            "parent_local_names": parents,
+        }
+
+    # Synthesize tactic nodes from canonical list, enriching with graph metadata when present
+    tactic_local_to_id: Dict[str, str] = {}
+    tactic_props: Dict[str, Dict] = {}
+    for t in D3FEND_TACTICS:
+        tid = f"D3-T-{t}"
+        e = graph_by_local.get(t, {})
+        tactic_local_to_id[t] = tid
+        tactic_props[tid] = {
+            "d3fend_id": tid,
+            "name": str(e.get("rdfs:label", t))[:200],
+            "local_name": t,
+            "definition": str(e.get("d3f:definition", "") or "")[:2000],
+        }
+
+    # Emit D3FENDTactic nodes
+    for tid, props in tactic_props.items():
+        stix_id = generate_stix_id("d3fend", tid)
+        queries.append({
+            "statement": create_node_query("D3FENDTactic", stix_id, props),
+            "parameters": {**props, "stix_id": stix_id},
+        })
+
+    # Emit D3FENDTechnique nodes (drop helper-only field before persisting)
+    for d3id, props in techniques.items():
+        stix_id = generate_stix_id("d3fend", d3id)
+        node_props = {k: v for k, v in props.items() if k != "parent_local_names"}
+        queries.append({
+            "statement": create_node_query("D3FENDTechnique", stix_id, node_props),
+            "parameters": {**node_props, "stix_id": stix_id},
+        })
+
+    # Hierarchy edges: parent points to either D3FENDTechnique or D3FENDTactic
+    parent_edge_count = 0
+    for d3id, props in techniques.items():
+        for parent_local in props["parent_local_names"]:
+            parent_d3id = local_to_id.get(parent_local) or tactic_local_to_id.get(parent_local)
+            if not parent_d3id or parent_d3id == d3id:
+                continue
+            queries.append({
+                "statement": (
+                    "MATCH (c:D3FENDTechnique {d3fend_id: $child_id}) "
+                    "MATCH (p) WHERE (p:D3FENDTechnique OR p:D3FENDTactic) AND p.d3fend_id = $parent_id "
+                    "MERGE (c)-[:parent]->(p)"
+                ),
+                "parameters": {"child_id": d3id, "parent_id": parent_d3id},
+            })
+            parent_edge_count += 1
+
+    # Counters edges from inferred mappings (deduped on (def_tech, off_tech_id))
+    bindings: List[Dict] = []
+    if map_path.exists():
+        with map_path.open("r", encoding="utf-8") as f:
+            mappings = json.load(f)
+        bindings = (mappings.get("results") or {}).get("bindings", []) or []
+    else:
+        logger.warning(f"D3FEND mappings file not found: {map_path}")
+
+    seen_counters = set()
+    counter_edge_count = 0
+    for b in bindings:
+        def_tech_uri = (b.get("def_tech") or {}).get("value", "")
+        off_tech_id = (b.get("off_tech_id") or {}).get("value", "")
+        if not def_tech_uri or not off_tech_id:
+            continue
+        def_local = def_tech_uri.rsplit("#", 1)[-1]
+        d3id = local_to_id.get(def_local)
+        if not d3id:
+            continue
+        key = (d3id, off_tech_id)
+        if key in seen_counters:
+            continue
+        seen_counters.add(key)
+        queries.append({
+            "statement": (
+                "MATCH (d:D3FENDTechnique {d3fend_id: $d3id}) "
+                "MATCH (a:`attack-pattern` {mitre_id: $att_id}) "
+                "MERGE (d)-[r:counters]->(a) "
+                "SET r.def_tactic = $def_tactic, "
+                "    r.def_artifact = $def_artifact, "
+                "    r.def_artifact_rel = $def_artifact_rel, "
+                "    r.off_artifact = $off_artifact, "
+                "    r.off_artifact_rel = $off_artifact_rel"
+            ),
+            "parameters": {
+                "d3id": d3id,
+                "att_id": off_tech_id,
+                "def_tactic": (b.get("def_tactic_label") or {}).get("value", ""),
+                "def_artifact": (b.get("def_artifact_label") or {}).get("value", ""),
+                "def_artifact_rel": (b.get("def_artifact_rel_label") or {}).get("value", ""),
+                "off_artifact": (b.get("off_artifact_label") or {}).get("value", ""),
+                "off_artifact_rel": (b.get("off_artifact_rel_label") or {}).get("value", ""),
+            },
+        })
+        counter_edge_count += 1
+
+    logger.info(
+        f"Processed {len(techniques)} D3FEND techniques, {len(tactic_props)} tactics, "
+        f"{parent_edge_count} hierarchy edges, {counter_edge_count} counters edges"
+    )
+    return queries
+
+
 def process_exploitdb_data(exploitdb_dir: Path) -> List[Dict]:
     """Process ExploitDB files_exploits.csv — creates ExploitDBEntry nodes linked to CVE nodes."""
     queries: List[Dict] = []
@@ -2873,6 +3065,12 @@ def create_constraints():
         "CREATE CONSTRAINT stix_id_sigma_rule IF NOT EXISTS FOR (n:SigmaRule) REQUIRE n.stix_id IS UNIQUE",
         "CREATE CONSTRAINT sigma_rule_id IF NOT EXISTS FOR (n:SigmaRule) REQUIRE n.id IS UNIQUE",
 
+        # D3FEND ontology nodes
+        "CREATE CONSTRAINT stix_id_d3fend_technique IF NOT EXISTS FOR (n:D3FENDTechnique) REQUIRE n.stix_id IS UNIQUE",
+        "CREATE CONSTRAINT d3fend_technique_id IF NOT EXISTS FOR (n:D3FENDTechnique) REQUIRE n.d3fend_id IS UNIQUE",
+        "CREATE CONSTRAINT stix_id_d3fend_tactic IF NOT EXISTS FOR (n:D3FENDTactic) REQUIRE n.stix_id IS UNIQUE",
+        "CREATE CONSTRAINT d3fend_tactic_id IF NOT EXISTS FOR (n:D3FENDTactic) REQUIRE n.d3fend_id IS UNIQUE",
+
         # ExploitDBEntry node (curated exploits from Exploit-DB)
         "CREATE CONSTRAINT stix_id_exploitdb_entry IF NOT EXISTS FOR (n:ExploitDBEntry) REQUIRE n.stix_id IS UNIQUE",
         "CREATE CONSTRAINT exploitdb_entry_id IF NOT EXISTS FOR (n:ExploitDBEntry) REQUIRE n.id IS UNIQUE",
@@ -3051,6 +3249,11 @@ def import_all_data(data_dir: Optional[Path] = None):
     logger.info("Processing Sigma detection rules...")
     sigma_queries = process_sigma_data(data_dir / "sigma")
     execute_queries(sigma_queries)
+
+    # 16.5 D3FEND defensive techniques + counters edges (attack-pattern nodes must exist)
+    logger.info("Processing D3FEND ontology + ATT&CK mappings...")
+    d3fend_queries = process_d3fend_data(data_dir / "d3fend")
+    execute_queries(d3fend_queries)
 
     # 17. ExploitDBEntry + GithubPoC nodes (CVE nodes must exist)
     logger.info("Processing ExploitDB entries...")
