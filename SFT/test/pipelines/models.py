@@ -153,6 +153,12 @@ model_mapping = {
     # 50-shared-13gram dedup, <desc> markers; pushed by
     # SFT/autotrain/run_abaligned_sft_qwen25_14b_v10.sh).
     'athena-cti-sft-qwen25-14b-abaligned-v10-vllm':            'asg-ai/athena-cti-sft-qwen25-14b-abaligned-v10',
+    # v11 single-pass 14B/32B on the 199K-row v11 corpus (SOC.* / TAA.CANON.*
+    # / RMS-paraphrase expansions, F3 anchor-fixation fix, actor cap=40,
+    # held-out val slice; pushed by SFT/autotrain/run_sft_qwen25_{14b,32b}_v11.sh).
+    # Naming migration per v11_plan.txt §0: "abaligned" suffix dropped.
+    'athena-cti-sft-qwen25-14b-v11-vllm':                      'asg-ai/athena-cti-sft-qwen25-14b-v11',
+    'athena-cti-sft-qwen25-32b-v11-vllm':                      'asg-ai/athena-cti-sft-qwen25-32b-v11',
     # HF Inference Providers route. Custom community fine-tunes are not in the
     # default Together/Fireworks/Novita/etc. catalogs; this alias only resolves
     # if the model is exposed via an HF Inference Endpoint or the legacy

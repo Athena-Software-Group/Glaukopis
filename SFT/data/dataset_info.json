@@ -130,6 +130,30 @@
       "response": "output"
     }
   },
+  "ift_data_2026_05_03_v11": {
+    "file_name": "ift_data_2026_05_03_v11.json",
+    "columns": {
+      "system": "instruction",
+      "prompt": "input",
+      "response": "output"
+    }
+  },
+  "ift_data_2026_05_03_v11_train": {
+    "file_name": "ift_data_2026_05_03_v11_train.json",
+    "columns": {
+      "system": "instruction",
+      "prompt": "input",
+      "response": "output"
+    }
+  },
+  "ift_data_2026_05_03_v11_val": {
+    "file_name": "ift_data_2026_05_03_v11_val.json",
+    "columns": {
+      "system": "instruction",
+      "prompt": "input",
+      "response": "output"
+    }
+  },
   "alpaca_en_demo": {
     "file_name": "alpaca_en_demo.json"
   },
