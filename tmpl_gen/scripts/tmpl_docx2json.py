@@ -248,7 +248,8 @@ def extract_templates_from_txt(args) -> list[dict]:
             if l == "" or l.startswith("{force"):
                 i += 1
                 continue
-            for prefix in ("Summary", "Schema", "Sample", "Shuffle", "Count"):
+            for prefix in ("Summary", "Schema", "Sample", "Shuffle", "Count",
+                           "Per_primary_grouping"):
                 if l.startswith(f"{prefix}: "):
                     val = l[len(f"{prefix}: "):]
                     if prefix == "Count":
@@ -256,6 +257,19 @@ def extract_templates_from_txt(args) -> list[dict]:
                             tmpl["count_limit"] = int(val.strip())
                         except ValueError:
                             print(f"@@@ Template {t_id}: invalid Count '{val}' - ignored")
+                    elif prefix == "Per_primary_grouping":
+                        # Per-template override of the gencfg per_primary_grouping
+                        # default. Used to opt high-fan-out constraint templates
+                        # (e.g. AB.TAA.NEG.1: rel != grp sharing 3 patterns) out
+                        # of the per-primary CALL-subquery form, which under
+                        # tight constraints collapses yield to ~10% of the cap.
+                        sval = val.strip().lower()
+                        if sval in ("true", "1", "yes"):
+                            tmpl["per_primary_grouping"] = True
+                        elif sval in ("false", "0", "no"):
+                            tmpl["per_primary_grouping"] = False
+                        else:
+                            print(f"@@@ Template {t_id}: invalid Per_primary_grouping '{val}' - ignored")
                     else:
                         tmpl[prefix.lower()] = val
                     break

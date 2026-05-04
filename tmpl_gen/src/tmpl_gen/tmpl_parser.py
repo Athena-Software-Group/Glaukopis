@@ -1501,7 +1501,15 @@ class TmplGenNeo4j:
         #
         # Fallback form: apply LIMIT before RETURN to bound memory for queries
         # whose Cartesian fan-out would otherwise exceed dbms.memory.transaction.total.max.
-        use_per_primary = bool(self.gencfg.get("per_primary_grouping", False))
+        # Per-template override (Per_primary_grouping: false in the manifest)
+        # takes precedence over the gencfg default. Needed for high-fan-out
+        # constraint templates (AB.TAA.NEG.1, JS.TAA.NEG.1) where the
+        # per-primary CALL-subquery LIMIT 1 chaining collapses yield against
+        # tight {force rel != grp + shared (ap1, ap2, mw)} constraints.
+        if "per_primary_grouping" in tmplobj:
+            use_per_primary = bool(tmplobj["per_primary_grouping"])
+        else:
+            use_per_primary = bool(self.gencfg.get("per_primary_grouping", False))
         if sample_grouping_active and use_per_primary:
             # Sample-with-replacement prefix: collect all candidate primaries
             # then UNWIND a range of LIMIT picks, indexing into the collection
