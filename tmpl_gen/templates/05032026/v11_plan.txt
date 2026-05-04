@@ -1,0 +1,35 @@
+v10 regressed on RMS, CKT, and ATE relative to v9 and v7. The unified single-pass corpus traded the v9 phase-B RMS specialization for VSP and plausible-TAA gains, but the net was negative on weighted average (54.1 vs v9's 56.4). The v10 README itself flagged AB.RMS.{4,5} at 44 rows each as a risk — that prediction came true. Two structural choices in v10 hurt more than helped: (a) folding the RMS-heavy phase B into the unified mix diluted the catalog signal below the threshold needed for the M-control reasoning to consolidate, and (b) the 73.2% broad-knowledge tail crowded out eval-aligned density across the board.
+So v11 needs to do three things simultaneously: restore the v9 RMS catalog density, push TAA accuracy out of the 8–17% trap, and add direct CyberSOCEval/CyberMetric coverage that the current manifest essentially doesn't target.
+
+Recommended v11 plan
+Base model decision: Stay on Qwen2.5-32B-Instruct as the v11 production base. Run Qwen3-32B in parallel as a v11-experimental fork after the eval harness is fixed, but don't gate v11 release on it. Your v7 32B SFT (62.7 total) is already your best SFT entry — incremental data improvements on the proven base are higher-EV than re-baselining on a model whose evaluation pipeline is currently broken.
+Return to a controlled two-phase structure, but better designed than v9's was. The single-pass v10 hypothesis was that balanced shuffling would protect both broad knowledge and RMS catalog. The data shows it didn't. But the v9 two-phase had a different problem — phase B over-corrected toward RMS at the cost of phase A knowledge retention. The v11 fix is stratified single-pass with category-anchored sampling: build the corpus as before, but at training time use a sampler that guarantees minimum batch representation from each eval-axis-aligned family rather than random shuffle. This gives you the regularization benefit of v9's phase B without the rate-of-forgetting issue, and avoids v10's dilution.
+Corpus composition shifts:
+The v10 26.8% eval-aligned / 73.2% broad split is upside-down for what AthenaBench rewards. Target ~40% eval-aligned in v11. Specific changes from v10:
+
+RMS family up from 6.1% to ~10% (~20K rows). Critical fix: expand AB.RMS.4 and AB.RMS.5 from 44 rows each to 1,500+ each. The v10 README correctly identified this — the Neo4j seed population for M-control catalog drills needs to be expanded, not the template. Audit the seed query and check why it's yielding so little. If it's a graph coverage issue, supplement with synthetic generation from MITRE D3FEND mitigation tactics.
+TAA positive examples up from 1,284 to ~3,500. Relax the actor cap from 20 to 40 — your guardrail ratio (5,000 IE/NEG to 1,284 attribute) is excessive at 3.9:1, and the cap was set conservatively because v9 mode-collapsed before guardrails existed. With guardrails proven, you can afford more positive density.
+TAA accuracy data augmentation pass. This is the persistent ceiling across every SFT run. Add a new template family (call it TAA.CANON) that generates examples from MITRE Groups + MISP galaxy clusters with explicit alias resolution: Cozy Bear → APT29, Hidden Cobra → Lazarus, Wicked Panda → APT41, Winnti → APT41, etc. Anchor each canonical name to 3–5 distinctive TTPs. Target 2,000 rows. The plausible-vs-accurate gap (87–92% plausible, 8–17% accurate) is exactly what's caused by missing canonical-name supervision.
+Multi-select expansion. Fix the seed mismatch on AB.MS.GRP.{1,2} and AB.MS.MAL.{1,3}. Target 4,000 rows total across the MS family vs v10's 1,500. The v9 select-all bias is unlikely to resolve without more diverse multi-select training signal.
+New SOC family for CyberSOCEval (~12K rows). v10 has zero direct SOC coverage. Add: alert triage prose with reasoning chains (target 4K), incident response playbook scenarios (3K), malware behavioral analysis (3K — different from MAL attribution), Sigma rule explanation (this is partially in v10 SR.* but lacks the "why this triggers, what's the false positive case" reasoning that CyberSOCEval Threat Intel rewards) (2K).
+CyberMetric coverage (~6K rows). General security MCQ outside CTI: cryptography fundamentals, access control models, compliance frameworks (NIST CSF, ISO 27001, HIPAA, PCI-DSS), governance/risk concepts. The frontier models score 88–94% here mostly from pretraining; SFT can probably gain 3–5 points by covering the topical gaps.
+
+That brings v11 to roughly 230–240K rows total vs v10's 200K. Given you're at 1 epoch and ~12,500 steps, this means ~14K steps — still well within reasonable training time on your hardware.
+Data quality controls:
+
+Keep the BS4 sanitizer and <desc> markers from v10 — those were genuine improvements and not the cause of regression.
+Drop the 13-gram dedup threshold from 50 to 30. v10's 50 was conservative; some of the 621 dropped rows were probably legitimate diversity. Re-inspect 100 random borderline cases (35–50 shared 13-grams) to validate.
+Audit the v10 X family (15.9% of corpus) and YN family (11.8%) for redundancy. Combined that's 27.7% of training tokens going to extraction and binary tasks that don't directly map to AthenaBench eval axes. I suspect 30–40% of these rows could be cut without measurable performance loss, freeing capacity for the eval-aligned families above.
+
+Hyperparameter adjustments from v10:
+
+LR: hold at the v10 setting if it converged cleanly, or drop to 1.2e-5 if v10's loss curve showed instability in the last 20% of training.
+Sequence packing: keep on, cutoff 8192 (v10 stats confirmed only 7 rows exceed this).
+Add eval-axis-stratified validation: 50 held-out examples per AthenaBench category for in-training eval every 1000 steps. v10's failure mode (RMS regression) would have been detectable mid-training with this in place.
+Consider warm-up LR scaling for the first 500 steps — Qwen2.5-32B SFT seems to be slightly sensitive to early-batch RMS examples crowding the loss signal.
+
+Evaluation plan for v11:
+
+Run two checkpoints: epoch 0.7 and epoch 1.0. Your v7 result suggests the 14B family may slightly over-train at full epoch on RMS specifically; the 32B has more capacity to absorb without forgetting, but it's worth checking.
+After Qwen3-32B harness is fixed, run a v11-experimental fork on Qwen3-32B with the same data and report both. The thinking/non-thinking ablation here is the genuinely novel result for the Glaukopis paper.
+Add a TAA-canonical eval slice that specifically measures alias resolution accuracy. Without this, you can't diagnose whether v11's TAA improvement (if any) comes from the right cause.
