@@ -177,9 +177,12 @@ CAUTION: The neo4j DB will be wiped out and recreated.",
 
     parser.add_argument(
          "--allow_nullprops",
-         action='store_true',
+         action='store_const',
+         const=True,
+         default=None,
          required=False,
-         help='Include --allow_nullprop to allow null or empty/"" or "N/A" property values. Default it is False.',
+         help='Include --allow_nullprops to allow null or empty/"" or "N/A" property values. '
+              'When omitted the value is taken from gencfg.allow_nullprops (default False).',
     )
 
     parser.add_argument('--verbose', '-v', action='count', default=0,

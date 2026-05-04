@@ -18,6 +18,17 @@
 #                                    shared 13-grams) before locking the v11
 #                                    corpus.)
 #
+# Build-side defaults inherited by Phase 1 (make_dataset.sh) for v11
+# (encoded in tmpl_gen/data_generation/gencfg_per_primary_neo4j.json,
+# now the default GENCONF in tmpl_gen/data_generation/{make_dataset,
+# tmpl2triples}.sh):
+#   per_primary_grouping=true   sample-with-replacement anchor diversity
+#                               (fixes v10 AB.MS.* / AB.TAA.* anchor
+#                               fixation; see tmpl_parser.py process_template)
+#   allow_nullprops=true        tolerate null/empty/"N/A" property values
+#                               so RMS/MS templates do not lose rows when
+#                               descriptions are missing on Neo4j nodes
+#
 # Launch with nohup so it survives terminal close:
 #   nohup bash _v11_build/watcher.sh > _v11_build/watcher.log 2>&1 &
 

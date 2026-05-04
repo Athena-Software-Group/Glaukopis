@@ -1176,6 +1176,107 @@ class TmplGenNeo4j:
         new_text = ans_re.sub(ans_fmt.format(new_correct_letter), new_text, count=1)
         return new_text
 
+    # F3 emitter helpers (per-primary-grouping path only). These are used to
+    # decompose a flat MATCH/WHERE pair into a chain of incremental
+    # MATCH ... WITH ... ORDER BY rand() LIMIT 1 stages so the inner CALL
+    # subquery never materialises the full joined product. Tightly scoped:
+    # only invoked from the `sample_grouping_active and use_per_primary`
+    # branch in process_template; legacy emission paths are untouched.
+    _F3_VAR_DECL_RE = re.compile(r"\(\s*(`[^`]+`|[A-Za-z_][A-Za-z0-9_]*)\s*:")
+    _F3_IDENT_RE = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\b")
+    # Strip quoted string literals (single- or double-quoted) so their bodies
+    # cannot be misread as identifiers (e.g. "N/A" -> N, A).
+    _F3_STR_LIT_RE = re.compile(r"\"[^\"]*\"|'[^']*'")
+    # Cypher tokens that must not be misread as variable references when
+    # attributing WHERE conjuncts to bind stages.
+    _F3_KEYWORDS = frozenset({
+        "AND", "OR", "NOT", "IN", "IS", "NULL", "TRUE", "FALSE", "true", "false",
+        "WHERE", "WITH", "MATCH", "RETURN", "DISTINCT", "ORDER", "BY", "LIMIT",
+        "ANY", "ALL", "NONE", "CONTAINS", "STARTS", "ENDS", "AS",
+        "elementId", "toLower", "toUpper", "datetime", "rand", "x",
+    })
+
+    @classmethod
+    def _f3_frag_vars(cls, frag:str) -> list[str]:
+        """Return the variable names declared in a MATCH fragment string."""
+        return [v.strip("`") for v in cls._F3_VAR_DECL_RE.findall(frag)]
+
+    @classmethod
+    def _f3_split_conjuncts(cls, where_body:str) -> list[str]:
+        """Split a WHERE body on top-level ' AND ' (parenthesis-balanced)."""
+        if not where_body:
+            return []
+        parts = where_body.split(" AND ")
+        out = []
+        cur = []
+        for p in parts:
+            cur.append(p)
+            joined = " AND ".join(cur)
+            if joined.count("(") == joined.count(")"):
+                out.append(joined)
+                cur = []
+        if cur:
+            out.append(" AND ".join(cur))
+        return out
+
+    @classmethod
+    def _f3_conjunct_vars(cls, conj:str) -> set[str]:
+        """Identifiers referenced by a WHERE conjunct, minus Cypher keywords
+        and minus property suffixes (e.g. ap1.name -> ap1, not name)."""
+        stripped = cls._F3_STR_LIT_RE.sub("", conj)
+        # Drop property accessors so only the base var qualifies as a binding
+        # reference (otherwise `ap1.name` would also pull in `name` and the
+        # subset test would never succeed).
+        stripped = re.sub(r"\.([A-Za-z_][A-Za-z0-9_]*)", "", stripped)
+        return {v for v in cls._F3_IDENT_RE.findall(stripped) if v not in cls._F3_KEYWORDS}
+
+    def _emit_f3_inner_body(self, sv_safe:str, lst_match:list[str],
+                            lst_filters:list[str], str_inner_return_vars:str) -> str:
+        """Build the inner-CALL body in F3 form: a chain of
+        MATCH <frag> [WHERE <conjs>] WITH <bound> ORDER BY rand() LIMIT 1
+        stages, one per fragment that introduces a new variable, terminated by
+        RETURN <inner_return_vars>. Fragments whose variables are all already
+        bound are dropped (they are redundant single-node restatements
+        produced by the path emitter)."""
+        primary = sv_safe.strip("`")
+        bound = {primary}
+        # Flatten WHERE conjuncts from all filter strings.
+        pending = []
+        for fl in lst_filters:
+            pending.extend(self._f3_split_conjuncts(fl))
+        # Strip empty conjuncts that arise from "" entries in lst_filters.
+        pending = [c for c in pending if c.strip()]
+        stages = []
+        for frag in lst_match:
+            fvars = self._f3_frag_vars(frag)
+            new_vars = [v for v in fvars if v not in bound]
+            if not new_vars:
+                continue
+            post_bound = bound | set(fvars)
+            applied, remaining = [], []
+            for c in pending:
+                if self._f3_conjunct_vars(c).issubset(post_bound):
+                    applied.append(c)
+                else:
+                    remaining.append(c)
+            pending = remaining
+            wstr = (" WHERE " + " AND ".join(applied)) if applied else ""
+            # WITH list: primary first, then previously-bound non-primary vars
+            # (sorted for determinism), then this stage's new vars.
+            carried = [neo4j_safe_identif(v) for v in sorted(bound) if v != primary]
+            with_clause = ", ".join([sv_safe] + carried + [neo4j_safe_identif(v) for v in new_vars])
+            stages.append(f"MATCH {frag}{wstr} WITH {with_clause} ORDER BY rand() LIMIT 1")
+            bound = post_bound
+        # Any conjuncts whose vars never became fully bound (rare; would
+        # indicate a malformed template). Apply at the end as a final WITH-WHERE
+        # so the row is dropped rather than silently ignored.
+        if pending:
+            tail_with = ", ".join([sv_safe] + [neo4j_safe_identif(v)
+                                               for v in sorted(bound) if v != primary])
+            stages.append(f"WITH {tail_with} WHERE " + " AND ".join(pending))
+        body = " ".join(stages)
+        return f"{body} RETURN {str_inner_return_vars}"
+
     def process_template(self, tmplobj:dict) -> tuple[list[str], str]:
         """
         Process one template described by a JSON object (a dict) with properties:
@@ -1243,7 +1344,11 @@ class TmplGenNeo4j:
         lst_filter_notnulls = list()
         
         # allow_nullprops is True if we allow property values to be null, "", or "N/A". It is False by default.
-        allow_nullprops = self.options.get('allow_nullprops', False)
+        # CLI --allow_nullprops takes precedence; if not set, fall back to gencfg
+        # so per-build configurations can enable it without CLI changes.
+        allow_nullprops = self.options.get('allow_nullprops')
+        if allow_nullprops is None:
+            allow_nullprops = self.gencfg.get('allow_nullprops', False)
 
         
         is_invisible_counter = 0        # if > 0 then don't include parse results in generated text  
@@ -1365,9 +1470,8 @@ class TmplGenNeo4j:
                                      f"WITH DISTINCT {sv_safe} ORDER BY rand() LIMIT {limit} ")
                 # Per-primary grouping: collect all non-primary varnames that
                 # appear in RETURN so we can yield one row per primary via a
-                # CALL subquery with LIMIT 1. This ensures each of the LIMIT
-                # primaries contributes one combination (deterministic first
-                # match), giving LIMIT distinct subjects per template.
+                # CALL subquery. This ensures each sampled primary contributes
+                # at least one combination, giving anchor-diverse output.
                 other_vars = []
                 seen = {sample_varname}
                 for rs in lst_return:
@@ -1383,23 +1487,51 @@ class TmplGenNeo4j:
 
         # Primary form: sample over the full candidate space for diversity
         # (LIMIT after RETURN DISTINCT ... ORDER BY rand()).
-        # Optional per-primary grouping (gated by gencfg "per_primary_grouping"):
-        # when active, wrap the pattern expansion in a CALL subquery with LIMIT 1
-        # per primary so each of the LIMIT primaries contributes exactly one row.
-        # This is experimental because the planner's handling of the resulting
-        # query is sensitive to graph shape and can be very slow on templates
-        # with many free bindings of the same type; keep off by default.
+        #
+        # Per-primary grouping (gated by gencfg "per_primary_grouping"):
+        # when active, wrap the pattern expansion in a CALL subquery so each
+        # sampled primary contributes one combination chosen at random from
+        # its joined product. Critically, the prefix samples primaries WITH
+        # REPLACEMENT (UNWIND-based) so LIMIT can exceed the catalogue size
+        # for high-cardinality templates (e.g. AB.MS.GRP/MAL with ~150 grp
+        # anchors but Count: 1500), and the inner RETURN uses ORDER BY rand()
+        # so duplicate anchor picks yield different combinations. Without
+        # both, AB.MS.* and AB.TAA.* collapse to a single anchor (v10 bug,
+        # see tmpl_gen/templates/05032026/v11_plan.txt anchor-fixation note).
+        #
         # Fallback form: apply LIMIT before RETURN to bound memory for queries
         # whose Cartesian fan-out would otherwise exceed dbms.memory.transaction.total.max.
         use_per_primary = bool(self.gencfg.get("per_primary_grouping", False))
         if sample_grouping_active and use_per_primary:
+            # Sample-with-replacement prefix: collect all candidate primaries
+            # then UNWIND a range of LIMIT picks, indexing into the collection
+            # by random position. This produces LIMIT primary picks regardless
+            # of how many distinct primaries exist, with uniform per-anchor
+            # probability across the full set.
+            sample_prefix_repl = (
+                f"MATCH ({sv_safe}:{st_safe}) "
+                f"WITH collect(DISTINCT {sv_safe}) AS _allprim, count(DISTINCT {sv_safe}) AS _nprim "
+                f"UNWIND range(1, {limit}) AS _dup_i "
+                f"WITH _allprim[toInteger(rand() * _nprim)] AS {sv_safe} "
+            )
+            # Inner CALL: F3 step-by-step binding. Each fragment that introduces
+            # at least one new variable is emitted as its own MATCH followed by
+            # WITH <bound> ORDER BY rand() LIMIT 1, so the planner picks one
+            # random extension per stage instead of materialising the full
+            # joined product before the random sort. Without this the inner
+            # CALL Cartesian on AB.MS.* (5 free attack-pattern bindings over
+            # ~835 nodes) blows the transaction memory budget; see
+            # _v11_build/_smoketest_cypher.py for the F1/F2/F3 comparison.
+            inner_body = self._emit_f3_inner_body(
+                sv_safe, lst_match, lst_filters, str_inner_return_vars)
             match_query = (
-                f"{str_sample_prefix}"
-                f"CALL ({sv_safe}) {{ "
-                f"MATCH {str_match}     {str_where}{str_with}     "
-                f"RETURN {str_inner_return_vars}     LIMIT 1 }}     "
+                f"{sample_prefix_repl}"
+                f"CALL ({sv_safe}) {{ {inner_body} }}     "
                 f"RETURN DISTINCT {str_return}     {str_order}     LIMIT {limit}"
             )
+            # Fallback: the original DISTINCT-prefix form (no UNWIND), which
+            # caps at num_anchors rows but is simpler for the planner if the
+            # WITH-REPLACEMENT form OOMs on very large primary sets.
             match_query_fallback = (
                 f"{str_sample_prefix}MATCH {str_match}     {str_where}{str_with}"
                 f"     LIMIT {limit}     RETURN DISTINCT {str_return}     {str_order}"

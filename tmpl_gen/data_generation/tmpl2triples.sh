@@ -13,11 +13,14 @@ fi
 # Python script that generates triples:
 PY_IFTGEN="../scripts/iftgen.py"
 
-# generation configuration parameters:
-GENCONF="gencfg_default_neo4j.json"
+# generation configuration parameters: default to the per-primary gencfg,
+# which enables sample-with-replacement anchor diversity and null-prop
+# tolerance (see make_dataset.sh comment + tmpl_parser.py process_template).
+# Override with: GENCONF=other_gencfg.json ./tmpl2triples.sh ...
+GENCONF="${GENCONF:-gencfg_per_primary_neo4j.json}"
 
 # neo4j connection and DB parameters: URL, USER, PASSWORD, DB:
-NEO4JCONF="neo4j-local-config.json"
+NEO4JCONF="${NEO4JCONF:-neo4j-local-config.json}"
 
 # source template JSON file, maybe generated from a Word DOCX file:
 TMPL_JSON="$1"

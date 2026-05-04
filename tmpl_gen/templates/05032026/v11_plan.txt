@@ -29,10 +29,12 @@ the repo for reproducibility. v11 ships its own assets alongside.
 
 | issue                          | v10 evidence                                              | v11 mechanism                                                             |
 |--------------------------------|-----------------------------------------------------------|---------------------------------------------------------------------------|
-| RMS regression vs v9/v8.1      | AB.RMS.{4,5} only 44 rows each (README §8.1)              | Expand AB.RMS.{4,5} seed to >=1500 each; raise RMS share 6.1% -> ~10%     |
+| RMS regression vs v9/v8.1      | AB.RMS.{4,5} only 44 rows each (README §8.1)              | Paraphrase-multiply AB.RMS.{4,5} (44-row M-control catalog x ~10 phrasings = ~440 rows each); raise RMS share 6.1% -> ~7-8% |
 | CKT regression vs v9/v7        | broad tail (73.2%) crowds eval-aligned density            | Trim X.* and YN.* by ~30%; reallocate to eval-aligned families            |
 | ATE regression vs v9           | AB.ATE + JS.ATE only 5,965 rows                           | Expand ATE family to ~10K rows                                            |
 | TAA accuracy ceiling 8-17%     | no canonical-name supervision                             | New TAA.CANON family (~2K rows) anchoring aliases (Cozy Bear -> APT29...) |
+| Anchor fixation in MS / TAA    | AB.MS.{GRP,MAL}.{1,3} collapsed to single anchor (0 yield)| iftgen sample-with-replacement: UNWIND prefix + ORDER BY rand() subquery in tmpl_parser.process_template (gated by per_primary_grouping=true) |
+| Null-prop row loss in RMS/MS   | RMS/MS templates dropped rows on null Neo4j descriptions  | gencfg.allow_nullprops=true default in gencfg_per_primary_neo4j.json      |
 | Multi-select select-all bias   | only 2 of 6 MS templates yielded rows                     | Fix Neo4j seed for AB.MS.{GRP,MAL}.{1,3}; expand MS to ~4K rows           |
 | No CyberSOCEval coverage       | external bench, zero direct training signal               | New SOC.* family ~12K rows                                                |
 | No CyberMetric coverage        | external bench, zero direct training signal               | New CM.* family ~6K rows                                                  |
@@ -68,7 +70,7 @@ Total: 230K-240K rows (vs v10's 200K). Eval-aligned share 26.8% -> 40%.
 
 | family                                  | v10 rows | v11 target | delta  | notes                                                         |
 |-----------------------------------------|---------:|-----------:|-------:|---------------------------------------------------------------|
-| AB.RMS.* + JS.RMS.*                     |   12,158 |    ~22,000 |  +9.8K | expand AB.RMS.{4,5} from 44 -> 1500+ each (Neo4j or D3FEND)   |
+| AB.RMS.* + JS.RMS.*                     |   12,158 |    ~13,000 |  +0.8K | AB.RMS.{4,5} capped by 44-row M-control catalog; paraphrase-multiply ~10x lifts each from 44 -> ~440 (catalog is the hard ceiling) |
 | AB.ATE + JS.ATE                         |    5,965 |    ~10,000 |  +4.0K | broader CWE -> ATT&CK pivot coverage                          |
 | AB.VSP.* + V.CPE                        |   12,456 |    ~14,000 |  +1.5K | preserve, light expansion                                     |
 | AB.RCM + JS.RCM + X.VW + YN.VW          |   11,506 |    ~12,000 |  +0.5K | preserve                                                      |
@@ -78,7 +80,7 @@ Total: 230K-240K rows (vs v10's 200K). Eval-aligned share 26.8% -> 40%.
 | TAA.CANON.* (NEW)                       |        0 |     ~2,000 |  +2.0K | MITRE Groups + MISP galaxy alias resolution                   |
 | SOC.* (NEW)                             |        0 |    ~12,000 | +12.0K | alert triage, IR playbook, malware behavioral, Sigma reasoning|
 | CM.*  (NEW)                             |        0 |     ~6,000 |  +6.0K | crypto, access control, NIST/ISO/HIPAA/PCI                    |
-| **eval-aligned subtotal**               |   53,719 |    ~95,500 | +41.8K | ~40% of corpus                                                |
+| **eval-aligned subtotal**               |   53,719 |    ~86,500 | +32.8K | ~37% of corpus (AB.RMS.{4,5} catalog-capped per row above)    |
 
 ### 3.2 Broad-knowledge tail (target ~140K rows, ~60%)
 
@@ -121,6 +123,24 @@ bash tmpl_gen/data_generation/make_dataset.sh \
 bash _v11_build/watcher.sh
 ```
 
+Build-side gencfg defaults for v11 (changed in tmpl_gen/data_generation/
+{make_dataset,tmpl2triples}.sh: GENCONF default switched from
+gencfg_default_neo4j.json to gencfg_per_primary_neo4j.json):
+
+| gencfg key            | v10 default            | v11 default                                      | rationale                                                  |
+|-----------------------|-----------------------:|-------------------------------------------------:|------------------------------------------------------------|
+| per_primary_grouping  | false                  | true                                             | enables sample-with-replacement anchor diversity (below)   |
+| allow_nullprops       | false                  | true                                             | tolerate null/empty/"N/A" property values on Neo4j nodes   |
+
+Architectural fix in tmpl_gen/src/tmpl_gen/tmpl_parser.py (process_template):
+when both `Sample: <var>` is declared on a template AND
+per_primary_grouping=true, the generated Cypher now uses an UNWIND-based
+sample-with-replacement prefix and an `ORDER BY rand() LIMIT 1` inner
+CALL subquery. This fixes the v10 anchor-fixation bug where AB.MS.* and
+AB.TAA.* templates collapsed to a single primary-node anchor (often zero
+yield because that one anchor failed the multi-select constraint). The
+old DISTINCT/LIMIT prefix is preserved as match_query_fallback.
+
 _v11_build/watcher.sh tunables (changes from v10):
 
 | knob                  | v10 | v11   | rationale                                                    |
@@ -141,8 +161,8 @@ standard tmpl_gen DOCX-equivalent prose; same parser path as v10.
 
 | new template          | target rows | seed source                                                      |
 |-----------------------|------------:|------------------------------------------------------------------|
-| AB.RMS.4 (expanded)   |       1,500 | Neo4j M-control catalog query — audit & expand seed              |
-| AB.RMS.5 (expanded)   |       1,500 | Neo4j M-control catalog query — audit & expand seed              |
+| AB.RMS.4 (paraphrased) |        ~440 | 44-row M-control catalog x ~10 phrasing variants (paraphrase-multiply; 44 is the MITRE Enterprise mitigation cap M1013-M1056) |
+| AB.RMS.5 (paraphrased) |        ~440 | 44-row M-control catalog x ~10 phrasing variants (paraphrase-multiply; 44 is the MITRE Enterprise mitigation cap M1013-M1056) |
 | TAA.CANON.1 alias->canonical |  1,000 | MITRE Groups aliases column + MISP galaxy synonyms               |
 | TAA.CANON.2 canonical->TTPs  |  1,000 | MITRE Groups + 3-5 distinctive techniques per group              |
 | SOC.TRIAGE.1 alert reasoning |  4,000 | curated alerts + reasoning chains (CrowdStrike, Sigma)           |
@@ -299,6 +319,15 @@ v10 dataset_info.json entry remain in the repo for reproducibility.
 
 ## 11. Open questions for sign-off
 
+Resolved during 2026-05-04 diagnostic pass (see §12 changelog):
+- ~~Anchor-fixation fix strategy (post-filter vs proper Cypher rewrite)~~
+  -> Option B locked in: tmpl_parser.py sample-with-replacement.
+- ~~AB.RMS.{4,5} treatment (accept 44 rows / paraphrase / drop)~~
+  -> paraphrase-multiply (~10x) locked in.
+- ~~allow_nullprops default for v11 builds~~
+  -> ON via gencfg_per_primary_neo4j.json.
+
+Still open:
 1. Confirm 230-240K row total budget acceptable (v10 was 200K @ ~12.5K
    steps; v11 ~14K steps — still within reasonable training time).
 2. Confirm CyberMetric coverage scope (1.5K crypto + 1.5K access +
@@ -324,6 +353,16 @@ changes from that draft:
 - Stratified-shuffle implementation choice (§6.3 Option A vs B).
 - Pass criteria with v11.1 fallback (§8).
 - Deliverables checklist with prerequisite breakout (§10).
+
+Revision 2026-05-04 (post-diagnostic):
+- §1 added "Anchor fixation in MS / TAA" and "Null-prop row loss" rows.
+- §3.1 corrected AB.RMS.* target to ~13K (catalog cap; was aspirational
+  ~22K) and the eval-aligned subtotal accordingly.
+- §4 added "Build-side gencfg defaults for v11" subsection documenting
+  the GENCONF default switch to gencfg_per_primary_neo4j.json and the
+  process_template architectural fix (sample-with-replacement Cypher).
+- §5 manifest table: AB.RMS.{4,5} switched from "expand seed to 1500"
+  to "paraphrase-multiply ~440 each".
 
 The Qwen3-32B parallel-fork section (originally one paragraph in the
 prose draft) is reframed as deferred-to-experimental in §2: gated on

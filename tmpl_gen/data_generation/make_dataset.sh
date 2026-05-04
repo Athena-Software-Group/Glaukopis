@@ -34,8 +34,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PY_DOCX2JSON="${SCRIPT_DIR}/../scripts/tmpl_docx2json.py"
 PY_IFTGEN="${SCRIPT_DIR}/../scripts/iftgen.py"
 PY_ALPACA="${SCRIPT_DIR}/../scripts/to_alpaca.py"
-GENCONF="${SCRIPT_DIR}/gencfg_default_neo4j.json"
-NEO4JCONF="${SCRIPT_DIR}/neo4j-local-config.json"
+# Default to the per-primary gencfg, which enables sample-with-replacement
+# anchor diversity (per_primary_grouping=true) and null/empty/N/A property
+# tolerance (allow_nullprops=true) -- both required for v11 to avoid the
+# v10 anchor-fixation collapse on AB.MS.* / AB.TAA.* templates.
+# Override with: GENCONF=path/to/other_gencfg.json ./make_dataset.sh ...
+GENCONF="${GENCONF:-${SCRIPT_DIR}/gencfg_per_primary_neo4j.json}"
+NEO4JCONF="${NEO4JCONF:-${SCRIPT_DIR}/neo4j-local-config.json}"
 
 set -e
 
