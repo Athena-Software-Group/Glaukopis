@@ -1,35 +1,331 @@
-v10 regressed on RMS, CKT, and ATE relative to v9 and v7. The unified single-pass corpus traded the v9 phase-B RMS specialization for VSP and plausible-TAA gains, but the net was negative on weighted average (54.1 vs v9's 56.4). The v10 README itself flagged AB.RMS.{4,5} at 44 rows each as a risk — that prediction came true. Two structural choices in v10 hurt more than helped: (a) folding the RMS-heavy phase B into the unified mix diluted the catalog signal below the threshold needed for the M-control reasoning to consolidate, and (b) the 73.2% broad-knowledge tail crowded out eval-aligned density across the board.
-So v11 needs to do three things simultaneously: restore the v9 RMS catalog density, push TAA accuracy out of the 8–17% trap, and add direct CyberSOCEval/CyberMetric coverage that the current manifest essentially doesn't target.
+# v11 Training Plan — Sophia CTI SFT
+Authored 2026-05-03; revised 2026-05-04 post-Qwen3 smoke test.
+Status: planning. Supersedes the prose draft committed at 89479a7.
 
-Recommended v11 plan
-Base model decision: Stay on Qwen2.5-32B-Instruct as the v11 production base. Run Qwen3-32B in parallel as a v11-experimental fork after the eval harness is fixed, but don't gate v11 release on it. Your v7 32B SFT (62.7 total) is already your best SFT entry — incremental data improvements on the proven base are higher-EV than re-baselining on a model whose evaluation pipeline is currently broken.
-Return to a controlled two-phase structure, but better designed than v9's was. The single-pass v10 hypothesis was that balanced shuffling would protect both broad knowledge and RMS catalog. The data shows it didn't. But the v9 two-phase had a different problem — phase B over-corrected toward RMS at the cost of phase A knowledge retention. The v11 fix is stratified single-pass with category-anchored sampling: build the corpus as before, but at training time use a sampler that guarantees minimum batch representation from each eval-axis-aligned family rather than random shuffle. This gives you the regularization benefit of v9's phase B without the rate-of-forgetting issue, and avoids v10's dilution.
-Corpus composition shifts:
-The v10 26.8% eval-aligned / 73.2% broad split is upside-down for what AthenaBench rewards. Target ~40% eval-aligned in v11. Specific changes from v10:
+## 0. Naming convention change (drop "abaligned")
 
-RMS family up from 6.1% to ~10% (~20K rows). Critical fix: expand AB.RMS.4 and AB.RMS.5 from 44 rows each to 1,500+ each. The v10 README correctly identified this — the Neo4j seed population for M-control catalog drills needs to be expanded, not the template. Audit the seed query and check why it's yielding so little. If it's a graph coverage issue, supplement with synthetic generation from MITRE D3FEND mitigation tactics.
-TAA positive examples up from 1,284 to ~3,500. Relax the actor cap from 20 to 40 — your guardrail ratio (5,000 IE/NEG to 1,284 attribute) is excessive at 3.9:1, and the cap was set conservatively because v9 mode-collapsed before guardrails existed. With guardrails proven, you can afford more positive density.
-TAA accuracy data augmentation pass. This is the persistent ceiling across every SFT run. Add a new template family (call it TAA.CANON) that generates examples from MITRE Groups + MISP galaxy clusters with explicit alias resolution: Cozy Bear → APT29, Hidden Cobra → Lazarus, Wicked Panda → APT41, Winnti → APT41, etc. Anchor each canonical name to 3–5 distinctive TTPs. Target 2,000 rows. The plausible-vs-accurate gap (87–92% plausible, 8–17% accurate) is exactly what's caused by missing canonical-name supervision.
-Multi-select expansion. Fix the seed mismatch on AB.MS.GRP.{1,2} and AB.MS.MAL.{1,3}. Target 4,000 rows total across the MS family vs v10's 1,500. The v9 select-all bias is unlikely to resolve without more diverse multi-select training signal.
-New SOC family for CyberSOCEval (~12K rows). v10 has zero direct SOC coverage. Add: alert triage prose with reasoning chains (target 4K), incident response playbook scenarios (3K), malware behavioral analysis (3K — different from MAL attribution), Sigma rule explanation (this is partially in v10 SR.* but lacks the "why this triggers, what's the false positive case" reasoning that CyberSOCEval Threat Intel rewards) (2K).
-CyberMetric coverage (~6K rows). General security MCQ outside CTI: cryptography fundamentals, access control models, compliance frameworks (NIST CSF, ISO 27001, HIPAA, PCI-DSS), governance/risk concepts. The frontier models score 88–94% here mostly from pretraining; SFT can probably gain 3–5 points by covering the topical gaps.
+The "abaligned" moniker introduced in v4 is no longer informative — every
+corpus from v7 onward has been AthenaBench-aligned by design, and v10
+already dropped it from the corpus *filename* (ift_data_2026_05_01_v10,
+not ..._abaligned_v10). v11 finishes the migration.
 
-That brings v11 to roughly 230–240K rows total vs v10's 200K. Given you're at 1 epoch and ~12,500 steps, this means ~14K steps — still well within reasonable training time on your hardware.
-Data quality controls:
+| asset            | v10 name                                                    | v11 name                                          |
+|------------------|-------------------------------------------------------------|---------------------------------------------------|
+| corpus filename  | ift_data_2026_05_01_v10.json                                | ift_data_2026_05_03_v11.json                      |
+| dataset_info key | ift_data_2026_05_01_v10                                     | ift_data_2026_05_03_v11                           |
+| HF model repo    | ${HF_USERNAME}/athena-cti-sft-qwen25-14b-abaligned-v10      | ${HF_USERNAME}/athena-cti-sft-qwen25-14b-v11      |
+| 32B HF repo      | (none in v10)                                               | ${HF_USERNAME}/athena-cti-sft-qwen25-32b-v11      |
+| training script  | run_abaligned_sft_qwen25_14b_v10.sh                         | run_sft_qwen25_14b_v11.sh                         |
+| 32B script       | (none in v10)                                               | run_sft_qwen25_32b_v11.sh                         |
+| harness alias    | athena-cti-sft-qwen25-14b-abaligned-v10-vllm                | athena-cti-sft-qwen25-14b-v11-vllm                |
+| build dir        | _v10_build/                                                 | _v11_build/                                       |
+| template dir     | tmpl_gen/templates/05012026/                                | tmpl_gen/templates/05032026/                      |
+| template manifest| Sophia-CTI-Templates-v10.txt                                | Sophia-CTI-Templates-v11.txt                      |
 
-Keep the BS4 sanitizer and <desc> markers from v10 — those were genuine improvements and not the cause of regression.
-Drop the 13-gram dedup threshold from 50 to 30. v10's 50 was conservative; some of the 621 dropped rows were probably legitimate diversity. Re-inspect 100 random borderline cases (35–50 shared 13-grams) to validate.
-Audit the v10 X family (15.9% of corpus) and YN family (11.8%) for redundancy. Combined that's 27.7% of training tokens going to extraction and binary tasks that don't directly map to AthenaBench eval axes. I suspect 30–40% of these rows could be cut without measurable performance loss, freeing capacity for the eval-aligned families above.
+v10 launchers, HF repos, and the v10 dataset_info.json entry remain in
+the repo for reproducibility. v11 ships its own assets alongside.
 
-Hyperparameter adjustments from v10:
+## 1. Issues v11 must fix (prioritized)
 
-LR: hold at the v10 setting if it converged cleanly, or drop to 1.2e-5 if v10's loss curve showed instability in the last 20% of training.
-Sequence packing: keep on, cutoff 8192 (v10 stats confirmed only 7 rows exceed this).
-Add eval-axis-stratified validation: 50 held-out examples per AthenaBench category for in-training eval every 1000 steps. v10's failure mode (RMS regression) would have been detectable mid-training with this in place.
-Consider warm-up LR scaling for the first 500 steps — Qwen2.5-32B SFT seems to be slightly sensitive to early-batch RMS examples crowding the loss signal.
+| issue                          | v10 evidence                                              | v11 mechanism                                                             |
+|--------------------------------|-----------------------------------------------------------|---------------------------------------------------------------------------|
+| RMS regression vs v9/v8.1      | AB.RMS.{4,5} only 44 rows each (README §8.1)              | Expand AB.RMS.{4,5} seed to >=1500 each; raise RMS share 6.1% -> ~10%     |
+| CKT regression vs v9/v7        | broad tail (73.2%) crowds eval-aligned density            | Trim X.* and YN.* by ~30%; reallocate to eval-aligned families            |
+| ATE regression vs v9           | AB.ATE + JS.ATE only 5,965 rows                           | Expand ATE family to ~10K rows                                            |
+| TAA accuracy ceiling 8-17%     | no canonical-name supervision                             | New TAA.CANON family (~2K rows) anchoring aliases (Cozy Bear -> APT29...) |
+| Multi-select select-all bias   | only 2 of 6 MS templates yielded rows                     | Fix Neo4j seed for AB.MS.{GRP,MAL}.{1,3}; expand MS to ~4K rows           |
+| No CyberSOCEval coverage       | external bench, zero direct training signal               | New SOC.* family ~12K rows                                                |
+| No CyberMetric coverage        | external bench, zero direct training signal               | New CM.* family ~6K rows                                                  |
+| Forgetting via random shuffle  | RMS catalog signal diluted across 200K shuffle            | Stratified shuffle with per-family quotas in N-row windows                |
 
-Evaluation plan for v11:
+Out of scope for v11 (deferred):
+- Qwen3-32B harness fix (separate PR — Layer 0 alias-keyed output dir,
+  Layer 1 reasoning-parser auto-add in serve_vllm.sh, Layer 2 client-side
+  <think> strip in extractors, Layer 3 smoke-test script). Prerequisite
+  for any v11-experimental fork on Qwen3-32B.
+- Foundation-Sec-8B-Reasoning evaluation (waiting on the same fix).
 
-Run two checkpoints: epoch 0.7 and epoch 1.0. Your v7 result suggests the 14B family may slightly over-train at full epoch on RMS specifically; the 32B has more capacity to absorb without forgetting, but it's worth checking.
-After Qwen3-32B harness is fixed, run a v11-experimental fork on Qwen3-32B with the same data and report both. The thinking/non-thinking ablation here is the genuinely novel result for the Glaukopis paper.
-Add a TAA-canonical eval slice that specifically measures alias resolution accuracy. Without this, you can't diagnose whether v11's TAA improvement (if any) comes from the right cause.
+## 2. Base-model decision
+
+Production v11: Qwen2.5-14B-Instruct AND Qwen2.5-32B-Instruct, in parallel.
+- 14B: fastest bench loop, ships first as the v11 release candidate.
+- 32B: v7 32B is the current best SFT total (62.7); v11 32B is the
+  production-quality release candidate at the larger scale.
+
+Experimental fork: Qwen3-32B (no-think), gated on harness fix landing
+first. Same v11 corpus, run after the v11 14B production launch. The
+thinking vs non-thinking ablation on v11-tuned weights is the novel
+result for the Glaukopis paper; do NOT gate v11 release on it.
+
+Skip v11 on Llama-3.1-8B and Foundation-Sec-8B; revisit only if v11 14B
+beats v10 14B by >=3 pp on weighted total.
+
+## 3. Corpus composition target
+
+Total: 230K-240K rows (vs v10's 200K). Eval-aligned share 26.8% -> 40%.
+
+### 3.1 Eval-aligned families (target ~92K rows, ~40%)
+
+| family                                  | v10 rows | v11 target | delta  | notes                                                         |
+|-----------------------------------------|---------:|-----------:|-------:|---------------------------------------------------------------|
+| AB.RMS.* + JS.RMS.*                     |   12,158 |    ~22,000 |  +9.8K | expand AB.RMS.{4,5} from 44 -> 1500+ each (Neo4j or D3FEND)   |
+| AB.ATE + JS.ATE                         |    5,965 |    ~10,000 |  +4.0K | broader CWE -> ATT&CK pivot coverage                          |
+| AB.VSP.* + V.CPE                        |   12,456 |    ~14,000 |  +1.5K | preserve, light expansion                                     |
+| AB.RCM + JS.RCM + X.VW + YN.VW          |   11,506 |    ~12,000 |  +0.5K | preserve                                                      |
+| AB.MCQ + JS.MCQ + AB.MS                 |    4,350 |     ~8,000 |  +3.7K | expand MS templates after Neo4j seed fix                      |
+| AB.TAA.{1-5} + JS.TAA.{1-3}             |    1,284 |     ~3,500 |  +2.2K | relax actor cap 20 -> 40                                      |
+| AB.TAA.IE.* + AB.TAA.NEG.* + JS variants|    6,000 |      6,000 |      0 | preserve guardrails; ratio drops from 3.9:1 -> 1.7:1          |
+| TAA.CANON.* (NEW)                       |        0 |     ~2,000 |  +2.0K | MITRE Groups + MISP galaxy alias resolution                   |
+| SOC.* (NEW)                             |        0 |    ~12,000 | +12.0K | alert triage, IR playbook, malware behavioral, Sigma reasoning|
+| CM.*  (NEW)                             |        0 |     ~6,000 |  +6.0K | crypto, access control, NIST/ISO/HIPAA/PCI                    |
+| **eval-aligned subtotal**               |   53,719 |    ~95,500 | +41.8K | ~40% of corpus                                                |
+
+### 3.2 Broad-knowledge tail (target ~140K rows, ~60%)
+
+Trim X.* and YN.* aggressively. Preserve V/W/S/SU/CL/M/A/POC/E/Q/EDB/SR
+roughly proportional to v10 (those families anchor vocabulary and schema
+for the eval-aligned reasoning to land on).
+
+| family            | v10 rows | v11 target | rationale                                          |
+|-------------------|---------:|-----------:|----------------------------------------------------|
+| X.*               |   31,941 |    ~20,000 | -37% trim; over-represented for AthenaBench reward |
+| YN.*              |   23,585 |    ~16,000 | -32% trim                                          |
+| SR.*              |   12,000 |    ~12,000 | preserve (cross-feeds new SOC.SIGMA.* reasoning)   |
+| P.*               |   10,872 |    ~10,000 | preserve                                           |
+| V.* (excl V.CPE)  |   10,831 |    ~10,000 | preserve                                           |
+| W.*               |    9,419 |     ~9,000 | preserve                                           |
+| S.*               |    9,151 |     ~9,000 | preserve                                           |
+| SU.*              |    9,051 |     ~9,000 | preserve                                           |
+| CL.*              |    8,963 |     ~9,000 | preserve                                           |
+| M.* (excl RMS)    |    8,478 |     ~8,000 | preserve                                           |
+| A.*               |    6,448 |     ~6,000 | preserve                                           |
+| POC.*             |    5,971 |     ~6,000 | preserve                                           |
+| E.*               |    3,883 |     ~4,000 | preserve                                           |
+| Q.*               |    1,850 |     ~2,000 | preserve                                           |
+| EDB.*             |    1,678 |     ~2,000 | preserve                                           |
+| **broad subtotal**|  144,121 |   ~131,000 | -9% (trimmed X+YN reallocated to eval-aligned)     |
+
+## 4. Build pipeline
+
+Mirrors v10 with renames. New build dir _v11_build/.
+
+```bash
+# Phase 1 -- template -> triples -> Alpaca rows
+bash tmpl_gen/data_generation/make_dataset.sh \
+    tmpl_gen/templates/05032026/Sophia-CTI-Templates-v11.txt \
+    _v11_build/triples \
+    SFT/data/ift_data_2026_05_03_v11.raw.json \
+    10 1500
+
+# Phase 2 + 3 -- actor-balance + eval-set dedup
+bash _v11_build/watcher.sh
+```
+
+_v11_build/watcher.sh tunables (changes from v10):
+
+| knob                  | v10 | v11   | rationale                                                    |
+|-----------------------|----:|------:|--------------------------------------------------------------|
+| ACTOR_CAP             |  20 |  40   | guardrails proven; 1284 -> ~3500 attribution rows            |
+| ACTOR_FLOOR           | 100 | 100   | unchanged                                                    |
+| DEDUP_HIT_THRESHOLD   |   1 |   1   | unchanged                                                    |
+| DEDUP_DROP_THRESHOLD  |  50 |  30   | re-inspect 100 borderline 30-50 cases before lock            |
+
+Final dataset: SFT/data/ift_data_2026_05_03_v11.json (target ~225-235K
+rows post-balance/dedup, before stratified-shuffle pass in §6.3).
+
+## 5. Template manifest changes (new families)
+
+tmpl_gen/templates/05032026/Sophia-CTI-Templates-v11.txt =
+v10 manifest + the following new template blocks. Author each in the
+standard tmpl_gen DOCX-equivalent prose; same parser path as v10.
+
+| new template          | target rows | seed source                                                      |
+|-----------------------|------------:|------------------------------------------------------------------|
+| AB.RMS.4 (expanded)   |       1,500 | Neo4j M-control catalog query — audit & expand seed              |
+| AB.RMS.5 (expanded)   |       1,500 | Neo4j M-control catalog query — audit & expand seed              |
+| TAA.CANON.1 alias->canonical |  1,000 | MITRE Groups aliases column + MISP galaxy synonyms               |
+| TAA.CANON.2 canonical->TTPs  |  1,000 | MITRE Groups + 3-5 distinctive techniques per group              |
+| SOC.TRIAGE.1 alert reasoning |  4,000 | curated alerts + reasoning chains (CrowdStrike, Sigma)           |
+| SOC.IR.1 incident playbook   |  3,000 | NIST 800-61 scenarios + MITRE D3FEND                             |
+| SOC.MAL.1 behavioral analysis|  3,000 | malware family behavior chains (distinct from MAL attribution)   |
+| SOC.SIGMA.1 rule reasoning   |  2,000 | Sigma rules + "why this triggers / FP cases"                     |
+| CM.CRYPTO.1           |       1,500 | crypto fundamentals MCQ                                          |
+| CM.ACCESS.1           |       1,500 | access control models MCQ                                        |
+| CM.COMPLIANCE.1       |       2,000 | NIST CSF, ISO 27001, HIPAA, PCI-DSS MCQ                          |
+| CM.GOV.1              |       1,000 | governance/risk concepts MCQ                                     |
+| AB.MS.GRP.1, AB.MS.GRP.2 | ~1K each | re-fix Neo4j seed mismatch                                       |
+| AB.MS.MAL.1, AB.MS.MAL.3 | ~1K each | re-fix Neo4j seed mismatch                                       |
+
+Unchanged from v10:
+- BS4 sanitizer at parser chokepoint (clean_cti_description in
+  tmpl_gen/src/tmpl_gen/tmpl_parser.py).
+- <desc>...</desc> markers wrapping freeform CTI descriptions on the
+  Question side (prompt-leak guard).
+- All v10 family templates not listed above.
+
+## 6. Training launchers
+
+### 6.1 14B production — SFT/autotrain/run_sft_qwen25_14b_v11.sh
+
+Branched from run_abaligned_sft_qwen25_14b_v10.sh with the renames in §0
+and these deltas:
+
+| arg              | v10                                                              | v11                                                              |
+|------------------|------------------------------------------------------------------|------------------------------------------------------------------|
+| --dataset        | ift_data_2026_05_01_v10,tulu_3_sft_mixture,alpaca_en_demo        | ift_data_2026_05_03_v11,tulu_3_sft_mixture,alpaca_en_demo        |
+| --max-samples    | 200000                                                           | 240000                                                           |
+| --push-to-hf     | ${HF_USERNAME}/athena-cti-sft-qwen25-14b-abaligned-v10           | ${HF_USERNAME}/athena-cti-sft-qwen25-14b-v11                     |
+| --eval_dataset   | (none)                                                           | ift_data_2026_05_03_v11_val (see §7)                             |
+| --lr             | 1e-05                                                            | 1e-05 (hold; drop to 1.2e-05 only if v10 loss curve unstable)    |
+| --cutoff         | 8192 packing on                                                  | 8192 packing on                                                  |
+| --epochs         | 1                                                                | 1                                                                |
+| --save-steps     | 500                                                              | 500                                                              |
+| --eval-steps     | 500                                                              | 500                                                              |
+
+### 6.2 32B production — SFT/autotrain/run_sft_qwen25_32b_v11.sh
+
+Branched from run_abaligned_sft_qwen25_32b_v8.sh; same dataset list and
+deltas as the 14B launcher above. Effective batch 16, ZeRO-3 offload
+on, lr 1e-5, cutoff 8192. Push to ${HF_USERNAME}/athena-cti-sft-qwen25-32b-v11.
+
+### 6.3 Stratified shuffle (new utility)
+
+LLaMA-Factory's default sampler is uniform-random over the concatenated
+dataset. v10's RMS-dilution failure mode is partly attributable to
+this. v11 adds a category-anchored sampler implemented in two options:
+
+- **Option A (preferred, low-risk)**: Pre-shuffle the dataset with
+  stratified interleaving. Sort rows by family, then chunk-and-interleave
+  to produce a deterministic shuffle order that guarantees minimum
+  representation of each eval-aligned family per N-row window (target
+  N=512 = 32 effective batches). Implementation:
+  tmpl_gen/scripts/stratified_shuffle.py. Output is still a flat JSON
+  consumed by the standard launcher; no LLaMA-Factory changes needed.
+
+- **Option B (fallback)**: LLaMA-Factory --mix-strategy with explicit
+  weights per dataset shard. Requires splitting v11 into per-family
+  shards and registering each in dataset_info.json. More plumbing,
+  more configurable, easier to retune mid-experiment.
+
+Default to A for v11. Document B as a follow-up if A under-corrects RMS.
+
+## 7. Held-out validation slice
+
+SFT/data/ift_data_2026_05_03_v11_val.json — 50 rows per AthenaBench
+axis (RMS, ATE, VSP, RCM, MCQ, TAA-attribute, TAA-IE, TAA-NEG, MS,
+plus SOC and CM proxies). Built by stratified sampling from the v11
+corpus *before* the dedup pass, then verified clean of leak into train
+via the same 13-gram check.
+
+Wired into LLaMA-Factory via --eval_dataset so the run logs per-axis
+eval loss every 500 steps. v10's RMS regression would have been visible
+mid-training with this in place.
+
+## 8. Evaluation plan
+
+After training:
+1. Push merged checkpoints to ${HF_USERNAME}/athena-cti-sft-qwen25-{14b,32b}-v11.
+2. Register vLLM aliases athena-cti-sft-qwen25-{14b,32b}-v11-vllm in
+   SFT/test/pipelines/models.py.
+3. Run full AthenaBench + CyberSOCEval + CyberMetric suites via the
+   bench loop (SFT/test/run_full_bench.sh equivalent).
+4. Compare v11 vs v10 vs v9 vs v7 on:
+   - per-axis accuracy (RMS, ATE, CKT, RCM, VSP, MCQ, MS,
+     TAA-attribute, TAA-IE, TAA-NEG)
+   - weighted total (parity with the AthenaBench summary script)
+   - new TAA-canonical eval slice (alias -> canonical accuracy, scored
+     separately so we can attribute any TAA gain to the right cause)
+5. Run epoch-0.7 and epoch-1.0 checkpoints for the 14B; 32B at
+   epoch-1.0 only unless 14B shows over-train.
+6. Once Qwen3-32B harness fix lands, run v11-experimental on Qwen3-32B
+   (no-think) and (thinking) with the same v11 corpus — full ablation
+   table for the Glaukopis paper.
+
+Pass criteria for v11 14B production:
+- weighted total >= v9 (56.4) AND >= v10 (54.1)
+- RMS >= v9 RMS (no regression on the family v8.1+ exists to protect)
+- TAA-attribute >= 22% (vs v10 50.5% PLAUSIBLE; bar set on accurate)
+- No axis regressed > 3 pp vs v10
+
+Fallback if RMS specifically misses: add a v11.1 phase B with the v9
+RMS-only manifest at lr 5e-6, cutoff 16384, packing off — same shape as
+v9 phase B. Avoid as default; v11 single-pass with stratified shuffle
+is the intended path.
+
+## 9. Hyperparameter notes (carried from v10 unless flagged)
+
+- LR 1e-5 cosine, 5% warmup, bf16. Drop to 1.2e-5 only if v10 loss
+  curve showed late-train instability (inspect WandB before launch).
+- Sequence packing on, cutoff 8192. v10 stats confirmed only 7 rows
+  (0.003%) exceed this; no change.
+- DeepSpeed ZeRO-3 with auto offload on <4 GPUs (14B), forced offload
+  on (32B).
+- save_total_limit 5, save_only_model True (matches v10).
+- enable_liger_kernel True (matches v10).
+- Consider warm-up LR scaling for the first 500 steps if early-batch
+  RMS examples crowd the loss signal — apply only on 32B if observed.
+
+## 10. Deliverables checklist
+
+Code (this PR scope, when v11 is greenlit):
+
+- [ ] tmpl_gen/templates/05032026/Sophia-CTI-Templates-v11.txt (manifest)
+- [ ] tmpl_gen/templates/05032026/README.md (corpus doc, mirroring
+      tmpl_gen/templates/05012026/README.md structure)
+- [ ] _v11_build/watcher.sh (with cap=40, drop-threshold=30)
+- [ ] tmpl_gen/scripts/stratified_shuffle.py (Option A sampler)
+- [ ] SFT/data/dataset_info.json entry for ift_data_2026_05_03_v11
+- [ ] SFT/data/dataset_info.json entry for ift_data_2026_05_03_v11_val
+- [ ] SFT/autotrain/run_sft_qwen25_14b_v11.sh
+- [ ] SFT/autotrain/run_sft_qwen25_32b_v11.sh
+- [ ] SFT/test/pipelines/models.py aliases for v11 14B + 32B
+- [ ] AthenaBench TAA-canonical slice loader (new task
+      athena-cti-taa-canonical) for the §8 evaluation
+
+Prerequisite (separate PR, not blocking v11 launch but blocking the
+Qwen3-32B v11-experimental fork):
+
+- [ ] Harness reasoning-model fix:
+      Layer 0 — alias-keyed output dir (instead of HF repo id)
+      Layer 1 — auto-add --reasoning-parser qwen3 in serve_vllm.sh
+                for Qwen3 hybrid models
+      Layer 2 — client-side _strip_thinking_trace in
+                SFT/test/pipelines/post_processing/{athena_cti,
+                cybersoceval,cti}.py extractors
+      Layer 3 — smoke_thinking_modes.py committed as a regression test
+
+Replaces/deprecates: nothing removed. v10 launchers, HF repos, and the
+v10 dataset_info.json entry remain in the repo for reproducibility.
+
+## 11. Open questions for sign-off
+
+1. Confirm 230-240K row total budget acceptable (v10 was 200K @ ~12.5K
+   steps; v11 ~14K steps — still within reasonable training time).
+2. Confirm CyberMetric coverage scope (1.5K crypto + 1.5K access +
+   2K compliance + 1K gov = 6K). Alternative: skip CM.* and rely on
+   pretraining (saves ~6K rows of authoring effort).
+3. Confirm new TAA.CANON family seed source (MITRE Groups CSV + MISP
+   galaxy JSON — both available as repo artefacts).
+4. Confirm stratified shuffle (Option A) over LLaMA-Factory
+   mix-strategy (Option B) for v11 default.
+5. Confirm corpus README authored at build-time or post-build (mirrors
+   the v10 README pattern at tmpl_gen/templates/05012026/README.md).
+6. Confirm v11 32B launches in parallel with 14B (compute budget) or
+   serially after 14B production result (lower risk).
+
+## 12. Authorship notes
+
+This document supersedes the prose draft committed at 89479a7. Key
+changes from that draft:
+
+- Explicit naming-migration table (§0) addressing the "drop abaligned"
+  requirement across corpus / dataset / HF repo / scripts / aliases.
+- Concrete row-count targets with deltas vs v10 (§3).
+- Stratified-shuffle implementation choice (§6.3 Option A vs B).
+- Pass criteria with v11.1 fallback (§8).
+- Deliverables checklist with prerequisite breakout (§10).
+
+The Qwen3-32B parallel-fork section (originally one paragraph in the
+prose draft) is reframed as deferred-to-experimental in §2: gated on
+the harness fix, not on v11 production schedule.
+
