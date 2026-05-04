@@ -103,14 +103,29 @@ v10 -> v11 deltas
                                    countered offensive technique
                                    (Count: 1500)
 
-  (5) New TAA.CANON.* family (~2K rows): MITRE Groups aliases columns
-      drive alias->canonical (TAA.CANON.1, ~1K) and canonical->TTPs
-      (TAA.CANON.2, ~1K) drills, addressing the 8-17% TAA-attribute
-      ceiling traced to no canonical-name supervision in v10.
+  (5) New TAA.CANON.* family (~1.4K rows): MITRE ATT&CK groups aliases
+      property (intrusion-set.aliases) drives two alias-resolution drills
+      against athena-cti-db, addressing the 8-17% TAA-attribute ceiling
+      traced to no canonical-name supervision in v10:
+        TAA.CANON.1   alias-list -> canonical-name (Count: 600;
+                      187 intrusion-set nodes, 104 with multi-element
+                      aliases averaging 3.1 aliases per group)
+        TAA.CANON.2   canonical-name -> alias-resolution card with
+                      catalog id and one signature technique
+                      (Count: 800; uses (intrusion-set)-uses->(attack-
+                      pattern), 168 groups have technique edges)
 
-  (6) X.* and YN.* trimmed ~30% (Count: budgets reduced; selection of
-      which sub-templates to trim is the conservative one -- prefer
-      reducing high-Count tail templates over deleting variants).
+  (6) X.* and YN.* trimmed ~30%. The Section-1 X.{VW,WA,AM,MT,MM,MN,GM,
+      GS,VP,VK,VWA,TMN}.* and Section-5 X.{VEDB,VPOC,MSR,VSR}.* templates
+      are explicitly capped at Count: 850 each (23 X.* templates total).
+      The Section-2 YN.{VW,WA,MT,GM,MN}.{P,N}.1 and Section-6 YN.{MSR,
+      VEDB,VPOC,CPE}.{P,N}.1 templates are explicitly capped at
+      Count: 950 each (17 YN.* templates total). Caps replace the
+      implicit v10 ceiling of 1500 (CLI count_max), reducing the
+      X.*+YN.* aggregate budget by ~24K rows and reallocating that
+      budget to SOC.* / TAA.CANON.* / RMS paraphrase volume. The 8
+      X.{1..8} broad-knowledge templates in Section C are part of the
+      pre-existing substrate and are not in scope of this trim.
 
   (7) Build-side tunables changed in _v11_build/watcher.sh:
         ACTOR_CAP             20 -> 40 (proven guardrail; lifts AB.TAA.*
@@ -682,6 +697,19 @@ Question: <*{grp:intrusion-set.name}*>An adversary was observed employing MITRE 
 Answer: Use of {ap1.name} and {ap2.name} together with {tl.name} matches the documented tradecraft of {grp.name} ({grp.mitre_id}). Therefore, the adversary is {grp.name}.
 Sample: grp
 
+Section 6.1 - TAA.CANON.* Intrusion-set alias resolution
+
+TAA.CANON.1 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center resolving vendor-specific threat-actor aliases to their canonical MITRE ATT&CK intrusion-set name. Consult the MITRE ATT&CK groups knowledge base aliases catalog and report the canonical name and G-code that the alias list belongs to.
+Question: A threat report references an intrusion set known by the following set of vendor aliases: {grp:intrusion-set.aliases}. What canonical MITRE ATT&CK group name and identifier do these aliases all refer to?
+Answer: MITRE ATT&CK records {grp.aliases} as alias variants of the same intrusion set; the canonical MITRE ATT&CK name is {grp.name} and the catalog identifier is {grp.mitre_id}. Therefore, the canonical group is {grp.name} ({grp.mitre_id}).
+Sample: grp
+Count: 600
+
+TAA.CANON.2 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center producing an alias-resolution card for a named MITRE ATT&CK intrusion set. Consult the MITRE ATT&CK groups knowledge base and report the canonical name, the catalog identifier, the documented aliases, and one signature technique used by the group.
+Question: Produce an alias-resolution card for the MITRE ATT&CK intrusion set {grp:intrusion-set.name} ({grp.mitre_id}).
+Answer: Alias card -- Canonical name: {grp.name}. MITRE ATT&CK identifier: {grp.mitre_id}. Documented aliases: {grp.aliases}. Signature technique: MITRE ATT&CK technique {ap:grp.uses>attack-pattern.mitre_id} ({ap.name}) is documented as used by this group. Therefore, the canonical group is {grp.name} ({grp.mitre_id}).
+Sample: grp
+Count: 800
 
 
 
@@ -1029,121 +1057,149 @@ Section 1 - Cross-Framework Path Templates (Gap 1)
 X.VW.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center correlating vulnerabilities to their root-cause weaknesses. Consult the MITRE CVE and CWE knowledge bases to infer the correct answer.
 Question: CVE-{cve:CVE.id} is described as: <desc>{cve.descriptions}</desc>. Which CWE is its root cause?
 Answer: The root cause of CVE-{cve.id} is CWE-{cve.problemType.id} ({cve.problemType.name}). The CVE description matches the pattern defined by CWE-{cve.problemType.id}: {cve.problemType.description}.
+Count: 850
 
 X.VW.2 Instruction: You are a vulnerability analyst at an enterprise Security Operations Center classifying CVEs by weakness category. Consult the MITRE CVE and CWE knowledge bases to infer the correct answer.
 Question: Which CWE does CVE-{cve:CVE.id} fall under?
 Answer: CVE-{cve.id} falls under CWE-{cve.problemType.id} ({cve.problemType.name}).
+Count: 850
 
 X.VW.3 Instruction: You are a CTI analyst at an enterprise Security Operations Center illustrating weakness classes with concrete vulnerability examples. Consult the MITRE CWE and CVE knowledge bases to cite a representative example.
 Question: Give an example CVE that demonstrates CWE-{cwe:Weakness.id} ({cwe.name}).
 Answer: CVE-{cve:cwe.observed_as>CVE.id} is an example of CWE-{cwe.id}. It exhibits {cwe.description}, which is the defining characteristic of {cwe.name}.
+Count: 850
 
 X.WA.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center linking weaknesses to the attack patterns that exploit them. Consult the MITRE CWE and CAPEC knowledge bases to infer the correct answer.
 Question: Which CAPEC attack pattern exploits CWE-{cwe:Weakness.id} ({cwe.name})?
 Answer: CAPEC-{cap:cwe.related_attack_pattern>CAPEC.id} ({cap.name}) exploits CWE-{cwe.id}. The attack pattern leverages {cwe.description} to achieve its goal.
+Count: 850
 
 X.WA.2 Instruction: You are a CTI analyst at an enterprise Security Operations Center mapping attack patterns to the weakness classes they target. Consult the MITRE CAPEC and CWE knowledge bases to infer the correct answer.
 Question: Which CWE weakness does CAPEC-{cap:CAPEC.id} ({cap.name}) typically exploit?
 Answer: CAPEC-{cap.id} typically exploits CWE-{cwe:cap.exploits>Weakness.id} ({cwe.name}). The attack pattern ({cap.description}) targets the weakness class {cwe.name}.
+Count: 850
 
 X.AM.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center aligning CAPEC attack patterns with MITRE ATT&CK techniques. Consult the MITRE CAPEC and ATT&CK knowledge bases to infer the correct answer.
 Question: Which MITRE ATT&CK technique corresponds to the adversary behaviour in CAPEC-{cap:CAPEC.id} ({cap.name})?
 Answer: CAPEC-{cap.id} aligns with MITRE ATT&CK technique {ap:cap.map_ap>attack-pattern.mitre_id} ({ap.name}). Both describe the same adversary behaviour: {cap.description}.
+Count: 850
 
 X.MT.1 Instruction: You are a threat hunter at an enterprise Security Operations Center analysing MITRE ATT&CK coverage. Consult MITRE ATT&CK to determine the tactic the technique serves.
 Question: What MITRE ATT&CK tactic does technique {ap:attack-pattern.mitre_id} ({ap.name}) achieve?
 Answer: Technique {ap.mitre_id} ({ap.name}) achieves the {ta:ap.achieves>x-mitre-tactic.name} tactic, which represents the adversary objective: {ta.description}.
+Count: 850
 
 X.MT.2 Instruction: You are a threat hunter at an enterprise Security Operations Center analysing MITRE ATT&CK coverage. Consult MITRE ATT&CK to identify a technique that realises the tactic.
 Question: Provide a technique that adversaries use to achieve the {tac:x-mitre-tactic.name} tactic.
 Answer: Technique {ap:tac.achieves<attack-pattern.mitre_id} ({ap.name}) is used to achieve the {tac.name} tactic: {ap.description}.
+Count: 850
 
 X.MM.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center navigating the MITRE ATT&CK technique hierarchy. Consult MITRE ATT&CK to identify the parent technique.
 Question: What is the parent technique of sub-technique {ap:attack-pattern.mitre_id} ({ap.name})?
 Answer: Sub-technique {ap.mitre_id} is a refinement of technique {par:ap.subtechnique-of>attack-pattern.mitre_id} ({par.name}). The parent covers the general approach: {par.description}.
+Count: 850
 
 X.MN.1 Instruction: You are a cybersecurity architect hardening a corporate enterprise network against adversary techniques. Consult MITRE ATT&CK to identify a defensive control that addresses the technique.
 Question: What mitigation addresses MITRE ATT&CK technique {ap:attack-pattern.mitre_id} ({ap.name})?
 Answer: Mitigation {coa:ap.mitigates<course-of-action.mitre_id} ({coa.name}) addresses technique {ap.mitre_id}. The mitigation recommends: {coa.description}.
+Count: 850
 
 X.MN.2 Instruction: You are a cybersecurity architect hardening a corporate enterprise network. Consult MITRE ATT&CK to list a defensive control that mitigates the technique.
 Question: List a mitigation for technique {ap:attack-pattern.mitre_id} ({ap.name}).
 Answer: Technique {ap.mitre_id} ({ap.name}) is mitigated by {coa:ap.mitigates<course-of-action.mitre_id} ({coa.name}): {coa.description}.
+Count: 850
 
 X.GM.1 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center tracking adversary tradecraft. Consult MITRE ATT&CK to identify a technique documented as used by the threat group.
 Question: Which MITRE ATT&CK technique does the threat group {grp:intrusion-set.name} ({grp.mitre_id}) commonly use?
 Answer: The threat group {grp.name} ({grp.mitre_id}) commonly uses technique {ap:grp.uses>attack-pattern.mitre_id} ({ap.name}). This behaviour is documented in MITRE ATT&CK as: {ap.description}.
+Count: 850
 
 X.GM.2 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center identifying which adversaries employ a given technique. Consult MITRE ATT&CK to identify a threat group documented as using the technique.
 Question: Which threat group is known to use technique {ap:attack-pattern.mitre_id} ({ap.name})?
 Answer: Threat group {grp:ap.uses<intrusion-set.name} ({grp.mitre_id}) is known to use technique {ap.mitre_id} ({ap.name}) in their operations.
+Count: 850
 
 X.GS.1 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center profiling adversary tooling. Consult MITRE ATT&CK to identify software associated with the threat group.
 Question: What software has threat group {grp:intrusion-set.name} ({grp.mitre_id}) been observed using?
 Answer: The threat group {grp.name} has been observed using {mw:grp.uses>malware.name} ({mw.mitre_id}).
+Count: 850
 
 X.VP.1 Instruction: You are a vulnerability risk analyst prioritising patching across an enterprise estate. Consult the EPSS score to assess near-term exploitation likelihood and reason about prioritisation.
 Question: What is the EPSS exploitation likelihood for CVE-{cve:CVE.id}, and how should this inform prioritisation?
 Answer: CVE-{cve.id} has an EPSS score of {e:cve.scores<EPSS.epss} ({e.percentile} percentile), reflecting the probability of exploitation in the next 30 days. Higher scores should be prioritised for patching.
+Count: 850
 
 X.VK.1 Instruction: You are a SOC analyst triaging actively exploited vulnerabilities for a corporate enterprise. Consult the CISA Known Exploited Vulnerabilities (KEV) catalog to confirm exploitation status and required remediation.
 Question: Is CVE-{cve:CVE.id} listed in the CISA KEV catalog, and what is the required remediation?
 Answer: CVE-{cve.id} is listed in the CISA KEV catalog as {kev:cve.known_exploit>KEV.vulnerabilityName} affecting {kev.product} ({kev.vendorProject}). Required action: {kev.requiredAction}. Due by: {kev.dueDate}.
+Count: 850
 
 X.VWA.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center building an end-to-end threat picture. Consult the MITRE CVE, CWE, and CAPEC knowledge bases and reason step by step from the vulnerability to its root-cause weakness to the attack pattern that exploits it.
 Question: Trace CVE-{cve:CVE.id} from vulnerability to weakness to attack pattern.
 Answer: CVE-{cve.id} ({cve.descriptions}) is an instance of CWE-{cve.problemType.id} ({cve.problemType.name}). This weakness is exploited by CAPEC-{cap:cve.impacts>CAPEC.id} ({cap.name}). Chain: CVE-{cve.id} -> CWE-{cve.problemType.id} -> CAPEC-{cap.id}.
+Count: 850
 
 X.TMN.1 Instruction: You are a cybersecurity architect hardening a corporate enterprise network. Consult MITRE ATT&CK and reason step by step from the adversary tactic to a technique that realises it and then to a defensive control that mitigates the technique.
 Question: Starting from the {tac:x-mitre-tactic.name} tactic, provide a technique that achieves it and a mitigation against that technique.
 Answer: The {tac.name} tactic ({tac.description}) is achieved by technique {ap:tac.achieves<attack-pattern.mitre_id} ({ap.name}), which can be mitigated by {coa:ap.mitigates<course-of-action.mitre_id} ({coa.name}): {coa.description}.
+Count: 850
 
 Section 2 - Yes/No Discrimination Templates (Gap 2)
 
 YN.VW.P.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center verifying vulnerability-to-weakness mappings. Consult the MITRE CVE and CWE knowledge bases, reason about the assignment first, and then conclude with yes or no.
 Question: Does CVE-{cve:CVE.id} ({cve.descriptions}) have CWE-{cve.problemType.id} ({cve.problemType.name}) as a root cause?
 Answer: CVE-{cve.id} describes {cve.descriptions}, which matches the pattern defined by CWE-{cve.problemType.id} ({cve.problemType.name}): {cve.problemType.description}. Therefore, yes.
+Count: 950
 
 YN.VW.N.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center verifying vulnerability-to-weakness mappings. Consult the MITRE CVE and CWE knowledge bases, reason about the assignment first, and then conclude with yes or no.
 Question: Does CVE-{cve:CVE.id} ({cve.descriptions}) have CWE-{negw:Weakness.id} ({negw.name}) as a root cause?
 Answer: CVE-{cve.id} describes {cve.descriptions}, which does not match CWE-{negw.id} ({negw.name}) (that weakness concerns {negw.description}); the actual root cause recorded in MITRE is CWE-{cve.problemType.id} ({cve.problemType.name}). Therefore, no.
 {force negw.id != cve.problemType.id}
+Count: 950
 
 YN.WA.P.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center verifying CAPEC-to-CWE relationships. Consult the MITRE CAPEC and CWE knowledge bases, reason about the relationship first, and then conclude with yes or no.
 Question: Does CAPEC-{cap:CAPEC.id} ({cap.name}) exploit CWE-{cwe:cap.exploits>Weakness.id} ({cwe.name})?
 Answer: The attack pattern CAPEC-{cap.id} ({cap.description}) leverages the weakness {cwe.name} ({cwe.description}), which is the defining characteristic of CWE-{cwe.id}. Therefore, yes.
+Count: 950
 
 YN.WA.N.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center verifying CAPEC-to-CWE relationships. Consult the MITRE CAPEC and CWE knowledge bases, reason about the relationship first, and then conclude with yes or no.
 Question: Does CAPEC-{cap:CAPEC.id} ({cap.name}) exploit CWE-{negw:Weakness.id} ({negw.name})?
 Answer: CAPEC-{cap.id} does not target CWE-{negw.id}; instead, MITRE CAPEC records that CAPEC-{cap.id} exploits {cap.exploits.name} (CWE-{cap.exploits.id}). Therefore, no.
 {force negw.id != cap.exploits.id}
+Count: 950
 
 YN.MT.P.1 Instruction: You are a threat hunter at an enterprise Security Operations Center verifying MITRE ATT&CK technique-to-tactic assignments. Consult MITRE ATT&CK, reason about the assignment first, and then conclude with yes or no.
 Question: Does technique {ap:attack-pattern.mitre_id} ({ap.name}) serve the {ta:ap.achieves>x-mitre-tactic.name} tactic?
 Answer: MITRE ATT&CK classifies technique {ap.mitre_id} ({ap.name}) under the {ta.name} tactic, which covers {ta.description}. Therefore, yes.
+Count: 950
 
 YN.MT.N.1 Instruction: You are a threat hunter at an enterprise Security Operations Center verifying MITRE ATT&CK technique-to-tactic assignments. Consult MITRE ATT&CK, reason about the assignment first, and then conclude with yes or no.
 Question: Does technique {ap:attack-pattern.mitre_id} ({ap.name}) serve the {negtac:x-mitre-tactic.name} tactic?
 Answer: MITRE ATT&CK classifies technique {ap.mitre_id} under the {ap.achieves.name} tactic, not under {negtac.name}. Therefore, no.
 {force negtac.mitre_id != ap.achieves.mitre_id}
+Count: 950
 
 YN.GM.P.1 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center confirming documented adversary tradecraft. Consult MITRE ATT&CK, reason about the evidence first, and then conclude with yes or no.
 Question: Is threat group {grp:intrusion-set.name} ({grp.mitre_id}) known to use technique {ap:grp.uses>attack-pattern.mitre_id} ({ap.name})?
 Answer: MITRE ATT&CK documents {grp.name} ({grp.mitre_id}) as using technique {ap.mitre_id} ({ap.name}): {ap.description}. Therefore, yes.
+Count: 950
 
 YN.GM.N.1 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center confirming documented adversary tradecraft. Consult MITRE ATT&CK, reason about the evidence first, and then conclude with yes or no.
 Question: Is threat group {grp:intrusion-set.name} ({grp.mitre_id}) known to use technique {negack:attack-pattern.mitre_id} ({negack.name})?
 Answer: MITRE ATT&CK records no documented use of technique {negack.mitre_id} by {grp.name}; instead {grp.name} is associated with technique {posack:grp.uses>attack-pattern.mitre_id} ({posack.name}). Therefore, no.
 {force negack.mitre_id != posack.mitre_id}
+Count: 950
 
 YN.MN.P.1 Instruction: You are a cybersecurity architect hardening a corporate enterprise network. Consult MITRE ATT&CK, reason about whether the proposed control addresses the technique, and then conclude with yes or no.
 Question: Does mitigation {coa:ap.mitigates<course-of-action.mitre_id} ({coa.name}) address MITRE ATT&CK technique {ap:attack-pattern.mitre_id} ({ap.name})?
 Answer: MITRE ATT&CK records that mitigation {coa.mitre_id} ({coa.name}) addresses technique {ap.mitre_id} by {coa.description}. Therefore, yes.
+Count: 950
 
 YN.MN.N.1 Instruction: You are a cybersecurity architect hardening a corporate enterprise network. Consult MITRE ATT&CK, reason about whether the proposed control addresses the technique, and then conclude with yes or no.
 Question: Does mitigation {negcoa:course-of-action.mitre_id} ({negcoa.name}) address MITRE ATT&CK technique {ap:attack-pattern.mitre_id} ({ap.name})?
 Answer: MITRE ATT&CK does not record mitigation {negcoa.mitre_id} as addressing technique {ap.mitre_id}; the appropriate control for this technique is {coa:ap.mitigates<course-of-action.mitre_id} ({coa.name}). Therefore, no.
 {force negcoa.mitre_id != coa.mitre_id}
+Count: 950
 
 
 Section 3 - Multiple-Choice Templates (Gap 3)
@@ -1468,22 +1524,27 @@ Section 5 - X.* Cross-Framework Path Templates
 X.VEDB.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center tracing a vulnerability from disclosure to weaponisation. Consult the MITRE CVE record and its (CVE)-has_weaponized_exploit->(ExploitDBEntry) linkage and reason about the path from CVE to public exploit.
 Question: Trace CVE {cve:CVE.id} from vulnerability disclosure to public weaponisation.
 Answer: CVE {cve.id} ({cve.descriptions}) has a published weaponised exploit at ExploitDB entry {edb:cve.has_weaponized_exploit>ExploitDBEntry.id} ({edb.title}), of type {edb.type} for platform {edb.platform}, released on {edb.published}. Chain: CVE {cve.id} -> ExploitDBEntry {edb.id}.
+Count: 850
 
 X.VPOC.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center correlating a CVE to community PoC activity on GitHub. Consult the (CVE)-has_poc->(GithubPoC) edge and reason about the path from CVE to public PoC.
 Question: Trace CVE {cve:CVE.id} to community proof-of-concept activity on GitHub.
 Answer: CVE {cve.id} ({cve.descriptions}) has a GitHub PoC reference {poc:cve.has_poc>GithubPoC.id} ({poc.title}) hosted at {poc.url}, indexed on {poc.published}. Chain: CVE {cve.id} -> GithubPoC {poc.id}.
+Count: 850
 
 X.MSR.1 Instruction: You are a detection engineer at an enterprise Security Operations Center mapping defensive coverage from MITRE ATT&CK techniques to community Sigma rules. Consult MITRE ATT&CK for the technique context and the reverse (attack-pattern)<-detects-(SigmaRule) edge for detection coverage.
 Question: What Sigma-rule coverage exists for MITRE ATT&CK technique {ap:attack-pattern.mitre_id} ({ap.name})?
 Answer: Technique {ap.mitre_id} ({ap.name}) serves the {ta:ap.achieves>x-mitre-tactic.name} tactic. SigmaHQ publishes rule {sr:ap.detects<SigmaRule.id} ({sr.title}, status {sr.status}, level {sr.level}) against this technique. Chain: x-mitre-tactic {ta.name} <- attack-pattern {ap.mitre_id} <- SigmaRule {sr.id}.
+Count: 850
 
 X.VSR.1 Instruction: You are a CTI-to-detection bridge analyst at an enterprise Security Operations Center tracing a vulnerability to the detection content that covers its downstream attack pattern. Consult the CVE, its CWE root cause, the CAPEC it impacts, the ATT&CK technique that CAPEC maps to, and the Sigma rule authored against that technique.
 Question: Trace CVE {cve:CVE.id} to a Sigma rule that would detect its downstream adversary technique.
 Answer: CVE {cve.id} has root cause {cwe:cve.problemType>Weakness.name} (CWE-{cwe.id}). The weakness is exploited by CAPEC {cap:cve.impacts>CAPEC.name} (CAPEC-{cap.id}), which maps to MITRE ATT&CK technique {ap:cap.map_ap>attack-pattern.mitre_id} ({ap.name}). SigmaHQ publishes rule {sr:ap.detects<SigmaRule.id} ({sr.title}, level {sr.level}) against that technique. Chain: CVE {cve.id} -> CWE {cwe.id} -> CAPEC {cap.id} -> attack-pattern {ap.mitre_id} <- SigmaRule {sr.id}.
+Count: 850
 
 X.VEDB.2 Instruction: You are a vulnerability risk analyst at an enterprise Security Operations Center correlating weaponised exploit availability with KEV exploitation status. Consult the CVE's ExploitDB linkage and KEV membership and reason about overall exploitation signal.
 Question: For CVE {cve:CVE.id}, does public weaponisation correlate with KEV enrolment?
 Answer: CVE {cve.id} has a weaponised exploit at ExploitDB entry {edb:cve.has_weaponized_exploit>ExploitDBEntry.id} ({edb.title}, type {edb.type}, published {edb.published}). CISA records the CVE in the KEV catalog as {kev:cve.known_exploit>KEV.vulnerabilityName} with required action "{kev.requiredAction}" by {kev.dueDate}. Chain: CVE {cve.id} -> ExploitDBEntry {edb.id} (public weaponisation) and CVE {cve.id} -> KEV {kev.vulnerabilityName} (observed exploitation). The two signals together indicate both available exploit code and confirmed in-the-wild use.
+Count: 850
 
 
 Section 6 - YN.* Yes/No Discrimination Templates
@@ -1491,33 +1552,40 @@ Section 6 - YN.* Yes/No Discrimination Templates
 YN.MSR.P.1 Instruction: You are a detection engineer at an enterprise Security Operations Center verifying Sigma-rule-to-technique assignments. Consult the (SigmaRule)-detects->(attack-pattern) edge, reason about the assignment first, and then conclude with yes or no.
 Question: Is Sigma rule {sr:SigmaRule.id} ({sr.title}) authored against MITRE ATT&CK technique {ap:sr.detects>attack-pattern.mitre_id} ({ap.name})?
 Answer: SigmaHQ tags rule {sr.id} with a "detects" relation to technique {ap.mitre_id} ({ap.name}): {ap.description}. Therefore, yes.
+Count: 950
 
 YN.MSR.N.1 Instruction: You are a detection engineer at an enterprise Security Operations Center verifying Sigma-rule-to-technique assignments. Consult the (SigmaRule)-detects->(attack-pattern) edge, reason about the assignment first, and then conclude with yes or no.
 Question: Is Sigma rule {sr:SigmaRule.id} ({sr.title}) authored against MITRE ATT&CK technique {negap:attack-pattern.mitre_id} ({negap.name})?
 Answer: SigmaHQ does not link rule {sr.id} to technique {negap.mitre_id}; the technique the rule is authored against is {posap:sr.detects>attack-pattern.mitre_id} ({posap.name}). Therefore, no.
 {force negap.mitre_id != posap.mitre_id}
+Count: 950
 
 YN.VEDB.P.1 Instruction: You are a vulnerability risk analyst at an enterprise Security Operations Center verifying ExploitDB weaponisation status for a CVE. Consult the (CVE)-has_weaponized_exploit->(ExploitDBEntry) edge, reason about the evidence first, and then conclude with yes or no.
 Question: Does CVE {cve:CVE.id} have a published weaponised exploit in ExploitDB entry {edb:cve.has_weaponized_exploit>ExploitDBEntry.id} ({edb.title})?
 Answer: ExploitDB entry {edb.id} ({edb.title}), a {edb.type} exploit on {edb.platform} published {edb.published}, is recorded as the weaponised exploit for CVE {cve.id}. Therefore, yes.
+Count: 950
 
 YN.VEDB.N.1 Instruction: You are a vulnerability risk analyst at an enterprise Security Operations Center verifying ExploitDB weaponisation status for a CVE. Consult the (CVE)-has_weaponized_exploit->(ExploitDBEntry) edge, reason about the evidence first, and then conclude with yes or no.
 Question: Does CVE {cve:CVE.id} have a published weaponised exploit in ExploitDB entry {negedb:ExploitDBEntry.id} ({negedb.title})?
 Answer: ExploitDB entry {negedb.id} is not recorded as the weaponised exploit for CVE {cve.id}; the weaponised exploit actually linked to this CVE is ExploitDB entry {posedb:cve.has_weaponized_exploit>ExploitDBEntry.id} ({posedb.title}). Therefore, no.
 {force negedb.id != posedb.id}
+Count: 950
 
 YN.VPOC.P.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center verifying GitHub PoC references for a CVE. Consult the (CVE)-has_poc->(GithubPoC) edge, reason about the evidence first, and then conclude with yes or no.
 Question: Does CVE {cve:CVE.id} have a public PoC reference at GitHub PoC {poc:cve.has_poc>GithubPoC.id} ({poc.title})?
 Answer: GitHub PoC {poc.id} ({poc.title}), hosted at {poc.url} and indexed on {poc.published}, is recorded as a proof-of-concept reference for CVE {cve.id}. Therefore, yes.
+Count: 950
 
 YN.VPOC.N.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center verifying GitHub PoC references for a CVE. Consult the (CVE)-has_poc->(GithubPoC) edge, reason about the evidence first, and then conclude with yes or no.
 Question: Does CVE {cve:CVE.id} have a public PoC reference at GitHub PoC {negpoc:GithubPoC.id} ({negpoc.title})?
 Answer: GitHub PoC {negpoc.id} is not recorded as a proof-of-concept reference for CVE {cve.id}; the PoC actually linked to this CVE is {pospoc:cve.has_poc>GithubPoC.id} ({pospoc.title}). Therefore, no.
 {force negpoc.id != pospoc.id}
+Count: 950
 
 YN.CPE.P.1 Instruction: You are a vulnerability analyst at an enterprise Security Operations Center verifying whether a CVE carries NVD CPE applicability statements. Consult the cpe_matches property, reason about the evidence first, and then conclude with yes or no.
 Question: Does CVE {cve:CVE.id} record NVD CPE applicability statements in its cpe_matches property?
 Answer: CVE {cve.id} carries the following cpe_matches content: {cve.cpe_matches}. The field enumerates the affected vendor-product-version tuples in CPE 2.3 URI form. Therefore, yes.
+Count: 950
 
 
 Section 7 - Q.* 5-Option Multiple-Choice Templates
