@@ -65,24 +65,43 @@ v10 -> v11 deltas
       GENCONF default from gencfg_default_neo4j.json to the per-primary
       variant; an env override preserves the v10 path for regression runs.
 
-  (4) New SOC.* family (~12K rows). All seed sources are pre-existing
+  (4) New SOC.* family (~14K rows). All seed sources are pre-existing
       Neo4j content (no contamination risk against CyberSOCEval):
-        SOC.SIGMA.1                Sigma rule -> covered ATT&CK technique
-                                   (3,120 SigmaRule nodes)
+        SOC.SIGMA.1                Sigma rule -> SOC runbook entry
+                                   (logsource + detection + ATT&CK
+                                   coverage + response cue; 3,120
+                                   SigmaRule nodes -> Count: 3500)
         SOC.TRIAGE.SIGMA.1         Sigma rule + falsepositives -> triage
-                                   judgement (3,098 rules with FP text)
-        SOC.TRIAGE.AN.1            x-mitre-analytic -> what it detects
-                                   and likely false positives (1,739 nodes)
-        SOC.TRIAGE.DS.1            x-mitre-data-source -> techniques that
-                                   surface in this telemetry (38 sources)
-        SOC.MAL.1                  malware.description -> behavioural
-                                   summary (633 malware nodes)
-        SOC.IR.1                   D3FENDTechnique [:counters] attack-pattern
-                                   -> defensive playbook for the offensive
-                                   technique (3,234 counter edges, sourced
-                                   from MITRE D3FEND v1.4.0 ingest landed
-                                   in athena_cti_db/threat_framework/
-                                   populate_neo4j_complete.py at 67db101)
+                                   judgement (3,098 rules with FP text
+                                   -> Count: 3500)
+        SOC.TRIAGE.AN.1            x-mitre-analytic -> covered technique
+                                   via implemented_by detection-strategy
+                                   detects attack-pattern chain
+                                   (1,739 analytic nodes -> Count: 1900)
+        SOC.TRIAGE.DS.1/.2         x-mitre-data-source taxonomy
+                                   (definitional only; the 38 DS nodes
+                                   are isolated in the graph -- no edges
+                                   to attack-pattern, x_mitre_data_sources
+                                   arrays on attack-pattern are empty --
+                                   so SOC.TRIAGE.DS.{1,2} bind on the DS
+                                   node alone for catalog-drill coverage,
+                                   Count: 200 each = ~400 rows)
+        SOC.MAL.1                  malware.description + x_mitre_aliases
+                                   -> behavioural summary card (694
+                                   malware nodes with description; the
+                                   v11 plan's 633 figure was stale --
+                                   the live count is 694 -> Count: 1400)
+        SOC.IR.1                   D3FENDTechnique -counters-> attack-pattern
+                                   -> IR defensive playbook entry for the
+                                   offensive technique (3,234 counter
+                                   edges over 325 attack-patterns x 149
+                                   D3FEND techniques, from MITRE D3FEND
+                                   v1.4.0 ingest landed in athena_cti_db/
+                                   threat_framework/populate_neo4j_complete.py
+                                   at 67db101 -> Count: 3500)
+        SOC.IR.2                   reverse: defensive technique ->
+                                   countered offensive technique
+                                   (Count: 1500)
 
   (5) New TAA.CANON.* family (~2K rows): MITRE Groups aliases columns
       drive alias->canonical (TAA.CANON.1, ~1K) and canonical->TTPs
@@ -2754,3 +2773,70 @@ Sample: grp
 Count: 500
 
 
+
+================================================================================
+v11 NEW BLOCK -- SOC.* SOC Operations Templates
+================================================================================
+All templates in this block are new in v11 and bind exclusively against
+pre-existing Neo4j content (SigmaRule, x-mitre-analytic,
+x-mitre-detection-strategy, x-mitre-data-source, malware) plus the new
+D3FENDTechnique nodes ingested into populate_neo4j_complete.py at 67db101.
+The seed sources are the same MITRE / SigmaHQ feeds the rest of the corpus
+relies on; none of them overlap CyberSOCEval (CrowdStrike PDFs +
+PurpleLlama questions), so SOC.TRIAGE.* and SOC.IR.* are clean against
+the SOC eval split.
+
+Section 1 - SOC.SIGMA.* SOC runbook synthesis from Sigma rules
+
+SOC.SIGMA.1 Instruction: You are a detection engineer at an enterprise Security Operations Center authoring a SOC runbook entry for a community Sigma rule. Consult the SigmaHQ rule repository, the rule's logsource and detection blocks, and the (SigmaRule)-detects->(attack-pattern) mapping. Write a concise runbook paragraph that covers what the rule fires on, the telemetry it consumes, the technique it covers, the rule's deployment status, and a one-line response cue.
+Question: Author a SOC runbook entry for Sigma rule {sr:SigmaRule.id} ({sr.title}).
+Answer: Runbook entry -- Rule: {sr.id} "{sr.title}" (status {sr.status}, severity {sr.level}). Telemetry: {sr.logsource_product}/{sr.logsource_category}/{sr.logsource_service}. Coverage: detects MITRE ATT&CK technique {ap:sr.detects>attack-pattern.mitre_id} ({ap.name}). Detection logic: {sr.detection}. Rule purpose: {sr.description}. Response cue: triage as adversary behaviour consistent with {ap.name} ({ap.description}).
+Sample: sr
+Count: 3500
+
+
+Section 2 - SOC.TRIAGE.* Alert triage templates (clean: no CyberSOCEval overlap)
+
+SOC.TRIAGE.SIGMA.1 Instruction: You are a Tier-1 SOC analyst triaging a Sigma-rule alert. Consult the rule's declared false-positive guidance and the (SigmaRule)-detects->(attack-pattern) mapping, reason about which benign behaviours could explain the hit before escalation, and produce a triage judgement.
+Question: Sigma rule {sr:SigmaRule.id} ({sr.title}) just fired. Triage the alert.
+Answer: Alert summary: rule {sr.id} "{sr.title}" (status {sr.status}, severity {sr.level}) fired against telemetry {sr.logsource_product}/{sr.logsource_category}/{sr.logsource_service}, indicating possible MITRE ATT&CK technique {ap:sr.detects>attack-pattern.mitre_id} ({ap.name}). Before escalation, validate the following declared false-positive scenarios: {sr.falsepositives}. Triage judgement: confirm whether the firing host or process matches one of those benign patterns; if it does, mark as false positive and tune. If none of the FP conditions apply, escalate as suspicious activity consistent with {ap.name}: {ap.description}.
+Sample: sr
+Count: 3500
+
+SOC.TRIAGE.AN.1 Instruction: You are a SOC analyst reviewing a hit from an enterprise SIEM analytic. Consult the analytic's text, the (x-mitre-detection-strategy)-implemented_by->(x-mitre-analytic) link, and the strategy's (x-mitre-detection-strategy)-detects->(attack-pattern) coverage. State what the analytic is looking for and which adversary technique a confirmed hit indicates.
+Question: A SIEM analytic with identifier {an:x-mitre-analytic.mitre_id} ("{an.name}") just produced a hit. What is it detecting?
+Answer: Analytic {an.mitre_id} ("{an.name}") implements detection strategy {det:an.implemented_by<x-mitre-detection-strategy.name} ({det.mitre_id}). Pseudocode summary of the analytic: {an.description}. The parent detection strategy targets MITRE ATT&CK technique {ap:det.detects>attack-pattern.mitre_id} ({ap.name}): {ap.description}. A confirmed hit therefore indicates observable behaviour consistent with {ap.name}; triage by validating the analytic's pseudocode conditions against the alerting host before escalation.
+Sample: an
+Count: 1900
+
+SOC.TRIAGE.DS.1 Instruction: You are a SOC engineer reviewing the MITRE ATT&CK enterprise data-source taxonomy to scope new telemetry onboarding. Consult the data-source name and description and explain what events that source carries and why it matters for detection coverage.
+Question: Describe MITRE ATT&CK data source {ds:x-mitre-data-source.mitre_id} ({ds.name}) and what it contributes to detection coverage.
+Answer: MITRE ATT&CK data source {ds.mitre_id} ({ds.name}) is defined as: {ds.description}. Onboarding telemetry from this source enables detections that depend on the events it carries; without it, analytics that require {ds.name} signals cannot fire. SOC engineers should ensure ingestion of {ds.name} events is in scope before deploying detection content tagged to this source.
+Count: 200
+
+SOC.TRIAGE.DS.2 Instruction: You are a SOC engineer planning detection coverage by data source. Consult the MITRE ATT&CK data-source catalog and resolve a data-source name to its catalog identifier.
+Question: <*{ds:x-mitre-data-source.mitre_id}*>What MITRE ATT&CK data-source identifier does the source named "{ds.name}" carry, and what events does it cover?
+Answer: The MITRE ATT&CK data source named "{ds.name}" carries identifier {ds.mitre_id}: {ds.description}. Therefore, the data-source identifier is {ds.mitre_id}.
+Count: 200
+
+
+Section 3 - SOC.MAL.* Malware behavioural summary cards
+
+SOC.MAL.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center producing a behavioural summary card for a malware family. Consult the MITRE ATT&CK software entry for the family and write a concise card covering the family identifier, its known aliases, and a behavioural summary derived from the catalog description.
+Question: Produce a behavioural summary card for malware family {mw:malware.mitre_id} ({mw.name}).
+Answer: Malware card -- Identifier: {mw.mitre_id}. Family name: {mw.name}. Known aliases: {mw.aliases}. Behavioural summary (MITRE ATT&CK software catalog): {mw.description}.
+Count: 1400
+
+
+Section 4 - SOC.IR.* Incident response defensive playbooks (D3FEND-sourced)
+
+SOC.IR.1 Instruction: You are an incident responder at an enterprise Security Operations Center authoring a defensive playbook entry for an offensive MITRE ATT&CK technique. Consult the MITRE D3FEND ontology's (D3FENDTechnique)-counters->(attack-pattern) mapping and write a playbook paragraph that names the offensive technique, the recommended D3FEND defensive technique, and the D3FEND technique's definition as the basis for the response action.
+Question: Author a defensive playbook entry for MITRE ATT&CK technique {ap:attack-pattern.mitre_id} ({ap.name}).
+Answer: Defensive playbook entry -- Offensive behaviour: MITRE ATT&CK technique {ap.mitre_id} ({ap.name}): {ap.description}. Recommended defensive measure: MITRE D3FEND {d:ap.counters<D3FENDTechnique.d3fend_id} ({d.name}). D3FEND definition: {d.definition}. Response action: implement {d.name} as a counter to {ap.name}; the D3FEND ontology records this as a published counters relationship between the two techniques.
+Sample: ap
+Count: 3500
+
+SOC.IR.2 Instruction: You are an incident responder cross-referencing MITRE D3FEND defensive techniques to the MITRE ATT&CK offensive techniques they counter. Consult the D3FEND ontology and state which offensive technique a given defensive technique counters and why.
+Question: <*{ap:attack-pattern.mitre_id}*>Which MITRE ATT&CK offensive technique does MITRE D3FEND defensive technique {d:ap.counters<D3FENDTechnique.d3fend_id} ({d.name}) counter?
+Answer: MITRE D3FEND defensive technique {d.d3fend_id} ({d.name}) -- defined as: {d.definition} -- counters MITRE ATT&CK offensive technique {ap.mitre_id} ({ap.name}): {ap.description}. Therefore, the offensive technique countered is {ap.mitre_id}.
+Count: 1500
