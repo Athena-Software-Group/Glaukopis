@@ -113,6 +113,13 @@ model_mapping = {
     'llama-3-8b-vllm':                         'meta-llama/Meta-Llama-3.1-8B-Instruct',
     'qwen3-4b-vllm':                           'Qwen/Qwen3-4B-Instruct-2507',
     'qwen3-32b-vllm':                          'Qwen/Qwen3-32B',
+    # Qwen3-32B served with the hybrid <think> trace disabled. Same HF repo as
+    # qwen3-32b-vllm; the '-no-think' substring is detected by VLLMModel which
+    # forwards `chat_template_kwargs.enable_thinking=False` on every request so
+    # the chat template skips the reasoning preamble. Use this for short-answer
+    # MCQ tasks (CKT/ATE/TAA/CyberMetric) where the trace eats the generation
+    # budget; keep qwen3-32b-vllm for tasks that benefit from CoT.
+    'qwen3-32b-no-think-vllm':                 'Qwen/Qwen3-32B',
     'qwen2.5-14b-vllm':                        'Qwen/Qwen2.5-14B-Instruct',
     'qwen2.5-32b-vllm':                        'Qwen/Qwen2.5-32B-Instruct',
     'phi-4-vllm':                              'microsoft/phi-4',
@@ -551,7 +558,16 @@ class VLLMModel(BaseModel):
         api_key = os.getenv("VLLM_API_KEY", "EMPTY") or "EMPTY"
         self.hf_model_id = model_mapping.get(model_name, model_name)
         self.client = OpenAI(api_key=api_key, base_url=self.base_url)
-        print(f"vLLM client ready for {self.hf_model_id} (base_url={self.base_url})")
+        # Hybrid-thinking models (Qwen3 family, Foundation-Sec-8B-Reasoning,
+        # etc.) emit a <think> trace by default. For short-answer benchmarks
+        # the trace consumes the generation budget and the final answer never
+        # makes it into `content`. Aliases carrying the '-no-think' substring
+        # opt out per-request via `chat_template_kwargs.enable_thinking=False`,
+        # which Qwen's chat template (and the SGLang/vLLM OpenAI-compat layer)
+        # honor by skipping the reasoning preamble entirely.
+        self.disable_thinking = "no-think" in model_name.lower()
+        print(f"vLLM client ready for {self.hf_model_id} (base_url={self.base_url}"
+              f"{', thinking=disabled' if self.disable_thinking else ''})")
 
     # vLLM 400 message: "maximum context length is N tokens. However, you
     # requested M output tokens and your prompt contains at least P input
@@ -585,6 +601,15 @@ class VLLMModel(BaseModel):
         shrunk = False  # one-shot drop-to-floor on context overflow per call
         transient_budget = 5
         last_err = None
+        # vLLM exposes Qwen3's hybrid-thinking switch through extra_body so we
+        # don't have to mutate the prompt; the SDK forwards it as JSON and
+        # vLLM surfaces it to the chat template as
+        # chat_template_kwargs.enable_thinking.
+        create_extra = {}
+        if self.disable_thinking:
+            create_extra["extra_body"] = {
+                "chat_template_kwargs": {"enable_thinking": False}
+            }
         # +1 outer slot to cover the post-shrink retry on top of the transient
         # budget. Shrink is one-shot so this caps total attempts at 7.
         for attempt in range(transient_budget + 2):
@@ -595,6 +620,7 @@ class VLLMModel(BaseModel):
                     temperature=temperature,
                     max_tokens=effective_max,
                     top_p=1.0,
+                    **create_extra,
                 )
                 # No add_tokens() call here: local vLLM is free and has no
                 # entry in api_usage.PRICING_PER_1K. HFInferenceModel does the
