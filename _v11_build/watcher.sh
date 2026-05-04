@@ -6,17 +6,19 @@
 #
 # Same shape as _v10_build/watcher.sh (see git history at c5f992c~1).
 # v11 deltas vs v10:
-#   ACTOR_CAP            20 -> 40   (guardrails proven; permits ~3500 TAA
+#   ACTOR_CAP            20 -> 40   (guardrails proven; permits ~5500 TAA
 #                                    positives vs v10's 1284, dropping the
 #                                    IE/NEG : positive ratio from 3.9:1 to
-#                                    ~1.7:1 -- still well above mode-collapse
+#                                    ~1.0:1 -- still well above mode-collapse
 #                                    risk threshold)
-#   DEDUP_DROP_THRESHOLD 50 -> 30   (less conservative; v10's 50 dropped
-#                                    only 621 rows total, some of which were
-#                                    likely legitimate diversity. Re-inspect
-#                                    100 random borderline cases (30-50
-#                                    shared 13-grams) before locking the v11
-#                                    corpus.)
+#   DEDUP_DROP_THRESHOLD 50         (held at v10 value. The v11 first-pass
+#                                    attempt at 30 wiped 4,800 legitimate
+#                                    AB.RMS.3{b..h} stratification rows
+#                                    whose multi-M-code answers structurally
+#                                    match the eval ground truth, not
+#                                    training contamination. The 50
+#                                    threshold preserves these and still
+#                                    drops verbatim duplicates.)
 #
 # Build-side defaults inherited by Phase 1 (make_dataset.sh) for v11
 # (encoded in tmpl_gen/data_generation/gencfg_per_primary_neo4j.json,
@@ -53,7 +55,7 @@ STATUS_JSON="_v11_build/watcher_status.json"
 ACTOR_CAP=40
 ACTOR_FLOOR=100
 DEDUP_HIT_THRESHOLD=1
-DEDUP_DROP_THRESHOLD=30
+DEDUP_DROP_THRESHOLD=50
 
 stamp() { date -u +"%Y-%m-%dT%H:%M:%SZ"; }
 log()   { echo "[$(stamp)] $*"; }

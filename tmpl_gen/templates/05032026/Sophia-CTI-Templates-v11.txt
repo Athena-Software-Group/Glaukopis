@@ -65,19 +65,22 @@ v10 -> v11 deltas
       GENCONF default from gencfg_default_neo4j.json to the per-primary
       variant; an env override preserves the v10 path for regression runs.
 
-  (4) New SOC.* family (~14K rows). All seed sources are pre-existing
-      Neo4j content (no contamination risk against CyberSOCEval):
+  (4) New SOC.* family (~6K rows). All seed sources are pre-existing
+      Neo4j content (no contamination risk against CyberSOCEval). The
+      first build's per-template caps were aspirational; counts below
+      are the substrate-honest caps locked in after the build observed
+      the per-primary anchor ceilings:
         SOC.SIGMA.1                Sigma rule -> SOC runbook entry
-                                   (logsource + detection + ATT&CK
-                                   coverage + response cue; 3,120
-                                   SigmaRule nodes -> Count: 3500)
+                                   (3,120 SigmaRule nodes; per-primary
+                                   anchor ceiling ~1,100 -> Count: 1100)
         SOC.TRIAGE.SIGMA.1         Sigma rule + falsepositives -> triage
-                                   judgement (3,098 rules with FP text
-                                   -> Count: 3500)
+                                   judgement (3,098 rules with FP text;
+                                   ceiling ~1,100 -> Count: 1100)
         SOC.TRIAGE.AN.1            x-mitre-analytic -> covered technique
                                    via implemented_by detection-strategy
-                                   detects attack-pattern chain
-                                   (1,739 analytic nodes -> Count: 1900)
+                                   detects attack-pattern chain (1,739
+                                   analytic nodes; ceiling ~1,000
+                                   -> Count: 1000)
         SOC.TRIAGE.DS.1/.2         x-mitre-data-source taxonomy
                                    (definitional only; the 38 DS nodes
                                    are isolated in the graph -- no edges
@@ -85,12 +88,11 @@ v10 -> v11 deltas
                                    arrays on attack-pattern are empty --
                                    so SOC.TRIAGE.DS.{1,2} bind on the DS
                                    node alone for catalog-drill coverage,
-                                   Count: 200 each = ~400 rows)
+                                   Count: 200 each = ~76 rows realised)
         SOC.MAL.1                  malware.description + x_mitre_aliases
                                    -> behavioural summary card (694
-                                   malware nodes with description; the
-                                   v11 plan's 633 figure was stale --
-                                   the live count is 694 -> Count: 1400)
+                                   malware nodes with description;
+                                   ceiling ~700 -> Count: 700)
         SOC.IR.1                   D3FENDTechnique -counters-> attack-pattern
                                    -> IR defensive playbook entry for the
                                    offensive technique (3,234 counter
@@ -98,54 +100,76 @@ v10 -> v11 deltas
                                    D3FEND techniques, from MITRE D3FEND
                                    v1.4.0 ingest landed in athena_cti_db/
                                    threat_framework/populate_neo4j_complete.py
-                                   at 67db101 -> Count: 3500)
+                                   at 67db101; per-primary anchor on
+                                   attack-pattern caps the drill at ~500
+                                   -> Count: 500)
         SOC.IR.2                   reverse: defensive technique ->
                                    countered offensive technique
                                    (Count: 1500)
 
-  (5) New TAA.CANON.* family (~1.4K rows): MITRE ATT&CK groups aliases
+  (5) New TAA.CANON.* family (~770 rows): MITRE ATT&CK groups aliases
       property (intrusion-set.aliases) drives two alias-resolution drills
       against athena-cti-db, addressing the 8-17% TAA-attribute ceiling
-      traced to no canonical-name supervision in v10:
-        TAA.CANON.1   alias-list -> canonical-name (Count: 600;
-                      187 intrusion-set nodes, 104 with multi-element
-                      aliases averaging 3.1 aliases per group)
+      traced to no canonical-name supervision in v10. Counts are the
+      substrate-honest caps locked in after the build observed the
+      187-intrusion-set ceiling:
+        TAA.CANON.1   alias-list -> canonical-name (Count: 200;
+                      187 intrusion-set nodes is the hard ceiling under
+                      per-primary grouping; 104 of those have multi-
+                      element aliases averaging 3.1 aliases per group)
         TAA.CANON.2   canonical-name -> alias-resolution card with
-                      catalog id and one signature technique
-                      (Count: 800; uses (intrusion-set)-uses->(attack-
-                      pattern), 168 groups have technique edges)
+                      catalog id and one signature technique (Count: 800;
+                      uses (intrusion-set)-uses->(attack-pattern), 168
+                      groups have technique edges; effective ceiling
+                      ~590)
 
-  (6) X.* and YN.* trimmed ~30%. The Section-1 X.{VW,WA,AM,MT,MM,MN,GM,
-      GS,VP,VK,VWA,TMN}.* and Section-5 X.{VEDB,VPOC,MSR,VSR}.* templates
-      are explicitly capped at Count: 850 each (23 X.* templates total).
-      The Section-2 YN.{VW,WA,MT,GM,MN}.{P,N}.1 and Section-6 YN.{MSR,
-      VEDB,VPOC,CPE}.{P,N}.1 templates are explicitly capped at
-      Count: 950 each (17 YN.* templates total). Caps replace the
-      implicit v10 ceiling of 1500 (CLI count_max), reducing the
-      X.*+YN.* aggregate budget by ~24K rows and reallocating that
-      budget to SOC.* / TAA.CANON.* / RMS paraphrase volume. The 8
-      X.{1..8} broad-knowledge templates in Section C are part of the
-      pre-existing substrate and are not in scope of this trim.
+  (6) X.* and YN.* trimmed ~30%. The Section-1 X.{WA,AM,MT,MM,MN,GM,GS,
+      VP,VK,VWA,TMN}.* and Section-5 X.{VEDB,VPOC,MSR,VSR}.* templates
+      are explicitly capped at Count: 850 each (20 X.* templates total).
+      The Section-2 YN.{WA,MT,GM,MN}.{P,N}.1 and Section-6 YN.{MSR,VEDB,
+      VPOC,CPE}.{P,N}.1 templates are explicitly capped at Count: 950
+      each (15 YN.* templates total). The X.VW.{1,2,3} and
+      YN.VW.{P,N}.1 templates are explicitly NOT capped (left at the
+      CLI count_max=1500 default) because they are the direct
+      athena-cti-rcm eval-axis training surface and the v11 first build
+      showed the cap caused a ~5K row eval-axis-aligned regression.
+      The 8 X.{1..8} broad-knowledge templates in Section C are part of
+      the pre-existing substrate and are not in scope of this trim.
 
-  (7) Build-side tunables changed in _v11_build/watcher.sh:
+  (7) Build-side tunables locked in _v11_build/watcher.sh:
         ACTOR_CAP             20 -> 40 (proven guardrail; lifts AB.TAA.*
-                                          from 1,284 -> ~3,500 rows)
-        DEDUP_DROP_THRESHOLD  50 -> 30 (re-inspect borderline 30-50 cases
-                                          before lock; tightens the
-                                          contamination guard)
+                                          from 1,284 -> ~5,500 rows)
+        DEDUP_DROP_THRESHOLD  50 (held at v10 value; the v11 first-pass
+                                  attempt at 30 wiped 4,800 legitimate
+                                  AB.RMS.3{b..h} stratification rows
+                                  whose multi-M-code answers structurally
+                                  match eval ground-truth, not training
+                                  contamination)
         ACTOR_FLOOR / DEDUP_HIT_THRESHOLD unchanged.
 
-  (8) Stratified shuffle (tmpl_gen/scripts/stratified_shuffle.py) applied
+  (8) Per-template Per_primary_grouping override (parser extension):
+      tmpl_gen/scripts/tmpl_docx2json.py recognises a new
+      `Per_primary_grouping: true|false` directive (parsed to bool) and
+      tmpl_gen/src/tmpl_gen/tmpl_parser.process_template consults the
+      tmplobj key ahead of the gencfg default. Used on AB.TAA.NEG.1 and
+      JS.TAA.NEG.1 (set to false) where the {force grp != rel} +
+      shared-(ap1, ap2, mw) constraint collapses yield to ~10% of cap
+      under the per-primary CALL-subquery LIMIT 1 chaining (round-2
+      observed 1106/378 vs caps 1500/500; round-3 with the override
+      recovers 1500/500). Substrate probe in
+      _v11_build/_probe_taa_neg_yield.py.
+
+  (9) Stratified shuffle (tmpl_gen/scripts/stratified_shuffle.py) applied
       pre-train: chunk-and-interleave to guarantee per-family minimum
       representation in N=512 windows. v10's RMS dilution failure mode
       was partly attributable to LLaMA-Factory's uniform-random sampler
       over the 200K shuffled concat. Output is still a flat JSON, no
       LLaMA-Factory changes needed.
 
-  (9) Held-out validation slice (ift_data_2026_05_03_v11_val.json):
-      50 rows per AthenaBench axis sampled pre-dedup, leak-checked via
-      the same 13-gram filter, wired via --eval_dataset so per-axis
-      eval loss surfaces every 500 steps.
+  (10) Held-out validation slice (ift_data_2026_05_03_v11_val.json):
+       50 rows per AthenaBench axis sampled pre-dedup, leak-checked via
+       the same 13-gram filter, wired via --eval_dataset so per-axis
+       eval loss surfaces every 500 steps.
 
 It supersedes the chain of older includes (Sophia-CTI-Templates-04022026
 -> 04022026-benchmark-addendum -> AthenaBench-aligned -> Detections-Exploits-
@@ -155,7 +179,7 @@ syntax that tmpl_gen/scripts/tmpl_docx2json.py + iftgen.py + to_alpaca.py
 consume.
 
 Companion to:
-  SFT/data/ift_data_2026_05_03_v11.json                (~225-235K rows post-balance/dedup)
+  SFT/data/ift_data_2026_05_03_v11.json                (198,994 rows post-balance/dedup, 244 productive templates, 30.7% eval-axis-aligned)
 Trainer:
   SFT/autotrain/run_sft_qwen25_14b_v11.sh
   SFT/autotrain/run_sft_qwen25_32b_v11.sh                (same corpus)
@@ -703,7 +727,7 @@ TAA.CANON.1 Instruction: You are a CTI attribution analyst at an enterprise Secu
 Question: A threat report references an intrusion set known by the following set of vendor aliases: {grp:intrusion-set.aliases}. What canonical MITRE ATT&CK group name and identifier do these aliases all refer to?
 Answer: MITRE ATT&CK records {grp.aliases} as alias variants of the same intrusion set; the canonical MITRE ATT&CK name is {grp.name} and the catalog identifier is {grp.mitre_id}. Therefore, the canonical group is {grp.name} ({grp.mitre_id}).
 Sample: grp
-Count: 600
+Count: 200
 
 TAA.CANON.2 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center producing an alias-resolution card for a named MITRE ATT&CK intrusion set. Consult the MITRE ATT&CK groups knowledge base and report the canonical name, the catalog identifier, the documented aliases, and one signature technique used by the group.
 Question: Produce an alias-resolution card for the MITRE ATT&CK intrusion set {grp:intrusion-set.name} ({grp.mitre_id}).
@@ -1057,17 +1081,14 @@ Section 1 - Cross-Framework Path Templates (Gap 1)
 X.VW.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center correlating vulnerabilities to their root-cause weaknesses. Consult the MITRE CVE and CWE knowledge bases to infer the correct answer.
 Question: CVE-{cve:CVE.id} is described as: <desc>{cve.descriptions}</desc>. Which CWE is its root cause?
 Answer: The root cause of CVE-{cve.id} is CWE-{cve.problemType.id} ({cve.problemType.name}). The CVE description matches the pattern defined by CWE-{cve.problemType.id}: {cve.problemType.description}.
-Count: 850
 
 X.VW.2 Instruction: You are a vulnerability analyst at an enterprise Security Operations Center classifying CVEs by weakness category. Consult the MITRE CVE and CWE knowledge bases to infer the correct answer.
 Question: Which CWE does CVE-{cve:CVE.id} fall under?
 Answer: CVE-{cve.id} falls under CWE-{cve.problemType.id} ({cve.problemType.name}).
-Count: 850
 
 X.VW.3 Instruction: You are a CTI analyst at an enterprise Security Operations Center illustrating weakness classes with concrete vulnerability examples. Consult the MITRE CWE and CVE knowledge bases to cite a representative example.
 Question: Give an example CVE that demonstrates CWE-{cwe:Weakness.id} ({cwe.name}).
 Answer: CVE-{cve:cwe.observed_as>CVE.id} is an example of CWE-{cwe.id}. It exhibits {cwe.description}, which is the defining characteristic of {cwe.name}.
-Count: 850
 
 X.WA.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center linking weaknesses to the attack patterns that exploit them. Consult the MITRE CWE and CAPEC knowledge bases to infer the correct answer.
 Question: Which CAPEC attack pattern exploits CWE-{cwe:Weakness.id} ({cwe.name})?
@@ -1149,13 +1170,11 @@ Section 2 - Yes/No Discrimination Templates (Gap 2)
 YN.VW.P.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center verifying vulnerability-to-weakness mappings. Consult the MITRE CVE and CWE knowledge bases, reason about the assignment first, and then conclude with yes or no.
 Question: Does CVE-{cve:CVE.id} ({cve.descriptions}) have CWE-{cve.problemType.id} ({cve.problemType.name}) as a root cause?
 Answer: CVE-{cve.id} describes {cve.descriptions}, which matches the pattern defined by CWE-{cve.problemType.id} ({cve.problemType.name}): {cve.problemType.description}. Therefore, yes.
-Count: 950
 
 YN.VW.N.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center verifying vulnerability-to-weakness mappings. Consult the MITRE CVE and CWE knowledge bases, reason about the assignment first, and then conclude with yes or no.
 Question: Does CVE-{cve:CVE.id} ({cve.descriptions}) have CWE-{negw:Weakness.id} ({negw.name}) as a root cause?
 Answer: CVE-{cve.id} describes {cve.descriptions}, which does not match CWE-{negw.id} ({negw.name}) (that weakness concerns {negw.description}); the actual root cause recorded in MITRE is CWE-{cve.problemType.id} ({cve.problemType.name}). Therefore, no.
 {force negw.id != cve.problemType.id}
-Count: 950
 
 YN.WA.P.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center verifying CAPEC-to-CWE relationships. Consult the MITRE CAPEC and CWE knowledge bases, reason about the relationship first, and then conclude with yes or no.
 Question: Does CAPEC-{cap:CAPEC.id} ({cap.name}) exploit CWE-{cwe:cap.exploits>Weakness.id} ({cwe.name})?
@@ -2682,6 +2701,7 @@ Answer: The combination of {ap1.name}, {ap2.name}, and {mw.name} is documented M
 {force grp.mitre_id != rel.mitre_id}
 Sample: grp
 Count: 1500
+Per_primary_grouping: false
 
 JS.TAA.IE.1 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center performing threat actor attribution from observed tradecraft. Analyse the following anonymised incident summary and identify the responsible named intrusion set if and only if the evidence is sufficient. If the techniques observed are common across many documented intrusion sets and the input contains no actor-specific tooling, malware family, infrastructure, or campaign reference, do not guess. Respond with a single JSON object on one line containing the keys "actor" (use the literal string "INSUFFICIENT_EVIDENCE" when the evidence is insufficient), "actor_id" (use the literal string "NA" when the evidence is insufficient) and "rationale" (one short sentence). Do not output anything before or after the JSON object.
 Question: An adversary was observed employing MITRE ATT&CK techniques {ap1:attack-pattern.mitre_id} ({ap1.name}) and {ap2:attack-pattern.mitre_id} ({ap2.name}). No malware family, custom tooling, infrastructure indicator, or campaign attribution information was recovered.
@@ -2696,6 +2716,7 @@ Answer: <OBR>"actor": "{grp.name}", "actor_id": "{grp.mitre_id}", "rejected": "{
 {force grp.mitre_id != rel.mitre_id}
 Sample: grp
 Count: 500
+Per_primary_grouping: false
 
 
 ================================================================================
@@ -2860,7 +2881,7 @@ SOC.SIGMA.1 Instruction: You are a detection engineer at an enterprise Security 
 Question: Author a SOC runbook entry for Sigma rule {sr:SigmaRule.id} ({sr.title}).
 Answer: Runbook entry -- Rule: {sr.id} "{sr.title}" (status {sr.status}, severity {sr.level}). Telemetry: {sr.logsource_product}/{sr.logsource_category}/{sr.logsource_service}. Coverage: detects MITRE ATT&CK technique {ap:sr.detects>attack-pattern.mitre_id} ({ap.name}). Detection logic: {sr.detection}. Rule purpose: {sr.description}. Response cue: triage as adversary behaviour consistent with {ap.name} ({ap.description}).
 Sample: sr
-Count: 3500
+Count: 1100
 
 
 Section 2 - SOC.TRIAGE.* Alert triage templates (clean: no CyberSOCEval overlap)
@@ -2869,13 +2890,13 @@ SOC.TRIAGE.SIGMA.1 Instruction: You are a Tier-1 SOC analyst triaging a Sigma-ru
 Question: Sigma rule {sr:SigmaRule.id} ({sr.title}) just fired. Triage the alert.
 Answer: Alert summary: rule {sr.id} "{sr.title}" (status {sr.status}, severity {sr.level}) fired against telemetry {sr.logsource_product}/{sr.logsource_category}/{sr.logsource_service}, indicating possible MITRE ATT&CK technique {ap:sr.detects>attack-pattern.mitre_id} ({ap.name}). Before escalation, validate the following declared false-positive scenarios: {sr.falsepositives}. Triage judgement: confirm whether the firing host or process matches one of those benign patterns; if it does, mark as false positive and tune. If none of the FP conditions apply, escalate as suspicious activity consistent with {ap.name}: {ap.description}.
 Sample: sr
-Count: 3500
+Count: 1100
 
 SOC.TRIAGE.AN.1 Instruction: You are a SOC analyst reviewing a hit from an enterprise SIEM analytic. Consult the analytic's text, the (x-mitre-detection-strategy)-implemented_by->(x-mitre-analytic) link, and the strategy's (x-mitre-detection-strategy)-detects->(attack-pattern) coverage. State what the analytic is looking for and which adversary technique a confirmed hit indicates.
 Question: A SIEM analytic with identifier {an:x-mitre-analytic.mitre_id} ("{an.name}") just produced a hit. What is it detecting?
 Answer: Analytic {an.mitre_id} ("{an.name}") implements detection strategy {det:an.implemented_by<x-mitre-detection-strategy.name} ({det.mitre_id}). Pseudocode summary of the analytic: {an.description}. The parent detection strategy targets MITRE ATT&CK technique {ap:det.detects>attack-pattern.mitre_id} ({ap.name}): {ap.description}. A confirmed hit therefore indicates observable behaviour consistent with {ap.name}; triage by validating the analytic's pseudocode conditions against the alerting host before escalation.
 Sample: an
-Count: 1900
+Count: 1000
 
 SOC.TRIAGE.DS.1 Instruction: You are a SOC engineer reviewing the MITRE ATT&CK enterprise data-source taxonomy to scope new telemetry onboarding. Consult the data-source name and description and explain what events that source carries and why it matters for detection coverage.
 Question: Describe MITRE ATT&CK data source {ds:x-mitre-data-source.mitre_id} ({ds.name}) and what it contributes to detection coverage.
@@ -2893,7 +2914,7 @@ Section 3 - SOC.MAL.* Malware behavioural summary cards
 SOC.MAL.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center producing a behavioural summary card for a malware family. Consult the MITRE ATT&CK software entry for the family and write a concise card covering the family identifier, its known aliases, and a behavioural summary derived from the catalog description.
 Question: Produce a behavioural summary card for malware family {mw:malware.mitre_id} ({mw.name}).
 Answer: Malware card -- Identifier: {mw.mitre_id}. Family name: {mw.name}. Known aliases: {mw.aliases}. Behavioural summary (MITRE ATT&CK software catalog): {mw.description}.
-Count: 1400
+Count: 700
 
 
 Section 4 - SOC.IR.* Incident response defensive playbooks (D3FEND-sourced)
@@ -2902,7 +2923,7 @@ SOC.IR.1 Instruction: You are an incident responder at an enterprise Security Op
 Question: Author a defensive playbook entry for MITRE ATT&CK technique {ap:attack-pattern.mitre_id} ({ap.name}).
 Answer: Defensive playbook entry -- Offensive behaviour: MITRE ATT&CK technique {ap.mitre_id} ({ap.name}): {ap.description}. Recommended defensive measure: MITRE D3FEND {d:ap.counters<D3FENDTechnique.d3fend_id} ({d.name}). D3FEND definition: {d.definition}. Response action: implement {d.name} as a counter to {ap.name}; the D3FEND ontology records this as a published counters relationship between the two techniques.
 Sample: ap
-Count: 3500
+Count: 500
 
 SOC.IR.2 Instruction: You are an incident responder cross-referencing MITRE D3FEND defensive techniques to the MITRE ATT&CK offensive techniques they counter. Consult the D3FEND ontology and state which offensive technique a given defensive technique counters and why.
 Question: <*{ap:attack-pattern.mitre_id}*>Which MITRE ATT&CK offensive technique does MITRE D3FEND defensive technique {d:ap.counters<D3FENDTechnique.d3fend_id} ({d.name}) counter?
