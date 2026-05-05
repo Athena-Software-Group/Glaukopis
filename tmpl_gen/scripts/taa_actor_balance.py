@@ -85,6 +85,11 @@ def main():
     p.add_argument("--output", required=True, type=Path)
     p.add_argument("--max-per-actor", type=int, default=8)
     p.add_argument("--min-actors", type=int, default=150)
+    p.add_argument("--max-rows-per-family-total", type=int, default=0,
+                   help="Hard cap on total in-scope attribution rows AFTER the "
+                        "per-actor cap. 0 disables (default). v12: set 3500 to "
+                        "match plan §3.1 budget and prevent the v11 ACTOR_CAP=40 "
+                        "overshoot (8,560 actual vs 3,500 planned).")
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--dry-run", action="store_true",
                    help="Audit + histogram only; do not write output.")
@@ -138,6 +143,26 @@ def main():
     print(f"\ndropped {dropped:,} over-cap rows; "
           f"keeping {len(keep_idx):,} of {len(rows):,} total",
           file=sys.stderr)
+
+    # Second-pass family-total cap (v12 §4.3). Applies only to the in-scope
+    # attribution rows; untouched rows (broad knowledge, IE/NEG, etc.) are
+    # not counted against the cap. Sampling is uniform across actors after
+    # the per-actor cap, so the cap doesn't bias toward any single actor.
+    if args.max_rows_per_family_total > 0:
+        in_scope_keep = sorted(i for i in keep_idx if i in set(in_scope))
+        if len(in_scope_keep) > args.max_rows_per_family_total:
+            sampled = set(rng.sample(in_scope_keep,
+                                     args.max_rows_per_family_total))
+            removed = len(in_scope_keep) - args.max_rows_per_family_total
+            keep_idx = (set(keep_idx) - set(in_scope_keep)) | sampled
+            print(f"family-total cap: {len(in_scope_keep):,} > "
+                  f"{args.max_rows_per_family_total:,}; "
+                  f"sampled down to {args.max_rows_per_family_total:,} "
+                  f"(removed {removed:,})", file=sys.stderr)
+        else:
+            print(f"family-total cap: {len(in_scope_keep):,} <= "
+                  f"{args.max_rows_per_family_total:,}; no further sampling",
+                  file=sys.stderr)
 
     if args.dry_run:
         print("dry-run: not writing output.", file=sys.stderr)
