@@ -38,7 +38,7 @@ fi
 MODEL_NAME="$1"; shift
 GPUS=""
 VERSION=1
-TASKS="athena-mcq athena-rcm athena-vsp athena-ate athena-taa athena-rms"
+TASKS="athena-mcq athena-rcm athena-vsp athena-ate athena-taa athena-taa-canonical athena-rms"
 OVERWRITE=0
 ASSUME_YES=0
 
@@ -95,6 +95,7 @@ data_path_for_task() {
         athena-vsp) echo "benchmark_data/athena_bench/athena-cti-vsp.jsonl" ;;
         athena-ate) echo "benchmark_data/athena_bench/athena-cti-ate.jsonl" ;;
         athena-taa) echo "benchmark_data/athena_bench/athena_taa/athena-cti-taa.jsonl" ;;
+        athena-taa-canonical) echo "benchmark_data/athena_bench/athena_taa_canonical/athena-cti-taa-canonical.jsonl" ;;
         athena-rms) echo "benchmark_data/athena_bench/athena-cti-rms.jsonl" ;;
         *) return 1 ;;
     esac

@@ -1,5 +1,5 @@
 import argparse
-from benchmarks import CTIMCQ, CTIRCM, CTIVSP, CTIATE, CTITAA, URLHAUS, CVE, GLUE, SUPERGLUE, MMLU, MMLUPRO, ATHENAATE, ATHENARCM, ATHENARMS, ATHENATAA, ATHENAVSP, CYBERMETRIC, ATHENAMCQ, CYBERSOCEVALMALWARE, CYBERSOCEVALTI
+from benchmarks import CTIMCQ, CTIRCM, CTIVSP, CTIATE, CTITAA, URLHAUS, CVE, GLUE, SUPERGLUE, MMLU, MMLUPRO, ATHENAATE, ATHENARCM, ATHENARMS, ATHENATAA, ATHENATAACANONICAL, ATHENAVSP, CYBERMETRIC, ATHENAMCQ, CYBERSOCEVALMALWARE, CYBERSOCEVALTI
 from pipelines.models import model_mapping, cleanup_model_cache, get_cached_model
 from pipelines.api_usage import get_totals, save_checkpoint, restore_checkpoint
 import os
@@ -64,7 +64,8 @@ def _print_pretty_result(task: str, model: str, result) -> None:
 def main():
     parser = argparse.ArgumentParser(description="Run inference for CTI tasks.")
     parser.add_argument("task", choices=["mcq", "rcm", "vsp", "ate", "taa", "urlhaus", "cve", "glue", "superglue", "mmlu", "mmlu-pro",
-                                         "athena-ate", "athena-rcm", "athena-rms", "athena-taa", "athena-vsp","athena-mcq", "cybermetric",
+                                         "athena-ate", "athena-rcm", "athena-rms", "athena-taa", "athena-taa-canonical",
+                                         "athena-vsp","athena-mcq", "cybermetric",
                                          "cybersoceval-malware", "cybersoceval-ti"],
                         help="Task to evaluate (mcq, rcm, vsp, ate, taa)")
     parser.add_argument("subtask", nargs="?", default=None, help="Optional GLUE or SUPERGLUE subtask (e.g., cola, sst2)")
@@ -121,6 +122,7 @@ def main():
         'athena-rcm': ATHENARCM,
         'athena-rms': ATHENARMS,
         'athena-taa': ATHENATAA,
+        'athena-taa-canonical': ATHENATAACANONICAL,
         'athena-vsp': ATHENAVSP,
         'athena-mcq': ATHENAMCQ,
         'cybermetric': CYBERMETRIC,
@@ -203,6 +205,8 @@ def main():
         result = benchmark.evaluate_athena_rms()
     elif args.task == 'athena-taa':
         result = benchmark.evaluate_athena_taa()
+    elif args.task == 'athena-taa-canonical':
+        result = benchmark.evaluate_athena_taa_canonical()
     elif args.task == 'athena-vsp':
         result = benchmark.evaluate_athena_vsp()
     elif args.task == 'athena-mcq':

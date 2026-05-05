@@ -3,7 +3,7 @@
 # Run a benchmark sweep for a single model across one or more suites.
 #
 # Supported suites (selected via --suite, default = athena):
-#   athena       athena-mcq athena-rcm athena-vsp athena-ate athena-taa athena-rms
+#   athena       athena-mcq athena-rcm athena-vsp athena-ate athena-taa athena-taa-canonical athena-rms
 #   cybermetric  cybermetric                   (CyberMetric MCQ, .csv responses;
 #                                               size selected via --cybermetric-size)
 #   cybersoceval cybersoceval-malware cybersoceval-ti
@@ -155,7 +155,7 @@ fi
 # headline-metric averages with strongly correlated scores.
 # MMLU/GLUE/SuperGLUE/URLHAUS/CVE also stay out: not the CTI research target.
 case "${SUITE}" in
-    athena)       SUITE_TASKS="athena-mcq athena-rcm athena-vsp athena-ate athena-taa athena-rms" ;;
+    athena)       SUITE_TASKS="athena-mcq athena-rcm athena-vsp athena-ate athena-taa athena-taa-canonical athena-rms" ;;
     ctibench)
         # Deprecated; still runnable for legacy reproductions.
         echo "[deprecated] --suite ctibench: superseded by --suite athena (AthenaBench)." >&2
@@ -164,7 +164,7 @@ case "${SUITE}" in
         ;;
     cybermetric)  SUITE_TASKS="cybermetric" ;;
     cybersoceval) SUITE_TASKS="cybersoceval-malware cybersoceval-ti" ;;
-    all)          SUITE_TASKS="athena-mcq athena-rcm athena-vsp athena-ate athena-taa athena-rms cybermetric cybersoceval-malware cybersoceval-ti" ;;
+    all)          SUITE_TASKS="athena-mcq athena-rcm athena-vsp athena-ate athena-taa athena-taa-canonical athena-rms cybermetric cybersoceval-malware cybersoceval-ti" ;;
     *) echo "Unknown --suite: ${SUITE} (expected athena|cybermetric|cybersoceval|all|ctibench[deprecated])" >&2; exit 1 ;;
 esac
 if [[ -n "${USER_TASKS}" ]]; then

@@ -181,6 +181,51 @@ class ATHENAEvaluate:
         }
         return score, True
 
+    def score_taa_canonical(
+        self,
+        pred: str,
+        ans: str,
+        alias_dict: Dict[str, List[str]],
+        mitre_id: str | None = None,
+    ) -> Tuple[Dict[str, float], bool]:
+        """Score alias->canonical resolution.
+
+        Strict   : prediction contains the canonical group name (case-
+                   insensitive, whole-word) OR the G-code (e.g. G0032).
+        Plausible: prediction is alias-equivalent to the canonical name
+                   via the alias BFS (catches cases where the model emits
+                   another known alias for the same group).
+        Combined : 1.0 strict, 0.5 plausible-only, 0.0 incorrect.
+        """
+        pred_l = (pred or "").strip().lower()
+        ans_l = (ans or "").strip().lower()
+        if not pred_l or not ans_l:
+            return {"correct": 0, "plausible": 0, "combined": 0.0}, True
+
+        # Strict: canonical name as whole-word substring, or G-code present.
+        strict = False
+        if re.search(r"(?:^|[^a-z0-9])" + re.escape(ans_l) + r"(?:$|[^a-z0-9])", pred_l):
+            strict = True
+        if not strict and mitre_id:
+            mid = mitre_id.strip().upper()
+            if mid and re.search(r"(?:^|[^A-Z0-9])" + re.escape(mid) + r"(?:$|[^A-Z0-9])",
+                                 pred.upper()):
+                strict = True
+
+        # Plausible: any alias of the canonical answer appears in the prediction,
+        # or the resolved alias-dict key for the prediction equals the answer.
+        plausible = strict
+        if not plausible:
+            resolved = self._resolve_actor_in_text(pred, alias_dict)
+            if resolved and self.is_alias_connected(ans_l, resolved, alias_dict):
+                plausible = True
+        score = {
+            "correct": 1 if strict else 0,
+            "plausible": 1 if plausible else 0,
+            "combined": 1.0 if strict else 0.5 if plausible else 0.0,
+        }
+        return score, True
+
     # -----------------------------------------------------------------------
     # Task scoring
 
@@ -259,6 +304,9 @@ class ATHENAEvaluate:
                 return (0.0, False)
         if task == "athena-taa":
             return self.score_taa(pred, ans, alias_dict, related_dict)
+        if task == "athena-taa-canonical":
+            mid = (record or {}).get("mitre_id") if isinstance(record, dict) else None
+            return self.score_taa_canonical(pred, ans, alias_dict, mid)
         if task == "athena-ate":
             p = pred.strip().split(".")[0].upper()
             a = ans.strip().split(".")[0].upper()
@@ -363,7 +411,7 @@ class ATHENAEvaluate:
 
         task_up = task.lower()
 
-        if task_up == "athena-taa":
+        if task_up in ("athena-taa", "athena-taa-canonical"):
             corr = [r["score"]["correct"] for r in records if r["success"]]
             plaus = [r["score"]["plausible"] for r in records if r["success"]]
             comb = [r["score"]["combined"] for r in records if r["success"]]

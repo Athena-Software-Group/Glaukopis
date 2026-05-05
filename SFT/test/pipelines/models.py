@@ -159,6 +159,13 @@ model_mapping = {
     # Naming migration per v11_plan.txt §0: "abaligned" suffix dropped.
     'athena-cti-sft-qwen25-14b-v11-vllm':                      'asg-ai/athena-cti-sft-qwen25-14b-v11',
     'athena-cti-sft-qwen25-32b-v11-vllm':                      'asg-ai/athena-cti-sft-qwen25-32b-v11',
+    # v12 three-phase 14B/32B (Phase A broad + Phase B RMS/ATE/VSP/RCM drill +
+    # Phase C TAA.CANON memorisation; row-count gate on, AB.TAA total cap 3500,
+    # stratified shuffle on, athena-cti-taa-canonical bench wired). Pushed by
+    # SFT/autotrain/run_sft_qwen25_{14b,32b}_v12.sh. 32B serial after 14B
+    # passes v12_plan.txt §8.
+    'athena-cti-sft-qwen25-14b-v12-vllm':                      'asg-ai/athena-cti-sft-qwen25-14b-v12',
+    'athena-cti-sft-qwen25-32b-v12-vllm':                      'asg-ai/athena-cti-sft-qwen25-32b-v12',
     # HF Inference Providers route. Custom community fine-tunes are not in the
     # default Together/Fireworks/Novita/etc. catalogs; this alias only resolves
     # if the model is exposed via an HF Inference Endpoint or the legacy
@@ -210,7 +217,8 @@ def get_system_prompt(task):
     # `athena-*` sweep silently ran with `sys_prompt=None`.
     elif task in ["ate", "rcm", "vsp", "taa", "mcq",
                   "athena-ate", "athena-rcm", "athena-rms",
-                  "athena-taa", "athena-vsp", "athena-mcq",
+                  "athena-taa", "athena-taa-canonical",
+                  "athena-vsp", "athena-mcq",
                   "cybermetric"]:
         return "You are a cybersecurity expert specializing in cyberthreat intelligence."
     return None
@@ -994,6 +1002,7 @@ TASK_MAX_NEW_TOKENS: dict[str, int] = {
     "athena-rcm":    256,
     "athena-rms":    256,
     "athena-taa":    256,
+    "athena-taa-canonical": 256,
     "rcm":           256,
     "rms":           256,
     "taa":           256,

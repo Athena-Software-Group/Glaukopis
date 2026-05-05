@@ -10,7 +10,8 @@ def main():
     parser = argparse.ArgumentParser(description='Evaluate benchmark results.')
     parser.add_argument('--task', choices=['mcq', 'rcm', 'vsp', 'taa', 'ate', 'urlhaus', 'cve',
                                            'glue', 'superglue', 'mmlu', 'mmlu-pro', 'athena', 'athena-ate','athena-rcm',
-                                           'athena-rms','athena-taa','athena-vsp','athena-mcq','cybermetric'],
+                                           'athena-rms','athena-taa','athena-taa-canonical',
+                                           'athena-vsp','athena-mcq','cybermetric'],
                         help='Task to evaluate')
     parser.add_argument('--model', required=True,
                         help='Model name key (e.g., gpt-3.5-turbo, gpt-4-turbo, gemini-1.5-pro)')

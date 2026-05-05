@@ -84,6 +84,13 @@ class athena_cti_postprocessing:
     def athena_taa_answer(self, text: str) -> str:
         return self._extract_from_lines(text, r"(.+)", self._clean_freeform)
 
+    def athena_taa_canonical_answer(self, text: str) -> str:
+        # The canonical-resolution prompt instructs the model to commit on a
+        # final 'Answer:' line. Mirror the TAA extractor for the freeform
+        # tail so the scorer can substring-match against canonical names
+        # and G-codes (G####) in either order.
+        return self._extract_from_lines(text, r"(.+)", self._clean_freeform)
+
     def athena_rms_answer(self, text: str) -> str:
         # Mitigation IDs may appear anywhere in the response (preamble,
         # body, or a closing summary). Verbose SFT outputs commonly cite
@@ -171,6 +178,7 @@ class athena_cti_postprocessing:
             "athena-rcm": self.athena_rcm_answer,
             "athena-vsp": self.athena_vsp_answer,
             "athena-taa": self.athena_taa_answer,
+            "athena-taa-canonical": self.athena_taa_canonical_answer,
             "athena-rms": self.athena_rms_answer,
             "athena-ate": self.athena_ate_answer,
         }

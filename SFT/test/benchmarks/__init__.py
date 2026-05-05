@@ -14,6 +14,7 @@ from .athena_ate import ATHENAATE
 from .athena_rcm import ATHENARCM
 from .athena_rms import ATHENARMS
 from .athena_taa import ATHENATAA
+from .athena_taa_canonical import ATHENATAACANONICAL
 from .athena_vsp import ATHENAVSP
 from .athena_mcq import ATHENAMCQ
 from .cybermetric import CYBERMETRIC
