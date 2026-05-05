@@ -1,0 +1,73 @@
+{
+  "_doc": "Per-family row-count gate for the v12 build pipeline. Per v12_plan.txt §4.1 and §11 #6 (sign-off: 10% tolerance = thresholds set to 0.9 x §3.1 target). Each entry is { axis, target, reject_if_below, shortname_patterns }. The build halts before train/val split if any family in this file is below its reject_if_below value in the post-dedup corpus. shortname_patterns are exact matches OR prefix matches (trailing '*' = prefix match).",
+  "axes": [
+    {
+      "axis": "RMS",
+      "target": 13000,
+      "reject_if_below": 11700,
+      "shortname_patterns": ["AB.RMS.*", "JS.RMS.*"]
+    },
+    {
+      "axis": "ATE",
+      "target": 10000,
+      "reject_if_below": 9000,
+      "shortname_patterns": ["AB.ATE", "AB.ATE.*", "JS.ATE", "JS.ATE.*"]
+    },
+    {
+      "axis": "VSP",
+      "target": 9000,
+      "reject_if_below": 8100,
+      "shortname_patterns": ["AB.VSP.*", "V.CPE", "V.CPE.*"]
+    },
+    {
+      "axis": "RCM",
+      "target": 10000,
+      "reject_if_below": 9000,
+      "shortname_patterns": ["AB.RCM", "AB.RCM.*", "JS.RCM", "JS.RCM.*", "X.VW.*", "YN.VW.*"]
+    },
+    {
+      "axis": "MCQ",
+      "target": 6000,
+      "reject_if_below": 5400,
+      "shortname_patterns": ["AB.MCQ", "AB.MCQ.*", "JS.MCQ", "JS.MCQ.*"]
+    },
+    {
+      "axis": "MS",
+      "target": 4000,
+      "reject_if_below": 3600,
+      "shortname_patterns": ["AB.MS.*", "JS.MS.*"]
+    },
+    {
+      "axis": "TAA-attribution",
+      "target": 3500,
+      "reject_if_below": 3150,
+      "max_allowed": 3850,
+      "shortname_patterns": ["AB.TAA.1", "AB.TAA.2", "AB.TAA.3", "AB.TAA.4", "AB.TAA.5", "JS.TAA.1", "JS.TAA.2", "JS.TAA.3"]
+    },
+    {
+      "axis": "TAA-IE-NEG",
+      "target": 6000,
+      "reject_if_below": 5400,
+      "shortname_patterns": ["AB.TAA.IE.*", "AB.TAA.NEG.*", "JS.TAA.IE.*", "JS.TAA.NEG.*"]
+    },
+    {
+      "axis": "TAA-CANON",
+      "target": 10000,
+      "reject_if_below": 9000,
+      "shortname_patterns": ["TAA.CANON.*"]
+    },
+    {
+      "_note": "v12 plan §5.3 aspirational target was 12,000; §3.1 realistic was 10,000. Underlying SigmaHQ + malware-family seeds saturate at ~5K from existing templates; the soc_generator.py adds ~5K complementary rows (sigma logic, malware families, IR playbook, triage rubric). 10K target / 9K floor avoids the saturation risk flagged in the v12 §11 saturation guardrail review.",
+      "axis": "SOC",
+      "target": 10000,
+      "reject_if_below": 9000,
+      "shortname_patterns": ["SOC.*"]
+    },
+    {
+      "axis": "CM",
+      "target": 6000,
+      "reject_if_below": 5400,
+      "shortname_patterns": ["CM.*"]
+    }
+  ]
+}
