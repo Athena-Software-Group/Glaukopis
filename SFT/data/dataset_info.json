@@ -154,6 +154,38 @@
       "response": "output"
     }
   },
+  "ift_data_2026_05_05_v12_broad": {
+    "file_name": "ift_data_2026_05_05_v12_broad.json",
+    "columns": {
+      "system": "instruction",
+      "prompt": "input",
+      "response": "output"
+    }
+  },
+  "ift_data_2026_05_05_v12_rms_ate_vsp_rcm": {
+    "file_name": "ift_data_2026_05_05_v12_rms_ate_vsp_rcm.json",
+    "columns": {
+      "system": "instruction",
+      "prompt": "input",
+      "response": "output"
+    }
+  },
+  "ift_data_2026_05_05_v12_taa_canon": {
+    "file_name": "ift_data_2026_05_05_v12_taa_canon.json",
+    "columns": {
+      "system": "instruction",
+      "prompt": "input",
+      "response": "output"
+    }
+  },
+  "ift_data_2026_05_05_v12_val": {
+    "file_name": "ift_data_2026_05_05_v12_val.json",
+    "columns": {
+      "system": "instruction",
+      "prompt": "input",
+      "response": "output"
+    }
+  },
   "alpaca_en_demo": {
     "file_name": "alpaca_en_demo.json"
   },
