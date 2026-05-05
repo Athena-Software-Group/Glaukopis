@@ -1,0 +1,294 @@
+{
+  "input": "SFT/data/ift_data_2026_05_05_v12.json",
+  "plan": "tmpl_gen/templates/05052026/v12_row_count_gate.json",
+  "total_rows": 260589,
+  "axes": [
+    {
+      "axis": "RMS",
+      "target": 13000,
+      "actual": 13450,
+      "reject_if_below": 11700,
+      "max_allowed": null,
+      "status": "OK",
+      "matched_shortnames": [
+        "AB.RMS.1",
+        "AB.RMS.2",
+        "AB.RMS.3a",
+        "AB.RMS.3b",
+        "AB.RMS.3c",
+        "AB.RMS.3d",
+        "AB.RMS.3e",
+        "AB.RMS.3f",
+        "AB.RMS.3g",
+        "AB.RMS.3h",
+        "AB.RMS.4a",
+        "AB.RMS.4b",
+        "AB.RMS.4c",
+        "AB.RMS.4d",
+        "AB.RMS.4e",
+        "AB.RMS.4f",
+        "AB.RMS.4g",
+        "AB.RMS.4h",
+        "AB.RMS.4i",
+        "AB.RMS.4j",
+        "AB.RMS.5a",
+        "AB.RMS.5b",
+        "AB.RMS.5c",
+        "AB.RMS.5d",
+        "AB.RMS.5e",
+        "AB.RMS.5f",
+        "AB.RMS.5g",
+        "AB.RMS.5h",
+        "AB.RMS.5i",
+        "AB.RMS.5j",
+        "AB.RMS.6",
+        "JS.RMS.1",
+        "JS.RMS.2",
+        "JS.RMS.3",
+        "JS.RMS.4",
+        "JS.RMS.5",
+        "JS.RMS.6",
+        "JS.RMS.7",
+        "JS.RMS.8"
+      ],
+      "patterns": [
+        "AB.RMS.*",
+        "JS.RMS.*"
+      ]
+    },
+    {
+      "axis": "ATE",
+      "target": 10000,
+      "actual": 10387,
+      "reject_if_below": 9000,
+      "max_allowed": null,
+      "status": "OK",
+      "matched_shortnames": [
+        "AB.ATE.1",
+        "AB.ATE.2",
+        "AB.ATE.3",
+        "AB.ATE.4",
+        "AB.ATE.5",
+        "AB.ATE.6",
+        "AB.ATE.7",
+        "AB.ATE.8",
+        "JS.ATE.1",
+        "JS.ATE.2",
+        "JS.ATE.3"
+      ],
+      "patterns": [
+        "AB.ATE",
+        "AB.ATE.*",
+        "JS.ATE",
+        "JS.ATE.*"
+      ]
+    },
+    {
+      "axis": "VSP",
+      "target": 9000,
+      "actual": 15630,
+      "reject_if_below": 8100,
+      "max_allowed": null,
+      "status": "OK",
+      "matched_shortnames": [
+        "AB.VSP.1",
+        "AB.VSP.2",
+        "AB.VSP.3",
+        "AB.VSP.4",
+        "V.CPE.1",
+        "V.CPE.2",
+        "V.CPE.3",
+        "V.CPE.4"
+      ],
+      "patterns": [
+        "AB.VSP.*",
+        "V.CPE",
+        "V.CPE.*"
+      ]
+    },
+    {
+      "axis": "RCM",
+      "target": 10000,
+      "actual": 16917,
+      "reject_if_below": 9000,
+      "max_allowed": null,
+      "status": "OK",
+      "matched_shortnames": [
+        "AB.RCM.1",
+        "AB.RCM.2",
+        "AB.RCM.4",
+        "JS.RCM.1",
+        "JS.RCM.2",
+        "X.VW.1",
+        "X.VW.2",
+        "X.VW.3",
+        "YN.VW.N.1",
+        "YN.VW.P.1"
+      ],
+      "patterns": [
+        "AB.RCM",
+        "AB.RCM.*",
+        "JS.RCM",
+        "JS.RCM.*",
+        "X.VW.*",
+        "YN.VW.*"
+      ]
+    },
+    {
+      "axis": "MCQ",
+      "target": 6000,
+      "actual": 6088,
+      "reject_if_below": 5400,
+      "max_allowed": null,
+      "status": "OK",
+      "matched_shortnames": [
+        "AB.MCQ.1",
+        "AB.MCQ.2",
+        "AB.MCQ.3",
+        "AB.MCQ.4",
+        "AB.MCQ.5",
+        "AB.MCQ.6",
+        "AB.MCQ.EXT.MITRE.1",
+        "AB.MCQ.EXT.SEC.1",
+        "JS.MCQ.1",
+        "JS.MCQ.2",
+        "JS.MCQ.5"
+      ],
+      "patterns": [
+        "AB.MCQ",
+        "AB.MCQ.*",
+        "JS.MCQ",
+        "JS.MCQ.*"
+      ]
+    },
+    {
+      "axis": "MS",
+      "target": 4000,
+      "actual": 4261,
+      "reject_if_below": 3600,
+      "max_allowed": null,
+      "status": "OK",
+      "matched_shortnames": [
+        "AB.MS.GRP.1",
+        "AB.MS.GRP.2",
+        "AB.MS.GRP.3",
+        "AB.MS.MAL.1",
+        "AB.MS.MAL.2",
+        "AB.MS.MAL.3"
+      ],
+      "patterns": [
+        "AB.MS.*",
+        "JS.MS.*"
+      ]
+    },
+    {
+      "axis": "TAA-attribution",
+      "target": 3500,
+      "actual": 3500,
+      "reject_if_below": 3150,
+      "max_allowed": 3850,
+      "status": "OK",
+      "matched_shortnames": [
+        "AB.TAA.1",
+        "AB.TAA.2",
+        "AB.TAA.3",
+        "AB.TAA.4",
+        "AB.TAA.5",
+        "JS.TAA.1",
+        "JS.TAA.2",
+        "JS.TAA.3"
+      ],
+      "patterns": [
+        "AB.TAA.1",
+        "AB.TAA.2",
+        "AB.TAA.3",
+        "AB.TAA.4",
+        "AB.TAA.5",
+        "JS.TAA.1",
+        "JS.TAA.2",
+        "JS.TAA.3"
+      ]
+    },
+    {
+      "axis": "TAA-IE-NEG",
+      "target": 6000,
+      "actual": 5981,
+      "reject_if_below": 5400,
+      "max_allowed": null,
+      "status": "OK",
+      "matched_shortnames": [
+        "AB.TAA.IE.1",
+        "AB.TAA.IE.2",
+        "AB.TAA.NEG.1",
+        "JS.TAA.IE.1",
+        "JS.TAA.NEG.1"
+      ],
+      "patterns": [
+        "AB.TAA.IE.*",
+        "AB.TAA.NEG.*",
+        "JS.TAA.IE.*",
+        "JS.TAA.NEG.*"
+      ]
+    },
+    {
+      "axis": "TAA-CANON",
+      "target": 10000,
+      "actual": 10806,
+      "reject_if_below": 9000,
+      "max_allowed": null,
+      "status": "OK",
+      "matched_shortnames": [
+        "TAA.CANON.1",
+        "TAA.CANON.2",
+        "TAA.CANON.3"
+      ],
+      "patterns": [
+        "TAA.CANON.*"
+      ]
+    },
+    {
+      "axis": "SOC",
+      "target": 10000,
+      "actual": 9909,
+      "reject_if_below": 9000,
+      "max_allowed": null,
+      "status": "OK",
+      "matched_shortnames": [
+        "SOC.IR.1",
+        "SOC.IR.2",
+        "SOC.IR.GEN.1",
+        "SOC.MAL.1",
+        "SOC.MAL.GEN.1",
+        "SOC.SIGMA.1",
+        "SOC.SIGMA.GEN.1",
+        "SOC.TRIAGE.AN.1",
+        "SOC.TRIAGE.DS.1",
+        "SOC.TRIAGE.DS.2",
+        "SOC.TRIAGE.GEN.1",
+        "SOC.TRIAGE.SIGMA.1"
+      ],
+      "patterns": [
+        "SOC.*"
+      ]
+    },
+    {
+      "axis": "CM",
+      "target": 6000,
+      "actual": 6000,
+      "reject_if_below": 5400,
+      "max_allowed": null,
+      "status": "OK",
+      "matched_shortnames": [
+        "CM.ACCESS.1",
+        "CM.COMPLIANCE.1",
+        "CM.CRYPTO.1",
+        "CM.GOV.1"
+      ],
+      "patterns": [
+        "CM.*"
+      ]
+    }
+  ],
+  "failures": [],
+  "outcome": "ok"
+}
