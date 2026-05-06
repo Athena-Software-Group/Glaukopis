@@ -139,7 +139,16 @@ C_BATCH=1; C_GA=$(( 16 / (C_BATCH * EFFECTIVE_GPUS) )); [[ ${C_GA} -lt 1 ]] && C
 
 
 EXTRA_COMMON="--deepspeed ${DS_CONFIG} --save_total_limit 2 --save_only_model True --enable_liger_kernel True --eval_dataset ${VAL_NAME} --val_size 0"
-EXTRA_PHASE_B="${EXTRA_COMMON} --group_by_length True"
+# Phase B previously appended --group_by_length True for length-bucketed
+# batching (cutoff 16384 + packing off => high padding waste). Removed:
+# this LLaMA-Factory's vendored TrainingArguments does not expose the
+# group_by_length field; HfArgumentParser routes it to unknown_args and
+# parser.py:96 raises (the visible error is a secondary format_help bug
+# that masks the real "Some specified arguments are not used" message).
+# Phase B runs without the bucketing optimisation -- padding waste only,
+# no training-correctness impact. Re-evaluate when transformers upstream
+# is bumped.
+EXTRA_PHASE_B="${EXTRA_COMMON}"
 
 export FORCE_TORCHRUN=1
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
