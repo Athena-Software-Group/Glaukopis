@@ -1,0 +1,56 @@
+MISP threat-actor galaxy snapshot -- v13 build vendored copy
+=============================================================
+
+Source repository : https://github.com/MISP/misp-galaxy
+Source path       : clusters/threat-actor.json
+Source commit SHA : 298c1e7cdbd30d05c69b25c513bad370b5c7ebe2
+Source commit date: 2026-05-06T11:38:55Z (UTC)
+Source commit msg : "[threat-actors] Add Earth Naga"
+Vendored on       : 2026-05-07
+Vendored by       : v13 build (tmpl_gen/templates/05072026/v13_plan.txt §4.4)
+
+License (per LICENSE.md fetched at the same commit SHA):
+  Dual-licensed:
+    - CC0 1.0 Universal (Public Domain Dedication), OR
+    - BSD 2-Clause (with full copyright notice in LICENSE.md)
+  Either branch is commercially redistributable; v13 uses the CC0 branch.
+  Source attribution tag emitted on every generated row: "misp-galaxy-cc0"
+
+File integrity (SHA-256 at vendor time):
+  threat-actor.json
+    46eae3bd9af0409c1fd687f50712228be690778cc83462396f17e1ffa857fff4
+  LICENSE.md
+    0be58f55c1ba6b79f86e82401aa00f7394ddd75f846342149013edcf9a3f69fa
+
+Refresh policy:
+  v13 ships against this snapshot for reproducibility. v14 may refresh
+  to a newer SHA; the misp_taa_generator.py validation step verifies
+  the SHA-256 against an expected value passed via --expected-sha256
+  (or skips with --skip-sha-check for development).
+
+Refresh procedure (when authorising v14 refresh):
+  1. Identify a target commit SHA at https://github.com/MISP/misp-galaxy
+     /commits/main/clusters/threat-actor.json
+  2. curl -fsSL -o tmpl_gen/data_generation/seeds/misp/threat-actor.json \
+         https://raw.githubusercontent.com/MISP/misp-galaxy/<SHA>/clusters/threat-actor.json
+  3. curl -fsSL -o tmpl_gen/data_generation/seeds/misp/LICENSE.md \
+         https://raw.githubusercontent.com/MISP/misp-galaxy/<SHA>/LICENSE.md
+  4. shasum -a 256 tmpl_gen/data_generation/seeds/misp/threat-actor.json
+  5. Update the SHA + commit metadata in this file.
+  6. Re-run misp_taa_generator.py with the new --expected-sha256.
+
+Snapshot statistics at vendor time:
+  total threat-actor values     : 985
+  values with synonyms          : 386 (39.2%)
+  values with description       : 929 (94.3%)
+  values with country code      : 456 (46.3%)
+  avg synonyms when present     : 3.44
+
+Why CC0 and not BSD-2-Clause for the row tag:
+  BSD-2-Clause requires the copyright notice to be reproduced in any
+  redistribution. CC0 has no such requirement. Tagging rows as
+  "misp-galaxy-cc0" lets the v13 licence-allowlist gate
+  (tmpl_gen/scripts/check_corpus_licences.py) accept them without the
+  consumer needing to bundle the BSD copyright header. The vendored
+  LICENSE.md remains in this directory so the BSD branch is also
+  available if a downstream consumer prefers that path.

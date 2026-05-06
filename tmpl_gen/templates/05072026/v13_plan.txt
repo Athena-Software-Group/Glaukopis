@@ -1,0 +1,564 @@
+# v13 Training Plan -- Sophia CTI SFT
+Authored 2026-05-07 post-v12 14B benchmark sweep.
+Status: planning. Supersedes v12_plan.txt
+(tmpl_gen/templates/05052026/v12_plan.txt) for production releases; v12
+launchers, HF repos, and dataset entries remain in-repo for
+reproducibility and ablation.
+
+## 0. Why v13 exists (v12 post-mortem in one table)
+
+v12 14B shipped at weighted total 57.3, missing the 57.9 §8 bar by
+0.6 pp. The build pipeline was correct (all 11 row-count gates green,
+260,589 clean rows, 43.3% eval-aligned share) and three of four §8
+criteria flipped green. Two regressions and one neutral surface drove
+the miss: Phase B's 16384/packing-off recipe dropped RMS, Phase C's
+15-step memorisation pass damaged TAA-plausible, and SOC was excluded
+from Phase B (forgot the v11 win).
+
+| axis           | v9 14B | v11 14B | v12 14B | v13 target | what v12 told us                                       |
+|----------------|-------:|--------:|--------:|-----------:|--------------------------------------------------------|
+| weighted total |  56.4  |   54.3  |   57.3  |   >= 58.5  | corpus path was correct; recipe regressed RMS         |
+| RMS            |  65.8  |   48.0  |   61.85 |   >= 66.6  | v12 cutoff-16384/packing-OFF bet did not pay off      |
+| ATE            |  52.6  |   42.4  |   55.5  |   >= 55.5  | v12 won here; hold                                    |
+| VSP            |  86.7  |   70.9  |   85.2  |   >= 85.2  | v10/v12 templates intact; hold                        |
+| CKT            |  ~70   |   63.4  |   76.1  |   >= 76.1  | v11 X./YN. trim works; hold                           |
+| RCM            |  ~62   |   ~62   |   ~64   |   >= 62.0  | corpus expansion neutral; hold                        |
+| SOC            |  ~32   |   44.7  |   35.3  |   >= 44.7  | v12 dropped SOC from Phase B; do NOT repeat           |
+| TAA-strict     |  ~16   |   16.0  |   ~22   |   >= 22.0  | Phase C +6 pp strict but -32 pp plausible; net loss   |
+| TAA-plausible  |  ~50   |   ~50   |   ~18   |   >= 50.0  | Phase C destroyed plausible attribution; drop Phase C |
+| TAA-CANON      |  n/a   |   n/a   |   ~33   |   >= 33.0  | new axis; v12 baseline; hold via Phase A inclusion    |
+
+What v12 did prove (preserve in v13):
+- Three-phase training is unnecessary: Phase A+B can carry TAA.CANON
+  via main-pass inclusion; Phase C's 15-step memorisation cost more
+  than it bought.
+- Programmatic generators work: TAA.CANON 10K, CM 6K, MCQ.EXT 3K,
+  SOC.GEN 5K all produced clean rows that survived dedup and lifted
+  eval-axis density to 43.3%.
+- Row-count gate, AB.TAA total cap, stratified shuffle are
+  load-bearing; the v12 build pipeline is the v13 substrate.
+
+What v12 failed to prove (no signal -- masked by other variables):
+- 16384 cutoff value for RMS catalog: v12 ran cutoff-16384 + packing OFF
+  at lr 5e-6; v9 ran cutoff-8192 + packing ON at lr 5e-6; the cutoff
+  hypothesis was confounded with the packing change. v13 isolates by
+  reverting both knobs to v9 values.
+- SOC retention under phased training: v12 excluded SOC from Phase B
+  entirely; v13 includes SOC in both phases (matches the v9 shape that
+  preserved SOC in v9-derived 14B runs).
+
+## 1. Issues v13 must fix (prioritised)
+
+| issue                            | v12 evidence                       | v13 mechanism                                                                                          |
+|----------------------------------|------------------------------------|--------------------------------------------------------------------------------------------------------|
+| RMS recipe regression (-3.95 pp) | v9=65.8, v12=61.85                 | REVERT Phase B to v7/v9 recipe: cutoff 8192, packing ON, lr 5e-6, eff_batch 16                         |
+| SOC forgetting (-9.4 pp)         | v11=44.7, v12=35.3                 | INCLUDE SOC in Phase B shard (Phase A AND Phase B); preserves the v11 SOC training surface             |
+| TAA-plausible collapse (-32 pp)  | Phase C 15-step memorisation       | DROP Phase C entirely; merge TAA.CANON.* into Phase A so canon supervision rides with broad knowledge  |
+| TAA alias coverage capped at 187 | MITRE Groups intrusion-set ceiling | EXPAND seed via MISP threat-actor galaxy (CC-0): ~700+ canonical groups -> ~3.7x alias surface area    |
+| MCQ template diversity loss      | v8 had richer MCQ stems than v11   | RESTORE v8 MCQ template family (best-of-vintage); add v8's JSON-output JS.MCQ.* variants               |
+| Commercial licence audit         | none in v0..v12                    | NEW §10: explicit licence-allowlist (MITRE custom; MISP CC-0/BSD); REJECT_IF_PRESENT for non-permissive sources |
+
+Out of scope for v13 (deferred):
+- Qwen3-32B harness fix (separate PR; same gate as v11/v12 plans).
+- Foundation-Sec-8B-Reasoning evaluation (waiting on the same fix).
+- Agentic eval suites (CyberAgentEval, etc.) -- v14 candidate.
+- 32B v13 launch -- gated on 14B v13 passing all §8 criteria.
+
+## 2. Best-of-vintage template composition
+
+v13 is not a from-scratch redesign. It is a curated composition of the
+template families that produced peak per-axis scores in prior vintages,
+re-anchored on the v12 build pipeline (which is correct) with the
+recipe reverted to v9 shape. Each row below cites the source vintage
+and the score that justifies the selection.
+
+| axis family    | source vintage | source manifest                                             | peak score (axis, version)        | what v13 takes                                                      |
+|----------------|----------------|-------------------------------------------------------------|-----------------------------------|---------------------------------------------------------------------|
+| AB.RMS.*       | v7 + v9        | 04262026/Sophia-CTI-Templates-Combined-v7.txt + 04302026/Sophia-CTI-Templates-v9_rms.txt | RMS=65.8 (v9 14B)                 | v9_rms slice templates verbatim; v9 Phase B recipe (8192/pack ON)   |
+| AB.MCQ.*       | v8             | 04292026/Sophia-CTI-Templates-v8_large.txt                  | MCQ slice (v8 14B)                | AB.MCQ.{1..5} variants and JS.MCQ.* JSON output forms               |
+| AB.VSP.*       | v10            | 05012026/Sophia-CTI-Templates-v10.txt                       | VSP=86.7 (v10 14B)                | AB.VSP.{1..N} sub-templates and V.CPE                               |
+| AB.ATE.*       | v12            | 05052026/Sophia-CTI-Templates-v12.txt                       | ATE=55.5 (v12 14B)                | AB.ATE.{1..8} (v12's 6/7/8 sub-template expansion)                  |
+| AB.RCM.*       | v12            | 05052026/Sophia-CTI-Templates-v12.txt                       | RCM ~64 (v12 14B)                 | AB.RCM.{1..4} multi-CVE root-cause variants + X.VW + YN.VW          |
+| AB.MS.*        | v11            | 05032026/Sophia-CTI-Templates-v11.txt                       | MS yield (v11 parser fix)         | per-primary grouping fix already in parser; templates verbatim      |
+| AB.TAA.*       | v12            | 05052026/Sophia-CTI-Templates-v12.txt                       | TAA-attribute holds at 22%        | hold v12 templates + 3,500 total cap                                |
+| TAA.CANON.*    | v12 + MISP NEW | 05052026 + tmpl_gen/scripts/misp_taa_generator.py (NEW)     | strict 22% (v12 Phase C)          | v12 TAA.CANON.{1,2,3} templates + MISP-expanded ~700-group seed     |
+| SOC.*          | v11            | 05032026/Sophia-CTI-Templates-v11.txt                       | SOC=44.7 (v11 14B)                | full SOC.{SIGMA,TRIAGE,MAL,IR}.* + v12's SOC.GEN.* generator        |
+| CM.*           | v12            | 05052026/Sophia-CTI-Templates-v12.txt                       | CyberMetric +0.8 (v12)            | CM.{CRYPTO,ACCESS,COMPLIANCE,GOV} verbatim                          |
+| AB.MCQ.EXT.*   | v12            | 05052026/Sophia-CTI-Templates-v12.txt                       | CKT 76.1 (v12 14B)                | AB.MCQ.EXT.{MITRE,SEC} verbatim                                     |
+| Broad (X./YN.) | v11            | 05032026/Sophia-CTI-Templates-v11.txt                       | CKT trim worked: 57.3 -> 63.4     | v11 X./YN. trim (Count: 850/950) with X.VW/YN.VW.* uncapped         |
+| Broad (M/A/W/V/S/P/E) | v0 substrate | tmpl_gen/templates/04022026/                            | foundational                      | unchanged (v0 substrate carried in every vintage)                   |
+
+The composition is "best-of-vintage" not "latest-only": v13 takes v9's
+RMS templates over v12's because v9 won the RMS axis under the same
+14B base; v13 takes v8's MCQ templates over v11's because v8's variants
+yielded richer stem diversity; v13 takes v11's SOC family verbatim
+because v11 is the SOC peak.
+
+## 3. Corpus composition target
+
+Total: 235-265K rows. Eval-aligned share target 42% (HARD GATE: build
+fails if eval-aligned subtotal <40% of total clean rows; tightened
+from v12's 38% gate now that v12 demonstrated 43.3% is reachable).
+
+### 3.1 Eval-aligned families (target ~98K rows, ~42%)
+
+Per-family REJECT_IF_BELOW threshold inherited from v12's gate
+infrastructure with three changes: TAA.CANON floor lifted (MISP
+expansion makes the v12 floor of 7,500 too low to detect under-build),
+SOC floor lifted to v11 actuals (the v12 rebalance was wrong in
+hindsight), MCQ floor expressed as combined AB.MCQ + JS.MCQ + AB.MCQ.EXT.
+
+| family                                  | v12 actual | v13 target | REJECT_IF_BELOW | source vintage / action vs v12                                 |
+|-----------------------------------------|-----------:|-----------:|----------------:|-----------------------------------------------------------------|
+| AB.RMS.* + JS.RMS.*                     |    13,400  |    ~13,000 |          11,000 | HOLD -- catalog-capped; templates from v9_rms slice            |
+| AB.ATE + JS.ATE                         |    10,387  |    ~10,000 |           8,000 | HOLD v12 templates                                              |
+| AB.VSP.* + V.CPE                        |    15,600  |    ~15,000 |          12,000 | HOLD v10/v12 templates                                          |
+| AB.RCM + JS.RCM + X.VW + YN.VW          |    16,917  |    ~17,000 |          14,000 | HOLD v12 multi-CVE expansion                                    |
+| AB.MCQ + JS.MCQ + AB.MCQ.EXT + AB.MS    |    10,400  |    ~12,000 |          10,000 | EXPAND -- restore v8 AB.MCQ.{2,3,4,5}; keep v12 AB.MCQ.EXT.*    |
+| AB.TAA.{1-5} + JS.TAA.{1-3}             |     3,500  |     ~3,500 |           2,800 | HOLD CAP -- 3,500 ceiling enforced                              |
+| AB.TAA.IE.* + AB.TAA.NEG.* + JS variants|     6,000  |     ~6,000 |           5,000 | HOLD                                                            |
+| TAA.CANON.* (MISP-expanded)             |    10,754  |    ~22,000 |          15,000 | EXPAND -- MISP CC-0 galaxy: ~700+ canonical groups (3.7x v12)   |
+| SOC.* + SOC.GEN.*                       |     9,900  |    ~12,000 |          10,000 | RESTORE v11 floor; SOC re-included in Phase B                   |
+| CM.*                                    |     6,000  |     ~6,000 |           5,000 | HOLD v12 templates                                              |
+| **eval-aligned subtotal**               |   102,858  |   ~116,500 |          93,800 | ~46% of corpus (v12: 43.3%; v13 lifts via MISP TAA expansion)   |
+
+Net change vs v12 actual: +TAA.CANON 11K (MISP expansion), +MCQ 1.6K
+(v8 restore), +SOC 2K (v11 floor), -modest fluctuation elsewhere
+= ~+13.6K eval-aligned rows.
+
+### 3.2 Broad-knowledge tail (target ~135K rows, ~54%)
+
+Hold v11 distribution (the CKT-winning composition, retained in v12
+unchanged). The X.* / YN.* trims and the v0 M/A/W/V/S/P/E substrate
+remain identical. No new broad-knowledge templates in v13; the row
+budget delta is fully allocated to the eval-aligned families and the
+TAA.CANON MISP expansion.
+
+| family             | v12 actual | v13 target | rationale                          |
+|--------------------|-----------:|-----------:|------------------------------------|
+| X.* + YN.*         |    ~38,500 |    ~38,000 | hold v11 trim                      |
+| P/V/S/W/SR/CL/     |   ~99,000  |   ~99,000  | hold                               |
+|   M/A/POC/E/SU/Q   |            |            |                                    |
+| **broad subtotal** |  ~137,500  |  ~137,000  | ~54%                               |
+
+## 4. Build pipeline
+
+Mirrors v12's nine-phase watcher with two additions:
+  (a) §4.4 NEW MISP TAA generator phase (Phase 3e) -- runs after the
+      existing TAA.CANON generator and before the actor-balance pass,
+      merging the MISP-expanded canon rows into the same Alpaca shard.
+  (b) §4.5 NEW licence-allowlist gate (Phase 6b) -- runs after the
+      row-count gate; halts the build if any source-attribution tag
+      in the merged corpus is outside the permissive allowlist.
+
+```bash
+# Phase 1 -- template -> triples -> Alpaca rows
+bash tmpl_gen/data_generation/make_dataset.sh \
+    tmpl_gen/templates/05072026/Sophia-CTI-Templates-v13.txt \
+    _v13_build/triples \
+    SFT/data/ift_data_2026_05_07_v13.raw.json \
+    10 1500
+
+# Phases 2-9 (carried from v12) plus 3e and 6b (new)
+nohup bash _v13_build/watcher.sh > _v13_build/watcher.log 2>&1 &
+```
+
+| phase | purpose | source |
+|---|---|---|
+| 1 | poll make_dataset.sh PID until exit | v12 carry |
+| 2 | validate raw json exists | v12 carry |
+| 3 | TAA.CANON generator merge (MITRE seed only) | v12 carry |
+| 3b | CM.* generator merge | v12 carry |
+| 3c | MCQ.EXT.* generator merge | v12 carry |
+| 3d | SOC.GEN.* generator merge | v12 carry |
+| **3e** | **MISP TAA generator merge** (CC-0 galaxy: ~700+ canonical groups) | NEW v13 §4.4 |
+| 4 | TAA actor-balance with --max-rows-per-family-total 3500 | v12 carry |
+| 5 | dedup against eval sets (13-gram, threshold 50) | v12 carry |
+| 6 | row-count gate (v13 thresholds per §3.1) | v12 carry; thresholds updated |
+| **6b** | **licence-allowlist gate** (halts build on non-permissive sources) | NEW v13 §4.5 |
+| 7 | stratified shuffle | v12 carry |
+| 8 | val/train split (~50 rows/axis, +CANON axis kept) | v12 carry |
+| **9** | **per-phase corpus split** (TWO shards: _broad_plus_canon, _axis) | CHANGED v13 §6.3 |
+
+### 4.1 Row-count gate updates
+
+`v13_row_count_gate.json` lifts the TAA.CANON floor from 7,500 to
+15,000 to detect MISP-merge under-build, lifts the SOC floor from
+9,000 back to 10,000 (v11 actuals), and adds an MCQ-combined floor of
+10,000 covering AB.MCQ + JS.MCQ + AB.MCQ.EXT + AB.MS.
+
+### 4.2 Stratified shuffle
+
+Unchanged from v12. Phase A's `_broad_plus_canon` shard inherits
+stratification; the per-axis interleaving in Phase B's `_axis` shard
+carries the v12 §4.2 guarantee.
+
+### 4.3 AB.TAA total-cap
+
+Unchanged from v12. `taa_actor_balance.py --max-rows-per-family-total
+3500` enforces the §3.1 ceiling on AB.TAA.{1-5}+JS.TAA.{1-3}.
+
+### 4.4 NEW: MISP TAA generator (Phase 3e)
+
+`tmpl_gen/scripts/misp_taa_generator.py` reads the MISP `threat-actor`
+galaxy cluster JSON (CC-0 / public domain; vendored under
+`tmpl_gen/data_generation/seeds/misp/threat-actor.json`) and emits
+TAA.CANON-shaped Alpaca rows:
+
+  - alias-list -> canonical-name (one row per group with >=2 aliases)
+  - canonical-name -> alias-list (mirror direction; reinforces
+    bidirectional retrieval)
+  - hard-negative pairs (canonical X + alias for canonical Y -> reject)
+
+The generator filters to the union of (a) groups present in MITRE
+ATT&CK with cross-reference IDs and (b) groups with multi-element
+synonyms in MISP. Output is merged into the same TAA.CANON shard the
+v12 MITRE-seed generator already populates; dedup runs after the
+merge so cross-source duplicates collapse to a single row.
+
+Expected yield: ~12,000 rows from ~700 distinct canonical groups,
+3.7x the v12 MITRE-only ceiling of 187 intrusion-sets.
+
+### 4.5 NEW: licence-allowlist gate (Phase 6b)
+
+`tmpl_gen/scripts/check_corpus_licences.py` walks the merged corpus
+and asserts every row's `source` tag is in the permissive allowlist:
+
+  - `mitre-attack-custom`     (MITRE ATT&CK Terms of Use)
+  - `misp-galaxy-cc0`         (CC-0 / public domain)
+  - `mitre-d3fend-custom`     (MITRE D3FEND Terms of Use)
+  - `athena-cti-db-internal`  (this repo's curated knowledge tables)
+  - `tulu-3-odc-by`           (AllenAI Tulu-3, ODC-BY 1.0)
+  - `alpaca-cc-by-nc-4`       (REJECT for commercial; only in dev builds via --allow-nc)
+
+The build halts before §7 if any row carries a non-allowlisted source
+tag (CrowdStrike, Mandiant, ThaiCERT-NC, etc.). Report writes to
+`_v13_build/licence_gate_report.json` with the per-row failures.
+
+## 5. Template manifest changes (best-of-vintage selection)
+
+`tmpl_gen/templates/05072026/Sophia-CTI-Templates-v13.txt` is the
+self-contained v13 manifest. It is NOT v12 + deltas; it is a curated
+re-composition of the per-axis winning template families from prior
+vintages plus the v12 generator stanzas (which are uncontroversial
+wins). Each section header in the manifest cites the source vintage
+in a comment so the lineage is auditable from the manifest alone.
+
+### 5.1 Templates IMPORTED VERBATIM from prior vintages
+
+| section | source vintage | source file                                          | rationale                                  |
+|---------|----------------|------------------------------------------------------|--------------------------------------------|
+| AB.RMS.{1..6} + JS.RMS.* | v9 | 04302026/Sophia-CTI-Templates-v9_rms.txt    | RMS=65.8 peak under same 14B base          |
+| AB.MCQ.{1..5} + JS.MCQ.* | v8 | 04292026/Sophia-CTI-Templates-v8_large.txt  | richer stem diversity than v11 single AB.MCQ.1 |
+| AB.VSP.* + V.CPE         | v10 | 05012026/Sophia-CTI-Templates-v10.txt      | VSP=86.7 peak                              |
+| AB.MS.* (with parser fix) | v11 | 05032026/Sophia-CTI-Templates-v11.txt     | per-primary-grouping fix is in parser, templates verbatim |
+| SOC.{SIGMA,TRIAGE.SIGMA,TRIAGE.AN,TRIAGE.DS,MAL,IR}.* | v11 | 05032026 | SOC=44.7 peak                |
+| X.* + YN.* trim caps (Count: 850/950) | v11 | 05032026 | CKT 57.3->63.4 trim retained         |
+| X.VW + YN.VW (uncapped)               | v11 | 05032026 | RCM-axis defence; do NOT cap           |
+| Section C broad (M/A/W/V/S/P/E/X.{1..8}) | v0 | 04022026 | foundational substrate                 |
+
+### 5.2 Templates IMPORTED FROM v12 (uncontroversial wins)
+
+| section | source vintage | rationale                                                            |
+|---------|----------------|----------------------------------------------------------------------|
+| AB.ATE.{1..8}                | v12 | v12 ATE=55.5 (>v7 52.6); the .6/.7/.8 expansions worked        |
+| AB.RCM.{1..4}                | v12 | RCM expansion neutral-positive; multi-CVE variants useful       |
+| AB.TAA.{1..5} + JS.TAA.{1..3} | v12 | TAA-attribute holds at 22% with the 3,500 cap                  |
+| AB.TAA.IE.* + AB.TAA.NEG.* + JS variants | v12 | guardrail families                                  |
+| TAA.CANON.{1,2,3} (template seeds) | v12 | canonical wording; programmatic generator does the heavy lift |
+| CM.{CRYPTO,ACCESS,COMPLIANCE,GOV} | v12 | net-new in v12; baseline retained                          |
+| AB.MCQ.EXT.{MITRE,SEC}       | v12 | feeds CKT alignment alongside template-driven AB.MCQ.*         |
+| SOC.GEN.{SIGMA,MAL,IR,TRIAGE} | v12 | programmatic SOC supplement on top of v11 templates           |
+
+### 5.3 Templates DROPPED (not carried into v13)
+
+| section | original vintage | reason                                                              |
+|---------|------------------|---------------------------------------------------------------------|
+| (none) | -- | v13 is additive over v12; nothing the v12 manifest authored is dropped |
+
+### 5.4 NEW for v13
+
+| section / artefact            | what it does                                                            |
+|-------------------------------|-------------------------------------------------------------------------|
+| MISP TAA generator (§4.4)     | programmatic; expands TAA.CANON from 187 to ~700 canonical groups       |
+| Licence-allowlist gate (§4.5) | build-time enforcement of permissive-source-only corpus                 |
+| `Source:` directive (parser)  | every template carries an explicit source tag for the licence gate      |
+| Two-shard corpus split (§6.3) | replaces v12's three-shard split; SOC + TAA.CANON ride in Phase A shard |
+
+### 5.5 Per-template `Source:` directive (NEW parser extension)
+
+`tmpl_gen/src/tmpl_gen/tmpl_parser.process_template` gains recognition
+of a per-template `Source: <tag>` directive. The tag is propagated
+into every emitted Alpaca row's metadata so the §4.5 licence gate can
+audit at the row level. Templates without an explicit `Source:`
+default to `athena-cti-db-internal` (the curated knowledge tables in
+this repo). MISP-derived rows carry `misp-galaxy-cc0`; MITRE-derived
+rows carry `mitre-attack-custom` or `mitre-d3fend-custom`.
+
+## 6. Training launchers (TWO-PHASE; Phase C dropped)
+
+v12's three-phase recipe damaged TAA-plausible by 32 pp for a 6 pp
+strict gain (net loss). v13 reverts to two phases: A (broad knowledge
++ TAA.CANON memorisation in the same pass) + B (axis catalog drills,
+v9-shape recipe).
+
+### 6.1 14B production -- SFT/autotrain/run_sft_qwen25_14b_v13.sh
+
+Two-phase, branched from `run_sft_qwen25_14b_v12.sh` with Phase C
+removed and the per-phase corpus splitter rewired for two shards
+instead of three. Only Phase B's merged checkpoint is pushed to
+`${HF_USERNAME}/athena-cti-sft-qwen25-14b-v13`.
+
+Phase A -- broad knowledge anchor + TAA.CANON memorisation.
+- Datasets   : `ift_data_2026_05_07_v13_broad_plus_canon`,
+               `tulu_3_sft_mixture`, `alpaca_en_demo`
+  (broad+canon split = the v13 corpus minus the eval-aligned families
+   consumed in Phase B; built by the v12 split_corpus_for_phases.py
+   utility extended to emit two shards)
+- 1 epoch, lr 1e-5, cutoff 8192, packing ON
+- Effective batch 16
+- save/eval every 500 steps
+
+Phase B -- RMS + ATE + VSP + RCM + SOC catalog drills (v9-shape).
+- Datasets   : `ift_data_2026_05_07_v13_axis`
+  (~52K rows: AB.RMS.* + JS.RMS.* + AB.ATE + JS.ATE + AB.VSP.* +
+   V.CPE + AB.RCM + JS.RCM + X.VW + YN.VW + SOC.* + SOC.GEN.*)
+- 1 epoch, lr 5e-6, **cutoff 8192**, **packing ON** (REVERT to v9)
+- Effective batch 16 (REVERT to v9; v12 ran 8)
+- save/eval every 400 steps
+- --model points at Phase A's output dir
+- Push merged checkpoint to `${HF_USERNAME}/athena-cti-sft-qwen25-14b-v13`
+
+| arg              | v9 (A,B)              | v12 (A,B,C)                     | v13 (A,B)                        |
+|------------------|-----------------------|---------------------------------|----------------------------------|
+| --model          | Qwen2.5-14B / phase_a | Qwen2.5-14B / A / B             | Qwen2.5-14B / phase_a            |
+| --dataset (A)    | v7+tulu+alpaca        | v12_broad+tulu+alpaca           | v13_broad_plus_canon+tulu+alpaca |
+| --dataset (B)    | v8_json,v8_longctx,v9_rms | v12_rms_ate_vsp_rcm         | v13_axis (RMS+ATE+VSP+RCM+SOC)   |
+| --dataset (C)    | -                     | v12_taa_canon                   | -- (DROPPED)                     |
+| --lr (A,B)       | 1e-5, 5e-6            | 1e-5, 5e-6, 3e-6                | 1e-5, 5e-6                       |
+| --cutoff (A,B)   | 4096, 16384           | 8192, **16384**, 8192           | 8192, **8192** (REVERT)          |
+| --packing (A,B)  | on, off               | on, **off**, on                 | on, **on** (REVERT)              |
+| --epochs (each)  | 1                     | 1                               | 1                                |
+| --eff-batch (A,B)| 16, 8                 | 16, **8**, 8                    | 16, **16** (REVERT)              |
+| --save/eval-step | 200/400               | 500/400/200                     | 500/400                          |
+| --max-samples    | 250K / 50K            | 250K / 60K / 12K                | 260K / 55K                       |
+| --eval-dataset   | none                  | v12_val (per-axis)              | v13_val (per-axis incl. CANON)   |
+
+### 6.2 32B production -- SFT/autotrain/run_sft_qwen25_32b_v13.sh
+
+Branched from the 14B v13 launcher with ZeRO-3 offload forced on,
+same two-phase shape, same datasets, same per-phase hyperparameters.
+Push merged Phase B checkpoint to
+`${HF_USERNAME}/athena-cti-sft-qwen25-32b-v13`.
+
+Run the 32B launch ONLY after 14B v13 passes the §8 criteria. Same
+gate as v11/v12 plans.
+
+### 6.3 Corpus splitter (TWO shards, was three)
+
+`tmpl_gen/scripts/split_corpus_for_phases.py` extended with a
+`--two-phase` mode that emits two disjoint shards instead of three:
+
+```bash
+python tmpl_gen/scripts/split_corpus_for_phases.py \
+    --input  SFT/data/ift_data_2026_05_07_v13.shuffled.json \
+    --val    SFT/data/ift_data_2026_05_07_v13_val.json \
+    --two-phase \
+    --out-broad-plus-canon SFT/data/ift_data_2026_05_07_v13_broad_plus_canon.json \
+    --out-axis             SFT/data/ift_data_2026_05_07_v13_axis.json \
+    --report _v13_build/phase_split_report.json
+```
+
+Split rules:
+- Phase B shard (`_axis`): AB.RMS.* + JS.RMS.* + AB.ATE + JS.ATE +
+  AB.VSP.* + V.CPE + AB.RCM + JS.RCM + X.VW + YN.VW + SOC.* + SOC.GEN.*
+- Phase A shard (`_broad_plus_canon`): everything else (broad knowledge
+  + TAA.* + TAA.CANON.* + CM.* + AB.MCQ.* + AB.MCQ.EXT.* + AB.MS.*)
+
+The key change vs v12: TAA.CANON.* moves from a dedicated Phase C
+shard into the Phase A shard, and SOC.* moves from Phase A only into
+Phase B as well (intersection: SOC sees two epochs of supervision,
+which v9's SOC retention shape proved is not over-training).
+
+
+## 7. Held-out validation slice
+
+`SFT/data/ift_data_2026_05_07_v13_val.json` -- ~50 rows per axis
+(RMS, ATE, VSP, RCM, MCQ, TAA-attribute, TAA-IE, TAA-NEG, MS,
+TAA-CANON, SOC, CM). Built by `tmpl_gen/scripts/build_val_slice.py`
+(carried from v12 unchanged; the SOC/CM/CANON axis rules are already
+in the v12 version).
+
+Wired into both phases via `--eval_dataset`. Phase A scores all axes;
+Phase B scores only the axes the phase trains on (RMS/ATE/VSP/RCM/SOC).
+
+## 8. Pass criteria for v13 14B production (all six must hold)
+
+- weighted total >= 58.5 (v12 = 57.3; +1.2 pp budgeted from §1 fixes)
+- RMS >= 66.6 (v9 65.8 + 0.8 pp; v9 was the recipe v13 reverts to)
+- ATE >= 55.5 (v12 hold)
+- VSP >= 85.2 (v12 hold)
+- CKT >= 76.1 (v12 hold)
+- SOC >= 44.7 (v11 floor; v12 regression must be reversed)
+
+Soft criteria (reported, not gating):
+- TAA-strict >= 22.0 (v12 floor; MISP expansion should help)
+- TAA-plausible >= 50.0 (recover the v12 Phase C damage)
+- TAA-CANON >= 33.0 (v12 floor)
+- CyberMetric-2000 >= v12; CyberMetric-10000 >= v12
+- CyberSOCEval-malware >= v12; CyberSOCEval-TI >= v12
+
+Fallback if Phase B over-corrects RMS at the cost of CKT/CM (v8.1
+failure mode): re-introduce a small SOC + CM slice into Phase B (~2K
+rows total) to dilute the catalog supervision. SOC is already in
+Phase B in v13, so this fallback specifically adds CM rows.
+
+Fallback if MISP expansion over-trains TAA.CANON at the cost of
+TAA-attribute: cap MISP yield at 8K rows in Phase A via
+`misp_taa_generator.py --max-rows 8000`. The v13 MISP generator emits
+in deterministic order so the cap is reproducible.
+
+Fallback if licence-allowlist gate halts the build on legitimate
+internal sources: extend the allowlist by adding the source tag to
+`tmpl_gen/scripts/check_corpus_licences.py:ALLOWED_SOURCES` and
+re-running. Do NOT bypass the gate; the audit trail in
+`licence_gate_report.json` is the v13 commercialisation safety net.
+
+## 9. Hyperparameter notes (carried from v9/v12 unless flagged)
+
+- LR schedule: cosine, 5% warmup per phase, bf16. Per-phase LRs are
+  1e-5 / 5e-6 (A/B), matching v9.
+- Sequence packing: ON in BOTH phases. v12's Phase B `packing OFF`
+  bet did not pay off; v13 reverts to v9 `packing ON` for Phase B.
+- DeepSpeed ZeRO-3 with auto offload on <4 GPUs (14B), forced offload
+  on (32B). Same DS config files as v9/v12.
+- save_total_limit 2 per phase, save_only_model True.
+- enable_liger_kernel True.
+- adamw_8bit optimizer; adamw_torch fallback if 8bit conflicts with
+  the 8xH100 ZeRO-3 config (v12 ran 8bit fine on 8xH100; no expected
+  change).
+- group_by_length OFF (transformers>=5.2 removed it; v12 launcher
+  hotfix carried into v13 launcher from inception).
+- load_best_model_at_end OFF per phase (incompatible with
+  save_only_model under DeepSpeed).
+- Inference-side max-len: 32768 for both 14B and 32B vLLM aliases
+  (Qwen2.5 native ctx ceiling; longer CyberSOCEval-TI rows handled
+  via client-side ctx-overflow path).
+
+## 10. Licensing and commercial-use guardrails (NEW for v13)
+
+v13 is the first vintage authored under an explicit commercial-use
+guardrail. The intent is that the v13 14B and 32B checkpoints can be
+redistributed (via Hugging Face or downstream packaging) without
+inheriting non-commercial restrictions from any training data source.
+
+### 10.1 Allowlist (permissive sources)
+
+| source                  | licence                          | usage in v13                                |
+|-------------------------|----------------------------------|---------------------------------------------|
+| MITRE ATT&CK            | MITRE ATT&CK Terms of Use        | Groups, Techniques, Mitigations -- core CTI |
+| MITRE D3FEND            | MITRE D3FEND Terms of Use        | defensive techniques + counter edges        |
+| MISP threat-actor galaxy | CC-0 1.0 / public domain        | TAA.CANON expansion (§4.4)                  |
+| MISP mitre-* galaxies   | CC-0 1.0 / public domain         | cross-reference helpers                     |
+| AllenAI Tulu-3          | ODC-BY 1.0 (attribution only)    | Phase A CF guard mixture                    |
+| athena-cti-db curated tables | this repo's licence         | knowledge tables under tmpl_gen/scripts/    |
+| NIST CSF, ISO 27001 (concepts) | factual, not text-redist  | CM.* MCQ stems (paraphrased only)           |
+
+### 10.2 Denylist (NOT used in v13)
+
+| source                  | licence / restriction            | reason for exclusion                         |
+|-------------------------|----------------------------------|----------------------------------------------|
+| CrowdStrike adversary universe | proprietary               | non-redistributable                          |
+| Mandiant APT reports    | proprietary                       | non-redistributable                          |
+| ThaiCERT-CSIRT actor cards | CC-BY-NC-SA                   | non-commercial clause incompatible with goal |
+| EternalLiberty (StrangerealIntel) | CC-BY-SA-4.0           | share-alike clause -- defer until v14 audit  |
+| Recorded Future / Intel471 | proprietary                   | non-redistributable                          |
+| Alpaca instruction tuning data | CC-BY-NC-4.0              | only allowed in `--allow-nc` dev builds      |
+
+### 10.3 Audit mechanism
+
+The §4.5 licence-allowlist gate is the build-time enforcement. The
+gate halts the build before the train/val split if any row carries a
+source tag outside the allowlist, so a non-permissive source cannot
+silently land in a published checkpoint.
+
+Templates without an explicit `Source:` directive default to
+`athena-cti-db-internal`. The MISP generator emits `misp-galaxy-cc0`.
+The MITRE-seed TAA.CANON / MCQ.EXT / SOC.GEN / CM generators emit
+`mitre-attack-custom` (or `mitre-d3fend-custom` for the IR family).
+
+### 10.4 Open audit deferred to v14
+
+EternalLiberty (CC-BY-SA-4.0) is the largest open-source threat-actor
+catalog after MITRE+MISP. Its share-alike clause means including it
+would require the v13 checkpoint and dataset to also carry CC-BY-SA;
+that's a viable path but requires legal review before the v13 launch.
+For v13 it stays out of scope; revisit in v14 if the MISP+MITRE union
+under-covers the eval-axis TAA-attribute target.
+
+## 11. Deliverables checklist
+
+Code (this PR scope, when v13 is greenlit):
+
+- [ ] tmpl_gen/templates/05072026/Sophia-CTI-Templates-v13.txt (manifest, best-of-vintage)
+- [ ] tmpl_gen/templates/05072026/README.md (cumulative running dialogue v0 -> v13)
+- [ ] tmpl_gen/templates/05072026/v13_plan.txt (this document)
+- [ ] tmpl_gen/templates/05072026/v13_row_count_gate.json (per-§4.1)
+- [ ] _v13_build/watcher.sh (cap=40, drop-threshold=50, TAA total-cap 3500,
+      row-count gate on, licence gate on, stratified shuffle on)
+- [ ] tmpl_gen/scripts/misp_taa_generator.py (NEW; per-§4.4)
+- [ ] tmpl_gen/scripts/check_corpus_licences.py (NEW; per-§4.5)
+- [ ] tmpl_gen/data_generation/seeds/misp/threat-actor.json (vendored MISP CC-0 galaxy)
+- [ ] tmpl_gen/data_generation/seeds/misp/LICENCE.txt (CC-0 attribution copy)
+- [ ] tmpl_gen/scripts/split_corpus_for_phases.py (extend with --two-phase mode)
+- [ ] tmpl_gen/src/tmpl_gen/tmpl_parser.py (Source: directive support)
+- [ ] SFT/data/dataset_info.json entries for:
+      ift_data_2026_05_07_v13_broad_plus_canon,
+      ift_data_2026_05_07_v13_axis,
+      ift_data_2026_05_07_v13_val
+- [ ] SFT/autotrain/run_sft_qwen25_14b_v13.sh (two-phase)
+- [ ] SFT/autotrain/run_sft_qwen25_32b_v13.sh (two-phase; deferred until 14B passes §8)
+- [ ] SFT/test/pipelines/models.py aliases for v13 14B + 32B vLLM
+
+Replaces/deprecates: nothing removed. v12 launchers, HF repos, and the
+v12 dataset_info.json entries remain in the repo for reproducibility
+and ablation.
+
+## 12. Authorship notes
+
+This document supersedes the v12 plan (tmpl_gen/templates/05052026/
+v12_plan.txt) for production releases. v12 launchers, HF repos, and
+dataset_info.json entries remain in-repo for reproducibility and
+ablation.
+
+Key changes from the v12 plan:
+- §0 reframed as v12 post-mortem table (was v11 post-mortem).
+- §1 issue list reflects v12 actual failures (RMS recipe, SOC
+  forgetting, Phase C plausible damage), not v11's.
+- §2 NEW best-of-vintage composition table -- v13 is the first vintage
+  authored as a curated re-composition rather than as latest+deltas.
+- §3 corpus composition: row counts adjusted to fix v12's SOC
+  exclusion (SOC 9.9K -> 12K floor) and add MISP TAA expansion
+  (TAA.CANON 10.7K -> 22K via ~700-group MISP galaxy).
+- §4 build pipeline: NEW MISP TAA generator phase (§4.4), NEW licence
+  allowlist gate (§4.5).
+- §5 manifest changes: §5.1 IMPORTED VERBATIM, §5.2 IMPORTED FROM v12,
+  §5.3 DROPPED (none), §5.4 NEW, §5.5 Source: directive parser ext.
+- §6 training: REVERT to v9-shaped two-phase (drop Phase C; drop
+  v12's cutoff-16384/packing-OFF Phase B knob set).
+- §7 val slice unchanged from v12.
+- §8 pass criteria tightened to require RMS recovery to v9 floor and
+  SOC recovery to v11 floor.
+- §10 NEW licensing and commercial-use guardrails.
+
+Dependencies on prior work:
+- v9 two-phase launcher (run_abaligned_sft_qwen25_14b_v9.sh) is the
+  authoritative reference for Phase A/B shape and DeepSpeed config.
+  v13 14B launcher is structurally a v9 + v12 generator-aware fork.
+- v12 build watcher (_v12_build/watcher.sh) is the basis for the v13
+  watcher; v13 adds Phases 3e and 6b on top of the v12 sequence.
+- v12 stratified_shuffle.py, taa_actor_balance.py, and
+  check_corpus_row_counts.py are carried unchanged.
+- v12 split_corpus_for_phases.py needs the --two-phase mode extension.
+- v12 build_val_slice.py is carried unchanged (axis rules already
+  cover SOC, CM, TAA-CANON).

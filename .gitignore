@@ -437,6 +437,8 @@ SFT/test/data/raw/
 tmpl_gen/utils/output-*/
 
 tmpl_gen/data_generation/
+!tmpl_gen/data_generation/seeds/
+!tmpl_gen/data_generation/seeds/**
 
 *.safetensors
 
