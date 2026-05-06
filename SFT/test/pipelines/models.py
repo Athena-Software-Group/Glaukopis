@@ -166,6 +166,14 @@ model_mapping = {
     # passes v12_plan.txt §8.
     'athena-cti-sft-qwen25-14b-v12-vllm':                      'asg-ai/athena-cti-sft-qwen25-14b-v12',
     'athena-cti-sft-qwen25-32b-v12-vllm':                      'asg-ai/athena-cti-sft-qwen25-32b-v12',
+    # v13 two-phase 14B/32B (Phase A broad+canon with TAA.CANON merged in +
+    # Phase B axis drill RMS/ATE/VSP/RCM/SOC; v9-shape recipe revert
+    # cutoff=8192/packing=ON for both phases; MISP CC-0 TAA expansion;
+    # licence-allowlist gate; SOC dual-shard supervision). Pushed by
+    # SFT/autotrain/run_sft_qwen25_{14b,32b}_v13.sh. 32B serial after 14B
+    # passes v13_plan.txt §8.
+    'athena-cti-sft-qwen25-14b-v13-vllm':                      'asg-ai/athena-cti-sft-qwen25-14b-v13',
+    'athena-cti-sft-qwen25-32b-v13-vllm':                      'asg-ai/athena-cti-sft-qwen25-32b-v13',
     # HF Inference Providers route. Custom community fine-tunes are not in the
     # default Together/Fireworks/Novita/etc. catalogs; this alias only resolves
     # if the model is exposed via an HF Inference Endpoint or the legacy

@@ -102,7 +102,12 @@ def parse_triples(args:argparse.Namespace, jsin) -> list[dict[str, str]]:
     pattern = r"Instruction: (.*?)\n\s*Question: (.*?)\n\s*Answer: (.*)\s*"
     lst_out = list()
     shortname = jsin["template_object"].get("shortname", "")
-    
+    # v13 licence-allowlist gate input. The default `athena-cti-db-internal`
+    # tag is applied at this chokepoint so every Alpaca row carries a
+    # source field even when the template manifest omits the directive,
+    # letting check_corpus_licences.py validate the corpus unconditionally.
+    source = jsin["template_object"].get("source", "athena-cti-db-internal")
+
     instruction_override = args.instruction
         
     # take up to count_max triples:    
@@ -121,6 +126,7 @@ def parse_triples(args:argparse.Namespace, jsin) -> list[dict[str, str]]:
                 d["output"] = unescape_json_sentinels(d["output"])
             if shortname:
                 d["shortname"] = shortname
+            d["source"] = source
             lst_out.append(d)
     
     print(f"Converted to Alpaca {len(lst_out)} triples.")

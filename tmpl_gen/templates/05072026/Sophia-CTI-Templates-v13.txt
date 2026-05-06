@@ -617,7 +617,8 @@ placeholders).
 ================================================================================
 SECTION B. AthenaBench-aligned core (AB.*) -- 25 templates
 ================================================================================
-Source: tmpl_gen/templates/04222026/Sophia-CTI-Templates-AthenaBench-aligned.txt
+Source: athena-cti-db-internal
+Provenance: tmpl_gen/templates/04222026/Sophia-CTI-Templates-AthenaBench-aligned.txt
 Provides the answer formats for the five AthenaBench tasks plus the AB.MCQ
 multi-choice format coverage. AB.RMS.1/AB.RMS.2 here are the legacy single-id
 and pair-id RMS templates; the variable-N N=1..8 fix is in Section F.
@@ -918,7 +919,8 @@ Count: 800
 ================================================================================
 SECTION C. Broad CTI knowledge core (M/A/W/V/S/P/E/X.{1..8}) -- 64 templates
 ================================================================================
-Source: tmpl_gen/templates/04202026/Sophia-CTI-Templates-04022026.txt
+Source: athena-cti-db-internal
+Provenance: tmpl_gen/templates/04202026/Sophia-CTI-Templates-04022026.txt
 The substrate of the corpus. Eight templates per family x eight families.
 M (ATT&CK), A (CAPEC), W (CWE), V (CVE+CVSS), S (KEV), P (EPSS),
 E (ENGAGE), X (multi-source correlation). See tmpl_gen/templates/README.md
@@ -1205,7 +1207,8 @@ Answer: CVE {cve1:CVE.id} has EPSS {e1:cve1.scores<EPSS.epss} and KEV entry {kev
 ================================================================================
 SECTION D. Benchmark addendum (X.*/Q.*/CL.*/SU.*/YN.*) -- 43 templates
 ================================================================================
-Source: tmpl_gen/templates/04202026/Sophia-CTI-Templates-04022026-benchmark-addendum.txt
+Source: athena-cti-db-internal
+Provenance: tmpl_gen/templates/04202026/Sophia-CTI-Templates-04022026-benchmark-addendum.txt
 Multi-source joins and discriminative variants intended to improve transfer
 from the broad CTI substrate to the AthenaBench tasks. Q.* are quiz-style
 single-graph templates; CL.*/SU.* are clarification/summary aids; YN.* are
@@ -1552,7 +1555,8 @@ Answer: {grp.name} ({grp.mitre_id}) is a threat group known to use technique {ap
 ================================================================================
 SECTION E. Detections / Exploits / PoCs / CPE addendum -- 42 templates
 ================================================================================
-Source: tmpl_gen/templates/04242026/Sophia-CTI-Templates-Detections-Exploits-PoCs-addendum.txt
+Source: athena-cti-db-internal
+Provenance: tmpl_gen/templates/04242026/Sophia-CTI-Templates-Detections-Exploits-PoCs-addendum.txt
 EDB.* (Exploit-DB records), POC.* (proof-of-concept context),
 SR.* (Sigma-rule reasoning), V.CPE.* (CVE -> CPE / vendor-product),
 plus their X.* / SU.* / YN. variants. Adds operational
@@ -1886,7 +1890,8 @@ Answer: CVE {cve.id} has GitHub PoC {poc:cve.has_poc>GithubPoC.id} ({poc.title})
 ================================================================================
 SECTION F. AthenaBench RMS addendum v7 (AB.RMS.{3a..3h,4,5,6}) -- 11 templates
 ================================================================================
-Source: tmpl_gen/templates/04262026/Sophia-CTI-Templates-AthenaBench-abaligned-v7.txt
+Source: athena-cti-db-internal
+Provenance: tmpl_gen/templates/04262026/Sophia-CTI-Templates-AthenaBench-abaligned-v7.txt
 The narrowly targeted athena-rms recovery slate that supersedes v6.
 RMS.3a..3h: variable-N scenario -> mitigation with N=1..8 weighted to
 match benchmark mass. RMS.4/RMS.5: catalog flashcards (M-ID <-> name).

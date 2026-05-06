@@ -186,6 +186,30 @@
       "response": "output"
     }
   },
+  "ift_data_2026_05_07_v13_broad_plus_canon": {
+    "file_name": "ift_data_2026_05_07_v13_broad_plus_canon.json",
+    "columns": {
+      "system": "instruction",
+      "prompt": "input",
+      "response": "output"
+    }
+  },
+  "ift_data_2026_05_07_v13_axis": {
+    "file_name": "ift_data_2026_05_07_v13_axis.json",
+    "columns": {
+      "system": "instruction",
+      "prompt": "input",
+      "response": "output"
+    }
+  },
+  "ift_data_2026_05_07_v13_val": {
+    "file_name": "ift_data_2026_05_07_v13_val.json",
+    "columns": {
+      "system": "instruction",
+      "prompt": "input",
+      "response": "output"
+    }
+  },
   "alpaca_en_demo": {
     "file_name": "alpaca_en_demo.json"
   },

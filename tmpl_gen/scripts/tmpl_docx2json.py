@@ -108,7 +108,7 @@ def extract_templates_from_json(args) -> list[dict]:
             except (TypeError, ValueError):
                 print(f"@@@ Entry {i}: invalid count_limit {entry['count_limit']!r} - ignored")
 
-        for prefix in ("summary", "schema"):
+        for prefix in ("summary", "schema", "source"):
             if prefix in entry and entry[prefix]:
                 tmpl[prefix] = str(entry[prefix]).strip()
 
@@ -181,9 +181,10 @@ def extract_templates_from_txt(args) -> list[dict]:
         # or "Section 5 - ...") terminates the answer -- it is treated as
         # stray prose belonging to the file's outer structure, not the
         # template body.  Stop also at: next template's ID line, a
-        # {force ...} constraint, or Summary/Schema/Sample/Shuffle/Count.
+        # {force ...} constraint, or Summary/Schema/Sample/Shuffle/Count/Source.
         _ANS_SENTINEL_PREFIXES = ("{force", "Summary: ", "Schema: ",
-                                  "Sample: ", "Shuffle: ", "Count: ")
+                                  "Sample: ", "Shuffle: ", "Count: ",
+                                  "Source: ")
         t_a = None
         ans_lines = []
         while i < len(lines):
@@ -249,7 +250,7 @@ def extract_templates_from_txt(args) -> list[dict]:
                 i += 1
                 continue
             for prefix in ("Summary", "Schema", "Sample", "Shuffle", "Count",
-                           "Per_primary_grouping"):
+                           "Per_primary_grouping", "Source"):
                 if l.startswith(f"{prefix}: "):
                     val = l[len(f"{prefix}: "):]
                     if prefix == "Count":
@@ -270,6 +271,12 @@ def extract_templates_from_txt(args) -> list[dict]:
                             tmpl["per_primary_grouping"] = False
                         else:
                             print(f"@@@ Template {t_id}: invalid Per_primary_grouping '{val}' - ignored")
+                    elif prefix == "Source":
+                        # v13 licence-allowlist gate input. Stored as a free-form
+                        # tag (e.g. "athena-cti-db-internal", "mitre-attack",
+                        # "misp-galaxy-threat-actor"). Absent => downstream
+                        # to_alpaca defaults to "athena-cti-db-internal".
+                        tmpl["source"] = val.strip()
                     else:
                         tmpl[prefix.lower()] = val
                     break

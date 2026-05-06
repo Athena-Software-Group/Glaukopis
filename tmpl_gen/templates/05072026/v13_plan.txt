@@ -477,15 +477,36 @@ inheriting non-commercial restrictions from any training data source.
 
 ### 10.3 Audit mechanism
 
-The §4.5 licence-allowlist gate is the build-time enforcement. The
-gate halts the build before the train/val split if any row carries a
-source tag outside the allowlist, so a non-permissive source cannot
-silently land in a published checkpoint.
+Two complementary build-time gates enforce the policy:
 
-Templates without an explicit `Source:` directive default to
-`athena-cti-db-internal`. The MISP generator emits `misp-galaxy-cc0`.
-The MITRE-seed TAA.CANON / MCQ.EXT / SOC.GEN / CM generators emit
-`mitre-attack-custom` (or `mitre-d3fend-custom` for the IR family).
+  1. The seed-provenance gate (tmpl_gen/scripts/check_seed_provenance.py,
+     run by _v13_build/watcher.sh as Phase 0) verifies that every
+     upstream seed file consumed by the build carries an in-tree
+     PROVENANCE.txt naming its licence and that the on-disk SHA-256
+     matches the value recorded in the script. Registered seeds today:
+       - cpt/cache/raw/mitre_attack_enterprise/enterprise-attack.json
+         (MITRE ATT&CK Terms of Use)
+       - tmpl_gen/data_generation/seeds/misp/threat-actor.json
+         (CC-0 1.0 / Public Domain)
+       - SFT/test/benchmark_data/athena_bench/athena_taa/aliases.csv
+         (Athena internal)
+
+  2. The licence-allowlist gate (tmpl_gen/scripts/check_corpus_licences.py,
+     §4.5 in this plan) halts the build before the train/val split if
+     any emitted row carries a `source` tag outside the §10.1 allowlist.
+
+Source-tag stamping convention used by the v13 generators:
+
+  - Templates without an explicit `Source:` directive default to
+    `athena-cti-db-internal`.
+  - The MISP generator emits `misp-galaxy-cc0` (1:1 with the CC-0 seed).
+  - The MITRE-seed generators (TAA.CANON, MCQ.EXT, SOC.*.GEN, CM.*)
+    emit `athena-cti-db-internal` for their OUTPUT rows because the
+    instruction-tuning prompts/answers are Athena-curated transformative
+    work (MITRE facts re-expressed as Athena prompts/responses, not
+    verbatim text). The upstream MITRE licence chain is recorded in
+    cpt/cache/raw/mitre_attack_enterprise/PROVENANCE.txt and verified
+    by the Phase 0 seed-provenance gate above.
 
 ### 10.4 Open audit deferred to v14
 

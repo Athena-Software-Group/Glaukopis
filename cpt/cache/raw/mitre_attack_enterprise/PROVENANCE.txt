@@ -1,0 +1,72 @@
+MITRE ATT&CK Enterprise STIX bundle -- v13 build vendored copy
+================================================================
+
+Source repository : https://github.com/mitre-attack/attack-stix-data
+Source path       : enterprise-attack/enterprise-attack.json
+Bundle id         : bundle--9ed7099a-63b8-4e49-92c7-547d39aa29e0
+STIX spec version : 2.0
+Vendored on       : 2026-04-23 (cache snapshot under cpt/cache/raw/)
+Used by           : v13 SFT (tmpl_gen/templates/05072026/v13_plan.txt
+                    sec 4.4 + sec 5.2):
+                    - tmpl_gen/scripts/taa_canon_generator.py
+                      (intrusion-set + uses-relationship -> attack-pattern
+                       traversal feeding TAA.CANON.{1,2,3})
+
+Licence (per the MITRE ATT&CK Terms of Use,
+https://attack.mitre.org/resources/legal-and-branding/terms-of-use/):
+  - The MITRE Corporation publishes the ATT&CK knowledge base
+    (techniques, tactics, groups, software, mitigations, data sources,
+    relationships) for free, including for commercial use, subject to
+    the ATT&CK Terms of Use.
+  - Permitted: redistribution, modification, derivative works, including
+    commercial use, provided the attribution and trademark conditions
+    are met.
+  - Required attribution (verbatim from the Terms of Use):
+      "(C) 2025 The MITRE Corporation. This work is reproduced and
+      distributed with the permission of The MITRE Corporation."
+  - Trademark notice (preserved from the bundle's marking-definition):
+      "MITRE ATT&CK and ATT&CK are registered trademarks of The MITRE
+      Corporation."
+  - Source attribution tag carried by upstream rows: per
+    v13_plan.txt sec 10.3, the v13 TAA.CANON generator emits
+    `athena-cti-db-internal` for the OUTPUT rows because the
+    instruction-tuning prompts/answers are Athena-curated transformative
+    work; this PROVENANCE.txt is the upstream licence chain record
+    acknowledging the MITRE-attack seed.
+
+File integrity (SHA-256 at vendor time):
+  enterprise-attack.json
+    628c4fc3c01b9ef37e1cd84ca3c421e1d43950a43464a14aabd1a7089601dc45
+
+Bundle composition at vendor time:
+  total objects        : 24,771
+  intrusion-set        :    187
+  attack-pattern       :    835
+  malware              :    696
+  tool                 :     91
+  course-of-action     :    268
+  campaign             :     52
+  relationship         : 20,048
+  x-mitre-tactic       :     14
+  x-mitre-matrix       :      1
+  x-mitre-data-source  :     38
+  x-mitre-data-component:   109
+  x-mitre-detection-strategy: 691
+  x-mitre-analytic     :  1,739
+  marking-definition   :      1
+  identity             :      1
+
+Refresh policy:
+  v13 ships against this snapshot for reproducibility. v14 may refresh
+  to a newer release; the seed-provenance gate
+  (tmpl_gen/scripts/check_seed_provenance.py) verifies the SHA-256
+  against the value recorded above.
+
+Refresh procedure (when authorising v14 refresh):
+  1. Identify a target ATT&CK release at
+     https://github.com/mitre-attack/attack-stix-data/releases
+  2. curl -fsSL -o cpt/cache/raw/mitre_attack_enterprise/enterprise-attack.json \
+         https://raw.githubusercontent.com/mitre-attack/attack-stix-data/<TAG>/enterprise-attack/enterprise-attack.json
+  3. shasum -a 256 cpt/cache/raw/mitre_attack_enterprise/enterprise-attack.json
+  4. Update the SHA-256 + bundle composition counts in this file.
+  5. Re-run the seed-provenance gate and the v13 build watcher.

@@ -401,6 +401,8 @@ def main() -> int:
 
     out_rows = canon1 + canon2 + canon3
     rng.shuffle(out_rows)
+    for r in out_rows:
+        r["source"] = "athena-cti-db-internal"
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(out_rows, indent=2))
     print(f"\nwrote {len(out_rows):,} rows to {args.output}", file=sys.stderr)

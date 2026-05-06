@@ -186,6 +186,25 @@ gate passes with zero non-permissive source tags
     intentionally Question-less and merged at runtime via watcher Phase
     3b/3c/3d/3e). No stale TAA.CANON.4 references remain; all
     MISP.CANON.* metadata propagates correctly.
+  - **2026-05-07 (Phase 1 build against local Neo4j)**:
+    `make_dataset.sh` invoked with `count_limit=10 count_max=1500`
+    against the v13 manifest using the per-primary gencfg (sample-with-
+    replacement on, allow_nullprops on; the v11 fix). Wall-clock ~5
+    minutes against athena-cti-db. Produced
+    `SFT/data/ift_data_2026_05_07_v13.raw.json` (249 MB,
+    **204,695 rows, 248 distinct shortnames**; one template yielded 0
+    rows). Top families by row count: `X` 24,989, `V` 16,872, `YN`
+    16,639, `SR` 12,000, `AB.RMS` 11,225, `AB.TAA` 8,761, `AB.ATE`
+    8,262, `JS` 8,082, `SOC` 4,882, `AB.RCM` 4,500, `AB.MS` 4,277.
+    Low-yield templates as expected (`E.4`=9, `E.6`=13, `S.6`=27 from
+    the small ENGAGE catalog; `AB.RMS.{4,5}` paraphrase variants
+    ~44 each by design; `SOC.TRIAGE.DS.{1,2}`=38 each is a v11/v12
+    carry-forward content gap). All rows carry `source: <none>` since
+    the `Source:` parser extension is the next pipeline deliverable
+    (v13 §3 delta 4) -- the licence-allowlist gate will populate or
+    enforce after wiring. Phases 2-9 of the v13 build pipeline
+    (`_v13_build/watcher.sh`) are not yet authored; this raw corpus is
+    the substrate the watcher will operate on once those phases land.
 
 ## 4. Training recipe (two phases; v9-shape recovery, no Phase C)
 

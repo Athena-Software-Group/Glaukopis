@@ -117,6 +117,8 @@ def main() -> int:
         print(f"[mcq_gen] {shortname:25s} target={target:>5d} "
               f"actual={len(sub):>5d}")
 
+    for r in rows:
+        r["source"] = "athena-cti-db-internal"
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(rows, indent=2))
     if args.report:
