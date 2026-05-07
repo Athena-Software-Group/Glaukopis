@@ -1,12 +1,13 @@
 # Athena CTI DB
 
-`athena_cti_db` builds and populates the **Athena Threat Intelligence graph database** on a local Neo4j instance. It ingests data from MITRE ATT&CK, CAPEC, CWE, CVE, CISA KEV, FIRST EPSS, and MITRE ENGAGE, modelling all entities and cross-framework relationships in Neo4j.
+`athena_cti_db` builds and populates the **Athena Threat Intelligence graph database** on a local Neo4j instance. It ingests 12 public CTI sources — MITRE ATT&CK, CAPEC, CWE, ENGAGE, D3FEND, CVE Project, NVD, CISA KEV, FIRST EPSS, Sigma, ExploitDB, and PoC-in-GitHub — modelling all entities and cross-framework relationships in Neo4j.
 
 The populated graph is the upstream data source for [`tmpl_gen`](../tmpl_gen/), which traverses it to generate Instruction Fine-Tuning data.
 
 The primary entry point is [`threat_framework/populate_neo4j_complete.py`](threat_framework/populate_neo4j_complete.py), which downloads, parses, and loads all CTI data into Neo4j.
 
-> Full setup instructions, Neo4j configuration, environment variables, data-source list, and troubleshooting live in **[`README_LOCAL_SETUP.md`](README_LOCAL_SETUP.md)**.
+> - Full setup, Neo4j configuration, environment variables, and troubleshooting → **[`README_LOCAL_SETUP.md`](README_LOCAL_SETUP.md)**
+> - Functional footprint — every data source, node label, and graph relationship → **[`FUNCTIONAL_SCOPE.md`](FUNCTIONAL_SCOPE.md)**
 
 ---
 
@@ -90,17 +91,22 @@ CVE ingestion (200K+ entries) is the longest step — expect 30–90 minutes tot
 
 ## Data Sources
 
-| Source | Format |
-|--------|--------|
-| MITRE ATT&CK (`mitre/cti`) | Git / STIX2 JSON |
-| MITRE ENGAGE (`mitre/engage`) | Git / JSON |
-| CAPEC | XML |
-| CWE | ZIP / XML |
-| CVE (`CVEProject/cvelistV5`) | Git / JSON |
-| CISA KEV | JSON feed |
-| FIRST EPSS | Gzipped CSV |
+| Source | Format | Scope |
+|--------|--------|-------|
+| MITRE ATT&CK (`mitre/cti`) | Git / STIX 2.1 JSON | full (Enterprise) |
+| MITRE ENGAGE (`mitre/engage`) | Git / JSON | full |
+| MITRE CAPEC | XML | full |
+| MITRE CWE | ZIP / XML | full |
+| MITRE D3FEND | JSON-LD + SPARQL JSON | pinned v1.4.0 |
+| CVE Project (`CVEProject/cvelistV5`) | Git sparse / JSON | 2024+ |
+| NVD CPE/CVSS bulk feeds | NDJSON | 2024+ |
+| CISA KEV | JSON feed | full |
+| FIRST EPSS | Gzipped CSV (yesterday) | 2024+ |
+| Sigma rules (`SigmaHQ/sigma`) | Git sparse / YAML | full `rules/` |
+| ExploitDB | Git sparse / CSV | 2024+ CVE |
+| PoC-in-GitHub (`nomi-sec/PoC-in-GitHub`) | Git sparse / JSON | 2024+ |
 
-See [`README_LOCAL_SETUP.md`](README_LOCAL_SETUP.md) for URLs and full details.
+URLs and acquisition details: [`README_LOCAL_SETUP.md`](README_LOCAL_SETUP.md). Per-source content, node labels, and graph relationships: [`FUNCTIONAL_SCOPE.md`](FUNCTIONAL_SCOPE.md).
 
 ---
 
