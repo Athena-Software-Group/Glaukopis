@@ -5,9 +5,20 @@
 # hot-fix of run_sft_qwen25_14b_v14.sh; corpus, topology, learning rates,
 # effective batch sizes, packing flags, max-samples, save/eval cadences,
 # HF push convention, and resume chaining are all preserved verbatim.
-# Only the per-phase --cutoff is reduced (16384/8192 -> 4096) so that
-# step-time tracks the actual length distribution of the v14 corpus
-# rather than the worst-case envelope.
+# Two performance-only knobs are flipped vs v14:
+#   1. --cutoff lowered (16384/8192 -> 4096) so step-time tracks the
+#      actual length distribution of the v14 corpus rather than the
+#      worst-case envelope.
+#   2. --disable_gradient_checkpointing True (added to EXTRA_COMMON):
+#      activation memory at cutoff 4096 / per_device_batch 1 / ZeRO-3
+#      sharded across 8x80GB fits comfortably without recompute. GC
+#      was inherited from v14 where it was mandatory at cutoff 16384
+#      but is vestigial at cutoff 4096; disabling it removes the
+#      backward-pass recomputation step (~15-30% throughput gain).
+# Both knobs are pure speed/memory tradeoffs; the model math
+# (gradients, optimizer trajectory, loss values, final weights) is
+# unchanged. Step counts per phase remain bit-identical to v14 in
+# step-space.
 #
 # Why v14.1 (vs v14):
 #   v14 Phase A measured at step 23000 / 49336 (47%) had ~12 h of wall-
@@ -17,11 +28,10 @@
 #   distribution audit of all four v14 IFT shards (broad / ate_vsp_rcm
 #   / rms / taa) confirmed p99 token counts of 931 / 1416 / 2177 / 340
 #   respectively -- entirely under 4096. v14.1 lowers --cutoff to 4096
-#   for every phase; nothing else changes. Step counts per phase stay
-#   identical to v14 (same eff_bs, same max-samples), so the optimizer
-#   trajectory and learning-rate schedule are unchanged in step-space;
-#   only step-time shrinks. Loss curves are therefore directly
-#   comparable to v14's at the same step number.
+#   for every phase and disables the now-vestigial gradient checkpoint
+#   recompute; everything else (optimizer, batch math, LR schedule)
+#   is unchanged. Loss curves are therefore directly comparable to
+#   v14's at the same step number.
 #
 # Phase shape (five passes; four pushes -- Phase A is intermediate):
 #   Phase A -- broad re-anchor (v12 Phase A recipe verbatim, cutoff 4096)
@@ -200,7 +210,7 @@ AB_BATCH=1; AB_GA=$(( 8 / (AB_BATCH * EFFECTIVE_GPUS) )); [[ ${AB_GA} -lt 1 ]] &
 # v9 ran this shape on 8xH100; per-device 1 + GA 2 gives the recipe's eff_bs=16.
 D_BATCH=1;  D_GA=$(( 16 / (D_BATCH  * EFFECTIVE_GPUS) )); [[ ${D_GA}  -lt 1 ]] && D_GA=1
 
-EXTRA_COMMON="--deepspeed ${DS_CONFIG} --save_total_limit 2 --save_only_model True --enable_liger_kernel True --eval_dataset ${VAL_NAME} --val_size 0"
+EXTRA_COMMON="--deepspeed ${DS_CONFIG} --save_total_limit 2 --save_only_model True --enable_liger_kernel True --disable_gradient_checkpointing True --eval_dataset ${VAL_NAME} --val_size 0"
 
 # 8xH100 single-node distributed config. Clean any inherited multi-node env
 # vars first, then pin NPROC_PER_NODE to the detected GPU_COUNT so torchrun
