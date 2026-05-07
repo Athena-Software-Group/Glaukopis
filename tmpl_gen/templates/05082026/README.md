@@ -1,4 +1,4 @@
-# Sophia CTI Templates — v14 (May 8, 2026 vintage)
+# Sophia CTI Templates — v14 / v14.1 (May 8, 2026 vintage)
 
 Multi-checkpoint SFT manifest. v14 is the first vintage authored as a
 **per-axis narrow-drilling experiment**: the v12 corpus and recipe are
@@ -59,6 +59,62 @@ narrow drills (each branched from the v14-AB checkpoint) using the
 verbatim v9 recipe, each on a single axis. The four resulting
 checkpoints answer four falsifiable questions in a single training
 cycle.
+
+## 1.1 v14.1 hot-fix supersession (cutoff 4096; corpus/topology held)
+
+v14 Phase A live measurement at step 23000 / 49336 (47%) showed
+~12 h of wall-time still ahead at 2,927 tok/s and ~1.78 s/it. A
+length-distribution audit of all four v14 IFT shards returned the
+following p99 token counts:
+
+| shard           |     n   | median |   p95 |   p99 |   max |
+|-----------------|--------:|-------:|------:|------:|------:|
+| `_v14_broad`    | 193,703 |    167 |   625 |   931 | 2,020 |
+| `_v14_ate_vsp_rcm` | 32,810 | 339 |   992 | 1,416 | 16,706* |
+| `_v14_rms`      |  12,608 |    666 | 1,823 | 2,177 | 2,667 |
+| `_v14_taa`      |  32,783 |    180 |   332 |   340 |   802 |
+
+(*single outlier; next-longest sample is well under 2,000.)
+
+Every shard's p99 is below 4,096 tokens, meaning the v14 cutoffs
+(16,384 in A/B; 8,192 in D-RMS/D-TAA/production) were spending
+~95% of every step on padding rather than on real tokens. **v14.1
+is a launcher-only hot-fix** that lowers `--cutoff` to 4,096 in
+every phase and changes nothing else: corpus, topology (5-pass
+sequential), learning rates, effective batch sizes (8 for A/B,
+16 for D-*), packing flags (OFF in A/B, ON in D-*), max-samples,
+save/eval cadences, and resume chaining are all preserved verbatim
+from v14. Step counts per phase are bit-identical to v14 in
+step-space, so the optimiser trajectory and LR schedule are
+unchanged; only step-time shrinks. Loss curves at any given step
+number are directly comparable to v14's.
+
+  - Launcher        : `SFT/autotrain/run_sft_qwen25_14b_v14_1.sh`
+  - HF push targets : `${HF_USERNAME}/athena-cti-sft-qwen25-14b-v14p1{-ab,-rms,-taa,}`
+                      (`v14p1` token replaces v14's `v14` in the
+                      repo-name suffix; underscores would break HF
+                      tooling, dots are flaky in some clients, so
+                      `v14p1` is the chosen on-the-wire spelling)
+  - Save dirs       : `SFT/saves/Qwen_Qwen2.5-14B-Instruct/full/v14_1_phase_{a,b,d_rms,d_taa,prod}_${TIMESTAMP}`
+                      (the local-filesystem identifier uses `v14_1`)
+  - Datasets        : `ift_data_2026_05_08_v14_{broad,ate_vsp_rcm,rms,taa,val}`
+                      -- byte-identical to v14; same JSON files
+
+Estimated total wall-time: ~10-12 h (vs v14's ~32 h projected),
+dominated by Phase A. Phase B / D-RMS / D-TAA / production each
+land in the ~45 min - ~1.5 h band per phase.
+
+The original v14 launcher (`run_sft_qwen25_14b_v14.sh`) and its
+HF repo namespace (`...-v14{-ab,-rms,-taa}`) remain in-repo for
+reproducibility; v14.1 is the production execution path. Sections
+2-11 below describe v14 as designed; the hot-fix overrides only
+the cutoff values quoted in §6 and the launcher/repo identifiers
+quoted in §7 (annotated inline in those sections).
+
+The narrow-drilling experiment (the questions in §1, §2, §9) is
+unchanged: v14.1 still produces four HF checkpoints answering the
+four falsifiable questions, just on the `v14p1` namespace and
+faster.
 
 ## 2. v13 14B post-mortem (the regression analysis)
 
@@ -367,14 +423,14 @@ detect leakage.
 | | Phase A (broad) | Phase B (ATE+VSP+RCM) | Phase D-RMS (narrow) | Phase D-TAA (narrow) |
 |---|---|---|---|---|
 | Dataset | `_v14_broad` (193,703) + tulu-3 + alpaca | `_v14_ate_vsp_rcm` (32,810) | `_v14_rms` (12,608) | `_v14_taa` (32,783) |
-| Cutoff | 16384 | 16384 | **8192** (v9 narrow) | **8192** (v9 narrow) |
+| Cutoff | 16384 _(v14.1: **4096**)_ | 16384 _(v14.1: **4096**)_ | **8192** (v9 narrow) _(v14.1: **4096**)_ | **8192** (v9 narrow) _(v14.1: **4096**)_ |
 | Packing | off | off | **on** (v9 narrow) | **on** (v9 narrow) |
 | LR | 1e-5 | 5e-6 | 5e-6 | 5e-6 |
 | Effective batch | 8 | 8 | **16** (v9 narrow) | **16** (v9 narrow) |
 | Save/eval steps | 500 | 400 | 100 | 100 |
 | Max samples | 200,000 | 36,000 | 13,000 | 33,000 |
 | Resume from | base Qwen2.5-14B-Instruct | Phase A output | Phase A+B output | Phase A+B output (PARALLEL with D-RMS) |
-| Push to HF | no | yes (`...-v14-ab`) | yes (`...-v14-rms`) | yes (`...-v14-taa`) |
+| Push to HF | no | yes (`...-v14-ab`) _(v14.1: `...-v14p1-ab`)_ | yes (`...-v14-rms`) _(v14.1: `...-v14p1-rms`)_ | yes (`...-v14-taa`) _(v14.1: `...-v14p1-taa`)_ |
 
 After D-RMS and D-TAA complete (parallel), a fifth chained pass
 produces the production candidate:
@@ -382,14 +438,14 @@ produces the production candidate:
 | | Phase D-TAA-on-RMS (production chain) |
 |---|---|
 | Dataset | `_v14_taa` (32,783; same as Phase D-TAA) |
-| Cutoff | 8192 |
+| Cutoff | 8192 _(v14.1: **4096**)_ |
 | Packing | on |
 | LR | 5e-6 |
 | Effective batch | 16 |
 | Save/eval steps | 100 |
 | Max samples | 23,000 |
-| Resume from | **D-RMS output** (the v14-rms checkpoint) |
-| Push to HF | yes (`...-v14`) |
+| Resume from | **D-RMS output** (the v14-rms checkpoint; v14.1: the `v14p1-rms` checkpoint) |
+| Push to HF | yes (`...-v14`) _(v14.1: `...-v14p1`)_ |
 
 Phase ordering rationale (D-RMS → D-TAA, not the other way around):
 TAA Classic alias resolution is shallower knowledge that gets
@@ -409,10 +465,10 @@ scores TAA Classic+Canonical.
 | consumer | path |
 |---|---|
 | Dataset registration | `SFT/data/dataset_info.json` -> `ift_data_2026_05_08_v14_{broad,ate_vsp_rcm,rms,taa,val}` |
-| Qwen2.5-14B launcher | `SFT/autotrain/run_sft_qwen25_14b_v14.sh` (four-phase, supports `--phase a\|b\|d-rms\|d-taa\|production\|all` and `--dry-run`) |
+| Qwen2.5-14B launcher | `SFT/autotrain/run_sft_qwen25_14b_v14.sh` (four-phase, supports `--phase a\|b\|d-rms\|d-taa\|production\|all` and `--dry-run`); **v14.1 production execution: `SFT/autotrain/run_sft_qwen25_14b_v14_1.sh` (cutoff-4096 hot-fix; same flags)** |
 | Qwen2.5-32B launcher | `SFT/autotrain/run_sft_qwen25_32b_v14.sh` (deferred; authored only after 14B passes §8 per v14 plan §6.2) |
-| HF targets | `${HF_USERNAME}/athena-cti-sft-qwen25-14b-v14{-ab,-rms,-taa,}` (4 checkpoints; 32B repo target reserved) |
-| vLLM aliases | `athena-cti-sft-qwen25-14b-v14-{ab,rms,taa}-vllm` and `athena-cti-sft-qwen25-14b-v14-vllm` (`SFT/test/pipelines/models.py`) |
+| HF targets | `${HF_USERNAME}/athena-cti-sft-qwen25-14b-v14{-ab,-rms,-taa,}` (4 checkpoints; 32B repo target reserved); **v14.1: `${HF_USERNAME}/athena-cti-sft-qwen25-14b-v14p1{-ab,-rms,-taa,}`** |
+| vLLM aliases | `athena-cti-sft-qwen25-14b-v14-{ab,rms,taa}-vllm` and `athena-cti-sft-qwen25-14b-v14-vllm` (`SFT/test/pipelines/models.py`); v14.1 aliases registered as `athena-cti-sft-qwen25-14b-v14p1-{ab,rms,taa}-vllm` and `athena-cti-sft-qwen25-14b-v14p1-vllm` once the v14.1 chain completes |
 | Eval task (carried) | `athena-cti-taa-canonical` (alias-resolution scoring; v12 carry) |
 | Licence audit | `_v14_build/licence_gate_report.json` (every published row's source tag in §10.1 allowlist; v13 carry) |
 
@@ -483,7 +539,7 @@ checkpoints, in which case the v14 production set is the parallel
 pair (`v14-rms` for RMS-deployments, `v14-taa` for TAA-deployments)
 and the unified production candidate is deferred to v15.
 
-## 10. Version history (v0 → v14)
+## 10. Version history (v0 → v14.1)
 
 Each row links the vintage directory carrying the manifest, README
 (where present), and per-version build artefacts. Every prior
@@ -501,7 +557,8 @@ version remains in the repo verbatim for reproducibility.
 | v11 | 2026-05-03 | `tmpl_gen/templates/05032026/` | 198,994 rows | 244 templates (all productive). SOC.* (4,884) + TAA.CANON.* (778) + RMS paraphrase + X./YN. trim with RCM-axis exemptions + parser anchor-fixation fix + actor cap 40 + dedup at 50 + D3FEND v1.4.0 ingest. Eval-axis density 30.7%. **14B sweep weighted total 54.3 (failed §8). SOC=44.7** (the 14B peak; SOC content carried via v12 substrate into v14). |
 | v12 | 2026-05-05 | `tmpl_gen/templates/05052026/` | 260,589 rows | 263 distinct shortnames. Four programmatic generators (TAA.CANON 10K, CM 6K, MCQ.EXT 3K, SOC.GEN 5K) bypassing Neo4j substrate ceilings. Build pipeline gains row-count gate (per-axis REJECT_IF_BELOW), AB.TAA total cap (3,500), wired-in stratified shuffle, per-phase corpus splitter. Three-phase training (A: broad 8192/packing-on/lr 1e-5, B: RMS+ATE+VSP+RCM 16384/packing-off/lr 5e-6, C: TAA.CANON 8192/packing-on/lr 3e-6). Eval-axis density 43.3%. All 11 row-count axes pass. **14B sweep weighted total 57.3** (current production baseline): ATE=57.0 (peak), RCM=69.0 (peak), CKT=70.1, RMS=63.3 (regression vs v9's 65.8), VSP=84.6, SOC=39.3 (regression vs v11's 44.7), TAA Classic combined=35.5 (regression vs v11's 49.5), TAA-CANON=38.7. |
 | v13 | 2026-05-07 | `tmpl_gen/templates/05072026/` | 240,759 rows | First "best-of-vintage" composition framing (in practice held v12 template bodies verbatim, which the v13 audit confirmed as a strict superset of v9/v10/v11 per-axis peaks); added MISP CC-0 TAA expansion (~12K rows) and licence-allowlist gate; reverts to two-phase v9-shape recipe (cutoff 8192, packing ON). **14B sweep weighted total 54.5 (FAILED §6, regressed -2.8 pp vs v12)**: RMS=55.8 (-7.5 vs v12; v12-superset RMS templates + v9 recipe DID NOT recover RMS in 5-axis Phase B), ATE=56.5, VSP=85.3, RCM=67.8, CKT=69.5, SOC=38.6, TAA Classic combined=43.5 (still -8.5 below base 52.0), TAA-CANON=24.8 (-13.9 vs v12). Falsified four hypotheses (see v14 README §2.3). |
-| **v14** | **2026-05-08** | `tmpl_gen/templates/05082026/` | **~242,000 (target)** | This vintage. **245 distinct shortnames declared (-18 vs v13: drops AB.RMS.4{b..j}+AB.RMS.5{b..j} paraphrase variants in favour of v9-narrow AB.RMS.4+AB.RMS.5)**; manifest = v13 verbatim with v9-narrow AB.RMS.4 + AB.RMS.5 substitution (hybrid RMS slice; AB.RMS.{1,2,3a..3h} keep v13's `<desc>`-wrapped bodies — see README §5 delta 3). **Per-axis narrow-drilling experiment** with **four-phase training** (A broad / B 3-axis ATE+VSP+RCM long-context / D-RMS narrow drill / D-TAA narrow drill PARALLEL with D-RMS, plus chained production candidate). **Four HF checkpoints** (`v14-ab`, `v14-rms`, `v14-taa`, `v14`) for clean per-phase attribution. **Hard pass criterion: TAA Classic combined ≥ 52.0** (the Qwen2.5-14B-Instruct base-model floor that every prior SFT vintage has regressed below). NO new generators, NO new manifest content beyond v9-narrow .4+.5 RMS substitution; v14 is a recipe/sharding/RMS-template experiment on the v13 content substrate. |
+| v14 | 2026-05-08 | `tmpl_gen/templates/05082026/` | ~242,000 (target) | **245 distinct shortnames declared (-18 vs v13: drops AB.RMS.4{b..j}+AB.RMS.5{b..j} paraphrase variants in favour of v9-narrow AB.RMS.4+AB.RMS.5)**; manifest = v13 verbatim with v9-narrow AB.RMS.4 + AB.RMS.5 substitution (hybrid RMS slice; AB.RMS.{1,2,3a..3h} keep v13's `<desc>`-wrapped bodies — see README §5 delta 3). **Per-axis narrow-drilling experiment** with **four-phase training** (A broad / B 3-axis ATE+VSP+RCM long-context / D-RMS narrow drill / D-TAA narrow drill PARALLEL with D-RMS, plus chained production candidate). **Four HF checkpoints** (`v14-ab`, `v14-rms`, `v14-taa`, `v14`) for clean per-phase attribution. **Hard pass criterion: TAA Classic combined ≥ 52.0** (the Qwen2.5-14B-Instruct base-model floor that every prior SFT vintage has regressed below). NO new generators, NO new manifest content beyond v9-narrow .4+.5 RMS substitution; v14 is a recipe/sharding/RMS-template experiment on the v13 content substrate. **Phase A live measurement (step 23000/49336, 47%) at 1.78 s/it / 2,927 tok/s flagged ~95% padding overhead at cutoff 16384 against an audited p99 < 4096 across all four shards — superseded by v14.1 hot-fix mid-run.** |
+| **v14.1** | **2026-05-08** | `tmpl_gen/templates/05082026/` (corpus shared with v14) | **same as v14 (~242,000)** | This vintage. **Launcher-only hot-fix** of v14: `SFT/autotrain/run_sft_qwen25_14b_v14_1.sh` lowers `--cutoff` to 4096 in every phase (16384→4096 in A/B; 8192→4096 in D-RMS, D-TAA, production). Corpus, topology, learning rates, effective batch sizes, packing flags, max-samples, save/eval cadences, and resume chaining are preserved verbatim from v14, so step counts per phase are bit-identical and loss curves are step-for-step comparable to v14's. **Four HF checkpoints**: `v14p1-ab`, `v14p1-rms`, `v14p1-taa`, `v14p1` (the `v14p1` token replaces v14's `v14` in the repo-name suffix; underscores break HF tooling, dots are flaky in some clients). Save dirs use `v14_1_phase_{a,b,d_rms,d_taa,prod}_TIMESTAMP`. Datasets are byte-identical to v14 (`ift_data_2026_05_08_v14_*`). Estimated total wall-time ~10-12 h vs v14's ~32 h projected. The narrow-drilling experiment and all §1/§2/§9 questions are unchanged; v14 launcher remains in-repo for reproducibility. |
 
 For the line-by-line corpus composition of v12 (the substrate v14
 carries forward) see `tmpl_gen/templates/05052026/README.md`. For
