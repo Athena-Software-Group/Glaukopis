@@ -24,6 +24,21 @@ v12's SOC regression to 39.3 proved was needed).
                           AB.VSP.* + V.CPE + AB.RCM + JS.RCM + X.VW + YN.VW
                           + SOC.* (intersected from broad_plus_canon)
 
+v14 mode (--four-shard; v14_plan.txt §2): four disjoint shards (no
+dual-shard: SOC.* lives only in _v14_broad). Per-axis narrow-drilling
+splits AB.RMS / AB.TAA into their own shards plus a 3-axis long-context
+ATE+VSP+RCM shard plus everything-else broad shard. Splitter rule
+(precedence top-to-bottom; first match wins):
+  1. AB.RMS.*  / JS.RMS.*                                  -> _v14_rms
+  2. AB.TAA.*  / JS.TAA.*  / TAA.CANON.* / MISP.CANON.*    -> _v14_taa
+  3. AB.{ATE,VSP,RCM}.* / JS.{ATE,VSP,RCM}.* / V.CPE       -> _v14_ate_vsp_rcm
+  4. (everything else, including SOC.*, X.VW.*, YN.VW.*)   -> _v14_broad
+
+  --out-v14-broad         rule 4 catch-all
+  --out-v14-ate-vsp-rcm   rule 3
+  --out-v14-rms           rule 1
+  --out-v14-taa           rule 2
+
 Val rows are excluded from all output shards (identified by exact
 instruction+input+output triple match against the val slice).
 
@@ -48,6 +63,17 @@ Usage (v13 two-phase):
       --out-broad-plus-canon SFT/data/ift_data_2026_05_07_v13_broad_plus_canon.json \\
       --out-axis             SFT/data/ift_data_2026_05_07_v13_axis.json \\
       --report _v13_build/phase_split_report.json
+
+Usage (v14 four-shard):
+  python tmpl_gen/scripts/split_corpus_for_phases.py \\
+      --input  SFT/data/ift_data_2026_05_08_v14.shuffled.json \\
+      --val    SFT/data/ift_data_2026_05_08_v14_val.json \\
+      --four-shard \\
+      --out-v14-broad        SFT/data/ift_data_2026_05_08_v14_broad.json \\
+      --out-v14-ate-vsp-rcm  SFT/data/ift_data_2026_05_08_v14_ate_vsp_rcm.json \\
+      --out-v14-rms          SFT/data/ift_data_2026_05_08_v14_rms.json \\
+      --out-v14-taa          SFT/data/ift_data_2026_05_08_v14_taa.json \\
+      --report _v14_build/phase_split_report.json
 """
 
 from __future__ import annotations
@@ -74,6 +100,18 @@ V13_AXIS_PATTERNS: list[str] = PHASE_B_PATTERNS + ["SOC.*"]
 # rows in the broad_plus_canon shard even though they match the axis
 # pattern (intentional duplication; not a routing error).
 V13_DUAL_SHARD_PATTERNS: list[str] = ["SOC.*"]
+
+# v14 §2: per-axis narrow drilling. Four DISJOINT shards (no dual-shard).
+# Splitter rule order matters: first match wins.
+V14_RMS_PATTERNS: list[str] = ["AB.RMS.*", "JS.RMS.*"]
+V14_TAA_PATTERNS: list[str] = [
+    "AB.TAA.*", "JS.TAA.*", "TAA.CANON.*", "MISP.CANON.*",
+]
+V14_ATE_VSP_RCM_PATTERNS: list[str] = [
+    "AB.ATE", "AB.ATE.*", "JS.ATE", "JS.ATE.*",
+    "AB.VSP.*", "V.CPE", "V.CPE.*",
+    "AB.RCM", "AB.RCM.*", "JS.RCM", "JS.RCM.*",
+]
 
 
 def matches(shortname: str, patterns: list[str]) -> bool:
@@ -102,6 +140,12 @@ def main() -> int:
                         "+ --out-axis) instead of v12's three. Drops Phase C "
                         "and folds TAA.CANON.* / MISP.CANON.* into the "
                         "broad shard; SOC.* lives in BOTH shards.")
+    p.add_argument("--four-shard", action="store_true",
+                   help="v14 mode: emit four DISJOINT shards "
+                        "(--out-v14-broad + --out-v14-ate-vsp-rcm + "
+                        "--out-v14-rms + --out-v14-taa) for per-axis narrow "
+                        "drilling. SOC.* lives only in --out-v14-broad "
+                        "(no SOC narrow drill in v14).")
     # v12 three-shard outputs (default mode).
     p.add_argument("--out-broad", type=Path)
     p.add_argument("--out-rms-ate-vsp-rcm", type=Path)
@@ -109,11 +153,26 @@ def main() -> int:
     # v13 two-shard outputs (--two-phase mode).
     p.add_argument("--out-broad-plus-canon", type=Path)
     p.add_argument("--out-axis", type=Path)
+    # v14 four-shard outputs (--four-shard mode).
+    p.add_argument("--out-v14-broad", type=Path)
+    p.add_argument("--out-v14-ate-vsp-rcm", type=Path)
+    p.add_argument("--out-v14-rms", type=Path)
+    p.add_argument("--out-v14-taa", type=Path)
     p.add_argument("--report", type=Path)
     p.add_argument("--key-field", default="shortname")
     args = p.parse_args()
 
-    if args.two_phase:
+    if args.two_phase and args.four_shard:
+        p.error("--two-phase and --four-shard are mutually exclusive")
+
+    if args.four_shard:
+        missing = [n for n, v in [("--out-v14-broad", args.out_v14_broad),
+                                  ("--out-v14-ate-vsp-rcm", args.out_v14_ate_vsp_rcm),
+                                  ("--out-v14-rms", args.out_v14_rms),
+                                  ("--out-v14-taa", args.out_v14_taa)] if not v]
+        if missing:
+            p.error("--four-shard requires " + ", ".join(missing))
+    elif args.two_phase:
         if not (args.out_broad_plus_canon and args.out_axis):
             p.error("--two-phase requires --out-broad-plus-canon and --out-axis")
     else:
@@ -129,6 +188,8 @@ def main() -> int:
     print(f"loaded {len(rows):,} rows from {args.input}", file=sys.stderr)
     print(f"loaded {len(val_rows):,} val rows from {args.val}", file=sys.stderr)
 
+    if args.four_shard:
+        return _emit_four_shard(args, rows, val_keys)
     if args.two_phase:
         return _emit_two_phase(args, rows, val_keys)
     return _emit_three_phase(args, rows, val_keys)
@@ -237,6 +298,68 @@ def _emit_two_phase(args, rows: list[dict], val_keys: set) -> int:
             "soc_dual_shard_rows": soc_dual,
             "broad_plus_canon_top50_shortnames": _hist(broad_plus_canon, args.key_field),
             "axis_top50_shortnames": _hist(axis, args.key_field),
+        }
+        args.report.parent.mkdir(parents=True, exist_ok=True)
+        args.report.write_text(json.dumps(report, indent=2))
+        print(f"\nreport written to {args.report}", file=sys.stderr)
+
+    return 0
+
+
+def _emit_four_shard(args, rows: list[dict], val_keys: set) -> int:
+    broad: list[dict] = []
+    ate_vsp_rcm: list[dict] = []
+    rms: list[dict] = []
+    taa: list[dict] = []
+    val_overlap = 0
+    for r in rows:
+        if row_key(r) in val_keys:
+            val_overlap += 1
+            continue
+        sn = r.get(args.key_field, "")
+        if matches(sn, V14_RMS_PATTERNS):
+            rms.append(r)
+        elif matches(sn, V14_TAA_PATTERNS):
+            taa.append(r)
+        elif matches(sn, V14_ATE_VSP_RCM_PATTERNS):
+            ate_vsp_rcm.append(r)
+        else:
+            broad.append(r)
+
+    total_out = len(broad) + len(ate_vsp_rcm) + len(rms) + len(taa)
+    assert total_out + val_overlap == len(rows), \
+        f"row accounting mismatch: out={total_out} val_skip={val_overlap} in={len(rows)}"
+
+    print(f"\nval rows excluded (exact i/i/o match): {val_overlap:,}",
+          file=sys.stderr)
+    print(f"_v14_broad:        {len(broad):,}", file=sys.stderr)
+    print(f"_v14_ate_vsp_rcm:  {len(ate_vsp_rcm):,}", file=sys.stderr)
+    print(f"_v14_rms:          {len(rms):,}", file=sys.stderr)
+    print(f"_v14_taa:          {len(taa):,}", file=sys.stderr)
+
+    for path, shard in [(args.out_v14_broad, broad),
+                        (args.out_v14_ate_vsp_rcm, ate_vsp_rcm),
+                        (args.out_v14_rms, rms),
+                        (args.out_v14_taa, taa)]:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(shard, indent=2))
+        print(f"wrote {len(shard):,} rows to {path}", file=sys.stderr)
+
+    if args.report:
+        report = {
+            "mode": "four-shard",
+            "input": str(args.input),
+            "val": str(args.val),
+            "input_rows": len(rows),
+            "val_overlap_excluded": val_overlap,
+            "v14_broad_rows": len(broad),
+            "v14_ate_vsp_rcm_rows": len(ate_vsp_rcm),
+            "v14_rms_rows": len(rms),
+            "v14_taa_rows": len(taa),
+            "v14_broad_top50_shortnames": _hist(broad, args.key_field),
+            "v14_ate_vsp_rcm_top50_shortnames": _hist(ate_vsp_rcm, args.key_field),
+            "v14_rms_top50_shortnames": _hist(rms, args.key_field),
+            "v14_taa_top50_shortnames": _hist(taa, args.key_field),
         }
         args.report.parent.mkdir(parents=True, exist_ok=True)
         args.report.write_text(json.dumps(report, indent=2))

@@ -1,0 +1,377 @@
+# v14 Training Plan -- Sophia CTI SFT
+Authored 2026-05-08 post-v13 14B benchmark sweep.
+Status: planning. Supersedes v13_plan.txt
+(tmpl_gen/templates/05072026/v13_plan.txt) for production releases;
+v13 launchers, HF repos, and dataset entries remain in-repo for
+reproducibility and ablation.
+
+This plan is the OPERATIONAL reference (corpus targets, recipe
+specifics, deliverables, sign-off). The narrative -- v13 post-mortem,
+strategy, falsified hypotheses, multi-checkpoint experimental protocol
+-- lives in tmpl_gen/templates/05082026/README.md (the cumulative
+running dialogue). Do not duplicate; defer to README on conflict and
+update both together.
+
+## 0. One-paragraph overview (full narrative in README §1, §2, §5)
+
+v13 shipped at weighted total 54.5, regressing -2.8 pp vs v12 and
+under-shooting every prior 14B vintage including v7 on RMS. The v13
+hypothesis -- best-of-vintage template composition under v9-shape
+recipe -- was falsified across all five axes the composition targeted
+(README §2.3). v14 is the controlled experiment that disentangles
+recipe from composition: v13 content substrate held (v12 manifest +
+v13 TAA.CANON / MISP.CANON / SOC.GEN / CM / MCQ.EXT generator
+additions), v9-narrow AB.RMS.{1..6} re-bound in place of v12's
+expanded AB.RMS.4{a..j}+AB.RMS.5{a..j} catalog-lookup variants
+(subtractive change: v9 RMS section is a strict SUBSET of v12's),
+four-phase training (A broad / B
+3-axis / D-RMS narrow / D-TAA narrow PARALLEL with D-RMS, plus a
+chained production candidate), four HF checkpoints for clean
+per-phase attribution. Hard pass criterion: TAA Classic combined
+>= 52.0, the Qwen2.5-14B-Instruct base-model floor that every prior
+SFT vintage has regressed below.
+
+## 1. Corpus shape targets (per-shard row counts)
+
+| shard | target rows | min (gate) | max | actual | composition |
+|-------|------------:|-----------:|----:|-------:|-------------|
+| `_v14_broad`         | ~194,000 | 180,000 | 210,000 | 193,703 | M/A/W/V/S/P/E/X.* + JS.* (non-axis) + AB.MCQ.* + MCQ.EXT.* + SOC.* + SOC.GEN.* + CM.* (everything not in the 3 axis shards) |
+| `_v14_ate_vsp_rcm`   | ~33,000  | 30,000  | 42,000  | 32,810  | AB.ATE.{1..3} + AB.VSP.{1,2} + AB.RCM.{1,2} + V.CPE + JS.{ATE,VSP,RCM}.* |
+| `_v14_rms`           | ~13,000  | 11,000  | 16,000  | 12,608  | hybrid RMS slice: AB.RMS.4 + AB.RMS.5 byte-identical to v9 (Count=600 each, but each generates ~44 rows -- M-control catalog cardinality is the binding constraint, identical to v9 actual); AB.RMS.6 byte-identical to v9; AB.RMS.{1,2,3a..3h} keep v13 bodies (v10's `<desc>` wrappers around `{ap.description}`); JS.RMS.{1..8} byte-identical to v9. Drops v13's AB.RMS.4{b..j}+AB.RMS.5{b..j} 18 paraphrase variants (~792 rows). |
+| `_v14_taa`           | ~33,000  | 20,000  | 35,000  | 32,783  | AB.TAA.{1..5} + AB.TAA.IE.{1,2} + AB.TAA.NEG.1 + JS.TAA.{1..3} + JS.TAA.IE.1 + JS.TAA.NEG.1 + TAA.CANON.{1,2,3} + MISP.CANON.{1,2,3}. IE/NEG variants (~5,900 rows) routed to TAA shard via `AB.TAA.*`/`JS.TAA.*` glob in splitter rule 2; consistent with §3.4 D-TAA "dedicated TAA training phase" framing (no broad-shard dilution). |
+| `_v14_val`           | ~650     | 500     | 800     | 650     | held-out 50 rows per axis (RMS/ATE/VSP/RCM/MCQ/SOC/TAA/TAA-CANON/CM/MS), pre-dedup, 13-gram leak filter |
+
+Actual clean-corpus rows on disk: 271,906 train + 650 val =
+272,556 (shard sum 271,904 = train 271,906 - 2 train rows whose
+(i,i,o) tuples collided with val rows and were intentionally
+dropped by the splitter for train/val leak prevention; both were
+TAA.CANON.2 rows). Pre-shard merged corpus: 273,407 balanced ->
+272,556 clean (851 dedup-drop). v14 totals are slightly above the
+v13 substrate's 271,722 train because the TAA total cap is +1,000
+rows (3,500 -> 4,500).
+
+Per-§3.1 (README) the TAA total cap at Phase 4 is raised from 3,500
+to **4,500** (`taa_actor_balance.py --max-rows-per-family-total
+4500`). This is the only Phase 1-8 numeric change vs v13.
+
+Eval-axis density target: >= 47% (v13: 43.3%; v14 lift comes from
+the TAA cap raise (+1K), not from net RMS row growth -- v9-narrow
+RMS templates have similar total Count to v12's expanded section).
+
+## 2. Build pipeline deltas vs v13 (operational details)
+
+Carried verbatim from v13 -- see _v13_build/watcher.sh:
+
+  - Phases 1, 2, 3, 3b, 3c, 3d, 3e, 4 (with cap=4500), 5, 6, 6b, 7, 8
+
+CHANGED for v14 -- see _v14_build/watcher.sh (to be authored as a
+v13 fork):
+
+  - Phase 9: replace `split_corpus_for_phases.py --two-phase` with
+    `--four-shard`. The new mode is a v14 extension to the v12 splitter
+    that emits four disjoint shards per §1 above. Each row appears in
+    exactly one shard except SOC.* which lives only in `_v14_broad`
+    (no SOC narrow drill in v14; SOC narrow drilling is a v15
+    hypothesis per README §11 risk #2 and §2.4 root-cause #5).
+
+Splitter rule (precedence top-to-bottom; first match wins):
+
+  1. shortname matches `^AB\.RMS\.|^JS\.RMS\.`                    -> `_v14_rms`
+  2. shortname matches `^AB\.TAA\.|^JS\.TAA\.|^TAA\.CANON\.|^MISP\.CANON\.` -> `_v14_taa`
+     (the AB.TAA.*/JS.TAA.* globs include AB.TAA.IE.{1,2} +
+     AB.TAA.NEG.1 + JS.TAA.IE.1 + JS.TAA.NEG.1 (~5,900 rows total);
+     keeping IE/NEG in the TAA shard rather than broad is consistent
+     with §3.4's D-TAA "dedicated TAA training phase" framing)
+  3. shortname matches `^AB\.(ATE|VSP|RCM)\.|^JS\.(ATE|VSP|RCM)\.|^V\.CPE`  -> `_v14_ate_vsp_rcm`
+  4. (everything else)                                            -> `_v14_broad`
+
+Output: `_v14_build/phase_split_report.json` with per-shard row
+counts, the pre-split clean-corpus row count, and the count of
+unmatched rows (expected: 0 -- every shortname falls into rule 4 if
+nothing earlier hits).
+
+No new generators, no new Source: tags, no licence-gate changes.
+v14 is a recipe/sharding experiment on the v13 content substrate.
+
+## 3. Training launcher specs (SFT/autotrain/run_sft_qwen25_14b_v14.sh)
+
+Five-pass launcher (one per training phase plus the chained
+production phase). The launcher accepts `--phase a|b|d-rms|d-taa
+|production|all` and `--dry-run`. Each phase saves one merged HF
+checkpoint per §4 below.
+
+### 3.1 Phase A -- broad re-anchor (v12 Phase A recipe verbatim)
+- Datasets   : `ift_data_2026_05_08_v14_broad`,
+               `tulu_3_sft_mixture`, `alpaca_en_demo`
+- 1 epoch, lr 1e-5, **cutoff 16384**, **packing OFF** (v12 Phase A)
+- Effective batch 8
+- save/eval every 500 steps
+- max_samples 200_000  (covers actual broad shard 193,703 + small headroom)
+- Resume from: base `Qwen/Qwen2.5-14B-Instruct`
+- Push to HF: NO (intermediate)
+
+### 3.2 Phase B -- ATE+VSP+RCM long-context drill (v12 Phase B minus RMS minus SOC)
+- Datasets   : `ift_data_2026_05_08_v14_ate_vsp_rcm`
+- 1 epoch, lr 5e-6, **cutoff 16384**, **packing OFF** (v12 Phase B)
+- Effective batch 8
+- save/eval every 400 steps
+- max_samples 36_000  (actual 32,810; headroom for shard regeneration drift)
+- Resume from: Phase A output dir
+- Push to HF: YES, `${HF_USERNAME}/athena-cti-sft-qwen25-14b-v14-ab`
+
+### 3.3 Phase D-RMS -- RMS-only narrow drill (v9 recipe, PARALLEL)
+- Datasets   : `ift_data_2026_05_08_v14_rms`
+- 1 epoch, lr 5e-6, **cutoff 8192**, **packing ON** (v9 recipe)
+- Effective batch 16 (v9)
+- save/eval every 100 steps
+- max_samples 13_000  (actual 12,608)
+- Resume from: Phase B output dir (the `v14-ab` checkpoint)
+- Push to HF: YES, `${HF_USERNAME}/athena-cti-sft-qwen25-14b-v14-rms`
+
+### 3.4 Phase D-TAA -- TAA-only narrow drill (v9 recipe, PARALLEL with D-RMS)
+- Datasets   : `ift_data_2026_05_08_v14_taa`
+- 1 epoch, lr 5e-6, **cutoff 8192**, **packing ON** (v9 recipe)
+- Effective batch 16 (v9)
+- save/eval every 100 steps
+- max_samples 33_000  (actual 32,783; lifted from 23_000 because IE/NEG variants route to TAA shard per §2 splitter rule 2)
+- Resume from: Phase B output dir (the `v14-ab` checkpoint, NOT D-RMS)
+- Push to HF: YES, `${HF_USERNAME}/athena-cti-sft-qwen25-14b-v14-taa`
+
+### 3.5 Phase D-TAA-on-RMS -- production chain (D-TAA on top of D-RMS)
+- Datasets   : `ift_data_2026_05_08_v14_taa`  (same as 3.4)
+- 1 epoch, lr 5e-6, **cutoff 8192**, **packing ON**
+- Effective batch 16
+- save/eval every 100 steps
+- max_samples 33_000  (actual 32,783; matches §3.4)
+- Resume from: D-RMS output dir (the `v14-rms` checkpoint)
+- Push to HF: YES, `${HF_USERNAME}/athena-cti-sft-qwen25-14b-v14`
+
+The `--phase all` driver runs A, B, D-RMS, D-TAA in sequence (D-RMS
+and D-TAA are nominally parallel -- they branch from the same `v14-ab`
+checkpoint -- but on a single 8xH100 box they run serially with
+`--resume_from_checkpoint` pointing at `v14-ab` for both). The
+production chain (Phase 3.5) runs after both narrow drills complete.
+
+Per-axis eval visibility wired through `--eval_dataset
+ift_data_2026_05_08_v14_val` on all five passes (v11 silent-regression
+fix carried). Phase A scores all axes; Phase B scores ATE/VSP/RCM;
+Phase D-RMS scores RMS; Phase D-TAA scores TAA Classic + Canonical;
+Phase D-TAA-on-RMS scores TAA Classic + Canonical + RMS (carry check).
+
+## 4. Multi-checkpoint protocol (4 HF pushes from one chain)
+
+| HF repo                                    | from phase | answers (full table in README §9) |
+|--------------------------------------------|------------|-----------------------------------|
+| `...-qwen25-14b-v14-ab`                    | 3.2 (B)    | Did dropping RMS+SOC from Phase B hold v12 scores? |
+| `...-qwen25-14b-v14-rms`                   | 3.3 (D-RMS)| Did v9-shape RMS narrow drill recover RMS? |
+| `...-qwen25-14b-v14-taa`                   | 3.4 (D-TAA)| Did TAA narrow drill cross the 52.0 base-model floor? |
+| `...-qwen25-14b-v14`                       | 3.5 (chain)| Production candidate (chained D-RMS -> D-TAA) |
+
+Benchmark sweep runs against ALL FOUR checkpoints (cybersoceval +
+cybermetric + AthenaBench-7) and the comparison-table verdict in
+README §9 selects the production checkpoint. Default: ship `v14`
+(production chain). Fallback: ship `v14-rms` and `v14-taa` as
+parallel branches if the chain regresses on either axis by >= 2 pp
+vs the corresponding parallel checkpoint.
+
+## 5. Pass criteria (full text in README §8)
+
+HARD (production gate; all must hold for `v14` to ship):
+- Weighted total >= **60.0** (v12=57.3; +2.7 pp from RMS recovery)
+- RMS combined  >= **60.0** (v9=65.8; budget 5.8 pp carry slip)
+- ATE           >= **56.0** (v12 hold + 0.5 pp buffer)
+- RCM           >= **68.0** (v12 hold)
+- VSP           >= **84.0** (v12 hold)
+- CKT           >= **69.0** (v12 hold)
+- SOC           >= **39.0** (v12 hold; SOC narrow drill = v15)
+- **TAA Classic combined >= 52.0** (Qwen2.5-14B-Instruct base; non-negotiable)
+
+STRETCH (reported, not gating):
+- TAA Classic combined >= 55.0 (base + 3 pp; "D-TAA productive, keep it")
+- TAA Canonical combined >= 38.7 (v12 hold; v13 was 24.8)
+- RMS combined >= 65.0 (v9 floor; "D-RMS fully recovered")
+- CyberMetric-2000 / -10000 >= v12 actuals
+- CyberSOCEval-malware / -TI >= v11 actuals (peak vintage)
+
+FAILURE -> v15 consequences (full text in README §8):
+- D-RMS fails to lift RMS by >= 3 pp vs v14-ab -> v15 stops narrow-
+  drilling RMS; budget shifts to RMS template/catalog expansion.
+- D-TAA fails to push TAA Classic combined to >= 52.0 -> v15+ drops
+  ALL TAA-specialised content (TAA.CANON, MISP.CANON, AB.TAA.*)
+  from training. Eval remains; training does not.
+- v14 (chain) regresses RMS or TAA by >= 2 pp vs the parallel single-
+  axis checkpoints -> ship v14-rms and v14-taa as separate variants;
+  unified production candidate deferred to v15.
+
+## 6. Fallback paths
+
+- If Phase D-RMS over-trains and damages adjacent axes (ATE/RCM/VSP
+  drop > 1 pp vs `v14-ab`): drop D-RMS to half a pass (max_samples
+  6_500) before re-launching the production chain. Record the
+  half-pass result as `v14-rms-half`.
+- If Phase D-TAA over-trains and damages broad knowledge (CKT/SOC
+  drop > 1 pp vs `v14-ab`): cap D-TAA at 15_000 samples (drop
+  MISP.CANON contribution) and re-launch. Record the capped result
+  as `v14-taa-mitre-only`.
+- If v9-narrow RMS templates yield < 11K rows after dedup (gate
+  floor in §1): drop the dedup threshold for AB.RMS.{1..6} only to
+  30 (from 50) for the Phase 5 pass. Do NOT lower the global threshold;
+  the threshold lives in the templates' Source-tag-conditional
+  override path in `dedup.py`.
+- If the four-shard splitter leaves > 0 unmatched rows (rule-4 catch
+  miss): widen rule 4's `_v14_broad` clause to a literal "everything
+  else" by removing the explicit shortname allowlist; record the
+  affected shortnames in `phase_split_report.json` for v15 audit.
+
+## 7. Hyperparameter notes (carried from v9/v12 unless flagged)
+
+- LR schedule: cosine, 5% warmup per phase, bf16. Per-phase LRs:
+  1e-5 / 5e-6 / 5e-6 / 5e-6 / 5e-6 (A/B/D-RMS/D-TAA/production).
+- Sequence packing: OFF in Phase A, OFF in Phase B (v12 carry); ON
+  in D-RMS, D-TAA, production (v9 narrow recipe). v13's "packing ON
+  in Phase B" reverted; the v9 packing setting belongs in narrow
+  phases only, not in long-context broad multi-axis Phase B.
+- Cutoff: 16384 in A and B (v12 carry); 8192 in D-RMS, D-TAA,
+  production (v9 narrow recipe).
+- Effective batch: 8 in A and B (v12 carry); 16 in D-RMS, D-TAA,
+  production (v9 narrow recipe).
+- DeepSpeed ZeRO-3 with auto offload on <4 GPUs (14B), forced offload
+  on (32B). Same DS config files as v9/v12/v13.
+- save_total_limit 2 per phase, save_only_model True.
+- enable_liger_kernel True. adamw_8bit optimiser; adamw_torch fallback.
+- group_by_length OFF (transformers>=5.2 removed it; v12+ launcher
+  hotfix carried).
+- load_best_model_at_end OFF per phase (incompatible with
+  save_only_model under DeepSpeed).
+- Inference-side max-len: 32768 native for Qwen2.5-14B; CyberSOCEval-TI
+  long-prompt rows use vLLM YaRN rope_scaling factor 2.0 (49152
+  max_model_len) per the v13 sweep convention.
+
+## 8. Deliverables checklist
+
+Code (this PR scope, when v14 is greenlit):
+
+- [ ] tmpl_gen/templates/05082026/Sophia-CTI-Templates-v14.txt
+      (manifest = v13 manifest verbatim with AB.RMS.4{a..j} +
+      AB.RMS.5{a..j} replaced by v9 AB.RMS.4 + AB.RMS.5; net result
+      = v12 substrate + v13 TAA/SOC/CM/MCQ.EXT additions held +
+      v9-narrow RMS slice)
+- [ ] tmpl_gen/templates/05082026/README.md (already authored;
+      cumulative running dialogue v0 -> v14)
+- [ ] tmpl_gen/templates/05082026/v14_plan.txt (this document)
+- [ ] tmpl_gen/templates/05082026/v14_row_count_gate.json (per-§1)
+- [ ] _v14_build/watcher.sh (forked from _v13_build/watcher.sh;
+      Phase 9 changed to --four-shard; Phase 4 cap=4500)
+- [ ] tmpl_gen/scripts/split_corpus_for_phases.py (extend with
+      --four-shard mode per §2 splitter rule)
+- [ ] SFT/data/dataset_info.json entries for:
+      ift_data_2026_05_08_v14_broad,
+      ift_data_2026_05_08_v14_ate_vsp_rcm,
+      ift_data_2026_05_08_v14_rms,
+      ift_data_2026_05_08_v14_taa,
+      ift_data_2026_05_08_v14_val
+- [ ] SFT/autotrain/run_sft_qwen25_14b_v14.sh (five-pass; --phase
+      a|b|d-rms|d-taa|production|all; --dry-run)
+- [ ] SFT/autotrain/run_sft_qwen25_32b_v14.sh (five-pass; deferred
+      until 14B production candidate passes §5 hard gates)
+- [ ] SFT/test/pipelines/models.py aliases:
+      athena-cti-sft-qwen25-14b-v14-ab-vllm,
+      athena-cti-sft-qwen25-14b-v14-rms-vllm,
+      athena-cti-sft-qwen25-14b-v14-taa-vllm,
+      athena-cti-sft-qwen25-14b-v14-vllm,
+      athena-cti-sft-qwen25-32b-v14-vllm
+
+Replaces/deprecates: nothing removed. v13 launcher, HF repos, and
+v13 dataset_info.json entries remain in the repo for reproducibility
+and ablation.
+
+## 9. Sign-off
+
+Pre-build:
+- [ ] README §1, §2 (post-mortem), §5 (deltas), §8 (gates) reviewed
+      and approved by user
+- [ ] Plan §1 (corpus targets), §3 (recipe specs), §5 (gates) match
+      README; numeric values cross-checked
+- [ ] v15 fallback paths in §5 / README §11 recorded so the failure
+      mode of v14 is a one-line decision, not a re-design
+
+Pre-train:
+- [ ] All §8 deliverables landed and committed
+- [ ] Phase 1 raw build complete; row counts in
+      `_v14_build/triples_audit.log` match §1 minimums
+- [ ] Watcher Phases 2-9 complete; row-count gate green; licence gate
+      green; phase_split_report.json shows 0 unmatched rows; per-shard
+      row counts within §1 min/max
+- [ ] dataset_info.json entries registered; HF dataset push (val
+      slice optional but recommended)
+- [ ] Smoke test on 32-row subset of `_v14_broad` against base
+      Qwen2.5-14B-Instruct: launcher --dry-run produces a
+      well-formed train_config.json for each of the 5 phases
+
+Post-train (per checkpoint):
+- [ ] Each of the 4 HF checkpoints uploaded and registered as a
+      vLLM alias
+- [ ] Full benchmark sweep (athena-7 + cybermetric-{2000,10000} +
+      cybersoceval-{malware,ti}) against each checkpoint
+- [ ] _print_sweep_summary.py output captured for each checkpoint;
+      per-checkpoint comparison table per README §9 produced
+- [ ] §5 hard-gate verdict recorded; production checkpoint chosen
+- [ ] 32B launch authorised iff 14B production candidate passes §5
+
+## 10. Authorship notes
+
+This document supersedes the v13 plan
+(tmpl_gen/templates/05072026/v13_plan.txt) for production releases.
+v13 launchers, HF repos, and dataset_info.json entries remain in-repo
+for reproducibility and ablation.
+
+Key changes from the v13 plan:
+- §0 reframed as one-paragraph overview pointing at README for the
+  full v13 post-mortem and v14 strategy narrative (was a duplicated
+  v12 post-mortem table in v13_plan).
+- §1 corpus shape table cut from per-family rows to per-shard rows
+  (the four-shard splitter is the v14-specific operation; per-family
+  detail lives in the v13_plan section that v14 inherits unchanged
+  via the v12 substrate).
+- §2 build-pipeline section reduced to the single deltas vs v13
+  (one phase changed: Phase 9 splitter mode; one parameter changed:
+  TAA cap 3500 -> 4500).
+- §3 launcher spec expanded to FIVE phases (was two in v13_plan); the
+  multi-checkpoint protocol in §4 is net-new for v14.
+- §5 pass criteria add the TAA Classic >= 52.0 hard gate (the
+  Qwen2.5-14B-Instruct base-model floor; non-negotiable per README §2.2).
+- §6 fallback paths reduced to the four most likely v14 failure modes
+  (was five in v13_plan including the licence-gate halt path which
+  v14 inherits unchanged).
+- §10 (was §12 in v13_plan) names the v13 baseline rather than v12.
+
+Dependencies on prior work:
+- v13 manifest (Sophia-CTI-Templates-v13.txt) is the verbatim
+  substrate for v14's manifest -- v13 itself = v12 manifest verbatim
+  plus v13 generator additions (TAA.CANON expansion, MISP.CANON
+  CC-0 layer, CM.*, MCQ.EXT.*, SOC.GEN.*, per-template Source:
+  tags). v14 only changes the RMS section: v13's expanded
+  AB.RMS.4{a..j} + AB.RMS.5{a..j} catalog-lookup variants are
+  replaced by v9's narrow AB.RMS.4 + AB.RMS.5 (verbatim from
+  tmpl_gen/templates/04302026/Sophia-CTI-Templates-v9_rms.txt).
+  AB.RMS.6 is byte-identical between v9 and v13/v14 (no v9 -> v13
+  drift; no edit needed). AB.RMS.{1, 2, 3a..3h} keep v13's bodies,
+  which differ from v9 only in that v10 wrapped the freeform
+  `{ap:attack-pattern.description}` field in `<desc>...</desc>`
+  parser-routing markers (semantic intent unchanged; held constant
+  with the rest of the v14 corpus to avoid a second confound).
+  JS.RMS.{1..8} are byte-identical between v9 and v13/v14 (no edit
+  needed). v14's RMS slice is therefore HYBRID: v9-narrow .4 + .5,
+  v13-with-`<desc>` .1 / .2 / .3, v9 == v13 .6 + JS.RMS.*.
+- v9 launcher (run_sft_qwen25_14b_v9.sh) is the authoritative
+  reference for narrow-phase shape (cutoff 8192 / packing ON /
+  batch 16); v14's D-RMS / D-TAA / production phases mirror it.
+- v13 build watcher (_v13_build/watcher.sh) is the basis for the
+  v14 watcher; v14 changes only Phase 9 shard mode and Phase 4 cap.
+- v13 stratified_shuffle.py, taa_actor_balance.py,
+  check_corpus_row_counts.py, check_corpus_licences.py,
+  misp_taa_generator.py are carried unchanged.
+- v13 split_corpus_for_phases.py needs the --four-shard mode
+  extension (per §2 splitter rule).
+- v13 build_val_slice.py is carried unchanged (axis rules already
+  cover all v14 axes).

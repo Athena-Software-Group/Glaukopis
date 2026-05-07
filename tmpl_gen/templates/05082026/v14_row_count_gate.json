@@ -1,0 +1,71 @@
+{
+  "_doc": "Per-family row-count gate for the v14 build pipeline. Per v14_plan.txt §1 and §2. Each entry is { axis, target, reject_if_below, shortname_patterns }. The build halts before train/val split if any family in this file is below its reject_if_below value in the post-dedup corpus. shortname_patterns are exact matches OR prefix matches (trailing '*' = prefix match). v13 -> v14 deltas: RMS doc updated to reflect the v9-narrow AB.RMS.4+AB.RMS.5 substitution (catalog-paraphrase block replaced; M-control catalog cardinality is the limiting factor, so floor unchanged at 11000); TAA-attribution max_allowed lifted 3850 -> 4950 to track the v14 §3.1 cap raise from 3500 -> 4500 (max_allowed = cap + 10% headroom, matching the v13 ratio); SOC floor held at 9000; all other axes unchanged.",
+  "axes": [
+    {
+      "_note": "v14 §3.1 delta 1: AB.RMS.4{a..j}+AB.RMS.5{a..j} (20 paraphrases at Count=50 each = 1000 declared rows for catalog-lookup) replaced by v9-narrow AB.RMS.4+AB.RMS.5 (Count=600 each = 1200 declared rows). M-control catalog (M1xxx) cardinality in current Neo4j is the binding constraint on per-anchor combos, not Count or template count, so target/floor unchanged from v13. v13 actual was 13,138 (RMS axis = AB.RMS.* + JS.RMS.*); v14 expected within +/-1K.",
+      "axis": "RMS",
+      "target": 13000,
+      "reject_if_below": 11000,
+      "shortname_patterns": ["AB.RMS.*", "JS.RMS.*"]
+    },
+    {
+      "axis": "ATE",
+      "target": 10000,
+      "reject_if_below": 8000,
+      "shortname_patterns": ["AB.ATE", "AB.ATE.*", "JS.ATE", "JS.ATE.*"]
+    },
+    {
+      "axis": "VSP",
+      "target": 15000,
+      "reject_if_below": 12000,
+      "shortname_patterns": ["AB.VSP.*", "V.CPE", "V.CPE.*"]
+    },
+    {
+      "axis": "RCM",
+      "target": 17000,
+      "reject_if_below": 14000,
+      "shortname_patterns": ["AB.RCM", "AB.RCM.*", "JS.RCM", "JS.RCM.*", "X.VW.*", "YN.VW.*"]
+    },
+    {
+      "_note": "v13 §3.1 collapsed v12's separate MCQ + MS axes into a single MCQ-combined axis with floor 10000. v14 carries this verbatim.",
+      "axis": "MCQ",
+      "target": 12000,
+      "reject_if_below": 10000,
+      "shortname_patterns": ["AB.MCQ", "AB.MCQ.*", "JS.MCQ", "JS.MCQ.*", "AB.MS.*", "JS.MS.*"]
+    },
+    {
+      "_note": "v14 §3.1 delta 3: TAA total cap lifted 3500 -> 4500 (rationale in v14 README §3.1 delta 3: D-TAA trains in its own dedicated phase where the cap's broad-shard dilution-prevention purpose does not apply). target lifted 3500 -> 4500 to track the cap; reject_if_below lifted 2800 -> 3600 to keep the v13 ratio (target * 0.8); max_allowed lifted 3850 -> 4950 (cap + 10% headroom, matching v13 ratio).",
+      "axis": "TAA-attribution",
+      "target": 4500,
+      "reject_if_below": 3600,
+      "max_allowed": 4950,
+      "shortname_patterns": ["AB.TAA.1", "AB.TAA.2", "AB.TAA.3", "AB.TAA.4", "AB.TAA.5", "JS.TAA.1", "JS.TAA.2", "JS.TAA.3"]
+    },
+    {
+      "axis": "TAA-IE-NEG",
+      "target": 6000,
+      "reject_if_below": 5000,
+      "shortname_patterns": ["AB.TAA.IE.*", "AB.TAA.NEG.*", "JS.TAA.IE.*", "JS.TAA.NEG.*"]
+    },
+    {
+      "_note": "v13 §3.1 lift held: floor 15000. MISP CC-0 galaxy expansion (~12K rows from ~700 canonical groups) plus v12 MITRE-seed generator (~10K rows) targets ~22,000 actual. MISP.CANON.* + TAA.CANON.* both match the prefix.",
+      "axis": "TAA-CANON",
+      "target": 22000,
+      "reject_if_below": 15000,
+      "shortname_patterns": ["TAA.CANON.*", "MISP.CANON.*"]
+    },
+    {
+      "_note": "v13 §3.1 SOC floor held at v12 proven threshold of 9000. v13 actual was 9,890 (SOC.* = v11 templates ~4,890 + SOC.GEN.* generator 5,000); the v11 template-driven SOC families saturate at the SigmaRule/malware Cypher cardinality on disk. v14 carries v13 SOC content verbatim; floor unchanged.",
+      "axis": "SOC",
+      "target": 10000,
+      "reject_if_below": 9000,
+      "shortname_patterns": ["SOC.*"]
+    },
+    {
+      "axis": "CM",
+      "target": 6000,
+      "reject_if_below": 5000,
+      "shortname_patterns": ["CM.*"]
+    }
+  ]
+}
