@@ -38,11 +38,13 @@
 #      (or GITHUB_TOKEN env / .env) is provided so HTTPS pulls/pushes against
 #      the private repo work without per-invocation prompts.
 #  10. Reclaims disk after install: prunes pip cache, conda package tarballs,
-#      apt cache, stale serve/bench logs (>7 days), /tmp scratch dirs, and
-#      vacuums journald to 200 MB. HF model caches under ~/.cache/huggingface
-#      are NEVER touched (use --no-disk-cleanup to skip entirely; the post-
-#      cleanup summary lists the largest HF cache entries so manual pruning
-#      can be done deliberately).
+#      apt cache, stale serve/bench logs (>7 days), any *.log files anywhere
+#      under SFT/ (>7 days), stale full-SFT checkpoint trees under SFT/saves/
+#      (>14 days), /tmp scratch dirs, and vacuums journald to 200 MB. HF model
+#      caches under ~/.cache/huggingface are NEVER touched (use --no-disk-
+#      cleanup to skip entirely; the post-cleanup summary lists the largest
+#      HF cache entries and the largest saves/ entries so manual pruning can
+#      be done deliberately).
 #
 # Usage:
 #   ./setup.sh [--mode all|train|test|vllm]
@@ -909,6 +911,50 @@ if [[ ${RUN_DISK_CLEANUP} -eq 1 ]]; then
         echo "  ok: pruned ${REMOVED_LOGS} stale serve/bench log(s) older than 7 days"
     fi
 
+    # Any other stray *.log files anywhere under SFT/ (>7 days). Catches
+    # autotrain launcher logs (_v*_train.log), api_baselines_*.log dumps from
+    # benchmark debugging, ad-hoc tee'd output, etc. that the test-specific
+    # rule above misses. mtime gate keeps the active run's log untouched.
+    if [[ -d "${SFT_DIR}" ]]; then
+        REMOVED_STRAY_LOGS=0
+        REMOVED_STRAY_LOGS=$(find "${SFT_DIR}" -name '*.log' -type f -mtime +7 -print -delete 2>/dev/null | wc -l)
+        echo "  ok: pruned ${REMOVED_STRAY_LOGS} stale *.log file(s) anywhere under SFT/ (>7 days)"
+    fi
+
+    # Stale full-SFT checkpoint trees under SFT/saves/<model>/<ft_type>/<run>/.
+    # A single Qwen2.5-14B bf16 checkpoint is ~29 GB; a multi-phase run leaves
+    # several of those plus optimizer states (when save_only_model is off)
+    # behind. On a long-lived training host these accumulate to hundreds of
+    # GB and crash the next run's first checkpoint write with the canonical
+    # "safetensors_rust.SafetensorError: No space left on device" trip --
+    # cf. SFT v14 Phase A 2026-05-07 incident, where ~700 GB of v8/v12/v13
+    # save trees crowded /home enough that the first save at step 1000
+    # failed mid-write. mtime gate of 14 days is well outside any plausible
+    # interactive workflow (active runs touch their checkpoint dir every few
+    # minutes); operators who want to keep something past 14d should push it
+    # to HF (upload_to_hf.py) or relocate it outside saves/.
+    SAVES_DIR="${SFT_DIR}/saves"
+    if [[ -d "${SAVES_DIR}" ]]; then
+        REMOVED_SAVES=0
+        TOTAL_FREED_KB=0
+        # mindepth/maxdepth=3 targets exactly <model>/<ft_type>/<run_dir>/
+        # so we never recurse into checkpoint shards or delete the model or
+        # finetuning-type wrappers themselves.
+        while IFS= read -r -d '' stale_dir; do
+            dir_kb=$(du -sk "${stale_dir}" 2>/dev/null | awk '{print $1}')
+            rm -rf "${stale_dir}"
+            REMOVED_SAVES=$((REMOVED_SAVES + 1))
+            TOTAL_FREED_KB=$((TOTAL_FREED_KB + ${dir_kb:-0}))
+        done < <(find "${SAVES_DIR}" -mindepth 3 -maxdepth 3 -type d -mtime +14 -print0 2>/dev/null)
+        if [[ ${REMOVED_SAVES} -gt 0 ]]; then
+            freed_human=$(awk -v kb="${TOTAL_FREED_KB}" \
+                'BEGIN { for (s="KMGT"; kb>=1024 && length(s)>1; s=substr(s,2)) kb/=1024; printf "%.1f%sB", kb, substr(s,1,1) }')
+            echo "  ok: pruned ${REMOVED_SAVES} stale checkpoint dir(s) under saves/ (>14 days, freed ~${freed_human})"
+        else
+            echo "  ok: no stale checkpoint dirs under saves/ (>14 days)"
+        fi
+    fi
+
     # Stale /tmp scratch from prior runs. torchinductor caches per-shape
     # kernels here; vllm's CUDA_VISIBLE_DEVICES probes leave _v81_probe etc.
     rm -rf /tmp/torchinductor_* /tmp/_v81_probe /tmp/v81_train.log 2>/dev/null \
@@ -934,6 +980,23 @@ if [[ ${RUN_DISK_CLEANUP} -eq 1 ]]; then
         du -sh "${HF_HUB_DIR}"/* 2>/dev/null | sort -rh | head -10 | sed 's/^/    /'
         echo "  Total: $(du -sh "${HF_HUB_DIR}" 2>/dev/null | awk '{print $1}')"
         echo "  To remove a single model: rm -rf ${HF_HUB_DIR}/models--<org>--<name>"
+    fi
+
+    # Surface remaining checkpoint trees (anything <14d that was preserved)
+    # so the operator can decide whether to push to HF + delete by hand.
+    if [[ -d "${SAVES_DIR:-${SFT_DIR}/saves}" ]]; then
+        SAVES_LIST_DIR="${SAVES_DIR:-${SFT_DIR}/saves}"
+        # Same depth as the cleanup pass: <model>/<ft_type>/<run_dir>/.
+        readarray -t saves_entries < <(
+            find "${SAVES_LIST_DIR}" -mindepth 3 -maxdepth 3 -type d 2>/dev/null
+        )
+        if [[ ${#saves_entries[@]} -gt 0 ]]; then
+            echo
+            echo "  SFT checkpoint footprint under saves/ (largest 10 entries; push to HF + delete to reclaim):"
+            du -sh "${saves_entries[@]}" 2>/dev/null | sort -rh | head -10 | sed 's/^/    /'
+            echo "  Total: $(du -sh "${SAVES_LIST_DIR}" 2>/dev/null | awk '{print $1}')"
+            echo "  To remove a single run: rm -rf ${SAVES_LIST_DIR}/<model>/<ft_type>/<run_dir>"
+        fi
     fi
 else
     echo
