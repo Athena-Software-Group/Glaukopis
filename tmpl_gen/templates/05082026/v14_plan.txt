@@ -50,15 +50,29 @@ post-build JSON files) returned the following p99 token counts:
 Every shard's p99 is below 4,096 tokens, meaning the v14 cutoffs
 (16,384 in A/B; 8,192 in D-RMS/D-TAA/production) were spending
 ~95% of every step on padding rather than on real tokens. v14.1 is
-a **launcher-only** hot-fix that lowers `--cutoff` to 4,096 in every
-phase and changes nothing else: corpus, topology (5-pass sequential),
-learning rates, effective batch sizes (8 for A/B, 16 for D-*),
-packing flags (OFF in A/B, ON in D-*), max-samples, save/eval
-cadences, and resume chaining are all preserved verbatim from v14.
-Step counts per phase are bit-identical to v14 in step-space, so
-the optimiser trajectory and LR schedule are unchanged; only
-step-time shrinks. Loss curves at any given step number are
-directly comparable to v14's.
+a **launcher-only** hot-fix that flips two performance-only knobs
+and changes nothing else about the recipe:
+
+  1. `--cutoff` lowered to 4,096 in every phase (was 16,384 in A/B,
+     8,192 in D-RMS/D-TAA/production).
+  2. `--disable_gradient_checkpointing True` added to `EXTRA_COMMON`
+     so it applies uniformly to all five phases. At cutoff 4,096 /
+     per_device_batch 1 / ZeRO-3 sharded across 8x80GB H100s,
+     activation memory fits comfortably under 30 GB per GPU; GC was
+     inherited from v14 (where cutoff 16,384 made it mandatory) but
+     is vestigial here. Disabling it removes the backward-pass
+     recomputation step (~15-30% throughput gain on top of the
+     cutoff reduction). GC is a forward/backward implementation
+     detail, not part of the model math: gradients, loss values,
+     optimiser trajectory, and final weights are unchanged.
+
+Corpus, topology (5-pass sequential), learning rates, effective
+batch sizes (8 for A/B, 16 for D-*), packing flags (OFF in A/B,
+ON in D-*), max-samples, save/eval cadences, and resume chaining
+are all preserved verbatim from v14. Step counts per phase are
+bit-identical to v14 in step-space, so the optimiser trajectory
+and LR schedule are unchanged; only step-time shrinks. Loss curves
+at any given step number are directly comparable to v14's.
 
   - Launcher        : `SFT/autotrain/run_sft_qwen25_14b_v14_1.sh`
   - HF push targets : `${HF_USERNAME}/athena-cti-sft-qwen25-14b-v14p1{-ab,-rms,-taa,}`
@@ -71,9 +85,10 @@ directly comparable to v14's.
   - Datasets        : `ift_data_2026_05_08_v14_{broad,ate_vsp_rcm,rms,taa,val}`
                       -- byte-identical to v14; same JSON files
 
-Estimated total wall-time: ~10-12 h (vs v14's ~32 h projected),
-dominated by Phase A. Phase B / D-RMS / D-TAA / production each
-land in the ~45 min - ~1.5 h band per phase.
+Estimated total wall-time after both knobs: ~9-11 h (vs v14's ~32 h
+projected; cutoff alone gave ~10-12 h, GC-off trims a further
+15-30%), dominated by Phase A. Phase B / D-RMS / D-TAA / production
+each land in the ~45 min - ~1.5 h band per phase.
 
 The original v14 launcher (`run_sft_qwen25_14b_v14.sh`) and its
 HF repo namespace (`...-v14{-ab,-rms,-taa}`) remain in-repo for
@@ -152,12 +167,16 @@ checkpoint per §4 below.
 
 > **v14.1 supersession**: production execution uses
 > `SFT/autotrain/run_sft_qwen25_14b_v14_1.sh`, which is identical
-> to the v14 launcher except every `--cutoff` is 4096 (see §0.1).
-> The §3.1-§3.5 cutoff values below are the v14 originals; v14.1
-> overrides them all to 4096. Everything else in §3 (datasets,
-> learning rates, batch math, packing, save/eval cadences, resume
-> chaining, HF push naming pattern modulo `v14`->`v14p1`) is
-> preserved verbatim.
+> to the v14 launcher except for two performance-only knobs: every
+> `--cutoff` is 4096, and `--disable_gradient_checkpointing True`
+> is added to `EXTRA_COMMON` (vestigial at cutoff 4096 / per-device
+> batch 1 / ZeRO-3 on 8x80GB; see §0.1). The §3.1-§3.5 cutoff values
+> below are the v14 originals; v14.1 overrides them all to 4096 and
+> turns GC off uniformly. Everything else in §3 (datasets, learning
+> rates, batch math, packing, save/eval cadences, resume chaining,
+> HF push naming pattern modulo `v14`->`v14p1`) is preserved
+> verbatim. Both knobs are pure speed/memory tradeoffs; model math
+> is unchanged.
 
 ### 3.1 Phase A -- broad re-anchor (v12 Phase A recipe verbatim)
 - Datasets   : `ift_data_2026_05_08_v14_broad`,
@@ -295,6 +314,12 @@ FAILURE -> v15 consequences (full text in README §8):
   phase to 4096** (see §0.1) -- length-distribution audit confirmed
   every shard's p99 fits below 4096 and the higher v14 cutoffs were
   spending ~95% of step time on padding.
+- Gradient checkpointing: ON in v14 (mandatory at cutoff 16384 to
+  fit activations under ZeRO-3). **v14.1 disables it uniformly via
+  `--disable_gradient_checkpointing True`** -- vestigial at cutoff
+  4096 / per_device_batch 1 / 8x80GB, removes the backward-pass
+  recomputation step (~15-30% throughput gain). No model-math
+  impact (gradients/loss/optimiser trajectory unchanged).
 - Effective batch: 8 in A and B (v12 carry); 16 in D-RMS, D-TAA,
   production (v9 narrow recipe).
 - DeepSpeed ZeRO-3 with auto offload on <4 GPUs (14B), forced offload
