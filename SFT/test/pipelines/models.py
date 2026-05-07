@@ -96,6 +96,7 @@ model_mapping = {
     'qwen2.5-32b-hf':      'Qwen/Qwen2.5-32B-Instruct',
     'llama-3-70b-hf':      'meta-llama/Meta-Llama-3-70B-Instruct',
     'llama3.3-70b-hf':     'meta-llama/Llama-3.3-70B-Instruct',
+    'deepseek-v3.1-terminus-hf': 'deepseek-ai/DeepSeek-V3.1-Terminus',
     'deepseek-v3.2-exp-hf': 'deepseek-ai/DeepSeek-V3.2-Exp',
     'deepseek-v4-pro-hf':  'deepseek-ai/DeepSeek-V4-Pro',
     'deepseek-v4-flash-hf': 'deepseek-ai/DeepSeek-V4-Flash',

@@ -235,6 +235,7 @@ step is needed.
 | `qwen2.5-14b-hf`     | `Qwen/Qwen2.5-14B-Instruct` |
 | `llama-3-70b-hf`     | `meta-llama/Meta-Llama-3-70B-Instruct` |
 | `llama3.3-70b-hf`    | `meta-llama/Llama-3.3-70B-Instruct` |
+| `deepseek-v3.1-terminus-hf` | `deepseek-ai/DeepSeek-V3.1-Terminus` |
 | `deepseek-v3.2-exp-hf` | `deepseek-ai/DeepSeek-V3.2-Exp` |
 
 Additional keys can be registered by adding an entry to `model_mapping` in

@@ -106,6 +106,13 @@ PRICING_PER_1K = {
         "input": [(0, float("inf"), 0.00014)],
         "output": [(0, float("inf"), 0.00028)],
     },
+    "deepseek-v3.1-terminus-hf": {
+        # novita / deepinfra (HF Router primary route). $0.27 in / $1.00 out
+        # per 1M. Fireworks fallback list at $0.56/$1.68; native deepseek API
+        # at $0.21/$0.79. Novita is the canonical HF Router price.
+        "input": [(0, float("inf"), 0.00027)],
+        "output": [(0, float("inf"), 0.00100)],
+    },
     "deepseek-v3.2-exp-hf": {
         # novita. $0.27 in / $0.40 out per 1M.
         "input": [(0, float("inf"), 0.00027)],
