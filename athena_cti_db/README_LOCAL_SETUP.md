@@ -36,12 +36,19 @@ After running the population script, downloaded data is cached under `threat_dat
 threat_data/
 ├── cti/                                  # MITRE ATT&CK STIX JSON files
 ├── engage/                               # MITRE ENGAGE JSON files
-├── cve/cves/                             # CVE JSON files (organized by year)
+├── cve/cves/                             # CVE JSON files (organized by year, 2024+)
+├── nvd/                                  # NVD CVE 2.0 bulk feeds (per-year ndjson batches)
 ├── cwe/                                  # CWE XML data
 ├── capec_latest.xml                      # CAPEC XML
 ├── known_exploited_vulnerabilities.json  # CISA KEV
-└── epss_scores_data.csv                  # EPSS scores
+├── epss_scores_data.csv                  # EPSS scores (yesterday's snapshot)
+├── d3fend/                               # MITRE D3FEND ontology + ATT&CK mappings (v1.4.0)
+├── sigma/                                # SigmaHQ detection rules (git clone)
+├── exploitdb/                            # ExploitDB files_exploits.csv (sparse clone)
+└── poc_github/                           # nomi-sec/PoC-in-GitHub year folders (2024+)
 ```
+
+> The full functional inventory (sources, schema, axes) lives in [`FUNCTIONAL_SCOPE.md`](./FUNCTIONAL_SCOPE.md). Source of truth for source URLs is `populate_neo4j_complete.py::DATA_SOURCES`.
 
 ---
 
@@ -149,15 +156,21 @@ python populate_neo4j_complete.py
    - MITRE ENGAGE (git clone, JSON)
    - CAPEC (XML)
    - CWE (ZIP / XML)
+   - MITRE D3FEND ontology + ATT&CK mappings (HTTPS, JSON-LD / SPARQL-JSON, pinned v1.4.0)
    - CVE (git sparse-checkout, 2024 onwards)
+   - NVD CVE 2.0 bulk feeds (HTTPS, gzip per year, 2024 onwards)
    - CISA KEV (JSON feed)
    - EPSS scores (gzipped CSV, yesterday's date)
+   - Sigma rules (git clone of `SigmaHQ/sigma`)
+   - ExploitDB (sparse-clone of `files_exploits.csv`)
+   - PoC-in-GitHub (sparse-clone of 2024+ year folders)
 
 2. **Parses and transforms** each source into nodes and relationships
 
 3. **Populates Neo4j**:
    - Creates constraints
-   - Inserts nodes: Tactics, Techniques, CAPEC, CWE, CVE, KEV, Engage, EPSS
+   - Inserts nodes: Tactics, Techniques, CAPEC, CWE, CVE, KEV, Engage, EPSS,
+     D3FENDTactic, D3FENDTechnique, SigmaRule, ExploitDBEntry, GithubPoC
    - Creates all intra- and cross-framework relationships
 
 ### Expected Output
@@ -184,15 +197,22 @@ INFO - ============================================================
 
 ## Data Sources
 
+All twelve sources are defined in `populate_neo4j_complete.py::DATA_SOURCES`. See [`FUNCTIONAL_SCOPE.md`](./FUNCTIONAL_SCOPE.md) for licence posture, retention, and node-label mapping per source.
+
 | Source | URL | Format |
 |--------|-----|--------|
 | **MITRE ATT&CK** | https://github.com/mitre/cti.git | Git / STIX2 JSON |
 | **MITRE ENGAGE** | https://github.com/mitre/engage.git | Git / JSON |
 | **CAPEC** | http://capec.mitre.org/data/xml/capec_latest.xml | XML |
 | **CWE** | http://cwe.mitre.org/data/xml/cwec_latest.xml.zip | ZIP / XML |
-| **CVE** | https://github.com/CVEProject/cvelistV5.git | Git / JSON |
+| **MITRE D3FEND** | https://d3fend.mitre.org/ontologies/d3fend/{version}/d3fend.json (+ `…/d3fend-full-mappings.json`) | JSON-LD / SPARQL-JSON (pinned v1.4.0) |
+| **CVE** | https://github.com/CVEProject/cvelistV5.git | Git sparse-checkout / JSON (2024+) |
+| **NVD** | https://nvd.nist.gov/feeds/json/cve/2.0 | HTTPS / per-year gzip (2024+) |
 | **CISA KEV** | https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json | JSON Feed |
 | **EPSS** | https://epss.cyentia.com/epss_scores-{date}.csv.gz | Gzipped CSV |
+| **Sigma** | https://github.com/SigmaHQ/sigma.git | Git clone / YAML rules |
+| **ExploitDB** | https://gitlab.com/exploit-database/exploitdb.git | Git sparse-clone / CSV |
+| **PoC-in-GitHub** | https://github.com/nomi-sec/PoC-in-GitHub.git | Git sparse-clone / per-CVE JSON (2024+) |
 
 ---
 
