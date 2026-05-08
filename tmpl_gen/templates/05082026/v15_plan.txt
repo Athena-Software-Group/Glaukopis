@@ -1,0 +1,172 @@
+v15 architecture plan -- parallel-branching specialists off the frozen v12 baseline
+====================================================================================
+
+Vintage label   : v15
+Architecture    : independent narrow-SFT branches off v12 (no chaining); optional
+                  mergekit combination at the integration step
+Wave-1 (W1)     : v12+TAA single-branch experiment (this document)
+Author date     : 2026-05-08 (lives in templates/05082026/ alongside v14/v14.1
+                  for now; v16 will get its own date-stamped vintage dir)
+
+NOTE: this plan does NOT introduce new IFT shards or templates. v15 W1 reuses
+the v14 TAA shard (ift_data_2026_05_08_v14_taa) verbatim. The vintage label
+refers to the SFT topology, not the corpus -- we are testing whether the
+v14 corpus produces different bench results when applied as an independent
+narrow specialist on top of v12, instead of chained as the final pass of a
+v14.1-style five-pass topology.
+
+
+1. Why v15 exists
+-----------------
+
+v14.1 shipped at weighted total 49.8 (vs v12's 57.3), a 7.5 pp regression.
+The five-pass chain (A -> B -> D-RMS -> D-TAA -> production) demonstrated:
+
+  - Each narrow drill (D-RMS, D-TAA) moved its target axis but regressed
+    others
+  - Phase A+B broad re-anchor was destructive to base-model general
+    capability (CyberSOCEval collapsed below the untrained Qwen base)
+  - The production chain (D-TAA on D-RMS) inherited both regressions
+
+The v14.1 post-mortem concluded that **chained sequential SFT causes
+catastrophic forgetting between phases** when each phase is broad enough to
+overwrite the previous phase's work. v12 worked despite being a 3-phase
+chain because each phase was deliberately narrow and small enough to
+preserve the prior phase's gains; v14.1 violated that invariant.
+
+v15 is the architectural pivot: instead of chaining narrow specialists
+on top of each other, train each one INDEPENDENTLY off the frozen v12
+baseline. If multiple specialists are needed in one deployable model, use
+mergekit (TIES / DARE-TIES / Linear / Task Arithmetic) at an integration
+step rather than chained SFT.
+
+This is the FIRST Glaukopis vintage to use parallel branching. v8, v9,
+v11, v12, v13, v14, v14.1 are all sequential chains of varying depth.
+
+
+2. Wave-1 (W1) scope -- v12+TAA single specialist
+--------------------------------------------------
+
+W1 is the cheapest possible test of the v15 hypothesis. Train ONE narrow
+specialist (TAA) off v12 and bench. If the standalone branch preserves
+v12's other-axis capability while improving TAA, the v15 architecture is
+validated and we proceed to W2 (additional specialists; SOC corpus
+authoring; mergekit integration). If it regresses other axes, we escalate
+to a merge sweep to recover. If TAA itself doesn't move, the bottleneck
+is data/recipe (template-bound TAA accuracy ceiling), not topology.
+
+Branch:        v12+TAA  (asg-ai/athena-cti-sft-qwen25-14b-v12-plus-taa)
+Base model:    asg-ai/athena-cti-sft-qwen25-14b-v12  (frozen; no retraining)
+Dataset:       ift_data_2026_05_08_v14_taa  (32,783 rows; CANON excluded)
+Recipe:        v9 narrow-drill (verbatim mirror of v14.1 Phase D-TAA)
+                 cutoff 4096, packing ON, lr 5e-6, 1 epoch
+                 effective batch 16  (per_device 1 x grad_accum 2 x 8 GPUs)
+                 max-samples 33,000
+                 eval/save every 100 steps
+                 gradient checkpointing OFF (v14.1 hot-fix carried forward)
+Launcher:      SFT/autotrain/run_sft_qwen25_14b_v12_plus_taa.sh
+Output dir:    SFT/saves/Qwen_Qwen2.5-14B-Instruct/full/v12_plus_taa_${TIMESTAMP}
+Wall-time:     ~6-8 h on 8xH100 (matches v14.1 Phase D-TAA observed step-time)
+
+
+3. Why CANON is excluded from the v12+TAA shard
+-------------------------------------------------
+
+ift_data_2026_05_05_v12_taa_canon (10,754 rows) is threat-actor alias
+resolution training data only ("APT29 = Cozy Bear = The Dukes = Nobelium
+= Midnight Blizzard"). v12 Phase C trained on it at lr 3e-6 and v12's
+TAA score reflects that narrow CANON-only training already.
+
+For v12+TAA we want to test whether BROADER TAA training (the full v14
+TAA shard, which includes Classic, Hard-Negative, IE, NEG variants and
+the full attribution-reasoning template surface) moves the model on TAA
+beyond what CANON-only memorisation in v12 produced. Including CANON
+again would conflate "did broader TAA help" with "did more CANON drilling
+help". The cleaner comparison is broad-shard-only.
+
+
+4. W1 decision criteria (post-bench)
+-------------------------------------
+
+After the v12+TAA bench result lands, classify the outcome and act:
+
+  Outcome A -- "ship as standalone specialist":
+    TAA Classic combined > v12 baseline + 5pp
+    AND every other measured axis >= v12 - 2pp (within bench noise)
+    AND weighted total >= v12 (currently 57.3)
+    -> v15 architecture validated; v12+TAA deploys as a TAA specialist
+    -> proceed to W2: additional specialists (RMS expansion, SOC corpus
+       authoring); mergekit integration only needed when N >= 2 specialists
+       must combine into one deployable model
+
+  Outcome B -- "merge to recover":
+    TAA Classic combined > v12 baseline + 5pp
+    BUT one or more axes regressed > 2pp vs v12
+    -> narrow SFT from healthy v12 still caused some forgetting;
+       Linear/Task-Arithmetic merge with v12 should recover the lost axes
+       at the cost of some TAA gain
+    -> author SFT/utils/run_merge.sh + mergekit conda env;
+       run merge sweep over alpha in {0.5, 0.7, 0.85, 0.95} (alpha = v12
+       weight; (1-alpha) = v12+TAA branch weight)
+    -> bench all candidates; pick best weighted-total winner
+
+  Outcome C -- "data/recipe issue":
+    TAA Classic combined <= v12 baseline
+    -> bottleneck is template-bound TAA accuracy ceiling (5% accurate vs
+       93% plausible pattern observed in v14.1) rather than topology
+    -> halt v15 W1; re-examine TAA shard for hard-negative coverage;
+       consider authoring v15-taa-v2 shard with explicit
+       (correct + 2-3 close-but-wrong) attribution pairs
+
+  Outcome D -- "net regression regardless of TAA":
+    Weighted total < v12 (57.3)
+    -> diagnose before any merge; do not deploy
+
+
+5. v15 architecture going forward (W2+ -- contingent on W1 outcome)
+--------------------------------------------------------------------
+
+If W1 lands as Outcome A or B, the v15 architecture as a whole is:
+
+      Qwen2.5-14B-Instruct
+            |
+            v
+          v12  (frozen baseline, already shipped)
+          /|\
+         / | \
+        v  v  v
+      +TAA +RMS +SOC ...   (independent narrow branches off v12)
+        \ | /
+         \|/
+          v
+       merged v15  (mergekit; TIES or Linear depending on W1 result)
+                   OR multi-specialist routed deployment if merge fails
+
+The W2+ branches not yet authored:
+  - v12+SOC: requires authoring CyberSOCEval-shaped training corpus
+    (long sandbox JSON -> behavioral classification; long TI report
+    -> structured Q&A). ~30-50K rows for malware track + ~20-40K for TI
+    track. ~3-5 weeks of corpus work. Highest-ROI specialist (v12 has
+    zero SOC training).
+  - v12+RMS-v2: existing v14_rms shard (12,608 rows) trained off v12
+    instead of v14p1-ab. Cheap (~6 h) and tests the v15 pattern on a
+    second axis. Low priority because v12 already includes Phase B
+    RMS training; expected gains are small.
+  - v12+TAA-v2: re-author TAA shard with explicit hard-negative
+    attribution pairs to break the 5%-accurate ceiling. Templates
+    work (~2-3 weeks) before training (~6-8 h). Medium priority;
+    contingent on W1 outcome A or B (if outcome C, this becomes high
+    priority).
+
+Wave-2 sequencing decisions deferred until W1 result lands.
+
+
+6. v16 forward note
+--------------------
+
+When v16 is designed it will get its own self-contained vintage directory
+(tmpl_gen/templates/<v16_date>/) with a fresh corpus, fresh templates,
+and fresh plan from scratch. v15's templates dir (this one, 05082026/)
+will remain frozen as the v14/v14.1/v15 vintage record. Per the project
+convention each vintage's templates dir is a self-contained snapshot of
+the corpus + plan + bench targets that produced its checkpoints.

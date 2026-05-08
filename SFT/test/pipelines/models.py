@@ -193,6 +193,16 @@ model_mapping = {
     'athena-cti-sft-qwen25-14b-v14p1-rms-vllm':                'asg-ai/athena-cti-sft-qwen25-14b-v14p1-rms',
     'athena-cti-sft-qwen25-14b-v14p1-taa-vllm':                'asg-ai/athena-cti-sft-qwen25-14b-v14p1-taa',
     'athena-cti-sft-qwen25-14b-v14p1-vllm':                    'asg-ai/athena-cti-sft-qwen25-14b-v14p1',
+    # v15 W1 experiment: v12+TAA single-phase narrow specialist. Trains the v14 TAA
+    # shard (ift_data_2026_05_08_v14_taa, 32,783 rows; CANON excluded) on top of
+    # the frozen v12 baseline using the v9 narrow recipe (cutoff=4096, packing=on,
+    # lr=5e-6, eff_bs=16). First test of the v15 parallel-branching architecture:
+    # does narrow per-axis SFT off a healthy v12 base preserve other-axis capability
+    # (vs v14.1's chained five-pass topology, which regressed below v12 across the
+    # board). Pushed by SFT/autotrain/run_sft_qwen25_14b_v12_plus_taa.sh. See
+    # tmpl_gen/templates/05082026/v15_plan.txt for the W1 decision tree (ship-as-
+    # specialist vs escalate-to-merge-sweep vs halt-on-data-issue).
+    'athena-cti-sft-qwen25-14b-v12-plus-taa-vllm':             'asg-ai/athena-cti-sft-qwen25-14b-v12-plus-taa',
     # HF Inference Providers route. Custom community fine-tunes are not in the
     # default Together/Fireworks/Novita/etc. catalogs; this alias only resolves
     # if the model is exposed via an HF Inference Endpoint or the legacy

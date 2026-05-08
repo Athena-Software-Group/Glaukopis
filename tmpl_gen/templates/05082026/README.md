@@ -1,4 +1,4 @@
-# Sophia CTI Templates — v14 / v14.1 (May 8, 2026 vintage)
+# Sophia CTI Templates — v14 / v14.1 / v15 (May 8, 2026 vintage)
 
 Multi-checkpoint SFT manifest. v14 is the first vintage authored as a
 **per-axis narrow-drilling experiment**: the v12 corpus and recipe are
@@ -130,6 +130,52 @@ The narrow-drilling experiment (the questions in §1, §2, §9) is
 unchanged: v14.1 still produces four HF checkpoints answering the
 four falsifiable questions, just on the `v14p1` namespace and
 faster.
+
+## 1.2 v15 architectural pivot (parallel branching off v12; W1 = v12+TAA)
+
+v14.1 shipped at weighted total **49.8** vs v12's **57.3**, a -7.5 pp
+regression that confirmed the five-pass chain (A → B → D-RMS → D-TAA →
+production) caused catastrophic forgetting between phases. Each narrow
+drill (D-RMS, D-TAA) moved its target axis but regressed others; the
+broad Phase A+B re-anchor was destructive to base-model general
+capability (CyberSOCEval collapsed below the untrained Qwen baseline);
+the production chain inherited both regressions.
+
+**v15 is the architectural pivot**: instead of chaining narrow specialists
+on top of each other, train each one INDEPENDENTLY off the frozen v12
+baseline. If multiple specialists are needed in a single deployable
+model, integrate them via mergekit (TIES / DARE-TIES / Linear / Task
+Arithmetic) at a separate merge step rather than via chained SFT. This
+is the **first Glaukopis vintage to use parallel branching** -- v8, v9,
+v11, v12, v13, v14, v14.1 are all sequential chains.
+
+v15 reuses the v14 corpus shards verbatim (no new IFT data); the vintage
+label refers to the SFT topology, not the corpus.
+
+  - Plan doc        : `tmpl_gen/templates/05082026/v15_plan.txt`
+  - W1 launcher     : `SFT/autotrain/run_sft_qwen25_14b_v12_plus_taa.sh`
+  - W1 base model   : `asg-ai/athena-cti-sft-qwen25-14b-v12`  (frozen; no retraining)
+  - W1 dataset      : `ift_data_2026_05_08_v14_taa`  (32,783 rows; CANON excluded)
+  - W1 recipe       : v9 narrow-drill (verbatim mirror of v14.1 Phase D-TAA)
+                       cutoff 4096, packing ON, lr 5e-6, 1 epoch, eff_bs 16
+  - W1 HF push      : `${HF_USERNAME}/athena-cti-sft-qwen25-14b-v12-plus-taa`
+  - W1 wall-time    : ~6-8 h on 8xH100
+
+W1 (Wave-1) tests the v15 hypothesis with the cheapest possible
+experiment: train ONE narrow specialist (TAA) off v12 and bench. The
+post-bench decision tree (full criteria in `v15_plan.txt §4`):
+
+  - Outcome A -- TAA ↑ AND other axes ≥ v12 - 2pp -> ship as standalone specialist;
+    architecture validated; proceed to W2 (additional specialists)
+  - Outcome B -- TAA ↑ BUT some axis regressed -> escalate to merge sweep
+    (mergekit Linear, α ∈ {0.5, 0.7, 0.85, 0.95}); pick best weighted-total winner
+  - Outcome C -- TAA ≤ v12 -> data/recipe issue; halt and re-author TAA shard
+    with hard-negative attribution pairs (template-bound accuracy ceiling)
+  - Outcome D -- weighted total < v12 (57.3) regardless of TAA -> diagnose; do not deploy
+
+The on-disk identifier is `v12_plus_taa` (HF/repo names disallow `+`);
+human-facing docs and conversation use `v12+TAA`. mergekit is not yet
+in the repo and is added only if W1 outcome is B.
 
 ## 2. v13 14B post-mortem (the regression analysis)
 
