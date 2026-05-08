@@ -175,6 +175,24 @@ model_mapping = {
     # passes v13_plan.txt §8.
     'athena-cti-sft-qwen25-14b-v13-vllm':                      'asg-ai/athena-cti-sft-qwen25-14b-v13',
     'athena-cti-sft-qwen25-32b-v13-vllm':                      'asg-ai/athena-cti-sft-qwen25-32b-v13',
+    # v14.1 four-phase 14B narrow-drilling experiment (cutoff-4096 +
+    # gradient-checkpointing-off hot-fix of v14; corpus/topology/LR/eff-bs
+    # held verbatim). Five sequential passes off Qwen2.5-14B-Instruct:
+    #   Phase A    broad re-anchor (no HF push)
+    #   Phase B    ATE+VSP+RCM long-context  -> v14p1-ab
+    #   Phase D-RMS narrow drill from v14p1-ab -> v14p1-rms (parallel branch)
+    #   Phase D-TAA narrow drill from v14p1-ab -> v14p1-taa (parallel branch)
+    #   Production D-TAA chained on D-RMS     -> v14p1 (full chain)
+    # Pushed by SFT/autotrain/run_sft_qwen25_14b_v14_1.sh. The four
+    # checkpoints isolate the narrow-drill effect of each axis (rms vs
+    # taa) and let the full-chain production candidate be compared
+    # against the parallel-branch checkpoints (decides chained vs
+    # parallel deployment per v14_plan.txt §9). 32B repo target reserved
+    # pending 14B v14p1 §8 pass. See tmpl_gen/templates/05082026/v14_plan.txt.
+    'athena-cti-sft-qwen25-14b-v14p1-ab-vllm':                 'asg-ai/athena-cti-sft-qwen25-14b-v14p1-ab',
+    'athena-cti-sft-qwen25-14b-v14p1-rms-vllm':                'asg-ai/athena-cti-sft-qwen25-14b-v14p1-rms',
+    'athena-cti-sft-qwen25-14b-v14p1-taa-vllm':                'asg-ai/athena-cti-sft-qwen25-14b-v14p1-taa',
+    'athena-cti-sft-qwen25-14b-v14p1-vllm':                    'asg-ai/athena-cti-sft-qwen25-14b-v14p1',
     # HF Inference Providers route. Custom community fine-tunes are not in the
     # default Together/Fireworks/Novita/etc. catalogs; this alias only resolves
     # if the model is exposed via an HF Inference Endpoint or the legacy
