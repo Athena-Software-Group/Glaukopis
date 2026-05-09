@@ -1,0 +1,21 @@
+{
+  "_doc": "Per-family row-count gate for the v16 build pipeline. Per tmpl_gen/templates/05102026/v16_plan.txt §2 and README §3. v16 is a TAA-only specialist shard: the Sophia-CTI-Templates-v16.txt manifest declares only the AB.TAA.{1..5}, AB.TAA.IE.*, AB.TAA.NEG.*, JS.TAA.{1..3}, JS.TAA.IE.*, JS.TAA.NEG.* families, with TAA.CANON.* and MISP.CANON.* purged outright (v15 W1 post-mortem in README §1.2). The v14 row-count gate's RMS / ATE / VSP / RCM / MCQ / SOC / CM / TAA-CANON axes are dropped from this file because v16 produces zero rows in those axes by design. The TAA-attribution and TAA-IE-NEG floors are lifted from v14 to track the Count: bumps applied in the v16 manifest. shortname_patterns are exact matches OR prefix matches (trailing '*' = prefix match). The build halts before train/val split if any family in this file is below its reject_if_below value in the post-dedup corpus.",
+  "axes": [
+    {
+      "_note": "v16 manifest §3 lifts AB.TAA.{1,2,3,5} Count: 1500-2000 -> 3000 each and JS.TAA.{1,2,3} Count: 400 -> 2500 each. Combined declared budget rises from ~7,800 to ~16,700 across AB.TAA.{1..5} + JS.TAA.{1..3}. Per-actor cap stays at 40 and per-primary grouping stays on for the AB.* templates, so post-balance actuals will be lower than the declared total; floor is sized to ~50% of the manifest target to give the actor cap headroom while still failing fast on a Neo4j misconfiguration that drops anchor cardinality. max_allowed protects against accidental Count: re-balloon (declared sum + 25% headroom).",
+      "axis": "TAA-attribution",
+      "target": 12000,
+      "reject_if_below": 8000,
+      "max_allowed": 21000,
+      "shortname_patterns": ["AB.TAA.1", "AB.TAA.2", "AB.TAA.3", "AB.TAA.4", "AB.TAA.5", "JS.TAA.1", "JS.TAA.2", "JS.TAA.3"]
+    },
+    {
+      "_note": "v16 manifest §3 lifts AB.TAA.IE.{1,2} Count: 1500 -> 2500 each, AB.TAA.NEG.1 Count: 1500 -> 2500, JS.TAA.IE.1 Count: 1000 -> 2000, JS.TAA.NEG.1 Count: 500 -> 2000. Combined declared budget rises from ~6,000 to ~11,500. Floor sized to ~70% of manifest target because IE/NEG anchors draw from the unbound MITRE ATT&CK catalogue (AB.TAA.IE.*) or use Per_primary_grouping: false (NEG.*), so per-actor balancing trims less aggressively than on attribution rows.",
+      "axis": "TAA-IE-NEG",
+      "target": 10000,
+      "reject_if_below": 7000,
+      "max_allowed": 14500,
+      "shortname_patterns": ["AB.TAA.IE.*", "AB.TAA.NEG.*", "JS.TAA.IE.*", "JS.TAA.NEG.*"]
+    }
+  ]
+}

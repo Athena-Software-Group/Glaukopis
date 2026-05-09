@@ -1,0 +1,166 @@
+v16 training plan -- v12+TAA-v2 specialist (v15 W1-rev; CANON-purged, JSON-bumped)
+====================================================================================
+
+Vintage label   : v16
+Architecture    : independent narrow-SFT branch off v12 (v15 parallel topology;
+                  no chaining; no mergekit at this stage)
+Author date     : 2026-05-10 (vintage dir tmpl_gen/templates/05102026/)
+Predecessor     : v15 W1 (asg-ai/athena-cti-sft-qwen25-14b-v12-plus-taa, trained
+                  on the v14 four-shard TAA slice; bench result post-mortem in
+                  tmpl_gen/templates/05102026/README.md §1.2)
+Operational ref : THIS FILE (corpus targets, recipe, deliverables, sign-off).
+                  Narrative -- v15 W1 post-mortem, design rationale, shard-
+                  composition diagnosis -- lives in README.md §1-§3.
+
+NOTE: v16 is a CORPUS rebuild of the v15 W1 specialist with the TAA shard
+re-authored from scratch off the local Neo4j athena-cti-db, NOT a recipe
+or topology change. Same v12 base, same v9-narrow recipe, same single-
+specialist topology. The change is shard composition (CANON purged,
+attribution+JSON bumped) and the dataset_info entry pointing the launcher
+at the new shard.
+
+
+1. Why v16 exists (one-paragraph overview)
+-------------------------------------------
+
+v15 W1 (asg-ai/athena-cti-sft-qwen25-14b-v12-plus-taa) confirmed the v15
+parallel-branching topology hypothesis -- the non-target axes were
+preserved within bench noise -- but failed to lift TAA Classic above the
+v12 baseline. A post-train shard composition audit (taa_actor_balance.py
+--dry-run + a shortname-prefix breakdown) revealed the v14 TAA shard
+ift_data_2026_05_08_v14_taa was 68.5% Canonical alias-resolution data
+(MISP.CANON 35.8% + TAA.CANON 32.7%; combined 22,447 of 32,783 rows).
+Canonical alias resolution is NOT measured by the formal TAA Classic
+benchmark, so the model spent two-thirds of its training capacity on
+a task the score ignores while only ~430 rows (1.3% of the shard)
+targeted the JSON-shaped attribution surface that CyberSOCEval-TI
+exercises. The v15 plan §3 description ("CANON excluded") was inaccurate
+relative to what the v14 watcher actually produced; the watcher's Phase
+3 (TAA.CANON generator) and Phase 3e (MISP TAA generator) were the
+source of the dilution.
+
+v16 corrects the shard composition by purging Canonical entirely and
+bumping the per-template Count: ceiling on every Classic and JSON-shaped
+attribution template, plus the IE/NEG hard-negative discrimination
+families (full delta table in Sophia-CTI-Templates-v16.txt §"v15 W1 ->
+v16 deltas"). The training topology is unchanged. The output checkpoint
+is asg-ai/athena-cti-sft-qwen25-14b-v16.
+
+
+2. Pipeline (v14 build with CANON / generator / four-shard phases dropped)
+---------------------------------------------------------------------------
+
+Build orchestrator: _v16_build/watcher.sh (forked from _v14_build/
+watcher.sh). The v14 phases retained, dropped, and changed:
+
+  Phase 0   seed-provenance gate          -- DROPPED   (no vendored seeds in v16)
+  Phase 1   poll make_dataset.sh PID      -- carry
+  Phase 2   validate raw json             -- carry
+  Phase 3   TAA.CANON generator merge     -- DROPPED   (v16 purges TAA.CANON)
+  Phase 3b  CM.* generator merge          -- DROPPED   (v16 is TAA-only)
+  Phase 3c  MCQ.EXT.* generator merge     -- DROPPED   (v16 is TAA-only)
+  Phase 3d  SOC.*.GEN.* generator merge   -- DROPPED   (v16 is TAA-only)
+  Phase 3e  MISP TAA generator merge      -- DROPPED   (v16 purges MISP.CANON)
+  Phase 4   TAA actor-balance             -- CHANGED   (cap lifted 40 -> 60
+                                                       to give the bumped v16
+                                                       attribution Counts more
+                                                       per-actor headroom;
+                                                       --max-rows-per-family-total
+                                                       UNBOUND because v16 is
+                                                       single-axis, no broad-
+                                                       shard dilution exists)
+  Phase 5   dedup against eval sets       -- carry     (n=13, drop>=50)
+  Phase 6   row-count gate                -- CHANGED   (v16 thresholds in
+                                                       v16_row_count_gate.json:
+                                                       only TAA-attribution and
+                                                       TAA-IE-NEG axes)
+  Phase 6b  licence-allowlist gate        -- carry
+  Phase 7   stratified shuffle            -- carry
+  Phase 8   val/train split               -- carry     (v16 paths via
+                                                       _v16_build/build_val_slice.py)
+  Phase 9   four-shard split              -- DROPPED   (v16 produces one shard)
+
+Generation step (Sophia pipeline) is invoked manually before the watcher:
+
+  bash tmpl_gen/data_generation/make_dataset.sh \
+       tmpl_gen/templates/05102026/Sophia-CTI-Templates-v16.txt \
+       _v16_build/triples \
+       SFT/data/ift_data_2026_05_10_v16.raw.json \
+       10 3500
+  echo "PID=$$" > _v16_build/build.pid
+  nohup bash _v16_build/watcher.sh > _v16_build/watcher.log 2>&1 &
+
+count_max raised 2000 -> 3500 to give the JS.TAA.{1,2,3} Count: 2500
+declarations enough headroom inside iftgen.py.
+
+Output paths (data path datestamp = 2026_05_10; the templates dir is
+also dated 05102026/ so the manifest, plan, gate, and shards share a
+date stamp):
+
+  Raw         : SFT/data/ift_data_2026_05_10_v16.raw.json
+  Balanced    : SFT/data/ift_data_2026_05_10_v16.balanced.json
+  Clean       : SFT/data/ift_data_2026_05_10_v16.json
+  Shuffled    : SFT/data/ift_data_2026_05_10_v16.shuffled.json
+  Validation  : SFT/data/ift_data_2026_05_10_v16_val.json     (~50 rows / axis)
+  Train (TAA) : SFT/data/ift_data_2026_05_10_v16_taa.json     (sole training shard)
+
+
+3. Recipe (verbatim mirror of v15 W1; only the dataset pointer changes)
+------------------------------------------------------------------------
+
+  Base model      : asg-ai/athena-cti-sft-qwen25-14b-v12  (frozen)
+  Dataset         : ift_data_2026_05_10_v16_taa
+  Eval dataset    : ift_data_2026_05_10_v16_val
+  Recipe          : v9 narrow-drill (cutoff 4096, packing ON, lr 5e-6, 1 epoch,
+                    eff_bs 16 = per_device 1 x grad_accum 2 x 8 GPUs,
+                    --max-samples 33000, eval/save every 100 steps,
+                    gradient checkpointing OFF carried from v14.1 hot-fix)
+  Launcher        : SFT/autotrain/run_sft_qwen25_14b_v12_plus_v16_taa.sh
+  Output dir      : SFT/saves/Qwen_Qwen2.5-14B-Instruct/full/v12_plus_v16_taa_${TIMESTAMP}
+  HF push target  : ${HF_USERNAME}/athena-cti-sft-qwen25-14b-v16
+  Wall-time       : ~6-8 h on 8xH100 (matches v15 W1 observed step-time)
+
+
+4. Decision criteria (post-bench)
+----------------------------------
+
+After the v16 bench result lands, classify the outcome:
+
+  Outcome A -- "v16 ships as the TAA specialist for v15":
+    TAA Classic combined > v12 baseline (11.0) + 5pp
+    AND every other measured axis >= v12 - 2pp
+    AND weighted total >= v12 (57.3)
+    -> shard composition was the v15 W1 bottleneck; v16 replaces v15 W1
+       as the canonical TAA branch in the parallel architecture
+    -> proceed to v15 W2 (additional specialists / SOC corpus authoring /
+       mergekit integration) per v15_plan.txt §5
+
+  Outcome B -- "v16 moves TAA but regresses an adjacent axis":
+    TAA Classic up but one or more axes regressed > 2pp vs v12
+    -> escalate to merge sweep with v12 (alpha sweep over Linear or
+       Task Arithmetic; see v15_plan.txt §4 Outcome B)
+
+  Outcome C -- "v16 still doesn't move TAA":
+    TAA Classic combined <= v12 baseline + 5pp
+    -> the bottleneck is template-bound TAA accuracy ceiling (5%-accurate
+       vs 93%-plausible pattern observed in v14.1 D-TAA), not shard
+       composition; v16 falsifies the dilution hypothesis
+    -> halt v16; author a v17 manifest with explicit hard-negative
+       attribution pairs (correct + 2-3 close-but-wrong) and chain-of-
+       thought rationales, AND/OR explore recipe adjustments (lr bump
+       to 1e-5, 2-epoch run with cosine schedule)
+
+  Outcome D -- "net regression regardless of TAA":
+    Weighted total < v12 (57.3)
+    -> diagnose before any deployment; do not ship
+
+
+5. Sign-off
+------------
+
+  Author          : (to be signed)
+  Manifest hash   : (sha256 of Sophia-CTI-Templates-v16.txt at build time)
+  Training run    : SFT/saves/.../v12_plus_v16_taa_${TIMESTAMP}
+  Bench run       : SFT/test/.../<bench_dir>
+  HF release      : asg-ai/athena-cti-sft-qwen25-14b-v16
+  Outcome         : (A / B / C / D per §4)
