@@ -22,10 +22,44 @@
 #   ./serve_and_bench.sh phi-4-vllm
 #   ./serve_and_bench.sh phi-4-vllm --tp 2 -- --suite athena --version 2 --batch 64
 #   ./serve_and_bench.sh llama-3-8b-vllm --tp 1 --max-len 8192 -- --batch 128
-#   # CyberSOCEval baseline (long TI report context, JSON-block answers):
-#   ./serve_and_bench.sh llama-3-8b-vllm --tp 1 --max-len 65536 \
-#       --extra "--gpu-memory-utilization 0.90 --max-num-seqs 64" \
+#
+# CyberSOCEval long-context serve sizing (see also serve_vllm.sh header):
+#   The TI rows embed full extracted PDF text in the prompt (CrowdStrike /
+#   CISA / NSA reports, frequently 5K-25K tokens). Serving at the default
+#   --max-len 4096 collapses to >85% parse errors as vLLM's retry-shrink
+#   path drops max_tokens to a floor that can't fit the JSON answer block.
+#   Pick --max-len from the table below based on the served model's native
+#   trained context (vllm fail-closes if --max-len exceeds the model's
+#   max_position_embeddings, since RoPE positions past the trained max
+#   produce NaN). Match --batch to --max-num-seqs so client concurrency
+#   does not queue beyond what the engine can hold.
+#
+#     Model family             Native ctx   --max-len   --max-num-seqs   --batch
+#     Qwen2.5-14B-Instruct     32768        32768       32               32
+#     Qwen2.5-32B-Instruct     32768        32768       16               16
+#     Llama-3.1-8B-Instruct    131072       65536       32-64            32-64
+#     Foundation-Sec-8B*       131072       49152       32               32  (Llama-3.1 base)
+#
+#   Qwen2.5-14B-Instruct on 2xH100, native 32K (validated v15 W1):
+#   ./serve_and_bench.sh athena-cti-sft-qwen25-14b-v12-plus-taa-vllm \
+#       --tp 2 --max-len 32768 \
+#       --extra "--gpu-memory-utilization 0.92 --max-num-seqs 32" \
 #       -- --suite cybersoceval --batch 32 --version 1 --overwrite --yes
+#
+#   Llama-3.1-8B baseline on 2xH100, 65K ctx:
+#   ./serve_and_bench.sh llama-3-8b-vllm --tp 2 --max-len 65536 \
+#       --extra "--gpu-memory-utilization 0.92 --max-num-seqs 64" \
+#       -- --suite cybersoceval --batch 64 --version 1 --overwrite --yes
+#
+#   Qwen2.5 with YaRN to 65K (only if 32K leaves a tail of overflows on
+#   the longest TI rows; YaRN slightly degrades short-prompt quality, so
+#   use sparingly). Note --hf-overrides not --rope-scaling -- the latter
+#   is not a vllm CLI flag:
+#   ./serve_and_bench.sh athena-cti-sft-qwen25-14b-v12-plus-taa-vllm \
+#       --tp 2 --max-len 65536 \
+#       --extra "--gpu-memory-utilization 0.92 --max-num-seqs 16 \
+#                --hf-overrides '{\"rope_scaling\":{\"rope_type\":\"yarn\",\"factor\":2.0,\"original_max_position_embeddings\":32768}}'" \
+#       -- --suite cybersoceval --batch 16 --version 1 --overwrite --yes
 #
 # Env vars:
 #   READY_TIMEOUT     seconds to wait for /v1/models (default 1800)
@@ -59,7 +93,7 @@ READY_POLL="${READY_POLL:-5}"
 BENCH_CONDA_ENV="${BENCH_CONDA_ENV:-}"
 
 if [[ $# -lt 1 || "$1" == "-h" || "$1" == "--help" ]]; then
-    sed -n '3,49p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    sed -n '3,83p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
     exit 0
 fi
 

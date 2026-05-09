@@ -37,6 +37,27 @@
 #   ./serve_vllm.sh --model meta-llama/Llama-3.1-8B \
 #       --chat-template /path/to/custom_llama3.jinja
 #
+# Long-context serving (CyberSOCEval):
+#   CyberSOCEval-TI rows embed full extracted PDF report text in the prompt
+#   (CrowdStrike / CISA / NSA / IC3, frequently 5K-25K tokens). The default
+#   --max-len 4096 collapses to >85% parse errors as vLLM's retry-shrink
+#   path drops max_tokens chasing the overflow. Pick --max-len from the
+#   table below based on the model's native trained context -- vllm fail-
+#   closes if --max-len exceeds max_position_embeddings (RoPE positions
+#   past the trained max produce NaN; do NOT set VLLM_ALLOW_LONG_MAX_MODEL_LEN).
+#
+#     Model family             Native ctx   --max-len   --extra (max-num-seqs)
+#     Qwen2.5-14B-Instruct     32768        32768       --max-num-seqs 32
+#     Qwen2.5-32B-Instruct     32768        32768       --max-num-seqs 16
+#     Llama-3.1-8B-Instruct    131072       65536       --max-num-seqs 32-64
+#     Foundation-Sec-8B*       131072       49152       --max-num-seqs 32  (Llama-3.1 base)
+#
+#   To extend a 32K-trained Qwen2.5 to 65K, pass YaRN config via vLLM's
+#   --hf-overrides (note: --rope-scaling is NOT a vllm CLI flag). Quoting
+#   inside --extra is preserved by the eval path below; escape inner double
+#   quotes with backslashes:
+#     --extra "--max-num-seqs 16 --hf-overrides '{\"rope_scaling\":{\"rope_type\":\"yarn\",\"factor\":2.0,\"original_max_position_embeddings\":32768}}'"
+#
 # Env vars consumed:
 #   HF_TOKEN / HUGGINGFACE_TOKEN   passed through to vllm serve
 #   VLLM_CONDA_ENV                 override --env-name (default: vllm)
@@ -70,7 +91,7 @@ while [[ $# -gt 0 ]]; do
         --env-name)          ENV_NAME="$2"; shift 2 ;;
         --extra)             EXTRA="$2"; shift 2 ;;
         -h|--help)
-            sed -n '3,42p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+            sed -n '3,63p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
             exit 0
             ;;
         *) echo "Unknown argument: $1" >&2; exit 1 ;;

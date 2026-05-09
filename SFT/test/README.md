@@ -360,6 +360,57 @@ VLLM_API_KEY=EMPTY                       # vllm ignores; SDK needs non-empty
 Override when running the benchmark against a non-default port or a
 remote vllm host.
 
+**CyberSOCEval long-context serve sizing**:
+
+The CyberSOCEval-TI rows embed the full extracted PDF text of CrowdStrike /
+CISA / NSA / IC3 reports in the prompt, frequently 5K-25K tokens. Serving
+at the AthenaBench default `--max-len 4096` collapses to >85% parse errors
+because vLLM's retry-shrink path drops `max_tokens` chasing the overflow
+until there's no room left for the JSON answer block. Pick `--max-len`
+based on the served model's native trained context — vLLM fail-closes if
+`--max-len` exceeds `max_position_embeddings`, and `VLLM_ALLOW_LONG_MAX_MODEL_LEN=1`
+is unsafe (RoPE positions past the trained max produce NaN).
+
+| Model family | Native ctx | `--max-len` | `--max-num-seqs` | `--batch` |
+|---|---:|---:|---:|---:|
+| Qwen2.5-14B-Instruct  | 32768 | 32768 | 32 | 32 |
+| Qwen2.5-32B-Instruct  | 32768 | 32768 | 16 | 16 |
+| Llama-3.1-8B-Instruct | 131072 | 65536 | 32-64 | 32-64 |
+| Foundation-Sec-8B (Llama-3.1 base) | 131072 | 49152 | 32 | 32 |
+
+Match `--batch` (client) to `--max-num-seqs` (server) so client concurrency
+does not queue beyond engine capacity. Validated v15 W1 invocation for the
+Qwen2.5-14B family on 2xH100:
+
+```bash
+bash SFT/test/utils/serve_and_bench.sh \
+    athena-cti-sft-qwen25-14b-v12-plus-taa-vllm \
+    --tp 2 --max-len 32768 --port 8000 \
+    --extra "--gpu-memory-utilization 0.92 --max-num-seqs 32" \
+    -- --suite cybersoceval --version 1 --batch 32 --overwrite --yes
+```
+
+To extend a 32K-trained Qwen2.5 to 65K (only if the 32K run leaves a tail
+of overflows on the longest TI rows — YaRN slightly degrades short-prompt
+quality, so use sparingly), pass YaRN config via vLLM's `--hf-overrides`.
+Note `--rope-scaling` is **not** a vllm CLI flag and will be rejected;
+the model-config key is `rope_scaling` (snake_case):
+
+```bash
+bash SFT/test/utils/serve_and_bench.sh \
+    athena-cti-sft-qwen25-14b-v12-plus-taa-vllm \
+    --tp 2 --max-len 65536 --port 8000 \
+    --extra "--gpu-memory-utilization 0.92 --max-num-seqs 16 \
+             --hf-overrides '{\"rope_scaling\":{\"rope_type\":\"yarn\",\"factor\":2.0,\"original_max_position_embeddings\":32768}}'" \
+    -- --suite cybersoceval --version 1 --batch 16 --overwrite --yes
+```
+
+The full per-task `max_new_tokens` cap (1024 for both
+`cybersoceval-malware` and `cybersoceval-ti`) is set centrally in
+`pipelines/models.py` (`TASK_MAX_NEW_TOKENS`) and does not need to be
+plumbed through the serve flags — only `--max-len` (the server's
+context window) must match the prompt size.
+
 **Limitations**:
 
 - The served model and the benchmark alias must point at the same HF repo
