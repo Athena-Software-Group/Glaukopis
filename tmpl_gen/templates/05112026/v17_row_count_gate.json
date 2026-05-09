@@ -1,0 +1,37 @@
+{
+  "_doc": "Per-family row-count gate for the v17 build pipeline. Per tmpl_gen/templates/05112026/v17_plan.txt §2. v17 is a chained CyberSOCEval-letter-set specialist shard built off v16; the Sophia-CTI-Templates-v17.txt manifest declares only the JS.CSE.TI.{GRP,MAL,CMP,NEG}.* and JS.CSE.MAL.{RPT,TAC,TGT,NEG}.* families. The v16 TAA-attribution and TAA-IE-NEG axes are dropped from this file because v17 produces zero rows in those axes by design (v16 supplies the TAA head via base-model weights). shortname_patterns are exact matches OR prefix matches (trailing '*' = prefix match). The build halts before train/val split if any family in this file is below its reject_if_below value in the post-dedup corpus.",
+  "axes": [
+    {
+      "_note": "JS.CSE.TI.GRP.{1,2,3} + JS.CSE.TI.MAL.{1,2,3} declared sum: 1500*3 + 2500 + 1500*2 = 10000. Floor sized to ~50% of declared to give the per-actor cap (60) headroom; the 187 intrusion-set anchor pool x 3 GRP cardinalities + 6 MAL cardinalities easily clears the floor. max_allowed sized at declared sum + 25% headroom to catch accidental Count: re-balloons.",
+      "axis": "CSE-TI-actor",
+      "target": 8000,
+      "reject_if_below": 5000,
+      "max_allowed": 13000,
+      "shortname_patterns": ["JS.CSE.TI.GRP.1", "JS.CSE.TI.GRP.2", "JS.CSE.TI.GRP.3", "JS.CSE.TI.MAL.1", "JS.CSE.TI.MAL.2", "JS.CSE.TI.MAL.3"]
+    },
+    {
+      "_note": "JS.CSE.TI.CMP.1 declared 1000 against the 25-campaign anchor pool. Floor sized low because campaign-bound rows are actor-pool-limited; the per-actor cap rarely engages but the count_max in the generator does. JS.CSE.TI.NEG.1 declared 1500 with Per_primary_grouping: false so the (grp, neg-set) pair diversifies; floor sized to ~70% of declared.",
+      "axis": "CSE-TI-other",
+      "target": 2200,
+      "reject_if_below": 1400,
+      "max_allowed": 3500,
+      "shortname_patterns": ["JS.CSE.TI.CMP.*", "JS.CSE.TI.NEG.*"]
+    },
+    {
+      "_note": "JS.CSE.MAL.RPT.{1,2,3} declared sum: 2500 + 1500 + 1500 = 5500 against the ~830 malware anchor pool. malware->attack-pattern edges are dense (~9,200) so cardinalities {1,2,3} all clear easily. Floor sized to ~55% of declared to give per-actor cap (60) and the {force ...} matrix (which prunes ~10-15% of candidate rows) headroom.",
+      "axis": "CSE-MAL-rpt",
+      "target": 4500,
+      "reject_if_below": 3000,
+      "max_allowed": 7000,
+      "shortname_patterns": ["JS.CSE.MAL.RPT.*"]
+    },
+    {
+      "_note": "JS.CSE.MAL.TAC.1 declared 1500 against the 14-tactic anchor pool. Tactics are a small set so the {force negta != ta} matrix is the binding constraint; some malware families with techniques across only 1-2 tactics may produce few unique rows. Floor sized to ~50% of declared. JS.CSE.MAL.TGT.1 declared 1500 against the 187-intrusion-set pool with mw.uses<intrusion-set inverse traversal; bound to malware families with >=1 documented operator (~40% of the malware catalogue). Floor sized to ~50% of declared. JS.CSE.MAL.NEG.1 declared 1000 with Per_primary_grouping: false; floor sized to ~70% of declared.",
+      "axis": "CSE-MAL-other",
+      "target": 3300,
+      "reject_if_below": 2000,
+      "max_allowed": 5000,
+      "shortname_patterns": ["JS.CSE.MAL.TAC.*", "JS.CSE.MAL.TGT.*", "JS.CSE.MAL.NEG.*"]
+    }
+  ]
+}

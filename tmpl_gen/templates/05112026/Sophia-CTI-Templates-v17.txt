@@ -1,0 +1,566 @@
+================================================================================
+Sophia CTI Templates -- v17 (Qwen2.5-14B-Instruct, CyberSOCEval-shape narrow
+                              specialist trained off the v16 TAA specialist;
+                              chained narrow SFT, NOT a parallel branch)
+================================================================================
+
+This file is the self-contained template manifest for the v17 training run.
+v17 is a CHAINED narrow specialist: the recipe trains a CyberSOCEval-shaped
+multi-select-MCQ head on top of asg-ai/athena-cti-sft-qwen25-14b-v16 (which
+itself sits on the v12 baseline). The architectural departure from the v15
+parallel-branching design is intentional and bounded: v17 introduces only
+JSON-letter-set output shapes that v16 does not produce, so the chained
+SFT is additive at the output surface rather than competing for capacity
+with the v16 TAA-attribution head. See v17_plan.txt §1 for the rationale
+and risk model.
+
+The v16 evaluation surfaced two specific gaps that v17 targets directly:
+  CyberSOCEval-Malware    accuracy 10.69%  avg_score 45.15%
+  CyberSOCEval-TI         accuracy 30.63%  avg_score 58.54%
+
+Both benchmarks score with Jaccard similarity on a set of MCQ letters
+emitted as a JSON object. v16 already produces the correct semantic
+neighbourhood for CSE-TI questions (the +27pp lift over v12 came from the
+JS.TAA.* family bump) but does not produce multi-select letter-set JSON,
+which is the shape the formal CSE evaluator scores against. v17 provides
+that shape across two benchmark-mirrored families:
+
+  JS.CSE.TI.*    (CSE-TI shape):    <json_object>{"correct_answers": [...]}</json_object>
+  JS.CSE.MAL.*   (CSE-Malware shape): bare {"correct_answers": [...]}
+
+v16 -> v17 deltas (manifest only)
+---------------------------------
+  (1) NEW family JS.CSE.TI.{GRP,MAL,CMP,NEG}.* -- multi-select MCQs
+      over MITRE ATT&CK group tradecraft with a synthetic intel-report
+      narrative prefix. Output shape mirrors PurpleLlama's
+      threat_intel_reasoning benchmark: <json_object>{"correct_answers":
+      ["A","C"]}</json_object>. Eight templates, ~13.5K declared rows.
+
+  (2) NEW family JS.CSE.MAL.{RPT,TAC,TGT}.* -- multi-select MCQs over
+      MITRE ATT&CK malware-uses-technique with a synthetic Hybrid-
+      Analysis-style JSON detonation report prefix (vx_family,
+      mitre_attcks list, signatures excerpt). Output shape mirrors
+      PurpleLlama's malware_analysis benchmark: bare {"correct_answers":
+      ["A","B"]}. Six templates, ~9K declared rows.
+
+  (3) NO CARRY-OVER from v16 manifest. v17 declares ZERO TAA-attribution,
+      TAA-IE, TAA-NEG, CANON, MISP, RMS, MCQ, ATE, RCM, VSP, SOC, or CM
+      rows. The chained SFT preserves the v16 head for those axes via
+      base-model weights; the v17 shard is single-shape multi-select
+      letter-set MCQs only.
+
+  (4) RECIPE INHERITED from v15 W1 / v16 (v9-narrow): cutoff 4096,
+      packing on, lr 5e-6, eff_bs 16, 1 epoch. Per-actor cap 60 carried
+      over from v16. Only the base-model pointer changes from v12 ->
+      v16 in SFT/autotrain/run_sft_qwen25_14b_v16_plus_v17_cse.sh.
+
+  (5) Estimated v17 declared total: ~22,500 rows. Estimated actual yield
+      after taa_actor_balance.py (per-actor cap 60) and
+      dedup_against_evals.py: ~15-18K rows, ~12K CSE-TI + ~6K CSE-MAL.
+
+  (6) ZERO CONTAMINATION. v17 emits zero rows derived from the
+      CrowdStrike CyberSOCEval_data repository (Hybrid-Analysis JSONs
+      and CrowdStrike PDFs are the formal eval set). The detonation-
+      report and intel-report PREFIXES are entirely synthetic, generated
+      from MITRE ATT&CK relationships in the local athena-cti-db Neo4j.
+      The licence-allowlist gate (carried from v13/v14/v16) validates
+      every emitted row carries source=athena-cti-db-internal.
+
+The v17 corpus is licence-equivalent to v16's TAA slice: one source,
+one allowlist tag (athena-cti-db-internal), zero programmatic generators.
+
+================================================================================
+SECTION CSE-TI -- JS.CSE.TI.GRP.{1,2,3} multi-select group->technique
+                   (CyberSOCEval-TI output shape; intel-report context)
+================================================================================
+Source: athena-cti-db-internal
+Anchor selector {grp:intrusion-set.name} binds to MITRE ATT&CK Groups
+(187 documented intrusion sets in the local Neo4j; ~4,362 group->attack
+edges; ~647 group->malware edges; ~457 group->tool edges; 25 documented
+campaigns). Negatives drawn from the unbound attack-pattern catalogue
+(835 documented techniques) with {force ... != ...} guards for diversity.
+The intel-report PREFIX synthesises a short paragraph from the group
+description and a sample of its documented techniques so the model sees
+the question in a long-context shape that mirrors the CSE-TI eval set.
+The Answer wraps the JSON letter-set in <json_object>...</json_object>
+tags; the CSE-TI postprocessor uses this wrapper as its primary parse
+hook (see SFT/test/pipelines/post_processing/cybersoceval.py).
+--------------------------------------------------------------------------------
+
+JS.CSE.TI.GRP.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center answering a multi-select Cyber Threat Intelligence question grounded in a sanitised threat intelligence report. Analyse the report, reason about each option in turn against the documented tradecraft of the named intrusion set, and respond with a single JSON object containing the key "correct_answers" (a list of the letters of the correct options). It is possible that there are multiple correct answers, or a single correct answer. Wrap the JSON object in <json_object></json_object> tags and return only that wrapped object, no other commentary.
+Question: <*{grp:intrusion-set.name}*>Threat intelligence report excerpt: <desc>The intrusion set {grp.name} ({grp.mitre_id}) is documented in MITRE ATT&CK as employing the following techniques during observed operations: {ap1:grp.uses>attack-pattern.mitre_id} ({ap1.name}), {ap2:grp.uses>attack-pattern.mitre_id} ({ap2.name}), and additional tradecraft consistent with the group's profile. Group profile: {grp.description}</desc>
+
+Based on the intelligence above, which of the following MITRE ATT&CK techniques is {grp.name} ({grp.mitre_id}) documented as using? Select all that apply.
+A) {ap1.mitre_id} ({ap1.name})
+B) {ap2.mitre_id} ({ap2.name})
+C) {negap1:attack-pattern.mitre_id} ({negap1.name})
+D) {negap2:attack-pattern.mitre_id} ({negap2.name})
+E) {negap3:attack-pattern.mitre_id} ({negap3.name})
+Answer: <json_object><OBR>"correct_answers": <OBK>"A", "B"<CBK><CBR></json_object>
+{force ap1.mitre_id != ap2.mitre_id}
+{force negap1.mitre_id != ap1.mitre_id}
+{force negap1.mitre_id != ap2.mitre_id}
+{force negap2.mitre_id != ap1.mitre_id}
+{force negap2.mitre_id != ap2.mitre_id}
+{force negap3.mitre_id != ap1.mitre_id}
+{force negap3.mitre_id != ap2.mitre_id}
+{force negap1.mitre_id != negap2.mitre_id}
+{force negap1.mitre_id != negap3.mitre_id}
+{force negap2.mitre_id != negap3.mitre_id}
+Sample: grp
+Count: 2500
+
+JS.CSE.TI.GRP.2 Instruction: You are a CTI analyst at an enterprise Security Operations Center answering a multi-select Cyber Threat Intelligence question grounded in a sanitised threat intelligence report. Analyse the report, reason about each option in turn against the documented tradecraft of the named intrusion set, and respond with a single JSON object containing the key "correct_answers" (a list of the letters of the correct options). It is possible that there are multiple correct answers, or a single correct answer. Wrap the JSON object in <json_object></json_object> tags and return only that wrapped object, no other commentary.
+Question: <*{grp:intrusion-set.name}*>Threat intelligence report excerpt: <desc>The intrusion set {grp.name} ({grp.mitre_id}) is documented in MITRE ATT&CK as employing the following techniques during observed operations: {ap1:grp.uses>attack-pattern.mitre_id} ({ap1.name}), {ap2:grp.uses>attack-pattern.mitre_id} ({ap2.name}), {ap3:grp.uses>attack-pattern.mitre_id} ({ap3.name}), and additional tradecraft consistent with the group's profile. Group profile: {grp.description}</desc>
+
+Based on the intelligence above, which of the following MITRE ATT&CK techniques is {grp.name} ({grp.mitre_id}) documented as using? Select all that apply.
+A) {ap1.mitre_id} ({ap1.name})
+B) {ap2.mitre_id} ({ap2.name})
+C) {negap1:attack-pattern.mitre_id} ({negap1.name})
+D) {ap3.mitre_id} ({ap3.name})
+E) {negap2:attack-pattern.mitre_id} ({negap2.name})
+Answer: <json_object><OBR>"correct_answers": <OBK>"A", "B", "D"<CBK><CBR></json_object>
+{force ap1.mitre_id != ap2.mitre_id}
+{force ap1.mitre_id != ap3.mitre_id}
+{force ap2.mitre_id != ap3.mitre_id}
+{force negap1.mitre_id != ap1.mitre_id}
+{force negap1.mitre_id != ap2.mitre_id}
+{force negap1.mitre_id != ap3.mitre_id}
+{force negap2.mitre_id != ap1.mitre_id}
+{force negap2.mitre_id != ap2.mitre_id}
+{force negap2.mitre_id != ap3.mitre_id}
+{force negap1.mitre_id != negap2.mitre_id}
+Sample: grp
+Count: 1500
+
+
+JS.CSE.TI.GRP.3 Instruction: You are a CTI analyst at an enterprise Security Operations Center answering a multi-select Cyber Threat Intelligence question grounded in a sanitised threat intelligence report. Analyse the report, reason about each option in turn against the documented tradecraft of the named intrusion set, and respond with a single JSON object containing the key "correct_answers" (a list of the letters of the correct options). It is possible that there are multiple correct answers, or a single correct answer. Wrap the JSON object in <json_object></json_object> tags and return only that wrapped object, no other commentary.
+Question: <*{grp:intrusion-set.name}*>Threat intelligence report excerpt: <desc>The intrusion set {grp.name} ({grp.mitre_id}) is documented in MITRE ATT&CK as employing the technique {ap1:grp.uses>attack-pattern.mitre_id} ({ap1.name}) during observed operations, alongside related tradecraft consistent with the group's profile. Group profile: {grp.description}</desc>
+
+Based on the intelligence above, which of the following MITRE ATT&CK techniques is {grp.name} ({grp.mitre_id}) documented as using? Select all that apply.
+A) {negap1:attack-pattern.mitre_id} ({negap1.name})
+B) {negap2:attack-pattern.mitre_id} ({negap2.name})
+C) {ap1.mitre_id} ({ap1.name})
+D) {negap3:attack-pattern.mitre_id} ({negap3.name})
+E) {negap4:attack-pattern.mitre_id} ({negap4.name})
+Answer: <json_object><OBR>"correct_answers": <OBK>"C"<CBK><CBR></json_object>
+{force negap1.mitre_id != ap1.mitre_id}
+{force negap2.mitre_id != ap1.mitre_id}
+{force negap3.mitre_id != ap1.mitre_id}
+{force negap4.mitre_id != ap1.mitre_id}
+{force negap1.mitre_id != negap2.mitre_id}
+{force negap1.mitre_id != negap3.mitre_id}
+{force negap1.mitre_id != negap4.mitre_id}
+{force negap2.mitre_id != negap3.mitre_id}
+{force negap2.mitre_id != negap4.mitre_id}
+{force negap3.mitre_id != negap4.mitre_id}
+Sample: grp
+Count: 1500
+
+
+================================================================================
+SECTION CSE-TI-MAL -- JS.CSE.TI.MAL.{1,2,3} multi-select group->malware
+                       (CyberSOCEval-TI output shape; intel-report context)
+================================================================================
+Source: athena-cti-db-internal
+Mirrors JS.CSE.TI.GRP.* but binds the correct options to grp.uses>malware
+instead of grp.uses>attack-pattern. Negatives drawn from the unbound
+malware catalogue (~830 documented malware/software in the local Neo4j).
+The intel-report prefix references the group's documented software set.
+--------------------------------------------------------------------------------
+
+JS.CSE.TI.MAL.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center answering a multi-select Cyber Threat Intelligence question grounded in a sanitised threat intelligence report. Analyse the report, reason about each option in turn against the documented software set of the named intrusion set, and respond with a single JSON object containing the key "correct_answers" (a list of the letters of the correct options). It is possible that there are multiple correct answers, or a single correct answer. Wrap the JSON object in <json_object></json_object> tags and return only that wrapped object, no other commentary.
+Question: <*{grp:intrusion-set.name}*>Threat intelligence report excerpt: <desc>The intrusion set {grp.name} ({grp.mitre_id}) is documented in MITRE ATT&CK as deploying the malware families {mw1:grp.uses>malware.mitre_id} ({mw1.name}) and {mw2:grp.uses>malware.mitre_id} ({mw2.name}) during observed operations. Group profile: {grp.description}</desc>
+
+Based on the intelligence above, which of the following malware families is {grp.name} ({grp.mitre_id}) documented as using? Select all that apply.
+A) {mw1.mitre_id} ({mw1.name})
+B) {mw2.mitre_id} ({mw2.name})
+C) {negmw1:malware.mitre_id} ({negmw1.name})
+D) {negmw2:malware.mitre_id} ({negmw2.name})
+E) {negmw3:malware.mitre_id} ({negmw3.name})
+Answer: <json_object><OBR>"correct_answers": <OBK>"A", "B"<CBK><CBR></json_object>
+{force mw1.mitre_id != mw2.mitre_id}
+{force negmw1.mitre_id != mw1.mitre_id}
+{force negmw1.mitre_id != mw2.mitre_id}
+{force negmw2.mitre_id != mw1.mitre_id}
+{force negmw2.mitre_id != mw2.mitre_id}
+{force negmw3.mitre_id != mw1.mitre_id}
+{force negmw3.mitre_id != mw2.mitre_id}
+{force negmw1.mitre_id != negmw2.mitre_id}
+{force negmw1.mitre_id != negmw3.mitre_id}
+{force negmw2.mitre_id != negmw3.mitre_id}
+Sample: grp
+Count: 2500
+
+JS.CSE.TI.MAL.2 Instruction: You are a CTI analyst at an enterprise Security Operations Center answering a multi-select Cyber Threat Intelligence question grounded in a sanitised threat intelligence report. Analyse the report, reason about each option in turn against the documented software set of the named intrusion set, and respond with a single JSON object containing the key "correct_answers" (a list of the letters of the correct options). It is possible that there are multiple correct answers, or a single correct answer. Wrap the JSON object in <json_object></json_object> tags and return only that wrapped object, no other commentary.
+Question: <*{grp:intrusion-set.name}*>Threat intelligence report excerpt: <desc>The intrusion set {grp.name} ({grp.mitre_id}) is documented in MITRE ATT&CK as deploying the malware families {mw1:grp.uses>malware.mitre_id} ({mw1.name}), {mw2:grp.uses>malware.mitre_id} ({mw2.name}), and {mw3:grp.uses>malware.mitre_id} ({mw3.name}) during observed operations. Group profile: {grp.description}</desc>
+
+Based on the intelligence above, which of the following malware families is {grp.name} ({grp.mitre_id}) documented as using? Select all that apply.
+A) {mw1.mitre_id} ({mw1.name})
+B) {mw2.mitre_id} ({mw2.name})
+C) {negmw1:malware.mitre_id} ({negmw1.name})
+D) {mw3.mitre_id} ({mw3.name})
+E) {negmw2:malware.mitre_id} ({negmw2.name})
+Answer: <json_object><OBR>"correct_answers": <OBK>"A", "B", "D"<CBK><CBR></json_object>
+{force mw1.mitre_id != mw2.mitre_id}
+{force mw1.mitre_id != mw3.mitre_id}
+{force mw2.mitre_id != mw3.mitre_id}
+{force negmw1.mitre_id != mw1.mitre_id}
+{force negmw1.mitre_id != mw2.mitre_id}
+{force negmw1.mitre_id != mw3.mitre_id}
+{force negmw2.mitre_id != mw1.mitre_id}
+{force negmw2.mitre_id != mw2.mitre_id}
+{force negmw2.mitre_id != mw3.mitre_id}
+{force negmw1.mitre_id != negmw2.mitre_id}
+Sample: grp
+Count: 1500
+
+JS.CSE.TI.MAL.3 Instruction: You are a CTI analyst at an enterprise Security Operations Center answering a multi-select Cyber Threat Intelligence question grounded in a sanitised threat intelligence report. Analyse the report, reason about each option in turn against the documented software set of the named intrusion set, and respond with a single JSON object containing the key "correct_answers" (a list of the letters of the correct options). It is possible that there are multiple correct answers, or a single correct answer. Wrap the JSON object in <json_object></json_object> tags and return only that wrapped object, no other commentary.
+Question: <*{grp:intrusion-set.name}*>Threat intelligence report excerpt: <desc>The intrusion set {grp.name} ({grp.mitre_id}) is documented in MITRE ATT&CK as deploying the malware family {mw1:grp.uses>malware.mitre_id} ({mw1.name}) during observed operations. Group profile: {grp.description}</desc>
+
+Based on the intelligence above, which of the following malware families is {grp.name} ({grp.mitre_id}) documented as using? Select all that apply.
+A) {negmw1:malware.mitre_id} ({negmw1.name})
+B) {negmw2:malware.mitre_id} ({negmw2.name})
+C) {mw1.mitre_id} ({mw1.name})
+D) {negmw3:malware.mitre_id} ({negmw3.name})
+E) {negmw4:malware.mitre_id} ({negmw4.name})
+Answer: <json_object><OBR>"correct_answers": <OBK>"C"<CBK><CBR></json_object>
+{force negmw1.mitre_id != mw1.mitre_id}
+{force negmw2.mitre_id != mw1.mitre_id}
+{force negmw3.mitre_id != mw1.mitre_id}
+{force negmw4.mitre_id != mw1.mitre_id}
+{force negmw1.mitre_id != negmw2.mitre_id}
+{force negmw1.mitre_id != negmw3.mitre_id}
+{force negmw1.mitre_id != negmw4.mitre_id}
+{force negmw2.mitre_id != negmw3.mitre_id}
+{force negmw2.mitre_id != negmw4.mitre_id}
+{force negmw3.mitre_id != negmw4.mitre_id}
+Sample: grp
+Count: 1500
+
+
+================================================================================
+SECTION CSE-TI-CMP -- JS.CSE.TI.CMP.1 multi-select campaign->technique
+                       (CyberSOCEval-TI output shape; campaign-bound)
+================================================================================
+Source: athena-cti-db-internal
+Anchor selector binds to MITRE ATT&CK Campaigns (~52 documented in the
+local Neo4j). First-build pass with Count: 1000 yielded 888 rows under
+per_primary_grouping=true, leaving the CSE-TI-other axis below its 1400
+floor because the paired JS.CSE.TI.NEG.1 collapses to ~1 row per group
+under its 5-way distinct-negap constraint stack (~187 rows). Count: 2500
+brings expected yield to ~2200 here, lifting the axis to ~2387 rows
+which clears both the 1400 floor and the 2200 target. Per_primary_grouping
+is left at the gencfg default (true) so the engine keeps balancing across
+the 52 campaign anchors rather than over-sampling the techniques of one or
+two well-documented operations.
+--------------------------------------------------------------------------------
+
+JS.CSE.TI.CMP.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center answering a multi-select Cyber Threat Intelligence question grounded in a sanitised campaign report. Analyse the report, reason about each option in turn against the documented techniques used during the campaign, and respond with a single JSON object containing the key "correct_answers" (a list of the letters of the correct options). It is possible that there are multiple correct answers, or a single correct answer. Wrap the JSON object in <json_object></json_object> tags and return only that wrapped object, no other commentary.
+Question: <*{cp:campaign.name}*>Campaign report excerpt: <desc>The {cp.name} campaign ({cp.mitre_id}) is documented in MITRE ATT&CK as employing the techniques {ap1:cp.uses>attack-pattern.mitre_id} ({ap1.name}) and {ap2:cp.uses>attack-pattern.mitre_id} ({ap2.name}) during the operation. Campaign description: {cp.description}</desc>
+
+Based on the report above, which of the following MITRE ATT&CK techniques was the {cp.name} campaign documented as using? Select all that apply.
+A) {ap1.mitre_id} ({ap1.name})
+B) {ap2.mitre_id} ({ap2.name})
+C) {negap1:attack-pattern.mitre_id} ({negap1.name})
+D) {negap2:attack-pattern.mitre_id} ({negap2.name})
+E) {negap3:attack-pattern.mitre_id} ({negap3.name})
+Answer: <json_object><OBR>"correct_answers": <OBK>"A", "B"<CBK><CBR></json_object>
+{force ap1.mitre_id != ap2.mitre_id}
+{force negap1.mitre_id != ap1.mitre_id}
+{force negap1.mitre_id != ap2.mitre_id}
+{force negap2.mitre_id != ap1.mitre_id}
+{force negap2.mitre_id != ap2.mitre_id}
+{force negap3.mitre_id != ap1.mitre_id}
+{force negap3.mitre_id != ap2.mitre_id}
+{force negap1.mitre_id != negap2.mitre_id}
+{force negap1.mitre_id != negap3.mitre_id}
+{force negap2.mitre_id != negap3.mitre_id}
+Sample: cp
+Count: 2500
+
+
+================================================================================
+SECTION CSE-TI-NEG -- JS.CSE.TI.NEG.1 zero-correct multi-select discrimination
+                       (CyberSOCEval-TI output shape; trains "no option matches")
+================================================================================
+Source: athena-cti-db-internal
+The CyberSOCEval-TI evaluator allows zero-element correct_answers lists;
+this template trains the model to return an empty list when none of the
+five offered options match the documented tradecraft of the named group.
+All five options are unbound attack-pattern draws; the {force ... != ...}
+guards against the negatives accidentally landing on grp's documented
+techniques. Per_primary_grouping: false ensures option-set diversity
+across rows even though the anchor group is fixed via {grp:intrusion-set}.
+--------------------------------------------------------------------------------
+
+JS.CSE.TI.NEG.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center answering a multi-select Cyber Threat Intelligence question grounded in a sanitised threat intelligence report. Analyse the report, reason about each option in turn against the documented tradecraft of the named intrusion set, and respond with a single JSON object containing the key "correct_answers" (a list of the letters of the correct options). It is possible that there are multiple correct answers, a single correct answer, or no correct answer if none of the listed techniques are documented as part of the group's tradecraft. Wrap the JSON object in <json_object></json_object> tags and return only that wrapped object, no other commentary.
+Question: <*{grp:intrusion-set.name}*>Threat intelligence report excerpt: <desc>The intrusion set {grp.name} ({grp.mitre_id}) is documented in MITRE ATT&CK; its tradecraft is described below. Group profile: {grp.description}</desc>
+
+Based on the intelligence above, which of the following MITRE ATT&CK techniques is {grp.name} ({grp.mitre_id}) documented as using? Select all that apply.
+A) {negap1:attack-pattern.mitre_id} ({negap1.name})
+B) {negap2:attack-pattern.mitre_id} ({negap2.name})
+C) {negap3:attack-pattern.mitre_id} ({negap3.name})
+D) {negap4:attack-pattern.mitre_id} ({negap4.name})
+E) {negap5:attack-pattern.mitre_id} ({negap5.name})
+Answer: <json_object><OBR>"correct_answers": <OBK><CBK><CBR></json_object>
+{force negap1.mitre_id != negap2.mitre_id}
+{force negap1.mitre_id != negap3.mitre_id}
+{force negap1.mitre_id != negap4.mitre_id}
+{force negap1.mitre_id != negap5.mitre_id}
+{force negap2.mitre_id != negap3.mitre_id}
+{force negap2.mitre_id != negap4.mitre_id}
+{force negap2.mitre_id != negap5.mitre_id}
+{force negap3.mitre_id != negap4.mitre_id}
+{force negap3.mitre_id != negap5.mitre_id}
+{force negap4.mitre_id != negap5.mitre_id}
+Sample: grp
+Count: 1500
+Per_primary_grouping: false
+
+
+================================================================================
+SECTION CSE-MAL-RPT -- JS.CSE.MAL.RPT.{1,2,3} multi-select malware->technique
+                        (CyberSOCEval-Malware output shape; detonation-report
+                         JSON context)
+================================================================================
+Source: athena-cti-db-internal
+Anchor selector {mw:malware.name} binds to MITRE ATT&CK malware/software
+(~830 documented entries in the local Neo4j; ~9,200 malware->attack-pattern
+edges via the `uses` relationship). The synthetic detonation report prefix
+is JSON-shaped with vx_family, sha256 (literal "hash" -- the real CSE-MAL
+benchmark strips hashes via _strip_hashes before scoring), and a
+mitre_attcks list seeded from the malware's documented attack-pattern set.
+This trains the model to extract MITRE IDs from the JSON, match them
+against the multi-choice options, and emit the bare {"correct_answers":
+[...]} JSON shape that the CSE-Malware extractor parses (no <json_object>
+wrapper for this family; the bare-brace path is the malware extractor's
+primary parse hook -- see SFT/test/pipelines/post_processing/cybersoceval.py).
+--------------------------------------------------------------------------------
+
+JS.CSE.MAL.RPT.1 Instruction: You are a malware analyst at an enterprise Security Operations Center reviewing a sandbox detonation report and answering a multi-select question about the MITRE ATT&CK techniques the sample exhibits. Analyse the report, reason about each option in turn against the techniques present in the report, and respond with a single JSON object containing the key "correct_answers" (a list of the letters of the correct options). It is possible that there are multiple correct answers, or a single correct answer. Return only the JSON object, no other commentary.
+Question: Detonation report excerpt: <OBR>"vx_family": "{mw:malware.name}", "type": "binary", "sha256": "hash", "mitre_attcks": <OBK><OBR>"attck_id": "{ap1:mw.uses>attack-pattern.mitre_id}", "technique": "{ap1.name}"<CBR>, <OBR>"attck_id": "{ap2:mw.uses>attack-pattern.mitre_id}", "technique": "{ap2.name}"<CBR><CBK><CBR>.
+
+Based on the detonation report above, which of the following MITRE ATT&CK techniques does this sample exhibit? Select all that apply.
+A) {ap1.mitre_id} ({ap1.name})
+B) {ap2.mitre_id} ({ap2.name})
+C) {negap1:attack-pattern.mitre_id} ({negap1.name})
+D) {negap2:attack-pattern.mitre_id} ({negap2.name})
+E) {negap3:attack-pattern.mitre_id} ({negap3.name})
+Answer: <OBR>"correct_answers": <OBK>"A", "B"<CBK><CBR>
+{force ap1.mitre_id != ap2.mitre_id}
+{force negap1.mitre_id != ap1.mitre_id}
+{force negap1.mitre_id != ap2.mitre_id}
+{force negap2.mitre_id != ap1.mitre_id}
+{force negap2.mitre_id != ap2.mitre_id}
+{force negap3.mitre_id != ap1.mitre_id}
+{force negap3.mitre_id != ap2.mitre_id}
+{force negap1.mitre_id != negap2.mitre_id}
+{force negap1.mitre_id != negap3.mitre_id}
+{force negap2.mitre_id != negap3.mitre_id}
+Sample: mw
+Count: 2500
+
+JS.CSE.MAL.RPT.2 Instruction: You are a malware analyst at an enterprise Security Operations Center reviewing a sandbox detonation report and answering a multi-select question about the MITRE ATT&CK techniques the sample exhibits. Analyse the report, reason about each option in turn against the techniques present in the report, and respond with a single JSON object containing the key "correct_answers" (a list of the letters of the correct options). It is possible that there are multiple correct answers, or a single correct answer. Return only the JSON object, no other commentary.
+Question: Detonation report excerpt: <OBR>"vx_family": "{mw:malware.name}", "type": "binary", "sha256": "hash", "mitre_attcks": <OBK><OBR>"attck_id": "{ap1:mw.uses>attack-pattern.mitre_id}", "technique": "{ap1.name}"<CBR>, <OBR>"attck_id": "{ap2:mw.uses>attack-pattern.mitre_id}", "technique": "{ap2.name}"<CBR>, <OBR>"attck_id": "{ap3:mw.uses>attack-pattern.mitre_id}", "technique": "{ap3.name}"<CBR><CBK><CBR>.
+
+Based on the detonation report above, which of the following MITRE ATT&CK techniques does this sample exhibit? Select all that apply.
+A) {ap1.mitre_id} ({ap1.name})
+B) {ap2.mitre_id} ({ap2.name})
+C) {negap1:attack-pattern.mitre_id} ({negap1.name})
+D) {ap3.mitre_id} ({ap3.name})
+E) {negap2:attack-pattern.mitre_id} ({negap2.name})
+Answer: <OBR>"correct_answers": <OBK>"A", "B", "D"<CBK><CBR>
+{force ap1.mitre_id != ap2.mitre_id}
+{force ap1.mitre_id != ap3.mitre_id}
+{force ap2.mitre_id != ap3.mitre_id}
+{force negap1.mitre_id != ap1.mitre_id}
+{force negap1.mitre_id != ap2.mitre_id}
+{force negap1.mitre_id != ap3.mitre_id}
+{force negap2.mitre_id != ap1.mitre_id}
+{force negap2.mitre_id != ap2.mitre_id}
+{force negap2.mitre_id != ap3.mitre_id}
+{force negap1.mitre_id != negap2.mitre_id}
+Sample: mw
+Count: 1500
+
+JS.CSE.MAL.RPT.3 Instruction: You are a malware analyst at an enterprise Security Operations Center reviewing a sandbox detonation report and answering a multi-select question about the MITRE ATT&CK techniques the sample exhibits. Analyse the report, reason about each option in turn against the techniques present in the report, and respond with a single JSON object containing the key "correct_answers" (a list of the letters of the correct options). It is possible that there are multiple correct answers, or a single correct answer. Return only the JSON object, no other commentary.
+Question: Detonation report excerpt: <OBR>"vx_family": "{mw:malware.name}", "type": "binary", "sha256": "hash", "mitre_attcks": <OBK><OBR>"attck_id": "{ap1:mw.uses>attack-pattern.mitre_id}", "technique": "{ap1.name}"<CBR><CBK><CBR>.
+
+Based on the detonation report above, which of the following MITRE ATT&CK techniques does this sample exhibit? Select all that apply.
+A) {negap1:attack-pattern.mitre_id} ({negap1.name})
+B) {negap2:attack-pattern.mitre_id} ({negap2.name})
+C) {ap1.mitre_id} ({ap1.name})
+D) {negap3:attack-pattern.mitre_id} ({negap3.name})
+E) {negap4:attack-pattern.mitre_id} ({negap4.name})
+Answer: <OBR>"correct_answers": <OBK>"C"<CBK><CBR>
+{force negap1.mitre_id != ap1.mitre_id}
+{force negap2.mitre_id != ap1.mitre_id}
+{force negap3.mitre_id != ap1.mitre_id}
+{force negap4.mitre_id != ap1.mitre_id}
+{force negap1.mitre_id != negap2.mitre_id}
+{force negap1.mitre_id != negap3.mitre_id}
+{force negap1.mitre_id != negap4.mitre_id}
+{force negap2.mitre_id != negap3.mitre_id}
+{force negap2.mitre_id != negap4.mitre_id}
+{force negap3.mitre_id != negap4.mitre_id}
+Sample: mw
+Count: 1500
+
+
+================================================================================
+SECTION CSE-MAL-TAC -- JS.CSE.MAL.TAC.1 multi-select malware->tactic
+                        (CyberSOCEval-Malware output shape; tactic-axis question
+                         answered from a detonation report; chains malware->
+                         attack-pattern->x-mitre-tactic via the achieves edge)
+================================================================================
+Source: athena-cti-db-internal
+The CSE-Malware questions are not restricted to technique IDs; the
+truncated detonation report keeps the `tactic` field on each
+mitre_attcks entry (see SFT/test/benchmarks/cybersoceval_malware.py
+_truncate_report keep=("tactic","technique","attck_id")), so the
+underlying question template can ask about either axis. This template
+trains the model to answer the tactic-axis variant by chaining
+mw.uses>attack-pattern.achieves>x-mitre-tactic. The detonation prefix
+includes the tactic label inline so the model has the same evidence
+the real benchmark prompts carry. There are 14 documented tactics in
+ATT&CK, which means the negative pool is small and the {force ...}
+guards against negap landing on the bound tactic are essential.
+--------------------------------------------------------------------------------
+
+JS.CSE.MAL.TAC.1 Instruction: You are a malware analyst at an enterprise Security Operations Center reviewing a sandbox detonation report and answering a multi-select question about the MITRE ATT&CK tactics the sample achieves. Analyse the report, reason about each option in turn against the tactics implied by the techniques present in the report, and respond with a single JSON object containing the key "correct_answers" (a list of the letters of the correct options). It is possible that there are multiple correct answers, or a single correct answer. Return only the JSON object, no other commentary.
+Question: Detonation report excerpt: <OBR>"vx_family": "{mw:malware.name}", "type": "binary", "sha256": "hash", "mitre_attcks": <OBK><OBR>"attck_id": "{ap1:mw.uses>attack-pattern.mitre_id}", "technique": "{ap1.name}", "tactic": "{ta1:ap1.achieves>x-mitre-tactic.name}"<CBR>, <OBR>"attck_id": "{ap2:mw.uses>attack-pattern.mitre_id}", "technique": "{ap2.name}", "tactic": "{ta2:ap2.achieves>x-mitre-tactic.name}"<CBR><CBK><CBR>.
+
+Based on the detonation report above, which of the following MITRE ATT&CK tactics does this sample achieve? Select all that apply.
+A) {ta1.name}
+B) {ta2.name}
+C) {negta1:x-mitre-tactic.name}
+D) {negta2:x-mitre-tactic.name}
+E) {negta3:x-mitre-tactic.name}
+Answer: <OBR>"correct_answers": <OBK>"A", "B"<CBK><CBR>
+{force ap1.mitre_id != ap2.mitre_id}
+{force ta1.name != ta2.name}
+{force negta1.name != ta1.name}
+{force negta1.name != ta2.name}
+{force negta2.name != ta1.name}
+{force negta2.name != ta2.name}
+{force negta3.name != ta1.name}
+{force negta3.name != ta2.name}
+{force negta1.name != negta2.name}
+{force negta1.name != negta3.name}
+{force negta2.name != negta3.name}
+Sample: mw
+Count: 1500
+
+
+
+================================================================================
+SECTION CSE-MAL-TGT -- JS.CSE.MAL.TGT.1 single-correct multi-select
+                        malware->intrusion-set attribution
+                        (CyberSOCEval-Malware output shape; group attribution
+                         from a binary's behavioural profile)
+================================================================================
+Source: athena-cti-db-internal
+Inverse traversal mw.uses<intrusion-set binds the option to a group
+that is documented in MITRE ATT&CK as deploying this malware family.
+The detonation prefix references the binary by family name only, no
+attribution hint, so the model must reason from the malware-uses-group
+relationship encoded in MITRE ATT&CK rather than copy from the prompt.
+Held to a single correct answer to keep the {force ...} matrix
+tractable -- malware families typically have 1-3 documented operators.
+--------------------------------------------------------------------------------
+
+JS.CSE.MAL.TGT.1 Instruction: You are a malware analyst at an enterprise Security Operations Center reviewing a sandbox detonation report and answering a multi-select attribution question about the threat group documented as deploying this malware family. Analyse the report, reason about each option in turn against the documented operators of the named malware family, and respond with a single JSON object containing the key "correct_answers" (a list of the letters of the correct options). It is possible that there are multiple correct answers, or a single correct answer. Return only the JSON object, no other commentary.
+Question: Detonation report excerpt: <OBR>"vx_family": "{mw:malware.name}", "type": "binary", "sha256": "hash", "mitre_attcks": <OBK><OBR>"attck_id": "{ap1:mw.uses>attack-pattern.mitre_id}", "technique": "{ap1.name}"<CBR><CBK><CBR>.
+
+Based on the detonation report above, which of the following threat groups is documented in MITRE ATT&CK as deploying the {mw.name} malware family? Select all that apply.
+A) {neggrp1:intrusion-set.mitre_id} ({neggrp1.name})
+B) {neggrp2:intrusion-set.mitre_id} ({neggrp2.name})
+C) {grp:mw.uses<intrusion-set.mitre_id} ({grp.name})
+D) {neggrp3:intrusion-set.mitre_id} ({neggrp3.name})
+E) {neggrp4:intrusion-set.mitre_id} ({neggrp4.name})
+Answer: <OBR>"correct_answers": <OBK>"C"<CBK><CBR>
+{force neggrp1.mitre_id != grp.mitre_id}
+{force neggrp2.mitre_id != grp.mitre_id}
+{force neggrp3.mitre_id != grp.mitre_id}
+{force neggrp4.mitre_id != grp.mitre_id}
+{force neggrp1.mitre_id != neggrp2.mitre_id}
+{force neggrp1.mitre_id != neggrp3.mitre_id}
+{force neggrp1.mitre_id != neggrp4.mitre_id}
+{force neggrp2.mitre_id != neggrp3.mitre_id}
+{force neggrp2.mitre_id != neggrp4.mitre_id}
+{force neggrp3.mitre_id != neggrp4.mitre_id}
+Sample: mw
+Count: 1500
+
+
+================================================================================
+SECTION CSE-MAL-NEG -- JS.CSE.MAL.NEG.1 zero-correct multi-select discrimination
+                        (CyberSOCEval-Malware output shape; trains "no option
+                         matches" for a binary whose options are all unrelated
+                         techniques)
+================================================================================
+Source: athena-cti-db-internal
+Mirrors JS.CSE.TI.NEG.1 for the malware-analysis output shape (bare
+{"correct_answers": []}). All five options are unbound attack-pattern
+draws; the {force ... != ...} guards prevent negap from accidentally
+landing on the malware's documented techniques. Per_primary_grouping:
+false to diversify option-sets across rows even though the anchor
+malware is fixed via {mw:malware}.
+--------------------------------------------------------------------------------
+
+JS.CSE.MAL.NEG.1 Instruction: You are a malware analyst at an enterprise Security Operations Center reviewing a sandbox detonation report and answering a multi-select question about the MITRE ATT&CK techniques the sample exhibits. Analyse the report, reason about each option in turn against the techniques present in the report, and respond with a single JSON object containing the key "correct_answers" (a list of the letters of the correct options). It is possible that there are multiple correct answers, a single correct answer, or no correct answer if none of the listed techniques are present in the report. Return only the JSON object, no other commentary.
+Question: Detonation report excerpt: <OBR>"vx_family": "{mw:malware.name}", "type": "binary", "sha256": "hash", "mitre_attcks": <OBK><OBR>"attck_id": "{ap1:mw.uses>attack-pattern.mitre_id}", "technique": "{ap1.name}"<CBR><CBK><CBR>.
+
+Based on the detonation report above, which of the following MITRE ATT&CK techniques does this sample exhibit? Select all that apply.
+A) {negap1:attack-pattern.mitre_id} ({negap1.name})
+B) {negap2:attack-pattern.mitre_id} ({negap2.name})
+C) {negap3:attack-pattern.mitre_id} ({negap3.name})
+D) {negap4:attack-pattern.mitre_id} ({negap4.name})
+E) {negap5:attack-pattern.mitre_id} ({negap5.name})
+Answer: <OBR>"correct_answers": <OBK><CBK><CBR>
+{force negap1.mitre_id != ap1.mitre_id}
+{force negap2.mitre_id != ap1.mitre_id}
+{force negap3.mitre_id != ap1.mitre_id}
+{force negap4.mitre_id != ap1.mitre_id}
+{force negap5.mitre_id != ap1.mitre_id}
+{force negap1.mitre_id != negap2.mitre_id}
+{force negap1.mitre_id != negap3.mitre_id}
+{force negap1.mitre_id != negap4.mitre_id}
+{force negap1.mitre_id != negap5.mitre_id}
+{force negap2.mitre_id != negap3.mitre_id}
+{force negap2.mitre_id != negap4.mitre_id}
+{force negap2.mitre_id != negap5.mitre_id}
+{force negap3.mitre_id != negap4.mitre_id}
+{force negap3.mitre_id != negap5.mitre_id}
+{force negap4.mitre_id != negap5.mitre_id}
+Sample: mw
+Count: 1000
+Per_primary_grouping: false
+
+
+================================================================================
+v17 declared-row budget summary
+================================================================================
+JS.CSE.TI.GRP.1   Count: 1500   (2 correct)
+JS.CSE.TI.GRP.2   Count: 1500   (3 correct)
+JS.CSE.TI.GRP.3   Count: 1500   (1 correct)
+JS.CSE.TI.MAL.1   Count: 2500   (2 correct)
+JS.CSE.TI.MAL.2   Count: 1500   (3 correct)
+JS.CSE.TI.MAL.3   Count: 1500   (1 correct)
+JS.CSE.TI.CMP.1   Count: 2500   (2 correct, campaign anchor; ~52 pool, ~88% yield)
+JS.CSE.TI.NEG.1   Count: 1500   (0 correct, group anchor; collapses to ~187 actuals
+                                  per the 5-way distinct-negap force stack)
+                  ----- TI total declared: ~14,000 -----
+
+JS.CSE.MAL.RPT.1  Count: 2500   (2 correct, technique axis)
+JS.CSE.MAL.RPT.2  Count: 1500   (3 correct, technique axis)
+JS.CSE.MAL.RPT.3  Count: 1500   (1 correct, technique axis)
+JS.CSE.MAL.TAC.1  Count: 1500   (2 correct, tactic axis)
+JS.CSE.MAL.TGT.1  Count: 1500   (1 correct, group attribution axis)
+JS.CSE.MAL.NEG.1  Count: 1000   (0 correct, technique axis)
+                  ----- MAL total declared: ~9,500 -----
+
+Total v17 declared rows: ~23,500.
+Estimated actuals after taa_actor_balance.py (no-op for JS.CSE.* shortnames)
+and dedup_against_evals.py (n=13, drop>=50): ~16-17K rows.

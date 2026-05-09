@@ -1,0 +1,156 @@
+v17 training plan -- v16+CSE chained narrow specialist (CyberSOCEval letter-set head)
+======================================================================================
+
+Vintage label   : v17
+Architecture    : CHAINED narrow-SFT shard off the v16 TAA specialist
+                  (NOT a parallel branch off v12; v17 inherits v16's TAA head
+                  via base-model weights and adds a CyberSOCEval-letter-set
+                  output shape on top)
+Author date     : 2026-05-11 (vintage dir tmpl_gen/templates/05112026/)
+Predecessor     : v16 (asg-ai/athena-cti-sft-qwen25-14b-v16, TAA-only specialist
+                  trained off v12; bench result post-mortem inline below in §1.2)
+Operational ref : THIS FILE (corpus targets, recipe, deliverables, sign-off).
+
+NOTE: v17 is the FIRST chained build in the project; every prior vintage trained
+off the frozen v12 baseline. The chaining is justified by (a) the v16 bench result
+showing TAA Classic plausible_accuracy at 88% (i.e. the right semantic neighbourhood
+is already learned), and (b) the v17 shard introducing only multi-select-letter-set
+JSON shapes that v16 does not produce, so the chained SFT is additive at the output
+surface rather than competing for capacity with v16's TAA-attribution head. Risk
+model and falsification criteria in §4.
+
+
+1. Why v17 exists (one-paragraph overview)
+-------------------------------------------
+
+v16 lifted CyberSOCEval-TI from 3.74% (v12) to 30.63% accuracy (avg_score 58.54%)
+and CyberSOCEval-Malware from 7.06% to 10.69% (avg_score 45.15%) -- both axes moved
+materially with the v16 TAA shard, but neither cleared the ~50% accuracy bar that
+the avg_score numbers suggest is reachable. The v16 -> CSE delta gap (avg_score
+~58% vs accuracy ~30% on TI) is consistent with the v16 model producing the right
+SEMANTIC content but the wrong OUTPUT SHAPE: the formal CSE evaluator scores
+Jaccard similarity on a {"correct_answers": [...]} JSON object, and v16 does not
+have that shape in its training distribution -- v16 was trained on prose+letter
+JS.TAA.* templates whose Answer field is a single letter at the end of a CoT,
+not a JSON list of letters wrapped in <json_object>...</json_object> tags.
+
+v17 trains the missing output shape across ~14 templates split between two
+benchmark-mirrored families:
+
+  JS.CSE.TI.{GRP,MAL,CMP,NEG}.*  (8 templates; ~12.5K declared)
+    output shape: <json_object>{"correct_answers": ["A","C"]}</json_object>
+    context: synthetic intel-report prose with the documented tradecraft of
+    the named intrusion set inline; mirrors PurpleLlama's
+    threat_intel_reasoning prompt scaffolding without using the actual
+    CrowdStrike PDF corpus (zero contamination by construction).
+
+  JS.CSE.MAL.{RPT,TAC,TGT,NEG}.*  (6 templates; ~9.5K declared)
+    output shape: bare {"correct_answers": ["A","B"]} JSON object
+    context: synthetic Hybrid-Analysis-style detonation report JSON with
+    vx_family / sha256:"hash" / mitre_attcks list seeded from the
+    malware's documented attack-pattern set; mirrors PurpleLlama's
+    malware_analysis prompt scaffolding without using the formal
+    Hybrid-Analysis sample set.
+
+The hypothesis under test: chained SFT on output-shape only (no new entity
+knowledge introduced) lifts CSE-Malware and CSE-TI accuracy above v16's
+30.6%/10.7% without regressing v16's TAA-attribution surface.
+
+
+2. Pipeline (v16 watcher with v17 paths and gate plan)
+-------------------------------------------------------
+
+Build orchestrator: _v17_build/watcher.sh (forked from _v16_build/watcher.sh).
+The pipeline phases are unchanged from v16:
+
+  Phase 1   poll make_dataset.sh PID         -- carry
+  Phase 2   validate raw json                -- carry
+  Phase 4   TAA actor-balance                -- carry (per-actor cap 60)
+  Phase 5   dedup against eval sets          -- carry (n=13, drop>=50)
+  Phase 6   row-count gate                   -- CHANGED (v17 thresholds in
+                                                v17_row_count_gate.json:
+                                                only CSE-TI and CSE-MAL axes)
+  Phase 6b  licence-allowlist gate           -- carry
+  Phase 7   stratified shuffle               -- carry
+  Phase 8   val/train split                  -- carry (v17 paths via
+                                                _v17_build/build_val_slice.py)
+
+Generation step (Sophia pipeline) is invoked manually before the watcher:
+
+  bash tmpl_gen/data_generation/make_dataset.sh \
+       tmpl_gen/templates/05112026/Sophia-CTI-Templates-v17.txt \
+       _v17_build/triples \
+       SFT/data/ift_data_2026_05_11_v17.raw.json \
+       10 3500
+  echo "PID=$!" > _v17_build/build.pid
+  nohup bash _v17_build/watcher.sh > _v17_build/watcher.log 2>&1 &
+
+Output paths (data path datestamp = 2026_05_11):
+
+  Raw         : SFT/data/ift_data_2026_05_11_v17.raw.json
+  Balanced    : SFT/data/ift_data_2026_05_11_v17.balanced.json
+  Clean       : SFT/data/ift_data_2026_05_11_v17.json
+  Shuffled    : SFT/data/ift_data_2026_05_11_v17.shuffled.json
+  Validation  : SFT/data/ift_data_2026_05_11_v17_val.json     (~50 rows / axis)
+  Train (CSE) : SFT/data/ift_data_2026_05_11_v17_cse.json     (sole training shard)
+
+
+3. Recipe (verbatim mirror of v16; only base-model and dataset pointers change)
+--------------------------------------------------------------------------------
+
+  Base model      : asg-ai/athena-cti-sft-qwen25-14b-v16  (CHAINED off v16,
+                    not v12; this is the only architectural delta from v16)
+  Dataset         : ift_data_2026_05_11_v17_cse
+  Eval dataset    : ift_data_2026_05_11_v17_val
+  Recipe          : v9 narrow-drill (cutoff 4096, packing ON, lr 5e-6, 1 epoch,
+                    eff_bs 16 = per_device 1 x grad_accum 2 x 8 GPUs,
+                    --max-samples 33000, eval/save every 100 steps,
+                    gradient checkpointing OFF)
+  Launcher        : SFT/autotrain/run_sft_qwen25_14b_v16_plus_v17_cse.sh
+  Output dir      : SFT/saves/Qwen_Qwen2.5-14B-Instruct/full/v16_plus_v17_cse_${TIMESTAMP}
+  HF push target  : ${HF_USERNAME}/athena-cti-sft-qwen25-14b-v17
+  Wall-time       : ~4-6 h on 8xH100 (smaller corpus than v16)
+
+
+4. Decision criteria (post-bench)
+----------------------------------
+
+After the v17 bench result lands, classify the outcome:
+
+  Outcome A -- "v17 ships as the chained CSE specialist":
+    CyberSOCEval-Malware accuracy > v16 (10.69) + 10pp
+    AND CyberSOCEval-TI accuracy > v16 (30.63) + 10pp
+    AND every other measured axis >= v16 - 2pp
+    AND weighted total >= v16
+    -> chained SFT validated; v17 replaces v16 as the canonical chain head
+    -> consider v18 with broader output-shape diversity (CyberMetric short-form,
+       CTIBench JSON, athena-rms scoring shape) along the same chained pattern
+
+  Outcome B -- "v17 moves CSE but regresses TAA":
+    CSE axes up, TAA Classic regressed > 2pp vs v16
+    -> chained SFT competes with TAA head; halt and either:
+       (i) reduce v17 corpus and re-run with stronger v16-replay, or
+       (ii) merge v17 weights with v16 via mergekit (alpha sweep)
+
+  Outcome C -- "v17 doesn't move CSE":
+    CSE-Malware combined accuracy <= v16 + 5pp
+    AND CSE-TI combined accuracy <= v16 + 5pp
+    -> output-shape was not the bottleneck; the model lacks the underlying
+       task knowledge for malware/intel-report reasoning
+    -> halt v17; author v18 with deeper CSE-shaped templates and possibly
+       a small fine-tune on the held-out CrowdStrike sample set
+
+  Outcome D -- "net regression regardless of CSE":
+    Weighted total < v16
+    -> diagnose before any deployment; do not ship
+
+
+5. Sign-off
+------------
+
+  Author          : (to be signed)
+  Manifest hash   : (sha256 of Sophia-CTI-Templates-v17.txt at build time)
+  Training run    : SFT/saves/.../v16_plus_v17_cse_${TIMESTAMP}
+  Bench run       : SFT/test/.../<bench_dir>
+  HF release      : asg-ai/athena-cti-sft-qwen25-14b-v17
+  Outcome         : (A / B / C / D per §4)
