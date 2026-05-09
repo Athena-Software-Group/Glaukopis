@@ -4,7 +4,7 @@
 # checkpoint). Used when the in-line push at the tail of run_train.sh
 # fails or is skipped, e.g. the validate-yaml 400 BadRequest caused by
 # LLaMA-Factory writing the local Phase A path into README.md's
-# 'base_model:' YAML field. SFT/upload_to_hf.py now sanitizes that
+# 'base_model:' YAML field. SFT/scripts/upload_to_hf.py now sanitizes that
 # field; this script is the small wrapper that picks the right Phase B
 # dir + repo + base-model triple per supported model size.
 #
@@ -111,7 +111,7 @@ echo "  base-model: ${BASE_MODEL}  (-> README.md base_model:)"
 echo "  dry-run   : ${DRY_RUN}"
 echo
 
-python "${SFT_DIR}/upload_to_hf.py" \
+python "${SFT_DIR}/scripts/upload_to_hf.py" \
     --merged-dir "${PHASE_B_DIR}" \
     --repo-id "${REPO_ID}" \
     --readme-base-model "${BASE_MODEL}" \

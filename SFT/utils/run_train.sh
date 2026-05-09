@@ -44,7 +44,7 @@
 # Post-training HF push (optional):
 #   When --push-to-hf org/repo is set and training exits 0, the LoRA
 #   adapter is merged with the base model via llamafactory-cli export
-#   and uploaded to the specified repo by SFT/upload_to_hf.py. Requires
+#   and uploaded to the specified repo by SFT/scripts/upload_to_hf.py. Requires
 #   $HF_TOKEN or $HUGGINGFACE_TOKEN. Private by default; --hf-public
 #   creates a public repo. Merged output lands in --hf-export-dir
 #   (default: SFT/merged/<repo-basename>).
@@ -318,11 +318,11 @@ if [[ ${DRY_RUN} -eq 1 ]]; then
         echo
         echo "[dry-run] post-training HF push:"
         if [[ "${FINETUNING}" == "lora" ]]; then
-            echo "  python ${SFT_DIR}/upload_to_hf.py --adapter-dir ${OUTPUT_DIR} \\"
+            echo "  python ${SFT_DIR}/scripts/upload_to_hf.py --adapter-dir ${OUTPUT_DIR} \\"
             echo "      --base-model ${MODEL} --template ${TEMPLATE} \\"
             echo "      --repo-id ${PUSH_TO_HF}$([[ ${HF_PUBLIC} -eq 1 ]] && echo ' --public')"
         else
-            echo "  python ${SFT_DIR}/upload_to_hf.py --merged-dir ${OUTPUT_DIR} \\"
+            echo "  python ${SFT_DIR}/scripts/upload_to_hf.py --merged-dir ${OUTPUT_DIR} \\"
             echo "      --repo-id ${PUSH_TO_HF}$([[ ${HF_PUBLIC} -eq 1 ]] && echo ' --public')"
         fi
     fi
@@ -379,7 +379,7 @@ fi
             PUSH_ARGS+=( --public )
         fi
         set +e
-        python "${SFT_DIR}/upload_to_hf.py" "${PUSH_ARGS[@]}"
+        python "${SFT_DIR}/scripts/upload_to_hf.py" "${PUSH_ARGS[@]}"
         push_status=$?
         set -e
         echo "  finished: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
