@@ -203,6 +203,17 @@ model_mapping = {
     # tmpl_gen/templates/05082026/v15_plan.txt for the W1 decision tree (ship-as-
     # specialist vs escalate-to-merge-sweep vs halt-on-data-issue).
     'athena-cti-sft-qwen25-14b-v12-plus-taa-vllm':             'asg-ai/athena-cti-sft-qwen25-14b-v12-plus-taa',
+    # v16: v15 W1-rev. Same v12+TAA single-specialist topology as v12-plus-taa above,
+    # rebuilt against the CANON-purged / JSON-bumped v16 shard
+    # (ift_data_2026_05_10_v16_taa, 20,339 rows). v15 W1 post-mortem found the v14
+    # TAA shard was 68.5% Canonical alias-resolution (a task NOT measured by the
+    # formal TAA Classic benchmark) and only ~1.3% JSON-shaped attribution; v16
+    # purges CANON entirely and bumps AB.TAA.{1,2,3,5} 1500-2000 -> 3000, JS.TAA.
+    # {1,2,3} 400 -> 2500 each, lifting per-actor cap 40 -> 60. Pushed by
+    # SFT/autotrain/run_sft_qwen25_14b_v12_plus_v16_taa.sh. See
+    # tmpl_gen/templates/05102026/v16_plan.txt and README.md for the W1 post-mortem
+    # and v16 design.
+    'athena-cti-sft-qwen25-14b-v16-vllm':                      'asg-ai/athena-cti-sft-qwen25-14b-v16',
     # HF Inference Providers route. Custom community fine-tunes are not in the
     # default Together/Fireworks/Novita/etc. catalogs; this alias only resolves
     # if the model is exposed via an HF Inference Endpoint or the legacy
