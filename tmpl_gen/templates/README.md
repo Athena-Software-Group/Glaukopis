@@ -40,3 +40,7 @@ The expanded set is grouped by template IDs (`M`, `A`, `W`, `V`, `S`, `P`, `E`, 
 - `tmpl_gen/schema-test/gencfg_default_neo4j.json`
 
 These files were used to keep category coverage, node/relationship naming, and template syntax consistent with the current repo implementation.
+
+## Pinned Benchmark Notes
+
+`MASTER_RESULTS.md` (this directory) holds the most recent AthenaBench / CyberSOCEval / CyberMetric numbers across the v7..v18 vintages and the authoritative v18 architecture summary. Read it first when restoring context.
