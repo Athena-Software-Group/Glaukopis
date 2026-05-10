@@ -214,6 +214,21 @@ model_mapping = {
     # tmpl_gen/templates/05102026/v16_plan.txt and README.md for the W1 post-mortem
     # and v16 design.
     'athena-cti-sft-qwen25-14b-v16-vllm':                      'asg-ai/athena-cti-sft-qwen25-14b-v16',
+    # v17: first chained narrow-SFT vintage. Trains on top of v16
+    # (asg-ai/athena-cti-sft-qwen25-14b-v16) rather than off the frozen v12
+    # baseline, and adds only a CyberSOCEval letter-set JSON output shape
+    # (JS.CSE.TI.* / JS.CSE.MAL.*, 14 templates, ~16.5K rows in
+    # ift_data_2026_05_11_v17_cse). Hypothesis: the v16 -> CSE accuracy
+    # ceiling (TI 30.63% / Malware 10.69% strict accuracy vs avg_score
+    # 58.54% / 45.15%) was bound by output shape, not task knowledge --
+    # v16 produces prose+letter answers, CyberSOCEval scores Jaccard on
+    # {"correct_answers": ["A","C"]} JSON. v17 tests this without
+    # re-introducing any TAA-attribution surface (zero AB.TAA / JS.TAA rows
+    # in the manifest by design; chained SFT inherits TAA from v16). Pushed
+    # by SFT/autotrain/run_sft_qwen25_14b_v16_plus_v17_cse.sh. See
+    # tmpl_gen/templates/05112026/v17_plan.txt and README.md for the
+    # falsification criteria (Outcomes A/B/C/D in section 4).
+    'athena-cti-sft-qwen25-14b-v17-vllm':                      'asg-ai/athena-cti-sft-qwen25-14b-v17',
     # HF Inference Providers route. Custom community fine-tunes are not in the
     # default Together/Fireworks/Novita/etc. catalogs; this alias only resolves
     # if the model is exposed via an HF Inference Endpoint or the legacy
