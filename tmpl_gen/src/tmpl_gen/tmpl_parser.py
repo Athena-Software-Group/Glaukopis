@@ -1176,6 +1176,106 @@ class TmplGenNeo4j:
         new_text = ans_re.sub(ans_fmt.format(new_correct_letter), new_text, count=1)
         return new_text
 
+    # Regexes for multi-select MCQ option shuffling (see _shuffle_mcq_options_multi).
+    # Variable option count A-H supports the v17.1 CSE-Malware/CSE-TI shape whose
+    # upstream postprocessor accepts letters A-J.
+    _MCQ_MULTI_OPT_RE = re.compile(r"^([A-H])\)[ \t]+(.+?)[ \t]*$", re.M)
+    # Multi-select answer marker. Matches the JSON-letter-set shape rendered as
+    # tmpl_gen sentinels (the to_alpaca <OBR>/<CBR>/<OBK>/<CBK> unescape runs
+    # AFTER the shuffler in the pipeline). Empty list `<OBK><CBK>` is matched.
+    # Wrapping <json_object>...</json_object> is transparent: the regex anchors
+    # only on the inner correct_answers JSON, so JS.CSE.TI.* (wrapped) and
+    # JS.CSE.MAL.* (bare) are both covered by the same pattern.
+    _MCQ_MULTI_ANS_RE = re.compile(
+        r'<OBR>\s*"correct_answers"\s*:\s*<OBK>([^<]*)<CBK>\s*<CBR>')
+
+    @classmethod
+    def _shuffle_mcq_options_multi(cls, text:str) -> str:
+        """
+        For an MCQ-style rendered triple with a variable-size option block
+        (2..8 lines labelled A)..H) in the Question) and a JSON-letter-set
+        answer marker `{"correct_answers": [...]}` in the Answer, shuffle the
+        options to a random A-X order and remap each correct letter to the new
+        position of the originally correct option.
+
+        Handles the v17.1 CSE multi-select output shape:
+          * wrapped form (TI):  <json_object>{"correct_answers": ["A","C"]}</json_object>
+          * bare form (MAL):    {"correct_answers": ["A","C"]}
+          * empty list (NEG):   {"correct_answers": []}  -- option block is
+                                still shuffled, no remap needed.
+
+        The option block is identified as the trailing contiguous A,B,C,...,X
+        run of A-H line-starts immediately preceding the answer marker. This
+        tolerates incidental "A) ..." bullet markers inside CTI description
+        text (which previously caused the global-match version to bail).
+
+        Returns the original text unchanged when:
+          * no recognised multi-select answer marker is present, or
+          * fewer than 2 contiguous A-starting option lines precede the marker, or
+          * any correct letter falls outside the detected block (i.e. the
+            manifest's hard-coded letters do not fit the rendered option count).
+        """
+        ans_match = cls._MCQ_MULTI_ANS_RE.search(text)
+        if not ans_match:
+            return text
+
+        raw_letters = ans_match.group(1).strip()
+        if raw_letters == "":
+            orig_letters = []
+        else:
+            orig_letters = [tok.strip().strip('"').strip()
+                            for tok in raw_letters.split(",")]
+            if not all(len(L) == 1 and "A" <= L <= "H" for L in orig_letters):
+                return text
+
+        head = text[:ans_match.start()]
+        all_opts = list(cls._MCQ_MULTI_OPT_RE.finditer(head))
+        if len(all_opts) < 2:
+            return text
+
+        # Walk backwards collecting the trailing contiguous A,B,C,...,X run.
+        block = [all_opts[-1]]
+        for m in reversed(all_opts[:-1]):
+            if ord(block[0].group(1)) - ord(m.group(1)) == 1:
+                block.insert(0, m)
+            else:
+                break
+        if block[0].group(1) != "A":
+            return text
+        n_opts = len(block)
+        if n_opts < 2:
+            return text
+
+        # Verify all original correct letters fit within the detected block.
+        if any(ord(L) - ord("A") >= n_opts for L in orig_letters):
+            return text
+
+        options = [m.group(2) for m in block]
+        perm = list(range(n_opts))
+        random.shuffle(perm)
+        new_options = [options[perm[i]] for i in range(n_opts)]
+        new_letters = sorted(
+            chr(ord("A") + perm.index(ord(L) - ord("A"))) for L in orig_letters
+        )
+
+        new_block = "\n".join(
+            f"{chr(ord('A')+i)}) {new_options[i]}" for i in range(n_opts))
+        if new_letters:
+            new_letters_str = ", ".join(f'"{L}"' for L in new_letters)
+            new_ans = ('<OBR>"correct_answers": <OBK>' + new_letters_str
+                       + "<CBK><CBR>")
+        else:
+            new_ans = '<OBR>"correct_answers": <OBK><CBK><CBR>'
+
+        new_text = (
+            text[:block[0].start()]
+            + new_block
+            + text[block[-1].end():ans_match.start()]
+            + new_ans
+            + text[ans_match.end():]
+        )
+        return new_text
+
     # F3 emitter helpers (per-primary-grouping path only). These are used to
     # decompose a flat MATCH/WHERE pair into a chain of incremental
     # MATCH ... WITH ... ORDER BY rand() LIMIT 1 stages so the inner CALL
@@ -1623,6 +1723,8 @@ class TmplGenNeo4j:
             gentext = "".join(lst_vals)
             if shuffle_mode == "mcq":
                 gentext = self._shuffle_mcq_options(gentext)
+            elif shuffle_mode == "mcq_multi":
+                gentext = self._shuffle_mcq_options_multi(gentext)
             lst_gentext.append(gentext)
             
         # return query string for debugging & testing:

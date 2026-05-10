@@ -151,26 +151,55 @@ def extract_templates_from_txt(args) -> list[dict]:
         t_instr = m.group(2).strip()
         i += 1
 
-        # Collect Question (skip any intervening blank lines)
+        # Collect Question.  The body may span multiple paragraphs: an
+        # initial single-line Question: header followed by additional prose
+        # paragraphs and/or MCQ option lines (A), B), ... separated by blank
+        # lines.  We continue collecting subsequent lines as part of the
+        # question body until we hit the Answer: header, a {force ...}
+        # constraint, a sentinel prefix (Sample:/Shuffle:/Count:/...), or
+        # the next template's ID line.  Blank lines internal to the body
+        # are preserved; trailing blanks are stripped.  This mirrors the
+        # answer-collection semantics below and is required for v17/v17.1
+        # multi-select MCQ templates whose Question: block is followed by
+        # a <desc>...</desc> wrapper, a blank line, an instructional prose
+        # paragraph ("Based on the intelligence above ..."), and then the
+        # A) ... E) option lines on their own paragraphs.
+        _Q_SENTINEL_PREFIXES = ("{force", "Summary: ", "Schema: ",
+                                "Sample: ", "Shuffle: ", "Count: ",
+                                "Source: ", "Per_primary_grouping: ")
         t_q = None
+        q_lines = []
         while i < len(lines):
             l = lines[i].strip()
             if re_id_instr.match(l):
                 break
-            if l.startswith("Question:"):
-                q_parts = [l[len("Question:"):].strip()]
-                i += 1
-                # Append MCQ option lines (A), B), ... that immediately follow
-                while i < len(lines) and re.match(r"^[A-Z]\)", lines[i].strip()):
-                    q_parts.append(lines[i].strip())
+            if t_q is None:
+                if l.startswith("Question:"):
+                    t_q = l[len("Question:"):].strip()
+                    q_lines.append(t_q)
                     i += 1
-                t_q = "\n".join(q_parts)
+                    continue
+                i += 1
+                continue
+            # We have begun the question body; look for terminators.
+            if l.startswith("Answer:"):
                 break
+            if l.startswith(_Q_SENTINEL_PREFIXES):
+                break
+            if l == "":
+                q_lines.append("")
+                i += 1
+                continue
+            q_lines.append(l)
             i += 1
 
         if t_q is None:
             print(f"\n@@@ Template {t_id} at line {src_line}: missing Question — skipping.\n")
             continue
+
+        while q_lines and q_lines[-1] == "":
+            q_lines.pop()
+        t_q = "\n".join(q_lines)
 
         # Collect Answer.  After the initial "Answer: <text>" line we accept
         # additional "Answer: <text>" continuation lines (the AB.RMS.3*
