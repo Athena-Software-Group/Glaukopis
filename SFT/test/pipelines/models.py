@@ -229,6 +229,23 @@ model_mapping = {
     # tmpl_gen/templates/05112026/v17_plan.txt and README.md for the
     # falsification criteria (Outcomes A/B/C/D in section 4).
     'athena-cti-sft-qwen25-14b-v17-vllm':                      'asg-ai/athena-cti-sft-qwen25-14b-v17',
+    # v17.1: data-fix recovery of v17. Same chained-SFT recipe (base model
+    # asg-ai/athena-cti-sft-qwen25-14b-v16, lr 5e-6, 1 epoch, eff_bs 16,
+    # packing, cutoff 4096) -- only the corpus changes. v17 was Outcome D
+    # (regressed every Athena axis simultaneously) because two engine defects
+    # (parser drop of multi-paragraph Question bodies + missing multi-select
+    # MCQ shuffler) collapsed the v17 corpus to ~4 distinct correct_answers
+    # tuples with the dominant ["A","B"] combo carrying 50.7% of rows; the
+    # model could satisfy training loss by emitting "A,B" regardless of input.
+    # v17.1 isolates the corpus-quality variable: manifest body byte-identical
+    # to v17 except every JS.CSE.* template now declares Shuffle: mcq_multi,
+    # rebuilt corpus has uniform per-letter coverage (A/B/C/D/E ~20% each)
+    # and the combinatorial-ceiling 26 distinct tuples (ift_data_2026_05_12_
+    # v17_1_cse, 18,817 train rows). Pushed by
+    # SFT/autotrain/run_sft_qwen25_14b_v16_plus_v17_1_cse.sh. See
+    # tmpl_gen/templates/05122026/v17_1_plan.txt and README.md for the
+    # falsification criteria overlay (Outcomes A/B/C/D in section 4).
+    'athena-cti-sft-qwen25-14b-v17-1-vllm':                    'asg-ai/athena-cti-sft-qwen25-14b-v17-1',
     # HF Inference Providers route. Custom community fine-tunes are not in the
     # default Together/Fireworks/Novita/etc. catalogs; this alias only resolves
     # if the model is exposed via an HF Inference Endpoint or the legacy
