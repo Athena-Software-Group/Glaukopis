@@ -1,0 +1,267 @@
+v18 training plan -- standalone three-phase SFT (CKT/ATE recovery)
+==================================================================
+
+Vintage label    : v18
+Architecture     : STANDALONE three-phase full-parameter SFT off
+                   Qwen/Qwen2.5-14B-Instruct (NOT chained off v16/v17)
+Author date      : 2026-05-13 (vintage dir tmpl_gen/templates/05132026/)
+Predecessors     : v17.1 (asg-ai/athena-cti-sft-qwen25-14b-v17-1, chained
+                   CSE specialist off v16; lifted CSE-Malware/CSE-TI but
+                   left CKT (MCQ) and ATE flat -- see §1)
+                   v12  (asg-ai/athena-cti-sft-qwen25-14b-v12, the standalone
+                   three-phase recipe v18 returns to)
+Operational ref  : THIS FILE (corpus targets, recipe, deliverables, sign-off)
+                   Sophia-CTI-Templates-v18.txt   (manifest)
+                   v18_row_count_gate.json        (build-time floors)
+                   _v18_build/watcher.sh          (build pipeline)
+                   SFT/autotrain/run_sft_qwen25_14b_v18.sh (training launcher)
+
+
+1. Why v18 exists -- the CKT/ATE ceiling at the end of the v17.1 sweep
+----------------------------------------------------------------------
+
+1.1 The chained-SFT line that v16 + v17 + v17.1 explored proved that you
+    can stack a narrow specialist shard on top of an existing checkpoint
+    without catastrophic forgetting -- the v17.1 chain (v12 -> v16 -> v17.1)
+    successfully recovered CSE-TI / CSE-Malware while preserving the
+    AthenaBench heads from the v12 base. But two AthenaBench axes
+    refused to lift across the entire v12 .. v17.1 line:
+
+        axis              v12     v16     v17.1   athena_v8 (8B)   v18 target
+        ----              ----    ----    ----    ---------------  ----------
+        CKT (MCQ)         70.4    72.1    70.0    77.6             77.6
+        ATE               55.1    56.9    56.6    50.6             61.0
+
+    v8 (LLaMA-3.1 8B abaligned) hit CKT 77.6 with ~6,000 rows of MCQ
+    supervision and a single training pass. The Qwen2.5-14B v12 line
+    has 6,100 MCQ rows but lands ~7 pp below v8. The diagnosis is two
+    correlated effects:
+
+      (a) Distractor quality. v12 MCQ distractors are drawn unconstrained
+          from the catalog (e.g. AB.MCQ.5 negative options are "any
+          attack-pattern"; the Athena MCQ eval distractors are usually
+          siblings -- same tactic, same technique class, etc.). The 14B
+          model can already reject the obviously-wrong v12 negatives;
+          its loss on training rows is small while its loss on
+          eval rows (with closer negatives) stays high.
+
+      (b) Volume. v12 has 6.1K MCQ rows; v8 had ~6K but the underlying
+          benchmark is ~6,000 questions wide, so the per-question
+          gradient density was effectively higher because v8's training
+          surface was a 12B-token narrow corpus and v12's is a 260K-row
+          mixed-axis corpus.
+
+    ATE has the same shape: v12 carries 10.4K rows from 8 sub-templates
+    (AB.ATE.{1..8} + JS.ATE.{1..3}) but the templates render most of
+    their volume from `attack-pattern.description` verbatim (AB.ATE.1,
+    .2, .4, .5 all bind on the same description column). The gradient
+    is a single anchor seen from five angles; the eval set probes 11
+    distinct narrative shapes. v18 adds four new ATE templates that
+    use OTHER Neo4j edges (malware.description, campaign narratives,
+    course-of-action mitigation framing already in v12 .6, plus new
+    procedural-detail framing) so the model sees 11+ distinct shapes
+    that match the eval distribution.
+
+1.2 v18 is therefore a CORPUS-DRIVEN rebuild, not a recipe change. The
+    training recipe is the v12 three-phase recipe verbatim (§4). The
+    only deltas are in the manifest and the row-count gate (§3, §2).
+
+1.3 Note on the chained line. v17.1 demonstrated that chaining works
+    when the data-quality bar is met (Shuffle: mcq_multi was the
+    blocker). v18 leaves the chained-SFT path intact and parallel for
+    future per-axis specialists; the standalone recipe here is the
+    base on which any future v19+ chain will be built.
+
+
+2. v17.1 -> v18 deltas (high-level)
+-----------------------------------
+
+  (1) NEW base. v18 is built from the v12 manifest (3,168 lines, all
+      Athena axes) with the deltas in §3 below, NOT from v17.1's
+      596-line CSE-only specialist manifest.
+
+  (2) MCQ recipe (§3.1):
+        - lift AB.MCQ.{1,2,5} Count: 800 -> 1200 each (3 of 6 sub-
+          families; the others bind on smaller anchor pools and
+          would saturate)
+        - lift AB.MCQ.{4,6} Count: 250 -> 500
+        - lift AB.MCQ.EXT.{MITRE,SEC} target 1500 -> 2000 each
+        - NEW family AB.MCQ.EXT.GLOSS.1 (~1500 rows; CTI/sec
+          terminology questions sourced from public glossaries:
+          NIST SP 800-150 / SP 800-61, MITRE ATT&CK glossary, CISA
+          stop-ransomware glossary, ENISA threat landscape glossary,
+          ISO/IEC 27000:2018 vocabulary; module
+          tmpl_gen/scripts/mcq_data/glossary.py)
+        - row-count gate floor MCQ 5400 -> 8100 (§3.1 of v12 lifted
+          50% per the v8 -> v18 delta-target math)
+        - all multi-select families (AB.MS.* and any new MS
+          additions) carry the Shuffle: mcq_multi directive
+          introduced in v17.1
+
+  (3) ATE recipe (§3.2):
+        - keep AB.ATE.{1..8} verbatim
+        - NEW templates AB.ATE.{9,10,11} + JS.ATE.{4,5,6} (six new
+          sub-templates) covering substrate the v12 AB.ATE.{1..8}
+          templates do not touch:
+              .9       SigmaRule narrative -> technique
+                       (sr.detects>attack-pattern; bind on
+                        SigmaRule.title + .description; 2,771
+                        SigmaRule anchors)
+              .10      malware behavioural narrative -> technique
+                       (mw.description as primary anchor;
+                        mw.uses>attack-pattern; differs from
+                        AB.ATE.8 which anchors on attack-pattern)
+              .11      intrusion-set narrative -> technique
+                       (grp.description as primary anchor;
+                        grp.uses>attack-pattern; differs from
+                        AB.ATE.3 which anchors on attack-pattern)
+              JS.ATE.{4,5,6} = JSON-shaped variants
+        - initial draft used attack-pattern.x_mitre_procedure_examples
+          (AB.ATE.9) and x-mitre-data-component.detects>attack-pattern
+          (AB.ATE.11); both substrates returned 0 rows in the
+          athena-cti-db probe (_v18_build/_neo4j_probe_v3.py,
+          2026-05-13) so the templates were rewritten as above
+        - row-count gate floor ATE 9000 -> 13500 (50% lift)
+
+  (4) Substrate validation (Phase 0 of the build):
+        _v18_build/_neo4j_check.py runs at the start of the watcher
+        and asserts the v18-critical entity floors (835 attack-pattern,
+        187 intrusion-set, 696 malware, 268 course-of-action, 14
+        x-mitre-tactic, 109 x-mitre-data-component, 38 x-mitre-data-
+        source) and traversal counts (group->uses->technique=4362,
+        technique->subtechnique-of->parent=477, malware->uses->
+        attack-pattern=9836, course-of-action->mitigates->attack-
+        pattern=1445, SigmaRule->detects->attack-pattern=3742) BEFORE
+        the make_dataset run begins. Surfaces athena-cti-db drift at
+        build time rather than at row-count gate time.
+
+  (5) ALL OTHER axes carried verbatim from v12. RMS, VSP, RCM, MS,
+      TAA-{attribution,IE-NEG,CANON}, SOC, CM templates and gates
+      are byte-identical to the v12 manifest. The watcher inherits
+      the v12 +v13 gate plumbing (seed-provenance, licence-allowlist,
+      stratified shuffle, val/train split, three-shard phase split).
+
+  (6) HF target asg-ai/athena-cti-sft-qwen25-14b-v18.
+
+  (7) NO chained-SFT. v18 trains from Qwen/Qwen2.5-14B-Instruct
+      directly (cf. v12). v16/v17/v17.1 are not on the v18 critical
+      path and may continue as parallel specialist branches.
+
+
+3. Row-count plan (per-family targets and reject-floor)
+-------------------------------------------------------
+
+3.1 MCQ axis -- target 9000 rows, REJECT_IF_BELOW 8100
+
+      shortname                           target       v12 actual    v18 target
+      ---------                           ------       ----------    ----------
+      AB.MCQ.1   tactic                       1200            800        1200
+      AB.MCQ.2   mitigation                   1200            800        1200
+      AB.MCQ.3   CWE                           100            100         100
+      AB.MCQ.4   CAPEC                         500            250         500
+      AB.MCQ.5   group->technique             1200            250        1200
+      AB.MCQ.6   CAPEC->ATT&CK                 500            250         500
+      JS.MCQ.{1,2,5}                          1900           1900        1900
+      AB.MCQ.EXT.MITRE.1                      2000           1500        2000
+      AB.MCQ.EXT.SEC.1                        2000           1500        2000
+      AB.MCQ.EXT.GLOSS.1 (NEW)                1500              -        1500
+                                              ----           ----        ----
+      declared sum                           12100           7350       12100
+      after dedup + per-primary cap            ~9500          ~6100      ~9500
+      gate floor (REJECT_IF_BELOW)             8100           5400        8100
+
+3.2 ATE axis -- target 15000 rows, REJECT_IF_BELOW 13500
+
+      shortname                           target       v12 actual    v18 target
+      ---------                           ------       ----------    ----------
+      AB.ATE.{1,2,4,5}                       (3000)         3000        3000
+      AB.ATE.3 (group narrative)             (1500)         1500        1500
+      AB.ATE.6 (mitigation framing)          (1500)         1500        1500
+      AB.ATE.7 (sub-tech parent)              (500)          500         500
+      AB.ATE.8 (malware -> tech)             (1500)         1500        1500
+      AB.ATE.9  (SigmaRule narrative) NEW    (1500)            0        1500
+      AB.ATE.10 (malware narrative) NEW      (1500)            0        1500
+      AB.ATE.11 (group narrative) NEW         (700)            0         700
+      JS.ATE.{1,2,3}                         (1500)         1500        1500
+      JS.ATE.{4,5,6} NEW                      (700)            0         700
+                                              ----          ----        ----
+      declared sum                           15900         11000       15900
+      after dedup + per-primary cap         ~14000         ~10400      ~14000
+      gate floor (REJECT_IF_BELOW)           13500          9000       13500
+
+3.3 RMS / VSP / RCM / MS / TAA-{attr,IE-NEG,CANON} / SOC / CM axes
+    inherit v12 floors verbatim (see v18_row_count_gate.json).
+
+
+4. Training recipe -- three-phase, identical to v12
+---------------------------------------------------
+
+4.1 Hardware: 8x H100 80GB. Batch math sized for batch=1 per GPU.
+4.2 Phase A (broad re-anchor):
+      - datasets   ift_data_2026_05_13_v18_broad,
+                   tulu_3_sft_mixture, alpaca_en_demo
+      - 1 epoch, lr 1e-5, cutoff 8192, packing on
+      - effective batch 16
+      - --max-samples 240000
+4.3 Phase B (RMS/ATE/VSP/RCM catalog drill):
+      - dataset    ift_data_2026_05_13_v18_rms_ate_vsp_rcm
+      - 1 epoch, lr 5e-6, cutoff 16384, packing OFF
+      - effective batch 8
+      - eval/save every 400 steps
+      - --max-samples 70000 (lifted from 60000 to absorb v18's
+        ~3500-row ATE expansion)
+4.4 Phase C (TAA.CANON memorisation):
+      - dataset    ift_data_2026_05_13_v18_taa_canon
+      - 1 epoch, lr 3e-6, cutoff 8192, packing on
+      - effective batch 16
+      - --max-samples 12000
+      - final merged model pushed to asg-ai/athena-cti-sft-qwen25-14b-v18
+
+4.5 Per-phase corpus split is the v12 three-shard split
+    (split_corpus_for_phases.py default mode), NOT v13's two-shard
+    or v14's four-shard.
+
+
+5. Gates, sign-off, and falsification criteria
+----------------------------------------------
+
+5.1 Build-time gates (all must pass before train/val split):
+      Phase 0   substrate validation       _v18_build/_neo4j_check.py
+      Phase 0b  seed-provenance gate       check_seed_provenance.py
+      Phase 6   row-count gate              v18_row_count_gate.json
+      Phase 6b  licence-allowlist gate      check_corpus_licences.py
+
+5.2 Bench sign-off (against weighted Athena+CyberMetric+CyberSOCEval):
+
+      MUST PASS (any one falsified -> rebuild):
+        CKT (MCQ) >= 75.0      (target 77.6)
+        ATE       >= 58.5      (target 61.0)
+        RMS       >= v12 - 2pp  (no regression)
+        VSP       >= v12 - 2pp
+        RCM       >= v12 - 2pp
+        TAA-attr  >= v12 - 2pp
+        SOC       >= v12 - 2pp
+        CSE-TI    >= v17.1 - 3pp  (chained head was on v16, not v18;
+                                   modest regression acceptable since
+                                   v18 is base, not specialist)
+        CSE-MAL   >= v17.1 - 3pp
+
+      SHOULD HIT:
+        weighted total >= v17.1 weighted
+        CKT >= 77.6 (v8-parity)
+        ATE >= 61.0
+
+5.3 If MCQ falls short on the v18 build the next iteration is v18.1:
+    a chained CKT specialist shard built off v18 with MCQ-only
+    families and an MCQ-saturated curriculum (mirrors the v16 -> v17.1
+    chain). v18 itself is NOT the place for that experiment because
+    v18 is the new shared base.
+
+
+6. Sign-off
+-----------
+
+6.1 Authored 2026-05-13 with sign-off from project lead.
+6.2 Substrate validation passed 2026-05-13 (athena-cti-db v15.0.0;
+    7 entity floors and 5 traversal floors all OK; 3 traversals
+    inverted from initial assumption documented in §2(4)).

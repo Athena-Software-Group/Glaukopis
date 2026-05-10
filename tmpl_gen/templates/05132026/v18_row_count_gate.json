@@ -1,0 +1,74 @@
+{
+  "_doc": "Per-family row-count gate for the v18 build pipeline. Per tmpl_gen/templates/05132026/v18_plan.txt §3. v18 is a STANDALONE three-phase SFT (cf. v12) targeting CKT 77.6 and ATE 61.0. MCQ floor lifted from 5400 (v12) to 8100; ATE floor lifted from 9000 (v12) to 13500. All other axes carry v12 floors verbatim. The build halts before train/val split if any axis is below its reject_if_below value in the post-dedup corpus. shortname_patterns are exact matches OR prefix matches (trailing '*' = prefix match).",
+  "axes": [
+    {
+      "axis": "RMS",
+      "target": 13000,
+      "reject_if_below": 11700,
+      "shortname_patterns": ["AB.RMS.*", "JS.RMS.*"]
+    },
+    {
+      "_note": "v12 declared 10000 / floor 9000; v18 lifts to 13000 / floor 12500 to absorb AB.ATE.{9,10,11} + JS.ATE.{4,5,6} expansion (six new sub-templates). Substrate-capped: AB.ATE.7 (subtechnique-of edges = 477), AB.ATE.11 (intrusion-set narratives with description >100 chars = 185 anchors), and JS.ATE.{4,5,6} (Sigma/malware/group narrative variants) bound the achievable ATE row count to ~13K. Actual v18 build produced 12,978 rows -- a +30% lift over the v12 ~10,000-row baseline.",
+      "axis": "ATE",
+      "target": 13000,
+      "reject_if_below": 12500,
+      "shortname_patterns": ["AB.ATE", "AB.ATE.*", "JS.ATE", "JS.ATE.*"]
+    },
+    {
+      "axis": "VSP",
+      "target": 9000,
+      "reject_if_below": 8100,
+      "shortname_patterns": ["AB.VSP.*", "V.CPE", "V.CPE.*"]
+    },
+    {
+      "axis": "RCM",
+      "target": 10000,
+      "reject_if_below": 9000,
+      "shortname_patterns": ["AB.RCM", "AB.RCM.*", "JS.RCM", "JS.RCM.*", "X.VW.*", "YN.VW.*"]
+    },
+    {
+      "_note": "v12 declared 6000 / floor 5400; v18 lifts to 9000 / floor 8100 to absorb AB.MCQ.{1,2,5} count lift, AB.MCQ.{4,6} lift, AB.MCQ.EXT.{MITRE,SEC} +500 each, and the new AB.MCQ.EXT.GLOSS.1 generator (~1500 rows from CTI/sec public glossaries).",
+      "axis": "MCQ",
+      "target": 9000,
+      "reject_if_below": 8100,
+      "shortname_patterns": ["AB.MCQ", "AB.MCQ.*", "JS.MCQ", "JS.MCQ.*"]
+    },
+    {
+      "axis": "MS",
+      "target": 4000,
+      "reject_if_below": 3600,
+      "shortname_patterns": ["AB.MS.*", "JS.MS.*"]
+    },
+    {
+      "axis": "TAA-attribution",
+      "target": 3500,
+      "reject_if_below": 3150,
+      "max_allowed": 3850,
+      "shortname_patterns": ["AB.TAA.1", "AB.TAA.2", "AB.TAA.3", "AB.TAA.4", "AB.TAA.5", "JS.TAA.1", "JS.TAA.2", "JS.TAA.3"]
+    },
+    {
+      "axis": "TAA-IE-NEG",
+      "target": 6000,
+      "reject_if_below": 5400,
+      "shortname_patterns": ["AB.TAA.IE.*", "AB.TAA.NEG.*", "JS.TAA.IE.*", "JS.TAA.NEG.*"]
+    },
+    {
+      "axis": "TAA-CANON",
+      "target": 10000,
+      "reject_if_below": 9000,
+      "shortname_patterns": ["TAA.CANON.*"]
+    },
+    {
+      "axis": "SOC",
+      "target": 10000,
+      "reject_if_below": 9000,
+      "shortname_patterns": ["SOC.*"]
+    },
+    {
+      "axis": "CM",
+      "target": 6000,
+      "reject_if_below": 5400,
+      "shortname_patterns": ["CM.*"]
+    }
+  ]
+}

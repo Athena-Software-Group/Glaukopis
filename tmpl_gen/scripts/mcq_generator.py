@@ -15,17 +15,24 @@ Families:
   AB.MCQ.EXT.SEC.1      ~1,500  OWASP Top-10 2021, OWASP API Top-10 2023,
                                 web vuln classes (SQLi/XSS/CSRF/SSRF/...),
                                 network protocols, OS/endpoint primitives
+  AB.MCQ.EXT.GLOSS.1    ~1,500  CTI/sec terminology sourced from public
+                                glossaries: NIST SP 800-150, NIST SP 800-61
+                                Rev 2, MITRE ATT&CK glossary, CISA
+                                Stop-Ransomware, ENISA Threat Landscape,
+                                ISO/IEC 27000:2018, NIST CSF 2.0
+                                (added by v18; tmpl_gen/templates/05132026/
+                                v18_plan.txt §2(2))
 
 Knowledge tables are encoded in tmpl_gen/scripts/mcq_data/{mitre_extras,
-security_concepts}.py as structured Python literals -- no external data,
-no model-authored text. Each (fact, paraphrase) is reproducible from
+security_concepts,glossary}.py as structured Python literals -- no external
+data, no model-authored text. Each (fact, paraphrase) is reproducible from
 --seed; option order is shuffled per row.
 
 Usage:
   python tmpl_gen/scripts/mcq_generator.py \\
-      --output _v12_build/mcq_seed.json \\
-      --report _v12_build/mcq_report.json \\
-      --target-mitre 1500 --target-sec 1500 --seed 42
+      --output _v18_build/mcq_seed.json \\
+      --report _v18_build/mcq_report.json \\
+      --target-mitre 2000 --target-sec 2000 --target-gloss 1500 --seed 42
 """
 
 from __future__ import annotations
@@ -42,11 +49,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from mcq_data import mitre_extras as mcq_mitre        # noqa: E402
 from mcq_data import security_concepts as mcq_sec     # noqa: E402
+from mcq_data import glossary as mcq_gloss            # noqa: E402
 
 # Verbatim instruction strings. The MITRE-extras family mirrors the
 # AB.MCQ.* prompt so the model treats generator + template rows
 # interchangeably; the security-concepts family uses an
-# application-security flavour that overlaps neither CM nor templates.
+# application-security flavour that overlaps neither CM nor templates;
+# the glossary family targets CTI/sec terminology canon.
 INSTR_MITRE = (
     "You are a cybersecurity analyst at an enterprise Security Operations "
     "Center answering a Cyber Threat Intelligence multiple-choice question. "
@@ -60,6 +69,13 @@ INSTR_SEC = (
     "OS/endpoint hardening. Reason about each option in turn against the "
     "relevant standard or primitive, and then select the single best "
     "answer from A, B, C, D, or E."
+)
+INSTR_GLOSS = (
+    "You are a CTI analyst at an enterprise Security Operations Center "
+    "answering a multiple-choice question about cybersecurity and threat-"
+    "intelligence terminology. Reason about each option in turn against the "
+    "canonical definition published by NIST, MITRE, CISA, ENISA, or ISO/IEC, "
+    "and then select the single best answer from A, B, C, D, or E."
 )
 
 
@@ -93,6 +109,7 @@ def make_mcq(rng: random.Random, question: str, correct: str,
 FAMILIES = [
     ("AB.MCQ.EXT.MITRE.1", INSTR_MITRE, mcq_mitre.generate, "target_mitre"),
     ("AB.MCQ.EXT.SEC.1",   INSTR_SEC,   mcq_sec.generate,   "target_sec"),
+    ("AB.MCQ.EXT.GLOSS.1", INSTR_GLOSS, mcq_gloss.generate, "target_gloss"),
 ]
 
 
@@ -103,6 +120,7 @@ def main() -> int:
     p.add_argument("--report", type=Path, default=None)
     p.add_argument("--target-mitre", type=int, default=1500)
     p.add_argument("--target-sec", type=int, default=1500)
+    p.add_argument("--target-gloss", type=int, default=1500)
     p.add_argument("--seed", type=int, default=42)
     args = p.parse_args()
 
