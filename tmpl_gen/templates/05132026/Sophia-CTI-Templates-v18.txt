@@ -854,18 +854,10 @@ Answer: Use of {ap1.name} and {ap2.name} together with {tl.name} matches the doc
 Sample: grp
 
 Section 6.1 - TAA.CANON.* Intrusion-set alias resolution
-
-TAA.CANON.1 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center resolving vendor-specific threat-actor aliases to their canonical MITRE ATT&CK intrusion-set name. Consult the MITRE ATT&CK groups knowledge base aliases catalog and report the canonical name and G-code that the alias list belongs to.
-Question: A threat report references an intrusion set known by the following set of vendor aliases: {grp:intrusion-set.aliases}. What canonical MITRE ATT&CK group name and identifier do these aliases all refer to?
-Answer: MITRE ATT&CK records {grp.aliases} as alias variants of the same intrusion set; the canonical MITRE ATT&CK name is {grp.name} and the catalog identifier is {grp.mitre_id}. Therefore, the canonical group is {grp.name} ({grp.mitre_id}).
-Sample: grp
-Count: 200
-
-TAA.CANON.2 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center producing an alias-resolution card for a named MITRE ATT&CK intrusion set. Consult the MITRE ATT&CK groups knowledge base and report the canonical name, the catalog identifier, the documented aliases, and one signature technique used by the group.
-Question: Produce an alias-resolution card for the MITRE ATT&CK intrusion set {grp:intrusion-set.name} ({grp.mitre_id}).
-Answer: Alias card -- Canonical name: {grp.name}. MITRE ATT&CK identifier: {grp.mitre_id}. Documented aliases: {grp.aliases}. Signature technique: MITRE ATT&CK technique {ap:grp.uses>attack-pattern.mitre_id} ({ap.name}) is documented as used by this group. Therefore, the canonical group is {grp.name} ({grp.mitre_id}).
-Sample: grp
-Count: 800
+[v18 chain pivot: TAA.CANON.{1,2} templates removed. The v18 lineage drops
+ alias-resolution training entirely in favour of TAA Classic (AB.TAA.{1..5},
+ JS.TAA.{1..3}); see tmpl_gen/templates/05132026/v18_plan.txt §"v17.1
+ chained architecture" and the v15 W1 post-mortem for the rationale.]
 
 
 
@@ -3114,30 +3106,16 @@ Count: 1000
 
 
 ================================================================================
-v12 NEW BLOCK -- TAA.CANON.* expansion (programmatic generator)
+v12 NEW BLOCK -- TAA.CANON.* expansion (programmatic generator)  [v18: REMOVED]
 ================================================================================
-TAA.CANON.{1,2} are inherited from v11 (Section 6.1 above) for lineage and
-to seed the canonical instruction wording. v12 supplements them with rows
-emitted by tmpl_gen/scripts/taa_canon_generator.py, which reads MITRE
-enterprise-attack.json + Athena aliases.csv directly (bypassing the v11
-Neo4j-bound 187-row ceiling on intrusion-set anchors).
-
-The generator emits three subfamilies totalling ~10,000 rows:
-  TAA.CANON.1  alias subset -> canonical name + G-code     (~3,500)
-  TAA.CANON.2  canonical alias-resolution card with TTPs   (~3,500)
-  TAA.CANON.3  hard-negative refusal: alias not for X      (~3,000)
-
-The generator output is merged into the v12 corpus by _v12_build/watcher.sh
-between Phase 3 (template->triples) and Phase 4 (row-count gate). The
-in-manifest TAA.CANON.{1,2} Cypher templates remain active so the corpus
-includes both Neo4j-grounded rows and the wider generator coverage; the
-shortname namespace is shared and dedup runs across both sources.
-
-Section 1 - TAA.CANON.3 Hard-negative refusal pairs (generator-only)
-
-TAA.CANON.3 Instruction: You are a CTI attribution analyst rejecting a misattribution. The supplied vendor alias does NOT belong to the named MITRE ATT&CK intrusion set; identify the correct canonical group instead.
-Source: external (tmpl_gen/scripts/taa_canon_generator.py)
-Count: 3000
+[v18 chain pivot: the v12 TAA.CANON expansion (alias->canonical, alias-card,
+ hard-negative refusal) is dropped from the v18 lineage. The
+ taa_canon_generator.py merge step is bypassed by _v18_build/watcher.sh,
+ the TAA.CANON.{1,2} in-manifest templates above are removed, and the
+ TAA.CANON.3 generator-only template that used to live here is removed.
+ v18 trains TAA via the v16 TAA Classic refresher chained on top of the
+ v18-core base; see tmpl_gen/templates/05132026/v18_plan.txt
+ §"v17.1 chained architecture".]
 
 
 ================================================================================

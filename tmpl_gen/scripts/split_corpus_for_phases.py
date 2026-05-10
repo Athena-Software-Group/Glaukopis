@@ -177,10 +177,9 @@ def main() -> int:
             p.error("--two-phase requires --out-broad-plus-canon and --out-axis")
     else:
         missing = [n for n, v in [("--out-broad", args.out_broad),
-                                  ("--out-rms-ate-vsp-rcm", args.out_rms_ate_vsp_rcm),
-                                  ("--out-taa-canon", args.out_taa_canon)] if not v]
+                                  ("--out-rms-ate-vsp-rcm", args.out_rms_ate_vsp_rcm)] if not v]
         if missing:
-            p.error("default (three-shard) mode requires " + ", ".join(missing))
+            p.error("default mode requires " + ", ".join(missing))
 
     rows = json.loads(args.input.read_text())
     val_rows = json.loads(args.val.read_text())
@@ -224,18 +223,24 @@ def _emit_three_phase(args, rows: list[dict], val_keys: set) -> int:
           file=sys.stderr)
     print(f"phase A (broad): {len(broad):,}", file=sys.stderr)
     print(f"phase B (rms+ate+vsp+rcm): {len(phase_b):,}", file=sys.stderr)
-    print(f"phase C (taa_canon): {len(phase_c):,}", file=sys.stderr)
+    if args.out_taa_canon:
+        print(f"phase C (taa_canon): {len(phase_c):,}", file=sys.stderr)
+    elif phase_c:
+        print(f"phase C (taa_canon): {len(phase_c):,} rows DROPPED "
+              f"(--out-taa-canon not supplied)", file=sys.stderr)
 
-    for path, shard in [(args.out_broad, broad),
-                        (args.out_rms_ate_vsp_rcm, phase_b),
-                        (args.out_taa_canon, phase_c)]:
+    shard_specs = [(args.out_broad, broad),
+                   (args.out_rms_ate_vsp_rcm, phase_b)]
+    if args.out_taa_canon:
+        shard_specs.append((args.out_taa_canon, phase_c))
+    for path, shard in shard_specs:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(shard, indent=2))
         print(f"wrote {len(shard):,} rows to {path}", file=sys.stderr)
 
     if args.report:
         report = {
-            "mode": "three-phase",
+            "mode": "three-phase" if args.out_taa_canon else "two-phase-no-canon",
             "input": str(args.input),
             "val": str(args.val),
             "input_rows": len(rows),
@@ -243,6 +248,7 @@ def _emit_three_phase(args, rows: list[dict], val_keys: set) -> int:
             "phase_a_broad_rows": len(broad),
             "phase_b_rms_ate_vsp_rcm_rows": len(phase_b),
             "phase_c_taa_canon_rows": len(phase_c),
+            "phase_c_dropped": not bool(args.out_taa_canon),
             "phase_a_top50_shortnames": _hist(broad, args.key_field),
             "phase_b_top50_shortnames": _hist(phase_b, args.key_field),
             "phase_c_top50_shortnames": _hist(phase_c, args.key_field),

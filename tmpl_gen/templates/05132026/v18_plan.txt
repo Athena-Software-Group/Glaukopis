@@ -1,20 +1,44 @@
-v18 training plan -- standalone three-phase SFT (CKT/ATE recovery)
-==================================================================
+v18 training plan -- v17.1-pattern chained SFT (CKT/ATE recovery)
+=================================================================
 
 Vintage label    : v18
-Architecture     : STANDALONE three-phase full-parameter SFT off
-                   Qwen/Qwen2.5-14B-Instruct (NOT chained off v16/v17)
+Architecture     : CHAINED three-stage full-parameter SFT off
+                   Qwen/Qwen2.5-14B-Instruct (mirrors the v17.1 chain
+                   shape: a v12-shape Core base, then a TAA Classic
+                   refresher, then a CSE drill).  An earlier draft of
+                   v18 (now archived as
+                   SFT/autotrain/run_sft_qwen25_14b_v18.sh.monolithic.bak)
+                   ran a standalone v12-shape three-phase recipe with
+                   TAA.CANON in Phase C; that draft was pivoted to the
+                   chained shape after the v15 W1 audit isolated
+                   TAA.CANON as the wrong TAA flavour for AthenaBench
+                   TAA Classic and confirmed v17.1's chained pattern
+                   as the validated post-mortem recipe.
 Author date      : 2026-05-13 (vintage dir tmpl_gen/templates/05132026/)
 Predecessors     : v17.1 (asg-ai/athena-cti-sft-qwen25-14b-v17-1, chained
                    CSE specialist off v16; lifted CSE-Malware/CSE-TI but
                    left CKT (MCQ) and ATE flat -- see §1)
-                   v12  (asg-ai/athena-cti-sft-qwen25-14b-v12, the standalone
-                   three-phase recipe v18 returns to)
+                   v16  (asg-ai/athena-cti-sft-qwen25-14b-v16, chained
+                   TAA Classic refresher off v12; the TAA-flavour
+                   reference v18+TAA carries verbatim)
+                   v12  (asg-ai/athena-cti-sft-qwen25-14b-v12, the
+                   standalone two-phase Core recipe v18-Core mirrors)
 Operational ref  : THIS FILE (corpus targets, recipe, deliverables, sign-off)
-                   Sophia-CTI-Templates-v18.txt   (manifest)
-                   v18_row_count_gate.json        (build-time floors)
-                   _v18_build/watcher.sh          (build pipeline)
-                   SFT/autotrain/run_sft_qwen25_14b_v18.sh (training launcher)
+                   Sophia-CTI-Templates-v18.txt   (Core manifest)
+                   v18_row_count_gate.json        (Core build-time floors)
+                   _v18_build/watcher.sh          (Core build pipeline)
+                   tmpl_gen/templates/05102026/Sophia-CTI-Templates-v16.txt
+                                                  (TAA Classic manifest)
+                   _v18_taa_build/watcher.sh      (TAA build pipeline)
+                   tmpl_gen/templates/05122026/Sophia-CTI-Templates-v17.1.txt
+                                                  (CSE manifest)
+                   _v18_cse_build/watcher.sh      (CSE build pipeline)
+                   SFT/autotrain/run_sft_qwen25_14b_v18_core.sh
+                                                  (stage 1 launcher)
+                   SFT/autotrain/run_sft_qwen25_14b_v18_plus_taa.sh
+                                                  (stage 2 launcher)
+                   SFT/autotrain/run_sft_qwen25_14b_v18.sh
+                                                  (stage 3 / final launcher)
 
 
 1. Why v18 exists -- the CKT/ATE ceiling at the end of the v17.1 sweep
@@ -68,9 +92,12 @@ Operational ref  : THIS FILE (corpus targets, recipe, deliverables, sign-off)
 
 1.3 Note on the chained line. v17.1 demonstrated that chaining works
     when the data-quality bar is met (Shuffle: mcq_multi was the
-    blocker). v18 leaves the chained-SFT path intact and parallel for
-    future per-axis specialists; the standalone recipe here is the
-    base on which any future v19+ chain will be built.
+    blocker). v18 ADOPTS the chained pattern verbatim: a v12-shape
+    Core base (broad + RMS/ATE/VSP/RCM axis), a v16-shape TAA Classic
+    refresher chained on top, and a v17.1-shape CSE drill chained on
+    top of that. TAA.CANON / MISP.CANON alias data is dropped from
+    the v18 lineage entirely; the v15 W1 audit isolated CANON as the
+    wrong TAA flavour for the AthenaBench TAA Classic axis.
 
 
 2. v17.1 -> v18 deltas (high-level)
@@ -135,17 +162,33 @@ Operational ref  : THIS FILE (corpus targets, recipe, deliverables, sign-off)
         the make_dataset run begins. Surfaces athena-cti-db drift at
         build time rather than at row-count gate time.
 
-  (5) ALL OTHER axes carried verbatim from v12. RMS, VSP, RCM, MS,
-      TAA-{attribution,IE-NEG,CANON}, SOC, CM templates and gates
-      are byte-identical to the v12 manifest. The watcher inherits
+  (5) Core-shard axes carried verbatim from v12. RMS, VSP, RCM, MS,
+      TAA-{attribution,IE-NEG}, SOC, CM templates and gates are
+      byte-identical to the v12 manifest. The Core watcher inherits
       the v12 +v13 gate plumbing (seed-provenance, licence-allowlist,
-      stratified shuffle, val/train split, three-shard phase split).
+      stratified shuffle, val/train split, two-shard phase split).
+      TAA.CANON is REMOVED from the v18 manifest entirely; TAA on the
+      v18 lineage is supplied by stage 2 (v18+TAA, v16-shape Classic
+      manifest).
 
-  (6) HF target asg-ai/athena-cti-sft-qwen25-14b-v18.
+  (6) HF targets (one per chain stage; only the final stage is the
+      published v18 model):
+        stage 1  asg-ai/athena-cti-sft-qwen25-14b-v18-core
+        stage 2  asg-ai/athena-cti-sft-qwen25-14b-v18-plus-taa
+        stage 3  asg-ai/athena-cti-sft-qwen25-14b-v18    (final)
 
-  (7) NO chained-SFT. v18 trains from Qwen/Qwen2.5-14B-Instruct
-      directly (cf. v12). v16/v17/v17.1 are not on the v18 critical
-      path and may continue as parallel specialist branches.
+  (7) v17.1-pattern CHAINED SFT.  v18 trains in three sequential
+      stages, each picking up the previous stage's pushed HF
+      checkpoint as its base model:
+        stage 1   Qwen/Qwen2.5-14B-Instruct  -> v18-core
+                  (broad + RMS/ATE/VSP/RCM axis; v12-shape recipe)
+        stage 2   v18-core                   -> v18-plus-taa
+                  (TAA Classic refresher; v16 manifest verbatim)
+        stage 3   v18-plus-taa               -> v18 (final)
+                  (CyberSOCEval letter-set drill; v17.1 manifest
+                   verbatim, including Shuffle: mcq_multi)
+      v16 and v17.1 are the lineage references for stages 2 and 3
+      respectively; their manifests and recipes are reused verbatim.
 
 
 3. Row-count plan (per-family targets and reject-floor)
@@ -189,64 +232,128 @@ Operational ref  : THIS FILE (corpus targets, recipe, deliverables, sign-off)
       after dedup + per-primary cap         ~14000         ~10400      ~14000
       gate floor (REJECT_IF_BELOW)           13500          9000       13500
 
-3.3 RMS / VSP / RCM / MS / TAA-{attr,IE-NEG,CANON} / SOC / CM axes
-    inherit v12 floors verbatim (see v18_row_count_gate.json).
+3.3 RMS / VSP / RCM / MS / TAA-{attr,IE-NEG} / SOC / CM axes inherit
+    v12 floors verbatim (see v18_row_count_gate.json). TAA.CANON is
+    NOT part of the v18 Core manifest; the TAA Classic floors that
+    apply to stage 2 are sourced from v16_row_count_gate.json
+    (tmpl_gen/templates/05102026/) and the CSE floors that apply to
+    stage 3 from v17_1_row_count_gate.json (05122026/).
 
 
-4. Training recipe -- three-phase, identical to v12
----------------------------------------------------
+4. Training recipe -- v17.1-pattern chain (three stages)
+--------------------------------------------------------
 
 4.1 Hardware: 8x H100 80GB. Batch math sized for batch=1 per GPU.
-4.2 Phase A (broad re-anchor):
-      - datasets   ift_data_2026_05_13_v18_broad,
-                   tulu_3_sft_mixture, alpaca_en_demo
-      - 1 epoch, lr 1e-5, cutoff 8192, packing on
-      - effective batch 16
-      - --max-samples 240000
-4.3 Phase B (RMS/ATE/VSP/RCM catalog drill):
-      - dataset    ift_data_2026_05_13_v18_rms_ate_vsp_rcm
-      - 1 epoch, lr 5e-6, cutoff 16384, packing OFF
-      - effective batch 8
-      - eval/save every 400 steps
-      - --max-samples 70000 (lifted from 60000 to absorb v18's
-        ~3500-row ATE expansion)
-4.4 Phase C (TAA.CANON memorisation):
-      - dataset    ift_data_2026_05_13_v18_taa_canon
-      - 1 epoch, lr 3e-6, cutoff 8192, packing on
-      - effective batch 16
-      - --max-samples 12000
-      - final merged model pushed to asg-ai/athena-cti-sft-qwen25-14b-v18
+    Stages run sequentially (each pulls the previous stage's pushed
+    HF checkpoint as base); no stage is skippable on the published
+    v18 critical path.
 
-4.5 Per-phase corpus split is the v12 three-shard split
-    (split_corpus_for_phases.py default mode), NOT v13's two-shard
-    or v14's four-shard.
+4.2 Stage 1 -- v18-Core (mirrors the v12 two-phase recipe):
+      Phase A (broad re-anchor):
+        - datasets   ift_data_2026_05_13_v18_core_a_kb_mcq_taa_soc_cm_ms_yn,
+                     tulu_3_sft_mixture, alpaca_en_demo
+        - 1 epoch, lr 1e-5, cutoff 8192, packing on
+        - effective batch 16, --max-samples 240000
+      Phase B (RMS/ATE/VSP/RCM catalog drill):
+        - dataset    ift_data_2026_05_13_v18_core_b_rms_ate_vsp_rcm
+                     (eval: ift_data_2026_05_13_v18_core_val)
+        - 1 epoch, lr 5e-6, cutoff 16384, packing OFF
+        - effective batch 8, eval/save every 400 steps
+        - --max-samples 70000
+        - Phase B's final merged model pushed to
+          asg-ai/athena-cti-sft-qwen25-14b-v18-core
+      Launcher : SFT/autotrain/run_sft_qwen25_14b_v18_core.sh
+      Wallclock: ~13 h on 8xH100 (Phase A 8 h, Phase B 5 h)
+
+4.3 Stage 2 -- v18+TAA (mirrors the v16 chained TAA Classic recipe):
+      - base model  asg-ai/athena-cti-sft-qwen25-14b-v18-core
+      - dataset     ift_data_2026_05_13_v18_taa
+                    (eval: ift_data_2026_05_13_v18_taa_val)
+      - 1 epoch, lr 5e-6, cutoff 4096, packing on
+      - effective batch 16, eval/save every 100 steps
+      - --max-samples 33000 (matches v15 W1 / v14.1 Phase D-TAA)
+      - gradient checkpointing OFF (v14.1 hot-fix carried forward)
+      - merged model pushed to
+        asg-ai/athena-cti-sft-qwen25-14b-v18-plus-taa
+      Launcher : SFT/autotrain/run_sft_qwen25_14b_v18_plus_taa.sh
+      Wallclock: ~6-8 h on 8xH100
+
+4.4 Stage 3 -- v18 (mirrors the v17.1 chained CSE recipe):
+      - base model  asg-ai/athena-cti-sft-qwen25-14b-v18-plus-taa
+      - dataset     ift_data_2026_05_13_v18_cse
+                    (eval: ift_data_2026_05_13_v18_cse_val)
+      - 1 epoch, lr 5e-6, cutoff 4096, packing on
+      - effective batch 16, eval/save every 100 steps
+      - --max-samples 33000 (matches v17.1)
+      - gradient checkpointing OFF (v14.1 hot-fix carried forward)
+      - final merged model pushed to
+        asg-ai/athena-cti-sft-qwen25-14b-v18  (PUBLISHED)
+      Launcher : SFT/autotrain/run_sft_qwen25_14b_v18.sh
+      Wallclock: ~4-6 h on 8xH100
+
+4.5 v18-Core uses the v12 two-shard phase split (broad + axis); the
+    legacy three-shard split (broad + axis + taa_canon) is dropped
+    along with TAA.CANON.  Stages 2 and 3 each consume a single
+    purpose-built shard with its own paired val slice; no further
+    split is performed.
 
 
 5. Gates, sign-off, and falsification criteria
 ----------------------------------------------
 
-5.1 Build-time gates (all must pass before train/val split):
-      Phase 0   substrate validation       _v18_build/_neo4j_check.py
-      Phase 0b  seed-provenance gate       check_seed_provenance.py
-      Phase 6   row-count gate              v18_row_count_gate.json
-      Phase 6b  licence-allowlist gate      check_corpus_licences.py
+5.1 Build-time gates (all must pass for each shard before its
+    train/val split):
+      Core shard (_v18_build/watcher.sh):
+        Phase 0   substrate validation       _v18_build/_neo4j_check.py
+        Phase 0b  seed-provenance gate       check_seed_provenance.py
+        Phase 6   row-count gate              v18_row_count_gate.json
+        Phase 6b  licence-allowlist gate      check_corpus_licences.py
+      TAA shard (_v18_taa_build/watcher.sh):
+        actor-balance, dedup-against-evals, row-count gate against
+        tmpl_gen/templates/05102026/v16_row_count_gate.json,
+        licence-allowlist gate.
+      CSE shard (_v18_cse_build/watcher.sh):
+        actor-balance (floor 0), dedup-against-evals, row-count gate
+        against tmpl_gen/templates/05122026/v17_1_row_count_gate.json,
+        licence-allowlist gate, letter-balance gate.
+      Cross-stage validation (_v18_build/validate_corpus.py): asserts
+      JSON well-formedness, required-field presence, source allowlist,
+      MCQ letter-balance on core_a_kb_mcq_taa_soc_cm_ms_yn, ATE family
+      lift on core_b_rms_ate_vsp_rcm, and per-stage train/val disjointness
+      across all four train shards (core_a_kb_mcq_taa_soc_cm_ms_yn,
+      core_b_rms_ate_vsp_rcm, taa, cse) against their paired val slices.
 
-5.2 Bench sign-off (against weighted Athena+CyberMetric+CyberSOCEval):
+5.2 Bench sign-off (against weighted Athena+CyberMetric+CyberSOCEval).
+    The chained pattern produces three intermediate checkpoints; only
+    the v18 final stage is published, but stage-1 and stage-2
+    benchmarks are recorded for regression diagnosis if the final
+    sign-off fails:
 
-      MUST PASS (any one falsified -> rebuild):
+      v18-core (stage 1; benchmark for diagnostic only):
+        CKT (MCQ) >= 75.0    (target 77.6; the lift sourced from
+                              the corpus deltas in §3 lands here)
+        ATE       >= 58.5    (target 61.0)
+        RMS / VSP / RCM / SOC / CM  >= v12 - 2pp
+
+      v18-plus-taa (stage 2; benchmark for diagnostic only):
+        TAA-attr  >= v12 + 2pp  (the v16 chained TAA pattern lifts
+                                  TAA Classic; if not, the chain is
+                                  reproducing v15 W1 -- abort)
+        CKT, ATE, RMS, VSP, RCM, SOC, CM  >= v18-core - 2pp
+
+      v18 (stage 3; PUBLISHED checkpoint, MUST PASS):
         CKT (MCQ) >= 75.0      (target 77.6)
         ATE       >= 58.5      (target 61.0)
-        RMS       >= v12 - 2pp  (no regression)
+        RMS       >= v12 - 2pp
         VSP       >= v12 - 2pp
         RCM       >= v12 - 2pp
         TAA-attr  >= v12 - 2pp
         SOC       >= v12 - 2pp
-        CSE-TI    >= v17.1 - 3pp  (chained head was on v16, not v18;
-                                   modest regression acceptable since
-                                   v18 is base, not specialist)
-        CSE-MAL   >= v17.1 - 3pp
+        CSE-TI    >= v17.1 - 2pp  (chained CSE head re-applied here;
+                                   v17.1 result should reproduce)
+        CSE-MAL   >= v17.1 - 2pp
 
-      SHOULD HIT:
+      SHOULD HIT (v18 final):
         weighted total >= v17.1 weighted
         CKT >= 77.6 (v8-parity)
         ATE >= 61.0
