@@ -22,8 +22,8 @@ published v18 model):
 | stage | checkpoint | answers the question |
 |---|---|---|
 | 1 | `asg-ai/athena-cti-sft-qwen25-14b-v18-core` | Does evolving the v12 manifest with (a) lifted MCQ counts on AB.MCQ.{1,2,4,5,6}, (b) a third generator family AB.MCQ.EXT.GLOSS.1 sourced from public CTI/sec glossaries, and (c) three new ATE templates that bind to SigmaRule, malware, and intrusion-set narratives lift CKT to v8/8B-parity (≥77.6) and ATE to ≥61.0 without regressing RMS / VSP / RCM / SOC / CM? |
-| 2 | `asg-ai/athena-cti-sft-qwen25-14b-v18-plus-taa` | Does the v16 chained TAA Classic recipe reproduce on top of v18-Core (TAA-attr ≥ v12 + 2pp) without regressing the stage-1 axes? |
-| 3 | `asg-ai/athena-cti-sft-qwen25-14b-v18` | Does the v17.1 chained CSE recipe reproduce on top of v18+TAA (CSE-TI / CSE-MAL ≥ v17.1 − 2pp) while keeping all v18-Core / v18+TAA gains? |
+| 2 | `asg-ai/athena-cti-sft-qwen25-14b-v18-core-plus-taa` | Does the v16 chained TAA Classic recipe reproduce on top of v18-Core (TAA-attr ≥ v12 + 2pp) without regressing the stage-1 axes? |
+| 3 | `asg-ai/athena-cti-sft-qwen25-14b-v18-core-plus-taa-cse` | Does the v17.1 chained CSE recipe reproduce on top of v18+TAA (CSE-TI / CSE-MAL ≥ v17.1 − 2pp) while keeping all v18-Core / v18+TAA gains? |
 
 The vintage directory is self-contained per project convention; only
 the Core (stage 1) manifest lives here, because stages 2 and 3 reuse
@@ -157,11 +157,11 @@ re-anchor 1e-5, Phase B RMS/ATE/VSP/RCM drill 5e-6) and pushes
 `-v18-core`; **v18+TAA** chains a v16-shape TAA Classic refresher
 (lr 5e-6, cutoff 4096, packing on) and pushes `-v18-plus-taa`;
 **v18** chains a v17.1-shape CSE drill (same recipe as v18+TAA, CSE
-shard) and pushes `-v18`. See `v18_plan.txt §4` for the full
-hyperparameter table; launchers are
+shard) and pushes `-v18-core-plus-taa-cse`. See `v18_plan.txt §4` for the
+full hyperparameter table; launchers are
 `SFT/autotrain/run_sft_qwen25_14b_v18_core.sh`,
 `run_sft_qwen25_14b_v18_plus_taa.sh`, and
-`run_sft_qwen25_14b_v18.sh`.
+`run_sft_qwen25_14b_v18_final.sh`.
 
 ## 3. Substrate validation (Phase 0)
 
@@ -285,11 +285,11 @@ HF before stage 2 starts:
 ```bash
 # stage 1 (~13 h on 8xH100): broad + axis -> v18-core
 bash SFT/autotrain/run_sft_qwen25_14b_v18_core.sh
-# stage 2 (~6-8 h):           TAA Classic  -> v18-plus-taa
+# stage 2 (~6-8 h):           TAA Classic  -> v18-core-plus-taa
 bash SFT/autotrain/run_sft_qwen25_14b_v18_plus_taa.sh
-# stage 3 (~4-6 h):           CSE drill    -> v18 (final)
-bash SFT/autotrain/run_sft_qwen25_14b_v18.sh
-# defaults to ${HF_USERNAME}/athena-cti-sft-qwen25-14b-v18
+# stage 3 (~4-6 h):           CSE drill    -> v18-core-plus-taa-cse (final)
+bash SFT/autotrain/run_sft_qwen25_14b_v18_final.sh
+# defaults to ${HF_USERNAME}/athena-cti-sft-qwen25-14b-v18-core-plus-taa-cse
 # base of stage 1 : Qwen/Qwen2.5-14B-Instruct
 # total wall-time : ~24 h on 8xH100
 ```

@@ -59,8 +59,8 @@ the user's Excel master sheet and has *not* been mirrored into the repo.
   3. **Stage 3 (+CSE, final)** -- chained off Stage 2 checkpoint, reuses
      the v17.1 CSE manifest at
      `tmpl_gen/templates/05122026/Sophia-CTI-Templates-v17.1.txt`.
-     Launcher: `SFT/autotrain/run_sft_qwen25_14b_v18.sh` (publishes the
-     final `asg-ai/athena-cti-sft-qwen25-14b-v18` checkpoint).
+     Launcher: `SFT/autotrain/run_sft_qwen25_14b_v18_final.sh` (publishes
+     the final `asg-ai/athena-cti-sft-qwen25-14b-v18-core-plus-taa-cse` checkpoint).
 * Why this shape: the v12..v17.1 chain successfully recovered CSE-TI /
   CSE-Malware without forgetting AthenaBench heads, but CKT (MCQ) and ATE
   refused to lift.  v18 lifts the MCQ floor by ~50% and adds glossary-
@@ -110,3 +110,27 @@ the user's Excel master sheet and has *not* been mirrored into the repo.
    memory-restored agent thinks it needs to "run the Qwen baseline,"
    it does not -- those values are the baseline.  The legacy plan to
    baseline `Llama-3.1-8B-Instruct` on CyberSOCEval is dropped.
+
+## v18 HF naming convention (locked 2026-05-10)
+
+The three v18 chained-stage HF repos use additive suffixes so each
+checkpoint's lineage is self-evident from its name and so any of the
+three can be benchmarked independently:
+
+| stage | launcher | HF repo |
+|---|---|---|
+| 1 | `SFT/autotrain/run_sft_qwen25_14b_v18_core.sh` | `asg-ai/athena-cti-sft-qwen25-14b-v18-core` |
+| 2 | `SFT/autotrain/run_sft_qwen25_14b_v18_plus_taa.sh` | `asg-ai/athena-cti-sft-qwen25-14b-v18-core-plus-taa` |
+| 3 | `SFT/autotrain/run_sft_qwen25_14b_v18_final.sh` | `asg-ai/athena-cti-sft-qwen25-14b-v18-core-plus-taa-cse` |
+
+History (do NOT re-run / do NOT re-rename):
+* Stage 2 was originally pushed as `asg-ai/athena-cti-sft-qwen25-14b-v18-plus-taa`
+  on 2026-05-10 and renamed in-place via the HF `repos/move` API to
+  `…-v18-core-plus-taa` the same day.  The old name returns HTTP 307
+  -> the new canonical name, so any pinned reference still resolves.
+* Stage 3 launcher was originally `run_sft_qwen25_14b_v18.sh` (and
+  briefly `run_sft_qwen25_14b_v18_cse.sh`) before settling on
+  `run_sft_qwen25_14b_v18_final.sh` to surface that it is the v18
+  publish step.  The pre-pivot monolithic v18 script lives at
+  `SFT/autotrain/run_sft_qwen25_14b_v18.sh.monolithic.bak` and is
+  unrelated to the chained launchers above.

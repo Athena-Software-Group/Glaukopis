@@ -37,7 +37,7 @@ Operational ref  : THIS FILE (corpus targets, recipe, deliverables, sign-off)
                                                   (stage 1 launcher)
                    SFT/autotrain/run_sft_qwen25_14b_v18_plus_taa.sh
                                                   (stage 2 launcher)
-                   SFT/autotrain/run_sft_qwen25_14b_v18.sh
+                   SFT/autotrain/run_sft_qwen25_14b_v18_final.sh
                                                   (stage 3 / final launcher)
 
 
@@ -174,8 +174,8 @@ Operational ref  : THIS FILE (corpus targets, recipe, deliverables, sign-off)
   (6) HF targets (one per chain stage; only the final stage is the
       published v18 model):
         stage 1  asg-ai/athena-cti-sft-qwen25-14b-v18-core
-        stage 2  asg-ai/athena-cti-sft-qwen25-14b-v18-plus-taa
-        stage 3  asg-ai/athena-cti-sft-qwen25-14b-v18    (final)
+        stage 2  asg-ai/athena-cti-sft-qwen25-14b-v18-core-plus-taa
+        stage 3  asg-ai/athena-cti-sft-qwen25-14b-v18-core-plus-taa-cse    (final)
 
   (7) v17.1-pattern CHAINED SFT.  v18 trains in three sequential
       stages, each picking up the previous stage's pushed HF
@@ -274,12 +274,12 @@ Operational ref  : THIS FILE (corpus targets, recipe, deliverables, sign-off)
       - --max-samples 33000 (matches v15 W1 / v14.1 Phase D-TAA)
       - gradient checkpointing OFF (v14.1 hot-fix carried forward)
       - merged model pushed to
-        asg-ai/athena-cti-sft-qwen25-14b-v18-plus-taa
+        asg-ai/athena-cti-sft-qwen25-14b-v18-core-plus-taa
       Launcher : SFT/autotrain/run_sft_qwen25_14b_v18_plus_taa.sh
       Wallclock: ~6-8 h on 8xH100
 
 4.4 Stage 3 -- v18 (mirrors the v17.1 chained CSE recipe):
-      - base model  asg-ai/athena-cti-sft-qwen25-14b-v18-plus-taa
+      - base model  asg-ai/athena-cti-sft-qwen25-14b-v18-core-plus-taa
       - dataset     ift_data_2026_05_13_v18_cse
                     (eval: ift_data_2026_05_13_v18_cse_val)
       - 1 epoch, lr 5e-6, cutoff 4096, packing on
@@ -287,8 +287,8 @@ Operational ref  : THIS FILE (corpus targets, recipe, deliverables, sign-off)
       - --max-samples 33000 (matches v17.1)
       - gradient checkpointing OFF (v14.1 hot-fix carried forward)
       - final merged model pushed to
-        asg-ai/athena-cti-sft-qwen25-14b-v18  (PUBLISHED)
-      Launcher : SFT/autotrain/run_sft_qwen25_14b_v18.sh
+        asg-ai/athena-cti-sft-qwen25-14b-v18-core-plus-taa-cse  (PUBLISHED)
+      Launcher : SFT/autotrain/run_sft_qwen25_14b_v18_final.sh
       Wallclock: ~4-6 h on 8xH100
 
 4.5 v18-Core uses the v12 two-shard phase split (broad + axis); the

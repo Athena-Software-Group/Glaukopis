@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# v18 single-phase narrow-drilling SFT of asg-ai/athena-cti-sft-qwen25-14b-v18-plus-taa
+# v18 single-phase narrow-drilling SFT of asg-ai/athena-cti-sft-qwen25-14b-v18-core-plus-taa
 # on the v18 CyberSOCEval-letter-set shard (ift_data_2026_05_13_v18_cse). Stage 3
 # (final) of the v17.1-pattern chained v18 architecture
 # (tmpl_gen/templates/05132026/v18_plan.txt §"v17.1 chained architecture").
@@ -16,7 +16,7 @@
 #   self-contained on disk.
 #
 # Recipe (verbatim mirror of v16+v17.1-CSE):
-#   - Base model    : asg-ai/athena-cti-sft-qwen25-14b-v18-plus-taa
+#   - Base model    : asg-ai/athena-cti-sft-qwen25-14b-v18-core-plus-taa
 #                     (HF; overridable via --base-model)
 #   - Dataset       : ift_data_2026_05_13_v18_cse  (~14-19K rows; CSE shape)
 #   - 1 epoch, lr 5e-6, cutoff 4096, packing ON
@@ -24,19 +24,19 @@
 #   - eval/save every 100 steps
 #   - --max-samples 33000  (matches v16 / v17 / v17.1)
 #   - Gradient checkpointing OFF (v14.1 hot-fix carried forward)
-#   - Push: YES -> ${HF_USERNAME}/athena-cti-sft-qwen25-14b-v18
+#   - Push: YES -> ${HF_USERNAME}/athena-cti-sft-qwen25-14b-v18-core-plus-taa-cse
 #
 # Estimated wall-time on 8xH100: ~4-6 h (corpus size matches v17.1).
 #
 # Full v18 chain (run sequentially after each push completes on HF):
 #   1. ./run_sft_qwen25_14b_v18_core.sh        # broad + axis  -> v18-core
-#   2. ./run_sft_qwen25_14b_v18_plus_taa.sh    # TAA Classic   -> v18-plus-taa
-#   3. ./run_sft_qwen25_14b_v18.sh             # CSE drill     -> v18 (final)
+#   2. ./run_sft_qwen25_14b_v18_plus_taa.sh    # TAA Classic   -> v18-core-plus-taa
+#   3. ./run_sft_qwen25_14b_v18_final.sh       # CSE drill     -> v18-core-plus-taa-cse (final)
 #
 # Estimated total wall-clock on 8xH100 80GB: ~24 h.
 #
 # Usage:
-#   ./run_sft_qwen25_14b_v18.sh [--repo-id USER/NAME]
+#   ./run_sft_qwen25_14b_v18_final.sh [--repo-id USER/NAME]
 #                               [--base-model HF_REPO|LOCAL_DIR]
 #                               [--output-dir DIR]
 #                               [--report-to wandb|none]
@@ -75,10 +75,10 @@ done
 
 if [[ -z "${REPO_ID}" ]]; then
     : "${HF_USERNAME:?Set HF_USERNAME in SFT/.env (or pass --repo-id USER/NAME)}"
-    REPO_ID="${HF_USERNAME}/athena-cti-sft-qwen25-14b-v18"
+    REPO_ID="${HF_USERNAME}/athena-cti-sft-qwen25-14b-v18-core-plus-taa-cse"
 fi
 
-[[ -z "${BASE_MODEL}" ]] && BASE_MODEL="asg-ai/athena-cti-sft-qwen25-14b-v18-plus-taa"
+[[ -z "${BASE_MODEL}" ]] && BASE_MODEL="asg-ai/athena-cti-sft-qwen25-14b-v18-core-plus-taa"
 
 TIMESTAMP="$(date +"%Y-%m-%d-%H-%M-%S")"
 SAFE_MODEL="Qwen_Qwen2.5-14B-Instruct"

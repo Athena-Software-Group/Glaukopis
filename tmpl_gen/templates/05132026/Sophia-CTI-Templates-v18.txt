@@ -39,7 +39,7 @@ All other axes (RMS, VSP, RCM, MS, TAA-{attribution,IE-NEG,CANON}, SOC,
 CM) carry v12 templates and Counts byte-identical. The build pipeline
 inherits v12+v13 plumbing (seed-provenance gate, licence-allowlist gate,
 stratified shuffle, three-shard split). HF target:
-asg-ai/athena-cti-sft-qwen25-14b-v18.
+asg-ai/athena-cti-sft-qwen25-14b-v18-core-plus-taa-cse.
 
 v18 deltas (manifest only; build/training deltas in v18_plan.txt)
 -----------------------------------------------------------------
