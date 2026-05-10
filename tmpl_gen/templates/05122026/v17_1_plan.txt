@@ -1,0 +1,175 @@
+v17.1 training plan -- v17 data-fix recovery (single-variable change vs v17)
+=============================================================================
+
+Vintage label   : v17.1
+Architecture    : CHAINED narrow-SFT shard off the v16 TAA specialist
+                  (IDENTICAL to v17; recipe, base model, batch math, step
+                  count and HF target byte-for-byte unchanged)
+Author date     : 2026-05-12 (vintage dir tmpl_gen/templates/05122026/)
+Predecessor     : v17 (asg-ai/athena-cti-sft-qwen25-14b-v17, CSE chained
+                  specialist; bench surfaced systemic regression -- see §1.2)
+Operational ref : THIS FILE (corpus targets, recipe, deliverables, sign-off).
+
+
+1. Why v17.1 exists (one-paragraph overview)
+---------------------------------------------
+
+1.1 v17 was built on top of asg-ai/athena-cti-sft-qwen25-14b-v16 with the
+    Sophia-CTI-Templates-v17.txt manifest. The post-bench result was
+    Outcome D per v17_plan.txt §4: the chained SFT regressed every measured
+    Athena axis simultaneously and did NOT lift CSE-Malware or CSE-TI.
+
+1.2 Forensic analysis of SFT/data/ift_data_2026_05_11_v17_cse.json (16,548
+    train rows) revealed the cause is a corpus defect, not a chaining
+    failure. The v17 manifest hard-coded the answer letter list into the
+    Answer block of every JS.CSE.* template (e.g. `"correct_answers":
+    ["A", "B"]`) and declared no Shuffle directive. The engine therefore
+    rendered every triple of a given template with the SAME literal letter
+    list, producing only 4 unique correct_answers tuples across the entire
+    corpus:
+        ["A","B"]      = 50.7%   (5 templates)
+        ["C"]          = 24.3%   (4 templates)
+        ["A","B","D"]  = 18.5%   (3 templates)
+        []             =  6.6%   (2 templates)
+    Letters E/F/G/H NEVER appeared as correct answers anywhere in the
+    corpus. From the optimizer's perspective the input distribution was
+    essentially noise relative to the output: the model can satisfy the
+    training loss almost entirely by learning "emit A,B regardless of
+    input". This is structural mode-collapse and is the most plausible
+    single cause of the v17 -> v16 regression on every axis.
+
+1.3 v17.1 isolates this single variable. The manifest body is byte-
+    identical to v17 except that every template now declares
+    `Shuffle: mcq_multi`, a new engine directive that permutes the option
+    block (A-H), parses the JSON-letter-set answer marker (wrapped
+    <json_object>{...}</json_object> or bare {...}), and rewrites the
+    correct_answers list to the shuffled positions. Single-shape
+    `Shuffle: mcq` and all other render paths are untouched.
+
+1.3a Second root cause discovered during the v17.1 build dry-run
+    (2026-05-10): tmpl_gen/scripts/tmpl_docx2json.py truncated every
+    JS.CSE.* template body at the blank line that follows the <desc>
+    wrapper. Its question-collection loop appended only consecutive
+    "[A-Z])" option lines after the initial Question: header and broke
+    out on any other line shape, so the rendered triples for v17 (and
+    the first v17.1 dry-run) contained Instruction + a Question: body
+    truncated at </desc> + Answer: <hard-coded letter list>, with the
+    "Based on the intelligence above ..." prose paragraph and ALL the
+    A) ... E) option lines silently dropped. This explains why even a
+    correctly-firing mcq_multi shuffler produced zero option-line matches
+    in its regex: the option lines were never in the rendered text.
+    The fix in tmpl_docx2json.py mirrors the answer-collection semantics:
+    after the Question: header, continue collecting subsequent lines
+    (preserving internal blank lines, stripping trailing) until Answer:,
+    a {force ...} constraint, a Sample/Shuffle/Count/... sentinel
+    prefix, or the next template ID line. v12/v16 templates are unaffected
+    because their Question: bodies are single-line; the change only
+    extends what the parser will accept.
+
+1.4 The hypothesis under test: with a properly-randomized correct_answers
+    distribution, the chained-SFT recipe IS sufficient to lift the CSE
+    axes without regressing the v16 TAA-attribution head. If v17.1
+    reproduces the v17 regression, the problem is architectural (chained
+    SFT competes with the v16 head) and a v18 mergekit alpha sweep is
+    indicated. If v17.1 lifts CSE-Malware and CSE-TI without TAA loss,
+    the problem was the corpus and chained SFT is validated.
+
+
+2. Pipeline (v17 watcher with v17.1 paths and one new gate)
+------------------------------------------------------------
+
+Build orchestrator: _v17_1_build/watcher.sh (forked from _v17_build/watcher.sh).
+The pipeline phases mirror v17 verbatim with one addition (Phase 6c) and
+one path change (the row-count gate plan):
+
+  Phase 1   poll make_dataset.sh PID         -- carry from v17
+  Phase 2   validate raw json                -- carry from v17
+  Phase 4   TAA actor-balance                -- carry (per-actor cap 60)
+  Phase 5   dedup against eval sets          -- carry (n=13, drop>=50)
+  Phase 6   row-count gate                   -- v17.1 thresholds (same axes
+                                                as v17, target band carried)
+  Phase 6b  licence-allowlist gate           -- carry from v17
+  Phase 6c  letter-balance gate              -- NEW: rejects the build if
+                                                any of A-E carries <8% or
+                                                >32% of correct slots, OR
+                                                any single combo carries
+                                                >=15% of rows, OR <20
+                                                distinct combos appear.
+                                                The 20-combo floor reflects
+                                                the manifest's combinatorial
+                                                ceiling of 26 (= 1 zero-correct
+                                                + C(5,1) + C(5,2) + C(5,3));
+                                                an earlier draft's 50-combo
+                                                threshold was unsatisfiable
+                                                given the manifest's letter
+                                                cardinality.
+  Phase 7   stratified shuffle               -- carry
+  Phase 8   val/train split                  -- carry (v17.1 paths via
+                                                _v17_1_build/build_val_slice.py)
+
+Generation step (Sophia pipeline) is invoked manually before the watcher:
+
+  bash tmpl_gen/data_generation/make_dataset.sh \
+       tmpl_gen/templates/05122026/Sophia-CTI-Templates-v17.1.txt \
+       _v17_1_build/triples \
+       SFT/data/ift_data_2026_05_12_v17_1.raw.json \
+       10 3500
+  echo "PID=$!" > _v17_1_build/build.pid
+  nohup bash _v17_1_build/watcher.sh > _v17_1_build/watcher.log 2>&1 &
+
+Output paths (data path datestamp = 2026_05_12):
+
+  Raw         : SFT/data/ift_data_2026_05_12_v17_1.raw.json
+  Balanced    : SFT/data/ift_data_2026_05_12_v17_1.balanced.json
+  Clean       : SFT/data/ift_data_2026_05_12_v17_1.json
+  Shuffled    : SFT/data/ift_data_2026_05_12_v17_1.shuffled.json
+  Validation  : SFT/data/ift_data_2026_05_12_v17_1_val.json   (~50 rows / axis)
+  Train (CSE) : SFT/data/ift_data_2026_05_12_v17_1_cse.json   (sole training shard)
+
+
+3. Recipe (verbatim mirror of v17; only dataset pointers change)
+-----------------------------------------------------------------
+
+  Base model      : asg-ai/athena-cti-sft-qwen25-14b-v16  (UNCHANGED from v17)
+  Dataset         : ift_data_2026_05_12_v17_1_cse
+  Eval dataset    : ift_data_2026_05_12_v17_1_val
+  Recipe          : v9 narrow-drill (cutoff 4096, packing ON, lr 5e-6, 1 epoch,
+                    eff_bs 16 = per_device 1 x grad_accum 2 x 8 GPUs,
+                    --max-samples 33000, eval/save every 100 steps,
+                    gradient checkpointing OFF) -- IDENTICAL to v17
+  Launcher        : SFT/autotrain/run_sft_qwen25_14b_v16_plus_v17_1_cse.sh
+  Output dir      : SFT/saves/Qwen_Qwen2.5-14B-Instruct/full/v16_plus_v17_1_cse_${TIMESTAMP}
+  HF push target  : ${HF_USERNAME}/athena-cti-sft-qwen25-14b-v17-1
+  Wall-time       : ~4-6 h on 8xH100 (corpus size matches v17)
+
+
+4. Decision criteria (post-bench)
+----------------------------------
+
+Inherits v17_plan.txt §4 outcome classification verbatim. Additional
+v17.1-specific interpretation overlay:
+
+  Outcome A or B (CSE up vs v16):
+    -> the v17 regression was the corpus bug, not the chained-SFT mechanism.
+       v17.1 ships as the chained CSE specialist (Outcome A) or proceeds
+       to the mergekit alpha sweep (Outcome B). v17 (mode-collapsed) is
+       deprecated on HF.
+
+  Outcome C or D (CSE flat or net regression):
+    -> the v17 regression was at least partly architectural; corpus fix
+       is necessary but not sufficient. Author v18 with one of:
+         (i) mergekit alpha sweep against v16 weights, or
+         (ii) parallel-branch architecture (v15-style) with v17.1 corpus,
+              freezing the v16 TAA head via DPO-style replay loss.
+
+
+5. Sign-off
+------------
+
+  Author          : (to be signed)
+  Manifest hash   : (sha256 of Sophia-CTI-Templates-v17.1.txt at build time)
+  Engine commit   : tmpl_gen/src/tmpl_gen/tmpl_parser.py @ <sha after merge>
+  Training run    : SFT/saves/.../v16_plus_v17_1_cse_${TIMESTAMP}
+  Bench run       : SFT/test/.../<bench_dir>
+  HF release      : asg-ai/athena-cti-sft-qwen25-14b-v17-1
+  Outcome         : (A / B / C / D per §4)
