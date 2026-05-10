@@ -246,6 +246,18 @@ model_mapping = {
     # tmpl_gen/templates/05122026/v17_1_plan.txt and README.md for the
     # falsification criteria overlay (Outcomes A/B/C/D in section 4).
     'athena-cti-sft-qwen25-14b-v17-1-vllm':                    'asg-ai/athena-cti-sft-qwen25-14b-v17-1',
+    # v18: chained three-stage SFT off Qwen2.5-14B-Instruct (mirrors the v17.1
+    # chain shape: v12-shape Core, then a v16 TAA Classic refresher, then a
+    # v17.1 CSE drill). Each stage publishes its own HF repo so any of the
+    # three checkpoints can be benchmarked independently. Suffix convention is
+    # additive: -core -> -core-plus-taa -> -core-plus-taa-cse. Pushed by
+    # SFT/autotrain/run_sft_qwen25_14b_v18_{core,plus_taa,final}.sh. See
+    # tmpl_gen/templates/05132026/v18_plan.txt for the chain rationale and
+    # tmpl_gen/templates/MASTER_RESULTS.md for the locked naming convention
+    # (Stage 2 was renamed in-place from -v18-plus-taa via HF repos/move).
+    'athena-cti-sft-qwen25-14b-v18-core-vllm':                 'asg-ai/athena-cti-sft-qwen25-14b-v18-core',
+    'athena-cti-sft-qwen25-14b-v18-core-plus-taa-vllm':        'asg-ai/athena-cti-sft-qwen25-14b-v18-core-plus-taa',
+    'athena-cti-sft-qwen25-14b-v18-core-plus-taa-cse-vllm':    'asg-ai/athena-cti-sft-qwen25-14b-v18-core-plus-taa-cse',
     # HF Inference Providers route. Custom community fine-tunes are not in the
     # default Together/Fireworks/Novita/etc. catalogs; this alias only resolves
     # if the model is exposed via an HF Inference Endpoint or the legacy
