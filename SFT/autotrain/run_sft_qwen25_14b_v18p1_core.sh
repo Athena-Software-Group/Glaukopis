@@ -1,53 +1,52 @@
 #!/bin/bash
 
-# v18-Core two-phase full-parameter SFT of Qwen2.5-14B-Instruct on the v18
-# core corpus (broad + axis shards). Stage 1 of the v17.1-pattern chained
-# v18 architecture (tmpl_gen/templates/05112026/v18_plan.txt §"v17.1 chained
-# architecture"); the resulting checkpoint is the base for the v18-plus-taa
-# refresher (run_sft_qwen25_14b_v18_plus_taa.sh).
+# v18p1-Core two-phase full-parameter SFT of Qwen2.5-14B-Instruct on the
+# v18p1 core corpus (broad + axis shards). Stage 1 of the v18p1 Core-only
+# redo (tmpl_gen/templates/05112026/v18_1_plan.txt); the resulting
+# checkpoint is the new base for the unchanged v18 TAA + CSE chained
+# stages, which are renamed on HF rather than re-trained.
 #
-# Why v18-core mirrors the v12 two-phase shape (vs the dropped v18 monolithic
-# 3-phase recipe):
-#   The earlier v18 monolithic recipe baked TAA.CANON alias-resolution into
-#   Phase C, which the v15 W1 post-mortem isolated as the wrong TAA flavour
-#   for the AthenaBench TAA Classic axis. v18 now follows the v17.1 chained
-#   pattern: the core (broad + axis) ships standalone as a v12-shape base
-#   model, then a TAA-Classic refresher (v16 manifest) and a CSE drill
-#   (v17.1 manifest) chain on top. TAA.CANON is dropped from the v18
-#   lineage entirely.
+# Why v18p1-Core exists (v18 Core regression):
+#   The v18 chain Stage 1 (Core) regressed against three historical
+#   AthenaBench peaks:
+#     CKT 62.6 vs v8small 77.6   (-15.0 pp)
+#     RMS 55.6 vs v9_rms  65.8   (-10.2 pp)
+#     VSP 76.8 vs v10     86.7   ( -9.9 pp)
+#   Diagnosis: the v18 Core MCQ shard was 61% AB.MCQ.EXT.* KB
+#   flashcards (not the eval scenario shape), AB.RMS.{4,5} were
+#   fragmented across 10 paraphrases each at Count: 50, and
+#   AB.VSP.{1..4} + V.CPE.{1..4} ran without explicit Counts so the
+#   build overshot v10's 12K shape by 2.25x. v18p1 reverts each axis
+#   to the historical-peak recipe (MCQ -> v8small, RMS -> v7/v9_rms,
+#   VSP -> v10) without changing the v18-Core training shape.
 #
-# Phase shape (identical to v12 Phases A and B):
-#   Phase A -- broad knowledge re-anchor (carries MCQ; v18 ships the
-#              new MCQ.EXT.GLOSS family + lifted MCQ.EXT.{MITRE,SEC}
-#              row counts here, plus the v16-shape TAA Classic baseline
-#              that already lives in the Phase A shard)
-#     - Datasets   : ift_data_2026_05_13_v18_core_a_kb_mcq_taa_soc_cm_ms_yn,
+# Phase shape (identical to v18-Core; only datasets and HF target change):
+#   Phase A -- broad knowledge re-anchor
+#     - Datasets   : ift_data_2026_05_11_v18p1_core_a_kb_mcq_taa_soc_cm_ms_yn,
 #                    tulu_3_sft_mixture, alpaca_en_demo
 #     - 1 epoch, lr 1e-5, cutoff 8192, packing on
 #     - Effective batch 16
-#     - --max-samples 240000 (matches v12)
+#     - --max-samples 240000
 #
-#   Phase B -- AthenaBench catalog recovery (v9-shape recipe; v18 lifts
-#              the ATE template families here via the broader Sigma /
-#              malware / multi-fact intrusion-set traversals)
-#     - Datasets   : ift_data_2026_05_13_v18_core_b_rms_ate_vsp_rcm
+#   Phase B -- AthenaBench catalog recovery
+#     - Datasets   : ift_data_2026_05_11_v18p1_core_b_rms_ate_vsp_rcm
 #     - 1 epoch, lr 5e-6, cutoff 16384, packing OFF
 #     - Effective batch 8 (cutoff doubled => half the effective batch)
 #     - eval/save every 400 steps
 #     - --model points at Phase A's output dir
 #
 # Only Phase B's final merged model is pushed to HF.
-# Default push target: ${HF_USERNAME}/athena-cti-sft-qwen25-14b-v18-core.
+# Default push target: ${HF_USERNAME}/athena-cti-sft-qwen25-14b-v18-1-core.
 #
 # Estimated wall-time on 8xH100 80GB: ~13 h (Phase A 8 h, Phase B 5 h).
 #
 # Usage:
-#   ./run_sft_qwen25_14b_v18_core.sh [--repo-id USER/NAME]
-#                                    [--phase-a-dir DIR] [--phase-b-dir DIR]
-#                                    [--report-to wandb|none]
-#                                    [--phase a|b|ab]   # default: ab
-#                                    [--offload | --no-offload]
-#                                    [--dry-run]
+#   ./run_sft_qwen25_14b_v18p1_core.sh [--repo-id USER/NAME]
+#                                      [--phase-a-dir DIR] [--phase-b-dir DIR]
+#                                      [--report-to wandb|none]
+#                                      [--phase a|b|ab]   # default: ab
+#                                      [--offload | --no-offload]
+#                                      [--dry-run]
 
 set -euo pipefail
 
@@ -85,30 +84,30 @@ done
 
 if [[ -z "${REPO_ID}" ]]; then
     : "${HF_USERNAME:?Set HF_USERNAME in SFT/.env (or pass --repo-id USER/NAME)}"
-    REPO_ID="${HF_USERNAME}/athena-cti-sft-qwen25-14b-v18-core"
+    REPO_ID="${HF_USERNAME}/athena-cti-sft-qwen25-14b-v18-1-core"
 fi
 
 TIMESTAMP="$(date +"%Y-%m-%d-%H-%M-%S")"
 SAFE_MODEL="Qwen_Qwen2.5-14B-Instruct"
-[[ -z "${PHASE_A_DIR}" ]] && PHASE_A_DIR="${SFT_DIR}/saves/${SAFE_MODEL}/full/v18_core_phase_a_${TIMESTAMP}"
-[[ -z "${PHASE_B_DIR}" ]] && PHASE_B_DIR="${SFT_DIR}/saves/${SAFE_MODEL}/full/v18_core_phase_b_${TIMESTAMP}"
+[[ -z "${PHASE_A_DIR}" ]] && PHASE_A_DIR="${SFT_DIR}/saves/${SAFE_MODEL}/full/v18p1_core_phase_a_${TIMESTAMP}"
+[[ -z "${PHASE_B_DIR}" ]] && PHASE_B_DIR="${SFT_DIR}/saves/${SAFE_MODEL}/full/v18p1_core_phase_b_${TIMESTAMP}"
 
-PHASE_A_DATASETS="ift_data_2026_05_13_v18_core_a_kb_mcq_taa_soc_cm_ms_yn,tulu_3_sft_mixture,alpaca_en_demo"
-PHASE_B_DATASETS="ift_data_2026_05_13_v18_core_b_rms_ate_vsp_rcm"
-VAL_NAME="ift_data_2026_05_13_v18_core_val"
+PHASE_A_DATASETS="ift_data_2026_05_11_v18p1_core_a_kb_mcq_taa_soc_cm_ms_yn,tulu_3_sft_mixture,alpaca_en_demo"
+PHASE_B_DATASETS="ift_data_2026_05_11_v18p1_core_b_rms_ate_vsp_rcm"
+VAL_NAME="ift_data_2026_05_11_v18p1_core_val"
 
-for ds in ift_data_2026_05_13_v18_core_a_kb_mcq_taa_soc_cm_ms_yn \
-          ift_data_2026_05_13_v18_core_b_rms_ate_vsp_rcm \
+for ds in ift_data_2026_05_11_v18p1_core_a_kb_mcq_taa_soc_cm_ms_yn \
+          ift_data_2026_05_11_v18p1_core_b_rms_ate_vsp_rcm \
           "${VAL_NAME}"; do
     if [[ ! -f "${SFT_DIR}/data/${ds}.json" ]]; then
-        echo "[FAIL] v18-core dataset missing: SFT/data/${ds}.json" >&2
+        echo "[FAIL] v18p1-core dataset missing: SFT/data/${ds}.json" >&2
         echo "       Build via:" >&2
         echo "         bash tmpl_gen/data_generation/make_dataset.sh \\" >&2
-        echo "           tmpl_gen/templates/05112026/Sophia-CTI-Templates-v18.txt \\" >&2
-        echo "           _v18_build/triples \\" >&2
-        echo "           ${SFT_DIR}/data/ift_data_2026_05_13_v18_core.raw.json \\" >&2
+        echo "           tmpl_gen/templates/05112026/Sophia-CTI-Templates-v18.1.txt \\" >&2
+        echo "           _v18p1_build/triples \\" >&2
+        echo "           ${SFT_DIR}/data/ift_data_2026_05_11_v18p1_core.raw.json \\" >&2
         echo "           10 1500" >&2
-        echo "         bash _v18_build/watcher.sh   # all phases" >&2
+        echo "         bash _v18p1_build/watcher.sh   # all phases" >&2
         exit 2
     fi
 done
@@ -144,7 +143,7 @@ fi
 DRY_FLAG=(); [[ ${DRY_RUN} -eq 1 ]] && DRY_FLAG=( --dry-run )
 
 run_phase_a() {
-    echo "=== v18-Core Phase A (Qwen2.5-14B): broad knowledge re-anchor (cutoff=8192, packing=on, lr=1e-5) ==="
+    echo "=== v18p1-Core Phase A (Qwen2.5-14B): broad knowledge re-anchor (cutoff=8192, packing=on, lr=1e-5) ==="
     bash "${SFT_DIR}/utils/run_train.sh" \
         --model "Qwen/Qwen2.5-14B-Instruct" \
         --dataset "${PHASE_A_DATASETS}" --template qwen --finetuning full \
@@ -156,7 +155,7 @@ run_phase_a() {
 }
 
 run_phase_b() {
-    echo "=== v18-Core Phase B (Qwen2.5-14B): RMS+ATE+VSP+RCM catalog recovery (cutoff=16384, packing=off, lr=5e-6) ==="
+    echo "=== v18p1-Core Phase B (Qwen2.5-14B): RMS+ATE+VSP+RCM catalog recovery (cutoff=16384, packing=off, lr=5e-6) ==="
     bash "${SFT_DIR}/utils/run_train.sh" \
         --model "${PHASE_A_DIR}" \
         --dataset "${PHASE_B_DATASETS}" --template qwen --finetuning full \

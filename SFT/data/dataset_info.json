@@ -599,6 +599,30 @@
       "response": "output"
     }
   },
+  "ift_data_2026_05_11_v18p1_core_a_kb_mcq_taa_soc_cm_ms_yn": {
+    "file_name": "ift_data_2026_05_11_v18p1_core_a_kb_mcq_taa_soc_cm_ms_yn.json",
+    "columns": {
+      "system": "instruction",
+      "prompt": "input",
+      "response": "output"
+    }
+  },
+  "ift_data_2026_05_11_v18p1_core_b_rms_ate_vsp_rcm": {
+    "file_name": "ift_data_2026_05_11_v18p1_core_b_rms_ate_vsp_rcm.json",
+    "columns": {
+      "system": "instruction",
+      "prompt": "input",
+      "response": "output"
+    }
+  },
+  "ift_data_2026_05_11_v18p1_core_val": {
+    "file_name": "ift_data_2026_05_11_v18p1_core_val.json",
+    "columns": {
+      "system": "instruction",
+      "prompt": "input",
+      "response": "output"
+    }
+  },
   "ift_data_2026_05_13_v18_cse": {
     "file_name": "ift_data_2026_05_13_v18_cse.json",
     "columns": {

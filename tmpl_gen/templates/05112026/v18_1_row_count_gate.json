@@ -1,0 +1,70 @@
+{
+  "_doc": "Per-family row-count gate for the v18p1 Core-only redo build pipeline. Per tmpl_gen/templates/05112026/v18_1_plan.txt §3. v18p1 retrains only the v18 chain Stage 1 (Core) to repair AthenaBench MCQ/RMS/VSP regressions; the v18 TAA + CSE downstream stages are not re-trained. Three axis floors change vs v18: MCQ 8100 -> 6000 (AB.MCQ.EXT.{MITRE,SEC,GLOSS}.1 dropped, scenario-only ~6K shape per v8small CKT 77.6 reference); RMS 11700 -> 12000 (AB.RMS.{4a..4j} and {5a..5j} consolidated into single AB.RMS.{4,5} Count: 600 each per v9_rms / v7 RMS 65.8 reference); VSP 8100 -> 5400 (AB.VSP.{1..4} and V.CPE.{1..4} capped at Count: 1500 each per v10 VSP 86.7 reference). All other axes carry v18 floors verbatim. The build halts before train/val split if any axis is below its reject_if_below value in the post-dedup corpus. shortname_patterns are exact matches OR prefix matches (trailing '*' = prefix match).",
+  "axes": [
+    {
+      "_note": "v18 declared 13000 / floor 11700 over fragmented AB.RMS.{4,5} paraphrases. v18p1 consolidates to single-template AB.RMS.{4,5} Count: 600 each (matches v9_rms / v7); the post-dedup tail lands ~12.2K so the floor is set to 12000. Same template strings, same total catalog-drill volume as v9_rms.",
+      "axis": "RMS",
+      "target": 13000,
+      "reject_if_below": 12000,
+      "shortname_patterns": ["AB.RMS.*", "JS.RMS.*"]
+    },
+    {
+      "_note": "ATE inherits v18 floors verbatim (no v18 -> v18p1 change). The AB.ATE.{9,10,11} + JS.ATE.{4,5,6} expansion landed in v18 -- v18p1 does not touch ATE.",
+      "axis": "ATE",
+      "target": 13000,
+      "reject_if_below": 12500,
+      "shortname_patterns": ["AB.ATE", "AB.ATE.*", "JS.ATE", "JS.ATE.*"]
+    },
+    {
+      "_note": "v18 declared 9000 / floor 8100 with no Counts (count_max=3500 produced ~27K rows / 2.25x v10). v18p1 caps AB.VSP.{1..4} and V.CPE.{1..4} at Count: 1500 each (matches v10's 4*1500 + 4*1500 = 12K shape that posted VSP 86.7); the post-dedup tail lands ~6K so the floor is set to 5400 (10% headroom).",
+      "axis": "VSP",
+      "target": 6000,
+      "reject_if_below": 5400,
+      "shortname_patterns": ["AB.VSP.*", "V.CPE", "V.CPE.*"]
+    },
+    {
+      "axis": "RCM",
+      "target": 10000,
+      "reject_if_below": 9000,
+      "shortname_patterns": ["AB.RCM", "AB.RCM.*", "JS.RCM", "JS.RCM.*", "X.VW.*", "YN.VW.*"]
+    },
+    {
+      "_note": "v18 declared 9000 / floor 8100 with AB.MCQ.EXT.{MITRE,SEC,GLOSS}.1 contributing 5478 rows (61% of the MCQ axis, KB flashcard shape, not the eval scenario shape). v18p1 drops all three EXT families and reverts to scenario-only AB.MCQ.{1..6} + JS.MCQ.{1,2,5} (matches v8small CKT 77.6 ~6K shape). First v18p1 substrate run yielded 4762 MCQ rows (AB.MCQ.{2,4,6} substrate-bound on map_ap edges); to clear the 6000 floor without re-introducing flashcard noise we add three scenario-shape templates AB.MCQ.7 (mw->ap; Count 800), AB.MCQ.8 (grp->mw; Count 500), AB.MCQ.9 (sub->parent; Count 800). Projected post-dedup tail lands ~6.2K against the 9836 / 647 / 477 edge substrates respectively.",
+      "axis": "MCQ",
+      "target": 6500,
+      "reject_if_below": 6000,
+      "shortname_patterns": ["AB.MCQ", "AB.MCQ.*", "JS.MCQ", "JS.MCQ.*"]
+    },
+    {
+      "axis": "MS",
+      "target": 4000,
+      "reject_if_below": 3600,
+      "shortname_patterns": ["AB.MS.*", "JS.MS.*"]
+    },
+    {
+      "axis": "TAA-attribution",
+      "target": 3500,
+      "reject_if_below": 3150,
+      "max_allowed": 3850,
+      "shortname_patterns": ["AB.TAA.1", "AB.TAA.2", "AB.TAA.3", "AB.TAA.4", "AB.TAA.5", "JS.TAA.1", "JS.TAA.2", "JS.TAA.3"]
+    },
+    {
+      "axis": "TAA-IE-NEG",
+      "target": 6000,
+      "reject_if_below": 5400,
+      "shortname_patterns": ["AB.TAA.IE.*", "AB.TAA.NEG.*", "JS.TAA.IE.*", "JS.TAA.NEG.*"]
+    },
+    {
+      "axis": "SOC",
+      "target": 10000,
+      "reject_if_below": 9000,
+      "shortname_patterns": ["SOC.*"]
+    },
+    {
+      "axis": "CM",
+      "target": 6000,
+      "reject_if_below": 5400,
+      "shortname_patterns": ["CM.*"]
+    }
+  ]
+}

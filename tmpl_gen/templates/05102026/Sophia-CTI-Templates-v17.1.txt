@@ -18,7 +18,7 @@ input, which provides no opportunity to learn CSE multi-select reasoning
 from the corpus and is the most plausible single cause of the v17 ->
 v16 regression observed across all CTI axes (see _v17_build/v17_post_
 mortem analysis and the diagnostic histograms reproduced in
-tmpl_gen/templates/05122026/v17_1_plan.txt §2).
+tmpl_gen/templates/05102026/v17_1_plan.txt §2).
 
 v17 -> v17.1 deltas (manifest only; no recipe change)
 -----------------------------------------------------

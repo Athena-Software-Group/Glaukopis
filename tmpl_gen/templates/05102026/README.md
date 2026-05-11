@@ -1,114 +1,101 @@
-# Sophia CTI Templates — v16 (May 10, 2026 vintage)
+# Sophia CTI Templates — v17 (May 11, 2026 vintage)
 
-v16 is the second specialist branch of the v15 parallel-branching
-architecture (`tmpl_gen/templates/05082026/v15_plan.txt`). It is the
-**v15 W1-rev**: same v12 base, same v9-narrow recipe, same single-
-specialist topology — only the TAA shard is rebuilt from scratch with
-Canonical alias-resolution data **purged** and the attribution and
-JSON-shaped templates **bumped**. The branch produces one HF checkpoint:
+v17 is the **first chained narrow-SFT vintage** in the project. It trains
+on top of the v16 TAA specialist (`asg-ai/athena-cti-sft-qwen25-14b-v16`)
+rather than off the frozen v12 baseline, and adds a single new
+output-shape head — the CyberSOCEval `{"correct_answers": [...]}` JSON
+letter-set — without re-introducing any of the TAA-attribution surface
+v16 already learned. The branch produces one HF checkpoint:
 
 | checkpoint | answers the question |
 |---|---|
-| `asg-ai/athena-cti-sft-qwen25-14b-v16` | Was v15 W1's failure to move TAA Classic caused by the v14 TAA shard being 68.5% Canonical alias data, or by a deeper template-bound TAA-accuracy ceiling? |
+| `asg-ai/athena-cti-sft-qwen25-14b-v17` | Was v16's CyberSOCEval-TI 30.63%/CyberSOCEval-Malware 10.69% accuracy bound by *output shape* (avg_score 58.54%/45.15% suggested the right semantic content was already there), or by missing task knowledge? |
 
 The vintage directory is self-contained per project convention:
 
 ```
-05102026/
-  Sophia-CTI-Templates-v16.txt   self-contained TAA-only manifest (CANON purged)
-  v16_plan.txt                   master plan document (recipe, pipeline, sign-off)
-  v16_row_count_gate.json        per-axis REJECT_IF_BELOW thresholds (TAA-attribution + TAA-IE-NEG)
-  README.md                      this document (v15 W1 post-mortem in §1; design rationale in §2; run-book in §3)
+05112026/
+  Sophia-CTI-Templates-v17.txt   self-contained CSE-shape manifest (14 templates;
+                                 zero AB.TAA / JS.TAA rows by design)
+  v17_plan.txt                   master plan document (recipe, pipeline, sign-off,
+                                 falsification criteria)
+  v17_row_count_gate.json        per-axis REJECT_IF_BELOW thresholds (CSE-TI /
+                                 CSE-MAL only)
+  README.md                      this document (v16 post-mortem in §1; design
+                                 rationale in §2; run-book in §3; chained-SFT
+                                 risk model in §4)
 ```
 
-## 1. Why v16 exists
+## 1. Why v17 exists
 
-### 1.1 v15 W1 outcome
+### 1.1 v16 outcome
 
-v15 W1 (`asg-ai/athena-cti-sft-qwen25-14b-v12-plus-taa`) was the cheapest
-test of the v15 parallel-branching hypothesis: train one narrow specialist
-(TAA) off the frozen v12 baseline and bench. The result confirmed the
-**topology**: every measured non-target axis stayed within bench noise
-of v12, validating that narrow SFT applied independently to v12 does not
-catastrophically forget adjacent capability. But the **TAA Classic axis
-did not move** -- the bench result was statistically indistinguishable
-from v12's 11.0 -- and TAA Canonical jumped +16.5pp.
+v16 (the v15 W1-rev TAA specialist) lifted CyberSOCEval-TI from 3.74%
+(v12) to **30.63%** accuracy with `avg_score` 58.54%, and CyberSOCEval-
+Malware from 7.06% to **10.69%** with `avg_score` 45.15%. TAA Classic
+strict accuracy was 7% (essentially flat vs v12's 11%), but TAA Classic
+**plausible accuracy was 88%** — the model is naming actors that the
+`related_groups.csv` graph treats as related to ground truth (cluster
+confusion: APT41↔APT38, APT37↔Lazarus, APT35↔APT33, APT28↔Turla, …).
+See `tmpl_gen/templates/05102026/README.md` §1 for the v16-on-v15 W1
+diagnosis.
 
-### 1.2 Post-mortem: shard composition diagnosis
+### 1.2 The v16 → CSE accuracy gap is consistent with output-shape miss
 
-A `taa_actor_balance.py --dry-run` audit of the v14 TAA shard
-`ift_data_2026_05_08_v14_taa` showed that the actor distribution itself
-was healthy (top:bottom row ratio ~2x; no actor over 36 rows; bulk of the
-98 actors in the 17-32 rows-per-actor bucket). The mode-collapse
-hypothesis was falsified.
+The CyberSOCEval evaluator scores Jaccard similarity on a
+`{"correct_answers": ["A","C"]}` JSON object wrapped in
+`<json_object></json_object>` tags (TI shape) or returned bare (Malware
+shape). v16 was trained on prose+letter `JS.TAA.*` templates whose
+`Answer:` field is a single letter at the end of a chain-of-thought, **not
+a JSON list of letters**. The 28pp gap between `accuracy` (30.63%) and
+`avg_score` (58.54%) on TI is the signature of a model producing the
+right semantic content but failing the formal extractor's shape check.
 
-A shortname-prefix breakdown of the same shard then revealed the actual
-composition:
+### 1.3 v17 hypothesis
 
-| family prefix | rows | % of shard |
-|---|---:|---:|
-| `MISP.CANON.{1,2,3}` | 11,730 | 35.8% |
-| `TAA.CANON.{1,2,3}` | 10,717 | 32.7% |
-| `AB.TAA.{1,2,3,5}` (Classic, prose) | 3,910 | 11.9% |
-| `AB.TAA.IE.{1,2}` + `AB.TAA.NEG.1` (refusal + paired) | 4,410 | 13.5% |
-| `AB.TAA.4` (campaign-bound) | 112 | 0.3% |
-| `JS.TAA.IE.1` + `JS.TAA.NEG.1` (JSON refusal + paired) | 1,476 | 4.5% |
-| `JS.TAA.{1,2,3}` (JSON Classic attribution) | 428 | 1.3% |
-
-**68.5% of v15 W1's training mass was Canonical alias-resolution data**
-(`MISP.CANON` 35.8% + `TAA.CANON` 32.7%) -- a task NOT measured by the
-formal TAA Classic benchmark. Only ~430 rows (1.3% of the shard) targeted
-the JSON-shaped attribution surface that CyberSOCEval-TI exercises.
-
-The v15 W1 plan (`v15_plan.txt §3`) described the shard as "CANON
-excluded", but the v14 watcher was actually injecting Canonical data via
-two separate generator phases (Phase 3 `taa_canon_generator.py` and
-Phase 3e `misp_taa_generator.py`) that ran independently of the v14
-manifest. The plan document under-described the watcher's behaviour and
-the v15 W1 result is consistent with the corrected composition: the
-+16.5pp on TAA Canonical reflects two-thirds of the shard being CANON
-training data; the flat TAA Classic reflects the model receiving very
-little Classic / JSON-attribution training relative to other vintages.
-
-### 1.3 v16 hypothesis
-
-If the v15 W1 TAA-Classic flatline was caused by **shard dilution**
-(Canonical training crowding out the attribution surface), then a
-shard-composition rebuild that drops Canonical entirely and bumps the
-attribution + JSON families should move TAA Classic without any recipe
-change. v16 is that experiment. The Canonical purge is total (zero
-`TAA.CANON` and zero `MISP.CANON` rows in the manifest, and the v16
-watcher drops the corresponding `taa_canon_generator.py` and
-`misp_taa_generator.py` phases). The Count: bumps target ~22-26K actual
-rows after balancing, of which ~12K are JSON-shaped attribution (vs ~430
-in v15 W1) and ~14K are Classic / IE / NEG.
-
-If v16 moves TAA Classic, dilution was the bottleneck and the v15
-architecture is validated for production. If v16 still doesn't move TAA
-Classic, the bottleneck is template-bound (5%-accurate vs 93%-plausible
-pattern from v14.1 D-TAA) and v17 will need explicit hard-negative
-attribution pairs and/or recipe changes (`v16_plan.txt §4` Outcome C).
+If the v16 → CSE accuracy ceiling is bound by output shape rather than
+task knowledge, then **chained narrow SFT on the missing CSE letter-set
+shape only** — no new entity knowledge introduced — should lift CSE-Mal
+and CSE-TI accuracy materially without regressing v16's TAA-attribution
+head. Falsification criteria in `v17_plan.txt §4` (Outcomes A/B/C/D).
 
 ## 2. Design rationale (per-template Count: targets)
 
-Full delta table in `Sophia-CTI-Templates-v16.txt §"v15 W1 -> v16 deltas"`.
-Highlights:
+Full per-template Count: schedule in `Sophia-CTI-Templates-v17.txt` §"v17
+declared-row budget summary". Highlights:
 
-- **`AB.TAA.{1,2,3,5}` lifted to Count: 3000 each** (was default ~1500-
-  2000). Per-actor cap lifted 40 -> 60 to give the bumped Counts more
-  per-actor headroom; expected actuals ~3000/template given the 187
-  intrusion-set anchor pool documented in the local Neo4j.
-- **`AB.TAA.4` held at Count: 200** (campaign-bound; only 25 documented
-  campaigns in `athena-cti-db`; raising Count: produces no new anchors).
-- **`AB.TAA.IE.{1,2}` and `AB.TAA.NEG.1` lifted to Count: 2500** (was
-  1500). IE rows draw from the unbound MITRE ATT&CK technique catalogue
-  (835 attack-patterns, 91 tools); NEG rows use `Per_primary_grouping:
-  false` so the (grp, rel) pair diversifies across rows.
-- **`JS.TAA.{1,2,3}` lifted to Count: 2500 each** (was 400 -- the
-  smoking gun). JSON-shaped attribution gets ~7,500 declared rows in v16
-  vs ~430 actual in v15 W1.
-- **`JS.TAA.IE.1` and `JS.TAA.NEG.1` lifted to Count: 2000** (was
-  500-1000).
+- **`JS.CSE.TI.GRP.{1,2,3}`** (~5,910 actuals, target 8,000): intrusion-
+  set-anchored multi-select with 1/2/3 correct techniques; mirrors the
+  CyberSOCEval-TI `threat_intel_reasoning` prompt scaffolding (synthetic
+  intel-report prose with the named group's documented tradecraft inline)
+  without using the actual CrowdStrike PDF corpus → **zero contamination
+  by construction**.
+- **`JS.CSE.TI.MAL.{1,2,3}`** (~1,687 actuals): malware-anchored multi-
+  select; under-yields against the malware-anchor pool because the
+  technique-distinct-from-malware-uses constraint stack is tight.
+- **`JS.CSE.TI.CMP.1`** (Count bumped 1000 → **2500**, ~2,055 actuals):
+  campaign-anchored multi-select; the small ~52-campaign anchor pool
+  needed the Count: bump to lift the CSE-TI-other axis above its 1,400
+  floor on the row-count gate.
+- **`JS.CSE.TI.NEG.1`** (Count 1500, structural ~187 actuals): zero-
+  correct training; collapses to one row per intrusion-set anchor under
+  the 5-way `{force negap_i != negap_j}` constraint stack — same yield
+  pattern documented for v14 `JS.TAA.NEG.1` in `05082026/v14`.
+- **`JS.CSE.MAL.RPT.{1,2,3}`** (~5,039 actuals, target 4,500): malware-
+  anchored detonation-report multi-select; bare `{"correct_answers":[...]}`
+  output shape (no `<json_object>` wrapper) per the CyberSOCEval-Malware
+  evaluator. Synthetic detonation report JSON (`vx_family`, `sha256:"hash"`,
+  `mitre_attcks` list) seeded from the malware's documented attack-pattern
+  set; mirrors PurpleLlama's `malware_analysis` scaffolding without using
+  the formal Hybrid-Analysis sample set.
+- **`JS.CSE.MAL.{TAC,TGT,NEG}.1`** (~3,753 actuals): tactic-axis,
+  group-attribution-axis, and zero-correct variants for option-set
+  diversity.
+
+Per-actor cap stays at 60 for completeness but is **structurally non-
+binding** for v17 because every JS.CSE.* shortname is "untouched" by
+`taa_actor_balance.py` (the script only scopes against AB.TAA.{1-5} and
+JS.TAA.{1-3}); the v17 watcher correspondingly sets `ACTOR_FLOOR=0`.
 
 ## 3. Run-book
 
@@ -117,44 +104,47 @@ Highlights:
 ```bash
 cd /Users/pietro/code/Glaukopis     # or the cluster equivalent
 # Pre-flight: confirm Neo4j athena-cti-db is reachable and populated
-python _v16_build/_neo4j_check.py
-# Expected: intrusion-sets >= 180; group-uses-attack-pattern >= 4000
+python _v17_build/_neo4j_check.py
+# Expected: intrusion-sets >= 180; malware >= 600; attack-patterns >= 800
 
 bash tmpl_gen/data_generation/make_dataset.sh \
-     tmpl_gen/templates/05102026/Sophia-CTI-Templates-v16.txt \
-     _v16_build/triples \
-     SFT/data/ift_data_2026_05_10_v16.raw.json \
+     tmpl_gen/templates/05112026/Sophia-CTI-Templates-v17.txt \
+     _v17_build/triples \
+     SFT/data/ift_data_2026_05_11_v17.raw.json \
      10 3500 \
-     2>&1 | tee _v16_build/build.log &
-echo "PID=$!" > _v16_build/build.pid
+     2>&1 | tee _v17_build/build.log &
+echo "PID=$!" > _v17_build/build.pid
 
-nohup bash _v16_build/watcher.sh > _v16_build/watcher.log 2>&1 &
+nohup bash _v17_build/watcher.sh > _v17_build/watcher.log 2>&1 &
 ```
 
-The watcher polls the build PID, then runs Phases 4-8 (actor-balance,
-dedup, row-count gate, licence gate, stratified shuffle, val/train
-split). Final outputs:
+The watcher polls the build PID, then runs Phases 4–8 (actor-balance
+no-op, dedup, row-count gate against `v17_row_count_gate.json`, licence
+gate, stratified shuffle, val/train split). Final outputs:
 
-- `SFT/data/ift_data_2026_05_10_v16_taa.json`  (training shard)
-- `SFT/data/ift_data_2026_05_10_v16_val.json`  (held-out validation slice)
-- `_v16_build/watcher_status.json`             (per-phase row counts and reports)
+- `SFT/data/ift_data_2026_05_11_v17_cse.json`  (training shard, ~16.5K rows)
+- `SFT/data/ift_data_2026_05_11_v17_val.json`  (held-out validation slice, ~400 rows)
+- `_v17_build/watcher_status.json`             (per-phase row counts and reports)
 
 ### 3.2 Dataset registration
 
 The launcher resolves dataset names through `SFT/data/dataset_info.json`.
-The v16 entries (`ift_data_2026_05_10_v16_taa`, `ift_data_2026_05_10_v16_val`)
-are registered in §"v16 (2026-05-10) -- v15 W1-rev TAA specialist".
+The v17 entries (`ift_data_2026_05_11_v17_cse`, `ift_data_2026_05_11_v17_val`)
+are registered alongside the v16 / v15 / v12 entries.
 
 ### 3.3 Training
 
 ```bash
-bash SFT/autotrain/run_sft_qwen25_14b_v12_plus_v16_taa.sh
-# defaults to ${HF_USERNAME}/athena-cti-sft-qwen25-14b-v16
-# wall-time ~6-8 h on 8xH100
+bash SFT/autotrain/run_sft_qwen25_14b_v16_plus_v17_cse.sh
+# defaults to ${HF_USERNAME}/athena-cti-sft-qwen25-14b-v17
+# base model: asg-ai/athena-cti-sft-qwen25-14b-v16   (CHAINED off v16, not v12)
+# wall-time ~4-6 h on 8xH100
 ```
 
 ### 3.4 Bench
 
-Standard 14B AthenaBench sweep against the v16 HF checkpoint; compare
-against v12 (57.3 weighted total, 11.0 TAA Classic) and v15 W1 per the
-decision matrix in `v16_plan.txt §4`.
+Standard 14B AthenaBench sweep against the v17 HF checkpoint; compare
+against v16 (CSE-TI 30.63%, CSE-Malware 10.69%, TAA Classic 7%/88%) per
+the decision matrix in `v17_plan.txt §4`. The full sweep covers TAA
+Canonical / TAA Classic, athena-rms, cybermetric (80 + 2000 + 10000),
+cybersoceval-malware, cybersoceval-ti.

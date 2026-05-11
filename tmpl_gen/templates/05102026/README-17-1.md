@@ -11,7 +11,7 @@ produces one HF checkpoint:
 The vintage directory is self-contained per project convention:
 
 ```
-05122026/
+05102026/
   Sophia-CTI-Templates-v17.1.txt   self-contained CSE-shape manifest;
                                    body byte-identical to v17 except every
                                    template now declares `Shuffle: mcq_multi`
@@ -91,7 +91,7 @@ python tmpl_gen/data_generation/neo4j_check.py
 
 mkdir -p _v17_1_build
 nohup bash tmpl_gen/data_generation/make_dataset.sh \
-     tmpl_gen/templates/05122026/Sophia-CTI-Templates-v17.1.txt \
+     tmpl_gen/templates/05102026/Sophia-CTI-Templates-v17.1.txt \
      _v17_1_build/triples \
      SFT/data/ift_data_2026_05_12_v17_1.raw.json \
      2500 3500 > _v17_1_build/build.log 2>&1 &

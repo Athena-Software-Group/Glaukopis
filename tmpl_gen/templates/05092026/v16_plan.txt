@@ -83,7 +83,7 @@ watcher.sh). The v14 phases retained, dropped, and changed:
 Generation step (Sophia pipeline) is invoked manually before the watcher:
 
   bash tmpl_gen/data_generation/make_dataset.sh \
-       tmpl_gen/templates/05102026/Sophia-CTI-Templates-v16.txt \
+       tmpl_gen/templates/05092026/Sophia-CTI-Templates-v16.txt \
        _v16_build/triples \
        SFT/data/ift_data_2026_05_10_v16.raw.json \
        10 3500

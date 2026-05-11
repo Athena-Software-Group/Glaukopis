@@ -5,7 +5,7 @@ Vintage label   : v17.1
 Architecture    : CHAINED narrow-SFT shard off the v16 TAA specialist
                   (IDENTICAL to v17; recipe, base model, batch math, step
                   count and HF target byte-for-byte unchanged)
-Author date     : 2026-05-12 (vintage dir tmpl_gen/templates/05122026/)
+Author date     : 2026-05-12 (consolidated into tmpl_gen/templates/05102026/)
 Predecessor     : v17 (asg-ai/athena-cti-sft-qwen25-14b-v17, CSE chained
                   specialist; bench surfaced systemic regression -- see §1.2)
 Operational ref : THIS FILE (corpus targets, recipe, deliverables, sign-off).
@@ -110,7 +110,7 @@ one path change (the row-count gate plan):
 Generation step (Sophia pipeline) is invoked manually before the watcher:
 
   bash tmpl_gen/data_generation/make_dataset.sh \
-       tmpl_gen/templates/05122026/Sophia-CTI-Templates-v17.1.txt \
+       tmpl_gen/templates/05102026/Sophia-CTI-Templates-v17.1.txt \
        _v17_1_build/triples \
        SFT/data/ift_data_2026_05_12_v17_1.raw.json \
        10 3500

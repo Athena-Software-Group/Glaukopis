@@ -1,150 +1,316 @@
-# Sophia CTI Templates — v17 (May 11, 2026 vintage)
+# Sophia CTI Templates — v18 (May 13, 2026 vintage; consolidated into 05112026/)
 
-v17 is the **first chained narrow-SFT vintage** in the project. It trains
-on top of the v16 TAA specialist (`asg-ai/athena-cti-sft-qwen25-14b-v16`)
-rather than off the frozen v12 baseline, and adds a single new
-output-shape head — the CyberSOCEval `{"correct_answers": [...]}` JSON
-letter-set — without re-introducing any of the TAA-attribution surface
-v16 already learned. The branch produces one HF checkpoint:
+> Looking for the **v18.1 Core-only redo**? See `README-18-1.md` in this
+> directory. v18.1 is the post-mortem rebuild of the v18 Core stage after
+> v18 regressed CKT/RMS/VSP against the v8small / v9_rms / v10 historical
+> peaks; v18+TAA and v18 (CSE) stages are unchanged and reused verbatim
+> on top of the new v18.1-Core base.
 
-| checkpoint | answers the question |
-|---|---|
-| `asg-ai/athena-cti-sft-qwen25-14b-v17` | Was v16's CyberSOCEval-TI 30.63%/CyberSOCEval-Malware 10.69% accuracy bound by *output shape* (avg_score 58.54%/45.15% suggested the right semantic content was already there), or by missing task knowledge? |
+v18 is the **v17.1-pattern chained SFT rebuild** that follows the
+v17.1 chained-SFT post-mortem and the v15 W1 TAA-flavour audit.
+Where v17.1 chained a single CSE specialist shard onto v16, v18
+formalises the chain shape into a self-contained three-stage recipe
+off `Qwen/Qwen2.5-14B-Instruct`:
 
-The vintage directory is self-contained per project convention:
+1. **v18-Core** — v12-shape full-axis base (broad re-anchor + RMS /
+   ATE / VSP / RCM catalog drill) with the corpus deltas in §2 to
+   lift CKT (MCQ) and ATE.
+2. **v18+TAA** — v16-shape TAA Classic refresher chained off
+   v18-Core. TAA.CANON / MISP.CANON alias data is dropped from the
+   v18 lineage entirely (the v15 W1 audit isolated CANON as the
+   wrong TAA flavour for the AthenaBench TAA Classic axis).
+3. **v18** — v17.1-shape CyberSOCEval letter-set drill chained off
+   v18+TAA. Final published checkpoint.
+
+The branch produces three HF checkpoints (only the final is the
+published v18 model):
+
+| stage | checkpoint | answers the question |
+|---|---|---|
+| 1 | `asg-ai/athena-cti-sft-qwen25-14b-v18-core` | Does evolving the v12 manifest with (a) lifted MCQ counts on AB.MCQ.{1,2,4,5,6}, (b) a third generator family AB.MCQ.EXT.GLOSS.1 sourced from public CTI/sec glossaries, and (c) three new ATE templates that bind to SigmaRule, malware, and intrusion-set narratives lift CKT to v8/8B-parity (≥77.6) and ATE to ≥61.0 without regressing RMS / VSP / RCM / SOC / CM? |
+| 2 | `asg-ai/athena-cti-sft-qwen25-14b-v18-taa` | Does the v16 chained TAA Classic recipe reproduce on top of v18-Core (TAA-attr ≥ v12 + 2pp) without regressing the stage-1 axes? |
+| 3 | `asg-ai/athena-cti-sft-qwen25-14b-v18-cse` | Does the v17.1 chained CSE recipe reproduce on top of v18+TAA (CSE-TI / CSE-MAL ≥ v17.1 − 2pp) while keeping all v18-Core / v18+TAA gains? |
+
+The vintage directory is self-contained per project convention; only
+the Core (stage 1) manifest lives here, because stages 2 and 3 reuse
+the v16 (`05092026/`) and v17.1 (`05102026/`) manifests verbatim:
 
 ```
-05112026/
-  Sophia-CTI-Templates-v17.txt   self-contained CSE-shape manifest (14 templates;
-                                 zero AB.TAA / JS.TAA rows by design)
-  v17_plan.txt                   master plan document (recipe, pipeline, sign-off,
-                                 falsification criteria)
-  v17_row_count_gate.json        per-axis REJECT_IF_BELOW thresholds (CSE-TI /
-                                 CSE-MAL only)
-  README.md                      this document (v16 post-mortem in §1; design
-                                 rationale in §2; run-book in §3; chained-SFT
-                                 risk model in §4)
+05112026/                         (originally authored as 05132026/; consolidated)
+  Sophia-CTI-Templates-v18.txt    Core-shard manifest; body
+                                  byte-identical to v12 except
+                                  for (a) AB.MCQ.{1,2,4,5,6} Count
+                                  lifts, (b) AB.MCQ.EXT.{MITRE,SEC}.1
+                                  Count lifts, and (c) two new
+                                  appended sections at EOF:
+                                    "v18 NEW BLOCK -- AB.MCQ.EXT.GLOSS.1"
+                                    "v18 NEW BLOCK -- AB.ATE.{9..11} +
+                                                       JS.ATE.{4..6}"
+  v18_plan.txt                    master plan (motivation in §1, deltas
+                                  in §2, row-count plan in §3, chained
+                                  training recipe in §4, falsification
+                                  + sign-off in §5/§6)
+  v18_row_count_gate.json         per-axis REJECT_IF_BELOW thresholds
+                                  for the Core shard; MCQ floor
+                                  5400 → 8100; ATE floor 9000 → 13500;
+                                  all other axes carry v12 floors
+                                  verbatim. Stage-2 / stage-3 floors
+                                  are sourced from the v16 / v17.1
+                                  vintage gate files respectively.
+  README.md                       this document
 ```
 
-## 1. Why v17 exists
+Local build artefacts and helpers live in three sibling build dirs,
+one per chain stage:
 
-### 1.1 v16 outcome
+```
+_v18_build/                Core (stage 1) build artefacts
+  _neo4j_check.py          Phase 0 substrate validator (entity floors
+                           + traversal floors against athena-cti-db;
+                           exits non-zero so the watcher halts before
+                           make_dataset.sh starts)
+  _neo4j_extras.py         throwaway diagnostic; relationship-
+                           direction enumeration used during template
+                           authoring
+  _neo4j_probe_v2.py       throwaway diagnostic; field-population
+                           probe (attack-pattern keys, malware keys)
+  _neo4j_probe_v3.py       throwaway diagnostic; substrate validation
+                           for AB.ATE.{9,10,11} alternative bindings
+  watcher.sh               post-build pipeline (substrate gate,
+                           seed-provenance gate, generator merges,
+                           row-count gate, licence gate, dedup,
+                           stratified shuffle, val/train split,
+                           two-shard phase split: broad + axis)
+  validate_corpus.py       cross-stage end-to-end validator
+                           (JSON well-formedness, required fields,
+                           source allowlist, MCQ letter balance, ATE
+                           lift, per-stage train/val disjointness)
 
-v16 (the v15 W1-rev TAA specialist) lifted CyberSOCEval-TI from 3.74%
-(v12) to **30.63%** accuracy with `avg_score` 58.54%, and CyberSOCEval-
-Malware from 7.06% to **10.69%** with `avg_score` 45.15%. TAA Classic
-strict accuracy was 7% (essentially flat vs v12's 11%), but TAA Classic
-**plausible accuracy was 88%** — the model is naming actors that the
-`related_groups.csv` graph treats as related to ground truth (cluster
-confusion: APT41↔APT38, APT37↔Lazarus, APT35↔APT33, APT28↔Turla, …).
-See `tmpl_gen/templates/05102026/README.md` §1 for the v16-on-v15 W1
-diagnosis.
+_v18_taa_build/            v18+TAA (stage 2) build artefacts
+  watcher.sh               TAA Classic post-build pipeline (forked
+                           from _v16_build/watcher.sh; uses v16 row-
+                           count gate)
+  build_val_slice.py       per-axis val/train splitter (50 rows per
+                           shortname; seed=42)
 
-### 1.2 The v16 → CSE accuracy gap is consistent with output-shape miss
+_v18_cse_build/            v18 (stage 3) build artefacts
+  watcher.sh               CSE post-build pipeline (forked from
+                           _v17_1_build/watcher.sh; uses v17.1 row-
+                           count gate and the letter-balance gate)
+  letter_balance_gate.py   asserts the CSE letter-tuple distribution
+                           is not collapsed (forked from _v17_1_build)
+  build_val_slice.py       per-axis val/train splitter (50 rows per
+                           shortname; seed=42)
+```
 
-The CyberSOCEval evaluator scores Jaccard similarity on a
-`{"correct_answers": ["A","C"]}` JSON object wrapped in
-`<json_object></json_object>` tags (TI shape) or returned bare (Malware
-shape). v16 was trained on prose+letter `JS.TAA.*` templates whose
-`Answer:` field is a single letter at the end of a chain-of-thought, **not
-a JSON list of letters**. The 28pp gap between `accuracy` (30.63%) and
-`avg_score` (58.54%) on TI is the signature of a model producing the
-right semantic content but failing the formal extractor's shape check.
+## 1. Why v18 exists — the CKT/ATE plateau across v12 → v17.1
 
-### 1.3 v17 hypothesis
+Two AthenaBench axes refused to lift across the entire v12..v17.1 line:
 
-If the v16 → CSE accuracy ceiling is bound by output shape rather than
-task knowledge, then **chained narrow SFT on the missing CSE letter-set
-shape only** — no new entity knowledge introduced — should lift CSE-Mal
-and CSE-TI accuracy materially without regressing v16's TAA-attribution
-head. Falsification criteria in `v17_plan.txt §4` (Outcomes A/B/C/D).
+| axis      | v12  | v16  | v17.1 | athena_v8 (8B) | v18 target |
+|-----------|------|------|-------|----------------|------------|
+| CKT (MCQ) | 70.4 | 72.1 | 70.0  | **77.6**       | 77.6       |
+| ATE       | 55.1 | 56.9 | 56.6  | 50.6           | **61.0**   |
 
-## 2. Design rationale (per-template Count: targets)
+The v8 LLaMA-3.1 8B abaligned model hit CKT 77.6 with ~6,000 rows of MCQ
+supervision and a single training pass. The Qwen2.5-14B v12 line carries
+6,100 MCQ rows but lands ~7 pp below v8. The diagnosis is two correlated
+effects:
 
-Full per-template Count: schedule in `Sophia-CTI-Templates-v17.txt` §"v17
-declared-row budget summary". Highlights:
+- **Distractor quality.** v12 MCQ distractors are drawn unconstrained
+  from the catalog (e.g. AB.MCQ.5 negative options are "any
+  attack-pattern"). The Athena MCQ eval distractors are usually siblings
+  — same tactic, same technique class, etc. The 14B model rejects the
+  obviously-wrong v12 negatives easily; its loss on training rows is
+  small while its loss on eval rows (with closer negatives) stays high.
+- **Volume.** v12 has 6.1K MCQ rows; v8 had ~6K but the underlying
+  benchmark is ~6,000 questions wide, so the per-question gradient
+  density was effectively higher because v8's training surface was a
+  narrow corpus and v12's is a 260K-row mixed-axis corpus.
 
-- **`JS.CSE.TI.GRP.{1,2,3}`** (~5,910 actuals, target 8,000): intrusion-
-  set-anchored multi-select with 1/2/3 correct techniques; mirrors the
-  CyberSOCEval-TI `threat_intel_reasoning` prompt scaffolding (synthetic
-  intel-report prose with the named group's documented tradecraft inline)
-  without using the actual CrowdStrike PDF corpus → **zero contamination
-  by construction**.
-- **`JS.CSE.TI.MAL.{1,2,3}`** (~1,687 actuals): malware-anchored multi-
-  select; under-yields against the malware-anchor pool because the
-  technique-distinct-from-malware-uses constraint stack is tight.
-- **`JS.CSE.TI.CMP.1`** (Count bumped 1000 → **2500**, ~2,055 actuals):
-  campaign-anchored multi-select; the small ~52-campaign anchor pool
-  needed the Count: bump to lift the CSE-TI-other axis above its 1,400
-  floor on the row-count gate.
-- **`JS.CSE.TI.NEG.1`** (Count 1500, structural ~187 actuals): zero-
-  correct training; collapses to one row per intrusion-set anchor under
-  the 5-way `{force negap_i != negap_j}` constraint stack — same yield
-  pattern documented for v14 `JS.TAA.NEG.1` in `05082026/v14`.
-- **`JS.CSE.MAL.RPT.{1,2,3}`** (~5,039 actuals, target 4,500): malware-
-  anchored detonation-report multi-select; bare `{"correct_answers":[...]}`
-  output shape (no `<json_object>` wrapper) per the CyberSOCEval-Malware
-  evaluator. Synthetic detonation report JSON (`vx_family`, `sha256:"hash"`,
-  `mitre_attcks` list) seeded from the malware's documented attack-pattern
-  set; mirrors PurpleLlama's `malware_analysis` scaffolding without using
-  the formal Hybrid-Analysis sample set.
-- **`JS.CSE.MAL.{TAC,TGT,NEG}.1`** (~3,753 actuals): tactic-axis,
-  group-attribution-axis, and zero-correct variants for option-set
-  diversity.
+ATE has the same shape: v12 carries 10.4K rows from 8 sub-templates
+(AB.ATE.{1..8} + JS.ATE.{1..3}) but the templates render most of their
+volume from `attack-pattern.description` verbatim (AB.ATE.{1,2,4,5} all
+bind on the same description column). The gradient is a single anchor
+seen from five angles; the eval set probes ~11 distinct narrative shapes.
 
-Per-actor cap stays at 60 for completeness but is **structurally non-
-binding** for v17 because every JS.CSE.* shortname is "untouched" by
-`taa_actor_balance.py` (the script only scopes against AB.TAA.{1-5} and
-JS.TAA.{1-3}); the v17 watcher correspondingly sets `ACTOR_FLOOR=0`.
+## 2. v12 → v18 deltas (manifest only)
 
-## 3. Run-book
+1. **AB.MCQ.{1,2,5}**: `Count: 800 → 1200` (3 of 6 sub-families;
+   the others bind on smaller anchor pools and would saturate)
+2. **AB.MCQ.{4,6}**: `Count: 250 → 500`
+3. **AB.MCQ.EXT.{MITRE,SEC}.1**: target 1500 → 2000 each
+4. **NEW** `AB.MCQ.EXT.GLOSS.1` (~1500 rows; generator-only, sourced
+   from public CTI/sec glossaries: NIST SP 800-150, MITRE ATT&CK
+   glossary, CISA Stop-Ransomware, ENISA Threat Landscape, ISO/IEC
+   27000:2018) — knowledge table at
+   `tmpl_gen/scripts/mcq_data/glossary.py`
+5. **NEW** `AB.ATE.{9,10,11}` + `JS.ATE.{4,5,6}` Cypher templates:
+   - `.9` SigmaRule.title + .description → `sr.detects>attack-pattern`
+   - `.10` malware.description → `mw.uses>attack-pattern` (anchored on
+     malware, not on attack-pattern as in AB.ATE.8)
+   - `.11` intrusion-set.description → `grp.uses>attack-pattern`
+     (anchored on group, not on attack-pattern as in AB.ATE.3)
+6. Row-count gate floors lifted: MCQ 5400 → 8100; ATE 9000 → 13500.
+   All other axis floors carry v12 thresholds verbatim. See
+   `v18_row_count_gate.json`.
+7. Build watcher Phase 0 augmented with `_v18_build/_neo4j_check.py`
+   substrate validation. Surfaces athena-cti-db drift at build time.
 
-### 3.1 Generation
+The training recipe is a three-stage chain (v17.1 pattern):
+**v18-Core** runs the v12 two-phase recipe verbatim (Phase A broad
+re-anchor 1e-5, Phase B RMS/ATE/VSP/RCM drill 5e-6) and pushes
+`-v18-core`; **v18+TAA** chains a v16-shape TAA Classic refresher
+(lr 5e-6, cutoff 4096, packing on) and pushes `-v18-taa`;
+**v18** chains a v17.1-shape CSE drill (same recipe as v18+TAA, CSE
+shard) and pushes `-v18-cse`. See `v18_plan.txt §4` for the
+full hyperparameter table; launchers are
+`SFT/autotrain/run_sft_qwen25_14b_v18_core.sh`,
+`run_sft_qwen25_14b_v18_plus_taa.sh`, and
+`run_sft_qwen25_14b_v18_final.sh`.
+
+## 3. Substrate validation (Phase 0)
+
+`_v18_build/_neo4j_check.py` was authored against the actual
+`athena-cti-db` content (probed 2026-05-13). Key findings that shaped
+the manifest:
+
+- `attack-pattern.x_mitre_procedure_examples` is **not populated** in
+  this DB. The initial AB.ATE.9 draft used this property; rewritten to
+  bind on the SigmaRule narrative instead.
+- `x-mitre-data-component` has **no outgoing `:detects` edges** to
+  attack-pattern in this DB (the edge name appears as `:requires_data`
+  *to* the data-component node from `x-mitre-analytic`). The initial
+  AB.ATE.11 draft used a `dc.detects>attack-pattern` traversal that
+  returns 0 rows; rewritten to bind on the intrusion-set narrative.
+- `tactic->achieves->technique` is reversed in this DB: the actual edge
+  is `attack-pattern->achieves->x-mitre-tactic` (the v12 templates
+  already use the correct direction).
+
+All v18-critical floors pass on the current DB:
+
+```
+intrusion-set->uses->attack-pattern  4362  (floor 4000)  OK
+malware->uses->attack-pattern        9836  (floor 8000)  OK
+SigmaRule->detects->attack-pattern   3742  (floor 3000)  OK
+intrusion-set with description >100  185   (floor  150)  OK
+malware with description >80  &&     690   (floor  500)  OK
+  uses>=1
+SigmaRule with description >30       3116  (floor 2500)  OK
+intrusion-set with aliases populated 187   (floor  150)  OK
+course-of-action->mitigates->ap      1445  (floor 1000)  OK
+attack-pattern->subtechnique-of->ap   477  (floor  400)  OK
+attack-pattern->achieves->tactic     1089  (floor  800)  OK
+```
+
+## 4. Run-book
+
+### 4.1 Generation
+
+Three independent shard builds, one per chain stage. The Core build
+uses the v18 manifest in this directory; the TAA and CSE builds reuse
+the v16 and v17.1 manifests verbatim:
 
 ```bash
 cd /Users/pietro/code/Glaukopis     # or the cluster equivalent
-# Pre-flight: confirm Neo4j athena-cti-db is reachable and populated
-python _v17_build/_neo4j_check.py
-# Expected: intrusion-sets >= 180; malware >= 600; attack-patterns >= 800
 
-bash tmpl_gen/data_generation/make_dataset.sh \
-     tmpl_gen/templates/05112026/Sophia-CTI-Templates-v17.txt \
-     _v17_build/triples \
-     SFT/data/ift_data_2026_05_11_v17.raw.json \
-     10 3500 \
-     2>&1 | tee _v17_build/build.log &
-echo "PID=$!" > _v17_build/build.pid
+# --- stage 1: Core shard (v18 manifest) ---
+python _v18_build/_neo4j_check.py    # manual smoke-test; also runs in watcher
+mkdir -p _v18_build/triples
+nohup bash tmpl_gen/data_generation/make_dataset.sh \
+     tmpl_gen/templates/05112026/Sophia-CTI-Templates-v18.txt \
+     _v18_build/triples \
+     SFT/data/ift_data_2026_05_13_v18_core.raw.json \
+     2500 3500 > _v18_build/build.log 2>&1 &
+echo "PID=$!" > _v18_build/build.pid
+nohup bash _v18_build/watcher.sh > _v18_build/watcher.log 2>&1 &
 
-nohup bash _v17_build/watcher.sh > _v17_build/watcher.log 2>&1 &
+# --- stage 2: TAA Classic shard (v16 manifest verbatim) ---
+mkdir -p _v18_taa_build/triples
+nohup bash tmpl_gen/data_generation/make_dataset.sh \
+     tmpl_gen/templates/05092026/Sophia-CTI-Templates-v16.txt \
+     _v18_taa_build/triples \
+     SFT/data/ift_data_2026_05_13_v18_taa.raw.json \
+     10 3500 > _v18_taa_build/build.log 2>&1 &
+echo "PID=$!" > _v18_taa_build/build.pid
+nohup bash _v18_taa_build/watcher.sh > _v18_taa_build/watcher.log 2>&1 &
+
+# --- stage 3: CSE shard (v17.1 manifest verbatim) ---
+mkdir -p _v18_cse_build/triples
+nohup bash tmpl_gen/data_generation/make_dataset.sh \
+     tmpl_gen/templates/05102026/Sophia-CTI-Templates-v17.1.txt \
+     _v18_cse_build/triples \
+     SFT/data/ift_data_2026_05_13_v18_cse.raw.json \
+     10 3500 > _v18_cse_build/build.log 2>&1 &
+echo "PID=$!" > _v18_cse_build/build.pid
+nohup bash _v18_cse_build/watcher.sh > _v18_cse_build/watcher.log 2>&1 &
 ```
 
-The watcher polls the build PID, then runs Phases 4–8 (actor-balance
-no-op, dedup, row-count gate against `v17_row_count_gate.json`, licence
-gate, stratified shuffle, val/train split). Final outputs:
+Each watcher polls its build PID, then runs the post-build pipeline
+appropriate to its shard (substrate gate / seed-provenance gate /
+generator merges / actor-balance / dedup / row-count gate / licence
+gate / [letter-balance gate for CSE] / stratified shuffle / val-train
+split). The Core watcher additionally runs the legacy two-shard
+phase split (broad + axis).
 
-- `SFT/data/ift_data_2026_05_11_v17_cse.json`  (training shard, ~16.5K rows)
-- `SFT/data/ift_data_2026_05_11_v17_val.json`  (held-out validation slice, ~400 rows)
-- `_v17_build/watcher_status.json`             (per-phase row counts and reports)
+Final outputs:
 
-### 3.2 Dataset registration
+- `SFT/data/ift_data_2026_05_13_v18_core_a_kb_mcq_taa_soc_cm_ms_yn.json` — Core Phase A shard (broad re-anchor; ~79% KB/glossary/Wikipedia/NIST + MCQ + TAA Classic + SOC + CM + MS + YN)
+- `SFT/data/ift_data_2026_05_13_v18_core_b_rms_ate_vsp_rcm.json` — Core Phase B shard (RMS+ATE+VSP+RCM catalog drill)
+- `SFT/data/ift_data_2026_05_13_v18_core_val.json` — Core val slice (50 rows × N axes)
+- `SFT/data/ift_data_2026_05_13_v18_taa.json` — v18+TAA train shard
+- `SFT/data/ift_data_2026_05_13_v18_taa_val.json` — v18+TAA val slice
+- `SFT/data/ift_data_2026_05_13_v18_cse.json` — v18 CSE train shard
+- `SFT/data/ift_data_2026_05_13_v18_cse_val.json` — v18 CSE val slice
+- `_v18_build/watcher_status.json`, `_v18_taa_build/watcher_status.json`,
+  `_v18_cse_build/watcher_status.json` — per-stage row counts and reports
 
-The launcher resolves dataset names through `SFT/data/dataset_info.json`.
-The v17 entries (`ift_data_2026_05_11_v17_cse`, `ift_data_2026_05_11_v17_val`)
-are registered alongside the v16 / v15 / v12 entries.
+Validate end-to-end with `python _v18_build/validate_corpus.py` (asserts
+schema, source allowlist, MCQ letter balance, ATE lift, and per-stage
+train/val disjointness across all four train shards).
 
-### 3.3 Training
+### 4.2 Dataset registration
+
+The launchers resolve dataset names through
+`SFT/data/dataset_info.json`. The v18 entries are
+`ift_data_2026_05_13_v18_core_a_kb_mcq_taa_soc_cm_ms_yn`,
+`ift_data_2026_05_13_v18_core_b_rms_ate_vsp_rcm`,
+`ift_data_2026_05_13_v18_core_val`,
+`ift_data_2026_05_13_v18_taa`,
+`ift_data_2026_05_13_v18_taa_val`,
+`ift_data_2026_05_13_v18_cse`, and
+`ift_data_2026_05_13_v18_cse_val`, registered alongside the
+v17.1 / v17 / v16 / v15 / v12 entries.
+
+### 4.3 Training
+
+The three launchers run sequentially; each pulls the previous stage's
+pushed HF checkpoint as its base. Stage 1 must complete and push to
+HF before stage 2 starts:
 
 ```bash
-bash SFT/autotrain/run_sft_qwen25_14b_v16_plus_v17_cse.sh
-# defaults to ${HF_USERNAME}/athena-cti-sft-qwen25-14b-v17
-# base model: asg-ai/athena-cti-sft-qwen25-14b-v16   (CHAINED off v16, not v12)
-# wall-time ~4-6 h on 8xH100
+# stage 1 (~13 h on 8xH100): broad + axis -> v18-core
+bash SFT/autotrain/run_sft_qwen25_14b_v18_core.sh
+# stage 2 (~6-8 h):           TAA Classic  -> v18-taa
+bash SFT/autotrain/run_sft_qwen25_14b_v18_plus_taa.sh
+# stage 3 (~4-6 h):           CSE drill    -> v18-cse (final)
+bash SFT/autotrain/run_sft_qwen25_14b_v18_final.sh
+# defaults to ${HF_USERNAME}/athena-cti-sft-qwen25-14b-v18-cse
+# base of stage 1 : Qwen/Qwen2.5-14B-Instruct
+# total wall-time : ~24 h on 8xH100
 ```
 
-### 3.4 Bench
+### 4.4 Bench
 
-Standard 14B AthenaBench sweep against the v17 HF checkpoint; compare
-against v16 (CSE-TI 30.63%, CSE-Malware 10.69%, TAA Classic 7%/88%) per
-the decision matrix in `v17_plan.txt §4`. The full sweep covers TAA
-Canonical / TAA Classic, athena-rms, cybermetric (80 + 2000 + 10000),
-cybersoceval-malware, cybersoceval-ti.
+Standard 14B AthenaBench + CyberMetric + CyberSOCEval sweep against
+each of the three pushed checkpoints; only the v18 final stage is the
+published deliverable, but the v18-core and v18-plus-taa benches are
+recorded for regression diagnosis if the final fails. Compare v18-core
+against v12 (the standalone baseline its Phase A/B mirrors), v18-plus-taa
+against v16 (the TAA Classic chain it reproduces), and v18 against
+v17.1 (the CSE chain it reproduces). Decision matrix in
+`v18_plan.txt §5`. If v18 hits CKT ≥ 75 and ATE ≥ 58.5 without
+regressing RMS / VSP / RCM / TAA-attr / SOC / CM by more than 2 pp and
+keeps CSE-TI / CSE-MAL within 2 pp of v17.1, the chained recipe is
+validated and v18 becomes the new shared base for any future v19+
+chained specialist branches.

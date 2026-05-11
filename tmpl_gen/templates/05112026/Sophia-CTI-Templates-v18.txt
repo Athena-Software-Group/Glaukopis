@@ -6,7 +6,7 @@ This file is the self-contained template manifest for the v18 training run.
 It is the v12 manifest carried forward verbatim with the v12 -> v18 deltas
 described below. The build pipeline reads this file directly; the trained-on
 text matches the audited text byte-for-byte. The v18 plan
-(tmpl_gen/templates/05132026/v18_plan.txt) is the architectural reference;
+(tmpl_gen/templates/05112026/v18_plan.txt) is the architectural reference;
 this manifest is the operational template surface.
 
 v12 -> v18 motivation
@@ -39,7 +39,7 @@ All other axes (RMS, VSP, RCM, MS, TAA-{attribution,IE-NEG,CANON}, SOC,
 CM) carry v12 templates and Counts byte-identical. The build pipeline
 inherits v12+v13 plumbing (seed-provenance gate, licence-allowlist gate,
 stratified shuffle, three-shard split). HF target:
-asg-ai/athena-cti-sft-qwen25-14b-v18-core-plus-taa-cse.
+asg-ai/athena-cti-sft-qwen25-14b-v18-cse.
 
 v18 deltas (manifest only; build/training deltas in v18_plan.txt)
 -----------------------------------------------------------------
@@ -55,7 +55,7 @@ v18 deltas (manifest only; build/training deltas in v18_plan.txt)
       and detection-strategy descriptions.
   (8) Row-count gate floors lifted: MCQ 5400 -> 8100; ATE 9000 -> 13500.
       All other axis floors carry v12 thresholds verbatim. See
-      tmpl_gen/templates/05132026/v18_row_count_gate.json.
+      tmpl_gen/templates/05112026/v18_row_count_gate.json.
   (9) Build watcher Phase 0 augmented with _v18_build/_neo4j_check.py
       substrate validation (entity floors + traversal floors). Surfaces
       athena-cti-db drift at build time.
@@ -856,7 +856,7 @@ Sample: grp
 Section 6.1 - TAA.CANON.* Intrusion-set alias resolution
 [v18 chain pivot: TAA.CANON.{1,2} templates removed. The v18 lineage drops
  alias-resolution training entirely in favour of TAA Classic (AB.TAA.{1..5},
- JS.TAA.{1..3}); see tmpl_gen/templates/05132026/v18_plan.txt §"v17.1
+ JS.TAA.{1..3}); see tmpl_gen/templates/05112026/v18_plan.txt §"v17.1
  chained architecture" and the v15 W1 post-mortem for the rationale.]
 
 
@@ -3114,7 +3114,7 @@ v12 NEW BLOCK -- TAA.CANON.* expansion (programmatic generator)  [v18: REMOVED]
  the TAA.CANON.{1,2} in-manifest templates above are removed, and the
  TAA.CANON.3 generator-only template that used to live here is removed.
  v18 trains TAA via the v16 TAA Classic refresher chained on top of the
- v18-core base; see tmpl_gen/templates/05132026/v18_plan.txt
+ v18-core base; see tmpl_gen/templates/05112026/v18_plan.txt
  §"v17.1 chained architecture".]
 
 
@@ -3213,7 +3213,7 @@ Count: 1000
 ================================================================================
 v18 NEW BLOCK -- AB.MCQ.EXT.GLOSS.1 (programmatic generator)
 ================================================================================
-Per tmpl_gen/templates/05132026/v18_plan.txt §2(2). Supplements the
+Per tmpl_gen/templates/05112026/v18_plan.txt §2(2). Supplements the
 template-driven AB.MCQ.* / JS.MCQ.* families and the v12-introduced
 AB.MCQ.EXT.{MITRE,SEC}.1 generator with a third generator family covering
 canonical CTI/sec terminology drawn from public-source glossaries:
@@ -3240,7 +3240,7 @@ Count: 1500
 ================================================================================
 v18 NEW BLOCK -- AB.ATE.{9,10,11} + JS.ATE.{4,5,6} (Cypher templates)
 ================================================================================
-Per tmpl_gen/templates/05132026/v18_plan.txt §2(3). Adds three new
+Per tmpl_gen/templates/05112026/v18_plan.txt §2(3). Adds three new
 Neo4j-bound ATE sub-templates (and JSON-shaped variants) that exercise
 graph edges the v12 AB.ATE.{1..8} templates do not touch. Targets the
 v18 ATE floor of 13,500 rows (v12 floor was 9,000).

@@ -51,16 +51,16 @@ the user's Excel master sheet and has *not* been mirrored into the repo.
   1. **Stage 1 (Core)**  -- v12-shape recipe (Phase A broad + Phase B axis;
      no TAA in this stage).  Launcher:
      `SFT/autotrain/run_sft_qwen25_14b_v18_core.sh`.  Manifest:
-     `tmpl_gen/templates/05132026/Sophia-CTI-Templates-v18.txt`.
+     `tmpl_gen/templates/05112026/Sophia-CTI-Templates-v18.txt`.
   2. **Stage 2 (+TAA Classic)** -- chained off Stage 1 checkpoint, reuses
      the v16 TAA Classic manifest at
-     `tmpl_gen/templates/05102026/Sophia-CTI-Templates-v16.txt`.
+     `tmpl_gen/templates/05092026/Sophia-CTI-Templates-v16.txt`.
      Launcher: `SFT/autotrain/run_sft_qwen25_14b_v18_plus_taa.sh`.
   3. **Stage 3 (+CSE, final)** -- chained off Stage 2 checkpoint, reuses
      the v17.1 CSE manifest at
-     `tmpl_gen/templates/05122026/Sophia-CTI-Templates-v17.1.txt`.
+     `tmpl_gen/templates/05102026/Sophia-CTI-Templates-v17.1.txt`.
      Launcher: `SFT/autotrain/run_sft_qwen25_14b_v18_final.sh` (publishes
-     the final `asg-ai/athena-cti-sft-qwen25-14b-v18-core-plus-taa-cse` checkpoint).
+     the final `asg-ai/athena-cti-sft-qwen25-14b-v18-cse` checkpoint).
 * Why this shape: the v12..v17.1 chain successfully recovered CSE-TI /
   CSE-Malware without forgetting AthenaBench heads, but CKT (MCQ) and ATE
   refused to lift.  v18 lifts the MCQ floor by ~50% and adds glossary-
@@ -111,23 +111,26 @@ the user's Excel master sheet and has *not* been mirrored into the repo.
    it does not -- those values are the baseline.  The legacy plan to
    baseline `Llama-3.1-8B-Instruct` on CyberSOCEval is dropped.
 
-## v18 HF naming convention (locked 2026-05-10)
+## v18 HF naming convention (re-locked 2026-05-11)
 
-The three v18 chained-stage HF repos use additive suffixes so each
-checkpoint's lineage is self-evident from its name and so any of the
-three can be benchmarked independently:
+Stage HF repos use the domain-specific suffix per stage so each
+checkpoint's role is self-evident and any of the three can be
+benchmarked independently:
 
 | stage | launcher | HF repo |
 |---|---|---|
 | 1 | `SFT/autotrain/run_sft_qwen25_14b_v18_core.sh` | `asg-ai/athena-cti-sft-qwen25-14b-v18-core` |
-| 2 | `SFT/autotrain/run_sft_qwen25_14b_v18_plus_taa.sh` | `asg-ai/athena-cti-sft-qwen25-14b-v18-core-plus-taa` |
-| 3 | `SFT/autotrain/run_sft_qwen25_14b_v18_final.sh` | `asg-ai/athena-cti-sft-qwen25-14b-v18-core-plus-taa-cse` |
+| 2 | `SFT/autotrain/run_sft_qwen25_14b_v18_plus_taa.sh` | `asg-ai/athena-cti-sft-qwen25-14b-v18-taa` |
+| 3 | `SFT/autotrain/run_sft_qwen25_14b_v18_final.sh` | `asg-ai/athena-cti-sft-qwen25-14b-v18-cse` |
 
 History (do NOT re-run / do NOT re-rename):
 * Stage 2 was originally pushed as `asg-ai/athena-cti-sft-qwen25-14b-v18-plus-taa`
-  on 2026-05-10 and renamed in-place via the HF `repos/move` API to
-  `…-v18-core-plus-taa` the same day.  The old name returns HTTP 307
-  -> the new canonical name, so any pinned reference still resolves.
+  on 2026-05-10, renamed in-place to `…-v18-core-plus-taa` the same
+  day, and renamed again on 2026-05-11 (per v18.1 plan §2(5)) to
+  `…-v18-taa`.  Both prior names return HTTP 307 -> the new canonical
+  name, so any pinned reference still resolves.
+* Stage 3 was originally pushed as `…-v18-core-plus-taa-cse` and
+  renamed on 2026-05-11 to `…-v18-cse`; the old name returns HTTP 307.
 * Stage 3 launcher was originally `run_sft_qwen25_14b_v18.sh` (and
   briefly `run_sft_qwen25_14b_v18_cse.sh`) before settling on
   `run_sft_qwen25_14b_v18_final.sh` to surface that it is the v18

@@ -243,21 +243,39 @@ model_mapping = {
     # and the combinatorial-ceiling 26 distinct tuples (ift_data_2026_05_12_
     # v17_1_cse, 18,817 train rows). Pushed by
     # SFT/autotrain/run_sft_qwen25_14b_v16_plus_v17_1_cse.sh. See
-    # tmpl_gen/templates/05122026/v17_1_plan.txt and README.md for the
+    # tmpl_gen/templates/05102026/v17_1_plan.txt and README-17-1.md for the
     # falsification criteria overlay (Outcomes A/B/C/D in section 4).
     'athena-cti-sft-qwen25-14b-v17-1-vllm':                    'asg-ai/athena-cti-sft-qwen25-14b-v17-1',
     # v18: chained three-stage SFT off Qwen2.5-14B-Instruct (mirrors the v17.1
     # chain shape: v12-shape Core, then a v16 TAA Classic refresher, then a
     # v17.1 CSE drill). Each stage publishes its own HF repo so any of the
-    # three checkpoints can be benchmarked independently. Suffix convention is
-    # additive: -core -> -core-plus-taa -> -core-plus-taa-cse. Pushed by
+    # three checkpoints can be benchmarked independently. Pushed by
     # SFT/autotrain/run_sft_qwen25_14b_v18_{core,plus_taa,final}.sh. See
-    # tmpl_gen/templates/05132026/v18_plan.txt for the chain rationale and
-    # tmpl_gen/templates/MASTER_RESULTS.md for the locked naming convention
-    # (Stage 2 was renamed in-place from -v18-plus-taa via HF repos/move).
+    # tmpl_gen/templates/05112026/v18_plan.txt for the chain rationale and
+    # tmpl_gen/templates/MASTER_RESULTS.md for the locked naming convention.
+    # Per v18.1 plan §2(5) the cumulative-suffix Stage 2/3 repos were renamed
+    # on HF to domain-specific names (the chained TAA / CSE checkpoints are
+    # the same artefact regardless of which Core base they ride on, and the
+    # v18.1 redo intends to re-chain them off v18.1-core):
+    #   asg-ai/...-v18-core-plus-taa     -> asg-ai/...-v18-taa
+    #   asg-ai/...-v18-core-plus-taa-cse -> asg-ai/...-v18-cse
+    # The HF Hub rename returns HTTP 307 from the old paths so older launchers
+    # that still hardcode the cumulative names continue to resolve.
     'athena-cti-sft-qwen25-14b-v18-core-vllm':                 'asg-ai/athena-cti-sft-qwen25-14b-v18-core',
-    'athena-cti-sft-qwen25-14b-v18-core-plus-taa-vllm':        'asg-ai/athena-cti-sft-qwen25-14b-v18-core-plus-taa',
-    'athena-cti-sft-qwen25-14b-v18-core-plus-taa-cse-vllm':    'asg-ai/athena-cti-sft-qwen25-14b-v18-core-plus-taa-cse',
+    'athena-cti-sft-qwen25-14b-v18-taa-vllm':                  'asg-ai/athena-cti-sft-qwen25-14b-v18-taa',
+    'athena-cti-sft-qwen25-14b-v18-cse-vllm':                  'asg-ai/athena-cti-sft-qwen25-14b-v18-cse',
+    # v18.1: Core-only redo of v18 Stage 1 after the v18 chain regressed
+    # CKT (-15pp vs v8small), RMS (-10pp vs v9_rms), and VSP (-10pp vs v10).
+    # MCQ axis reverts to the v8small scenario-only recipe; AB.MCQ.EXT.{MITRE,
+    # SEC,GLOSS}.1 KB-flashcard families are dropped and three new scenario
+    # MCQ families (AB.MCQ.{7,8,9}) are added against high-cardinality MITRE
+    # ATT&CK substrates. RMS consolidates AB.RMS.{4a..4j,5a..5j} back to the
+    # v9_rms single-template-per-direction shape; VSP caps to v10's 12K shape.
+    # Pushed by SFT/autotrain/run_sft_qwen25_14b_v18p1_core.sh. See
+    # tmpl_gen/templates/05112026/v18_1_plan.txt and README-18-1.md for the
+    # diagnosis, deltas, and falsification matrix. The v18-taa / v18-cse
+    # checkpoints above will be re-chained off v18-1-core if §5.1 passes.
+    'athena-cti-sft-qwen25-14b-v18-1-core-vllm':               'asg-ai/athena-cti-sft-qwen25-14b-v18-1-core',
     # HF Inference Providers route. Custom community fine-tunes are not in the
     # default Together/Fireworks/Novita/etc. catalogs; this alias only resolves
     # if the model is exposed via an HF Inference Endpoint or the legacy

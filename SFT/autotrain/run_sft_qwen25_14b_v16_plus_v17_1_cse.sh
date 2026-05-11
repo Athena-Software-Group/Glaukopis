@@ -11,7 +11,7 @@
 # which the new tmpl_parser._shuffle_mcq_options_multi engine path uses to
 # permute the option block A-H and rewrite the correct_answers list to
 # the new positions.
-# See tmpl_gen/templates/05122026/v17_1_plan.txt.
+# See tmpl_gen/templates/05102026/v17_1_plan.txt.
 #
 # Why v17.1 exists:
 #   v17 was Outcome D (net regression). Forensic analysis of the corpus
@@ -106,7 +106,7 @@ for ds in "${DATASET}" "${VAL_NAME}"; do
         echo "[FAIL] v17.1 dataset missing: SFT/data/${ds}.json" >&2
         echo "       Build via:" >&2
         echo "         bash tmpl_gen/data_generation/make_dataset.sh \\" >&2
-        echo "           tmpl_gen/templates/05122026/Sophia-CTI-Templates-v17.1.txt \\" >&2
+        echo "           tmpl_gen/templates/05102026/Sophia-CTI-Templates-v17.1.txt \\" >&2
         echo "           _v17_1_build/triples \\" >&2
         echo "           ${SFT_DIR}/data/ift_data_2026_05_12_v17_1.raw.json \\" >&2
         echo "           10 3500" >&2

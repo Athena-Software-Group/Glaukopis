@@ -2,7 +2,7 @@
 
 # v18+TAA single-phase narrow-drilling SFT of asg-ai/athena-cti-sft-qwen25-14b-v18-core
 # on the v18 TAA Classic shard (ift_data_2026_05_13_v18_taa). Stage 2 of the
-# v17.1-pattern chained v18 architecture (tmpl_gen/templates/05132026/v18_plan.txt
+# v17.1-pattern chained v18 architecture (tmpl_gen/templates/05112026/v18_plan.txt
 # §"v17.1 chained architecture"); the resulting checkpoint is the base for the
 # v18 final CSE drill (run_sft_qwen25_14b_v18_final.sh). Verbatim port of the v15 W1
 # / v12+v16 TAA refresher recipe; only the dataset and base-model pointers
@@ -27,7 +27,7 @@
 #   - eval/save every 100 steps
 #   - --max-samples 33000  (matches v15 W1 / v14.1 Phase D-TAA)
 #   - Gradient checkpointing OFF (v14.1 hot-fix carried forward)
-#   - Push: YES -> ${HF_USERNAME}/athena-cti-sft-qwen25-14b-v18-core-plus-taa
+#   - Push: YES -> ${HF_USERNAME}/athena-cti-sft-qwen25-14b-v18-taa
 #
 # Estimated wall-time on 8xH100: ~6-8 h.
 #
@@ -71,7 +71,7 @@ done
 
 if [[ -z "${REPO_ID}" ]]; then
     : "${HF_USERNAME:?Set HF_USERNAME in SFT/.env (or pass --repo-id USER/NAME)}"
-    REPO_ID="${HF_USERNAME}/athena-cti-sft-qwen25-14b-v18-core-plus-taa"
+    REPO_ID="${HF_USERNAME}/athena-cti-sft-qwen25-14b-v18-taa"
 fi
 
 [[ -z "${BASE_MODEL}" ]] && BASE_MODEL="asg-ai/athena-cti-sft-qwen25-14b-v18-core"

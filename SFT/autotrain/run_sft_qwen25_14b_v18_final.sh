@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# v18 single-phase narrow-drilling SFT of asg-ai/athena-cti-sft-qwen25-14b-v18-core-plus-taa
+# v18 single-phase narrow-drilling SFT of asg-ai/athena-cti-sft-qwen25-14b-v18-taa
 # on the v18 CyberSOCEval-letter-set shard (ift_data_2026_05_13_v18_cse). Stage 3
 # (final) of the v17.1-pattern chained v18 architecture
-# (tmpl_gen/templates/05132026/v18_plan.txt §"v17.1 chained architecture").
+# (tmpl_gen/templates/05112026/v18_plan.txt §"v17.1 chained architecture").
 # Verbatim port of the v16+v17.1-CSE recipe; only the dataset and base-model
 # pointers change. The resulting checkpoint is the published v18 model.
 #
@@ -16,7 +16,7 @@
 #   self-contained on disk.
 #
 # Recipe (verbatim mirror of v16+v17.1-CSE):
-#   - Base model    : asg-ai/athena-cti-sft-qwen25-14b-v18-core-plus-taa
+#   - Base model    : asg-ai/athena-cti-sft-qwen25-14b-v18-taa
 #                     (HF; overridable via --base-model)
 #   - Dataset       : ift_data_2026_05_13_v18_cse  (~14-19K rows; CSE shape)
 #   - 1 epoch, lr 5e-6, cutoff 4096, packing ON
@@ -24,14 +24,14 @@
 #   - eval/save every 100 steps
 #   - --max-samples 33000  (matches v16 / v17 / v17.1)
 #   - Gradient checkpointing OFF (v14.1 hot-fix carried forward)
-#   - Push: YES -> ${HF_USERNAME}/athena-cti-sft-qwen25-14b-v18-core-plus-taa-cse
+#   - Push: YES -> ${HF_USERNAME}/athena-cti-sft-qwen25-14b-v18-cse
 #
 # Estimated wall-time on 8xH100: ~4-6 h (corpus size matches v17.1).
 #
 # Full v18 chain (run sequentially after each push completes on HF):
 #   1. ./run_sft_qwen25_14b_v18_core.sh        # broad + axis  -> v18-core
-#   2. ./run_sft_qwen25_14b_v18_plus_taa.sh    # TAA Classic   -> v18-core-plus-taa
-#   3. ./run_sft_qwen25_14b_v18_final.sh       # CSE drill     -> v18-core-plus-taa-cse (final)
+#   2. ./run_sft_qwen25_14b_v18_plus_taa.sh    # TAA Classic   -> v18-taa
+#   3. ./run_sft_qwen25_14b_v18_final.sh       # CSE drill     -> v18-cse (final)
 #
 # Estimated total wall-clock on 8xH100 80GB: ~24 h.
 #
@@ -75,10 +75,10 @@ done
 
 if [[ -z "${REPO_ID}" ]]; then
     : "${HF_USERNAME:?Set HF_USERNAME in SFT/.env (or pass --repo-id USER/NAME)}"
-    REPO_ID="${HF_USERNAME}/athena-cti-sft-qwen25-14b-v18-core-plus-taa-cse"
+    REPO_ID="${HF_USERNAME}/athena-cti-sft-qwen25-14b-v18-cse"
 fi
 
-[[ -z "${BASE_MODEL}" ]] && BASE_MODEL="asg-ai/athena-cti-sft-qwen25-14b-v18-core-plus-taa"
+[[ -z "${BASE_MODEL}" ]] && BASE_MODEL="asg-ai/athena-cti-sft-qwen25-14b-v18-taa"
 
 TIMESTAMP="$(date +"%Y-%m-%d-%H-%M-%S")"
 SAFE_MODEL="Qwen_Qwen2.5-14B-Instruct"
@@ -92,7 +92,7 @@ for ds in "${DATASET}" "${VAL_NAME}"; do
         echo "[FAIL] v18-CSE dataset missing: SFT/data/${ds}.json" >&2
         echo "       Build via:" >&2
         echo "         bash tmpl_gen/data_generation/make_dataset.sh \\" >&2
-        echo "           tmpl_gen/templates/05122026/Sophia-CTI-Templates-v17.1.txt \\" >&2
+        echo "           tmpl_gen/templates/05102026/Sophia-CTI-Templates-v17.1.txt \\" >&2
         echo "           _v18_cse_build/triples \\" >&2
         echo "           ${SFT_DIR}/data/ift_data_2026_05_13_v18_cse.raw.json \\" >&2
         echo "           10 3500" >&2

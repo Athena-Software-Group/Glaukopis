@@ -1,0 +1,206 @@
+v18p1 training plan -- Core-only redo (AthenaBench MCQ/RMS/VSP recovery)
+========================================================================
+
+Vintage label    : v18p1   (HF: v18-1)
+Architecture     : Core-only retraining of the v18 chain Stage 1. Stages
+                   2 (TAA Classic refresher) and 3 (CSE drill) are NOT
+                   re-trained; the existing v18 TAA + CSE checkpoints
+                   are renamed and re-chained off the new v18p1 Core.
+Author date      : 2026-05-11 (vintage dir tmpl_gen/templates/05112026/)
+Predecessors     : v18  (asg-ai/athena-cti-sft-qwen25-14b-v18-core-plus-
+                          taa-cse, the published v18 chained model).
+                   v8small (asg-ai/athena-cti-sft-llama31-8b-abaligned-
+                          v8 -- CKT 77.6 reference for the MCQ recipe).
+                   v9_rms (asg-ai/athena-cti-sft-qwen25-14b-abaligned-v9
+                          -- RMS 65.8 reference for the RMS recipe).
+                   v7  (asg-ai/athena-cti-sft-qwen25-14b-abaligned-v7
+                          -- best plausible-F1 reference; same single-
+                           template RMS shape as v9_rms).
+                   v10 (asg-ai/athena-cti-sft-qwen25-14b-abaligned-v10
+                          -- VSP 86.7 reference for the VSP recipe).
+Operational ref  : THIS FILE
+                   Sophia-CTI-Templates-v18.1.txt   (Core manifest, v18p1)
+                   v18_1_row_count_gate.json         (Core build gates)
+                   _v18p1_build/watcher.sh           (Core build pipeline,
+                                                      forked from _v18_build)
+                   SFT/autotrain/run_sft_qwen25_14b_v18p1_core.sh
+                                                     (stage 1 launcher)
+
+
+1. Why v18p1 exists -- the v18 Core regression
+-----------------------------------------------
+
+1.1 The v18 chain landed CSE-TI / CSE-Malware and TAA on target via
+    Stages 2 (v18-plus-taa) and 3 (v18-final / CSE). The chained
+    pattern itself is validated. But v18 Stage 1 (Core) regressed
+    against three historical AthenaBench peaks:
+
+        axis    v18    historical peak                delta
+        ----    ----   ------------------------       -----
+        CKT     62.6   v8small  77.6 (LLaMA 8B)       -15.0 pp
+        RMS     55.6   v9_rms   65.8 (Qwen 14B)       -10.2 pp
+        VSP     76.8   v10      86.7 (Qwen 14B)        -9.9 pp
+
+1.2 Diagnosis (from inspection of ift_data_2026_05_13_v18_core_*.json
+    and the v18 manifest, see conversation diagnosis 2026-05-11):
+
+      MCQ. The v18 Core MCQ shard was 61% AB.MCQ.EXT.{MITRE,SEC,
+      GLOSS}.1 KB flashcards (5,478 rows of 8,949). The eval shape --
+      five-option scenario MCQ -- only got 39% of the gradient. v8small
+      ran with ~6K scenario MCQ rows and no EXT family and posted CKT
+      77.6. The EXT lift in v18 was a hypothesis ("more KB knowledge
+      will lift CKT") that the data does not support.
+
+      RMS. v18 fragmented AB.RMS.{4,5} into ten paraphrases each
+      (4a..4j and 5a..5j) at Count: 50 per paraphrase. The catalog-
+      recall capability that v9_rms / v7 got from a single 600-row
+      template per direction was diluted across 10x template-string
+      variation that never appears in the AthenaBench eval set.
+
+      VSP. count_max=3500 with no explicit AB.VSP / V.CPE Counts
+      produced ~27K VSP rows -- 2.25x v10's ~12K. Template exhaustion
+      on a fixed 8 phrasings drove phrasing-overfit (v18 plateaus on
+      the train shape, regresses on the eval shape). v10 posted VSP
+      86.7 with 4*1500 + 4*1500 = 12K under the same phrasings.
+
+1.3 v18p1 is therefore CORPUS-DRIVEN, not a recipe change. The Stage 1
+    training recipe is the v18-Core two-phase recipe verbatim (§4).
+    The only deltas are in the manifest and the row-count gate (§3).
+    The TAA + CSE downstream stages are not touched.
+
+
+2. v18 -> v18p1 deltas
+----------------------
+
+  (1) MCQ recipe (v8small): drop AB.MCQ.EXT.{MITRE,SEC,GLOSS}.1.
+      AB.MCQ.{1..6} and JS.MCQ.{1,2,5} retain v18 Counts (the v8
+      ~6K scenario budget). Watcher Phase 3c (mcq_generator.py +
+      GLOSS merge) is bypassed in _v18p1_build/watcher.sh.
+      First v18p1 substrate run yielded 4762 MCQ rows because
+      AB.MCQ.{2,4,6} are bound by the CAPEC.map_ap edge cardinality.
+      To clear the 6000 floor without re-introducing flashcard noise,
+      three new scenario-shape MCQ templates were added against
+      higher-cardinality MITRE ATT&CK substrates:
+        AB.MCQ.7 (mw -[:uses]-> attack-pattern;     9836 edges; Count 800)
+        AB.MCQ.8 (grp -[:uses]-> malware;            647 edges; Count 500)
+        AB.MCQ.9 (sub -[:subtechnique-of]-> ap;      477 edges; Count 800)
+      All three use four {negack*}/{negmw*} distractors with the
+      v18 force-distinct constraint pattern.
+
+  (2) RMS recipe (v7 / v9_rms): roll AB.RMS.{4a..4j} into a single
+      AB.RMS.4 Count: 600 (ID -> name + description). Roll
+      AB.RMS.{5a..5j} into a single AB.RMS.5 Count: 600 (name ->
+      ID + description). Same total catalog-drill volume, same
+      template strings as v9_rms. AB.RMS.{1,2,3a..3h,6} carry v18
+      Counts byte-identical.
+
+  (3) VSP recipe (v10): explicit Count: 1500 added to AB.VSP.{1..4}
+      and V.CPE.{1..4} so the build caps at v10's 4*1500 + 4*1500 =
+      12K shape regardless of count_max. The substrate (CVE
+      descriptions + cpe_matches) is the same as v10's; only the
+      sampling cap changes.
+
+  (4) Row-count gate floors (v18_1_row_count_gate.json):
+      MCQ 8100 -> 6000  (EXT family removed; floor matches the v8
+                         scenario-only ~6K shape)
+      RMS 11700 -> 12000 (anchor on v9_rms shape with paraphrases
+                          consolidated)
+      VSP 8100 -> 5400  (anchor on v10's ~12K total = 4*1500 CVE +
+                         4*1500 CPE less the eval-overlap dedup tail)
+      All other axis floors carry v18 thresholds verbatim.
+
+  (5) Stage 2 (TAA Classic) and Stage 3 (CSE) are NOT re-trained.
+      The existing v18 chained checkpoints are renamed on HF to
+      reflect their domain-specific (not cumulative) nature:
+        ...-v18-core-plus-taa      ->  ...-v18-taa
+        ...-v18-core-plus-taa-cse  ->  ...-v18-cse
+      vLLM aliases in SFT/test/pipelines/models.py are updated to
+      the new repo names. The Stage 2 / Stage 3 recipes, datasets,
+      and launchers (run_sft_qwen25_14b_v18_plus_taa.sh /
+      run_sft_qwen25_14b_v18_final.sh) are untouched.
+
+
+3. Row-count plan (per-family targets)
+--------------------------------------
+
+3.1 MCQ axis -- target 6500, REJECT_IF_BELOW 6000
+
+      shortname             v18 target   v18p1 target
+      ---------             ----------   ------------
+      AB.MCQ.{1,2,5}            3600         3600
+      AB.MCQ.{4,6}              1000         1000
+      AB.MCQ.3                   100          100
+      AB.MCQ.7                     -          800     (NEW; mw->ap)
+      AB.MCQ.8                     -          500     (NEW; grp->mw)
+      AB.MCQ.9                     -          800     (NEW; sub->parent)
+      JS.MCQ.{1,2,5}            1900         1900
+      AB.MCQ.EXT.MITRE.1        2000            0     (DROPPED)
+      AB.MCQ.EXT.SEC.1          2000            0     (DROPPED)
+      AB.MCQ.EXT.GLOSS.1        1500            0     (DROPPED)
+      declared sum             12100         8700
+      after dedup + cap         ~9500         ~6200
+      gate floor                 8100         6000
+
+3.2 RMS axis -- target 13000, REJECT_IF_BELOW 12000
+
+      AB.RMS.1                  cap          cap
+      AB.RMS.2                  cap          cap
+      AB.RMS.3a..3h            8200         8200
+      AB.RMS.{4a..4j}           500            -    (CONSOLIDATED)
+      AB.RMS.{5a..5j}           500            -    (CONSOLIDATED)
+      AB.RMS.4                    -          600
+      AB.RMS.5                    -          600
+      AB.RMS.6                 1500         1500
+      JS.RMS.{1..8}            1725         1725
+
+3.3 VSP axis -- target 6000, REJECT_IF_BELOW 5400
+
+      AB.VSP.{1,2,3,4}        ~13.6K         6000   (4*1500 cap)
+      V.CPE.{1,2,3,4}         ~13.6K         6000   (4*1500 cap)
+
+
+4. Training recipe (Stage 1 only; verbatim from v18-Core)
+---------------------------------------------------------
+
+4.1 Hardware: 8x H100 80GB. Two-phase:
+      Phase A (broad re-anchor; cutoff 8192, packing on, lr 1e-5,
+              effective batch 16, --max-samples 240000, 1 epoch)
+      Phase B (RMS/ATE/VSP/RCM catalog drill; cutoff 16384, packing
+              off, lr 5e-6, effective batch 8, --max-samples 70000,
+              1 epoch, eval/save every 400 steps)
+4.2 Datasets:
+      Phase A : ift_data_2026_05_11_v18p1_core_a_kb_mcq_taa_soc_cm_ms_yn,
+                tulu_3_sft_mixture, alpaca_en_demo
+      Phase B : ift_data_2026_05_11_v18p1_core_b_rms_ate_vsp_rcm
+      Eval    : ift_data_2026_05_11_v18p1_core_val
+4.3 Push target: asg-ai/athena-cti-sft-qwen25-14b-v18-1-core
+4.4 Wallclock (estimate): ~13 h (Phase A 8 h, Phase B 5 h)
+
+
+5. Sign-off and falsification
+-----------------------------
+
+5.1 v18p1-core (Stage 1 standalone benchmark) MUST PASS:
+      CKT (MCQ) >= 75.0   (target 77.6 = v8small)
+      RMS       >= 64.0   (target 65.8 = v9_rms)
+      VSP       >= 84.0   (target 86.7 = v10)
+      ATE       >= v18-core - 2pp  (no recipe change to ATE)
+      RCM / SOC / CM    >= v18-core - 2pp
+
+5.2 If 5.1 passes, the renamed v18-taa and v18-cse stages are re-
+    chained off v18p1-core and the resulting v18p1 chained model is
+    pushed as asg-ai/athena-cti-sft-qwen25-14b-v18-1.
+
+5.3 If MCQ/RMS/VSP individually miss their floors, the failing axis
+    is the next iteration's target (v18p2). v18p1 itself does NOT
+    add new families; it only re-aligns the failing axes to their
+    historical-peak recipes.
+
+
+6. Sign-off
+-----------
+
+6.1 Authored 2026-05-11 with sign-off from project lead.
+6.2 Diagnosis source: in-conversation inspection of v18 Core shard
+    composition vs v18 manifest, vs v8small / v9_rms / v10 historical
+    manifests (see request_id ff1b9f2f-7d19-4f8d-8300-1b28bd6f43cd).
