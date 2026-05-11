@@ -271,11 +271,15 @@ model_mapping = {
     # MCQ families (AB.MCQ.{7,8,9}) are added against high-cardinality MITRE
     # ATT&CK substrates. RMS consolidates AB.RMS.{4a..4j,5a..5j} back to the
     # v9_rms single-template-per-direction shape; VSP caps to v10's 12K shape.
-    # Pushed by SFT/autotrain/run_sft_qwen25_14b_v18p1_core.sh. See
-    # tmpl_gen/templates/05112026/v18_1_plan.txt and README-18-1.md for the
-    # diagnosis, deltas, and falsification matrix. The v18-taa / v18-cse
-    # checkpoints above will be re-chained off v18-1-core if §5.1 passes.
+    # Pushed by SFT/autotrain/run_sft_qwen25_14b_v18p1_{core,plus_taa,final}.sh.
+    # See tmpl_gen/templates/05112026/v18_1_plan.txt and README-18-1.md for the
+    # diagnosis, deltas, and falsification matrix. The chained TAA / CSE stages
+    # reuse the v18 TAA / CSE shards verbatim (recipes unchanged); only the
+    # base-model pointer changes (each picks up the v18.1 predecessor instead
+    # of the v18 predecessor).
     'athena-cti-sft-qwen25-14b-v18-1-core-vllm':               'asg-ai/athena-cti-sft-qwen25-14b-v18-1-core',
+    'athena-cti-sft-qwen25-14b-v18-1-taa-vllm':                'asg-ai/athena-cti-sft-qwen25-14b-v18-1-taa',
+    'athena-cti-sft-qwen25-14b-v18-1-cse-vllm':                'asg-ai/athena-cti-sft-qwen25-14b-v18-1-cse',
     # HF Inference Providers route. Custom community fine-tunes are not in the
     # default Together/Fireworks/Novita/etc. catalogs; this alias only resolves
     # if the model is exposed via an HF Inference Endpoint or the legacy
