@@ -1,23 +1,23 @@
 #!/bin/bash
 
 # v18.1+TAA single-phase narrow-drilling SFT of asg-ai/athena-cti-sft-qwen25-14b-v18-1-core
-# on the v18 TAA Classic shard (ift_data_2026_05_13_v18_taa). Stage 2 of the
+# on the v18.1 TAA Classic shard (ift_data_2026_05_11_v18p1_taa). Stage 2 of the
 # v18.1 chain (tmpl_gen/templates/05112026/v18_1_plan.txt §"Re-chain plan").
-# The TAA Classic dataset and recipe are byte-identical to the v18 chain;
-# only the base-model pointer changes (now picks up the v18.1-Core
-# checkpoint produced by run_sft_qwen25_14b_v18p1_core.sh).
+# The TAA Classic shard is byte-identical to the v18 build (renamed for
+# v18.1 lineage hygiene); only the base-model pointer changes (now picks
+# up the v18.1-Core checkpoint produced by run_sft_qwen25_14b_v18p1_core.sh).
 #
 # Why v18.1+TAA reuses the v18 TAA shard verbatim:
 #   v18.1 only repaired the Core stage (CKT/RMS/VSP regressions). TAA
 #   Classic, TAA-IE-NEG, and CSE recipes all met their v18-chain
 #   sign-off thresholds and need no template changes -- only re-chaining
 #   onto the new v18.1-Core base. The TAA shard
-#   (ift_data_2026_05_13_v18_taa.json) is the same v15 W1 / v16 manifest.
+#   (ift_data_2026_05_11_v18p1_taa.json) is the same v15 W1 / v16 manifest.
 #
 # Recipe (verbatim mirror of v18+TAA / v15 W1 / v12+v16-TAA):
 #   - Base model    : asg-ai/athena-cti-sft-qwen25-14b-v18-1-core
 #                     (HF; overridable via --base-model)
-#   - Dataset       : ift_data_2026_05_13_v18_taa  (~22-26K rows; CANON purged)
+#   - Dataset       : ift_data_2026_05_11_v18p1_taa  (~22-26K rows; CANON purged)
 #   - 1 epoch, lr 5e-6, cutoff 4096, packing ON
 #   - Effective batch 16   (per_device 1 x grad_accum 2 x 8 GPUs)
 #   - eval/save every 100 steps
@@ -81,21 +81,21 @@ TIMESTAMP="$(date +"%Y-%m-%d-%H-%M-%S")"
 SAFE_MODEL="Qwen_Qwen2.5-14B-Instruct"
 [[ -z "${OUTPUT_DIR}" ]] && OUTPUT_DIR="${SFT_DIR}/saves/${SAFE_MODEL}/full/v18p1_plus_taa_${TIMESTAMP}"
 
-DATASET="ift_data_2026_05_13_v18_taa"
-VAL_NAME="ift_data_2026_05_13_v18_taa_val"
+DATASET="ift_data_2026_05_11_v18p1_taa"
+VAL_NAME="ift_data_2026_05_11_v18p1_taa_val"
 
 for ds in "${DATASET}" "${VAL_NAME}"; do
     if [[ ! -f "${SFT_DIR}/data/${ds}.json" ]]; then
-        echo "[FAIL] v18-TAA dataset missing: SFT/data/${ds}.json" >&2
+        echo "[FAIL] v18.1-TAA dataset missing: SFT/data/${ds}.json" >&2
         echo "       Reuse the v18 TAA shard (recipe is unchanged for v18.1)." >&2
         echo "       Build via:" >&2
         echo "         bash tmpl_gen/data_generation/make_dataset.sh \\" >&2
         echo "           tmpl_gen/templates/05102026/Sophia-CTI-Templates-v16.txt \\" >&2
-        echo "           _v18_taa_build/triples \\" >&2
-        echo "           ${SFT_DIR}/data/ift_data_2026_05_13_v18_taa.raw.json \\" >&2
+        echo "           _v18p1_taa_build/triples \\" >&2
+        echo "           ${SFT_DIR}/data/ift_data_2026_05_11_v18p1_taa.raw.json \\" >&2
         echo "           10 3500" >&2
-        echo "         echo \"PID=\$!\" > _v18_taa_build/build.pid" >&2
-        echo "         nohup bash _v18_taa_build/watcher.sh > _v18_taa_build/watcher.log 2>&1 &" >&2
+        echo "         echo \"PID=\$!\" > _v18p1_taa_build/build.pid" >&2
+        echo "         nohup bash _v18p1_taa_build/watcher.sh > _v18p1_taa_build/watcher.log 2>&1 &" >&2
         exit 2
     fi
 done

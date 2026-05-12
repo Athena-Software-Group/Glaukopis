@@ -1,11 +1,11 @@
 #!/bin/bash
 
 # v18.1 single-phase narrow-drilling SFT of asg-ai/athena-cti-sft-qwen25-14b-v18-1-taa
-# on the v18 CyberSOCEval-letter-set shard (ift_data_2026_05_13_v18_cse). Stage 3
+# on the v18.1 CyberSOCEval-letter-set shard (ift_data_2026_05_11_v18p1_cse). Stage 3
 # (final) of the v18.1 chain (tmpl_gen/templates/05112026/v18_1_plan.txt §"Re-chain plan");
-# the resulting checkpoint is the published v18.1 model. The CSE dataset and
-# recipe are byte-identical to the v18 chain; only the base-model pointer
-# changes (now picks up the v18.1+TAA checkpoint).
+# the resulting checkpoint is the published v18.1 model. The CSE shard is
+# byte-identical to the v18 build (renamed for v18.1 lineage hygiene); only
+# the base-model pointer changes (now picks up the v18.1+TAA checkpoint).
 #
 # Why v18.1 reuses the v18 CSE shard verbatim:
 #   v18.1 only repaired the Core stage (CKT/RMS/VSP regressions). The v17.1
@@ -16,7 +16,7 @@
 # Recipe (verbatim mirror of v18 / v16+v17.1-CSE):
 #   - Base model    : asg-ai/athena-cti-sft-qwen25-14b-v18-1-taa
 #                     (HF; overridable via --base-model)
-#   - Dataset       : ift_data_2026_05_13_v18_cse  (~14-19K rows; CSE shape)
+#   - Dataset       : ift_data_2026_05_11_v18p1_cse  (~14-19K rows; CSE shape)
 #   - 1 epoch, lr 5e-6, cutoff 4096, packing ON
 #   - Effective batch 16   (per_device 1 x grad_accum 2 x 8 GPUs)
 #   - eval/save every 100 steps
@@ -85,21 +85,21 @@ TIMESTAMP="$(date +"%Y-%m-%d-%H-%M-%S")"
 SAFE_MODEL="Qwen_Qwen2.5-14B-Instruct"
 [[ -z "${OUTPUT_DIR}" ]] && OUTPUT_DIR="${SFT_DIR}/saves/${SAFE_MODEL}/full/v18p1_cse_${TIMESTAMP}"
 
-DATASET="ift_data_2026_05_13_v18_cse"
-VAL_NAME="ift_data_2026_05_13_v18_cse_val"
+DATASET="ift_data_2026_05_11_v18p1_cse"
+VAL_NAME="ift_data_2026_05_11_v18p1_cse_val"
 
 for ds in "${DATASET}" "${VAL_NAME}"; do
     if [[ ! -f "${SFT_DIR}/data/${ds}.json" ]]; then
-        echo "[FAIL] v18-CSE dataset missing: SFT/data/${ds}.json" >&2
+        echo "[FAIL] v18.1-CSE dataset missing: SFT/data/${ds}.json" >&2
         echo "       Reuse the v18 CSE shard (recipe is unchanged for v18.1)." >&2
         echo "       Build via:" >&2
         echo "         bash tmpl_gen/data_generation/make_dataset.sh \\" >&2
         echo "           tmpl_gen/templates/05102026/Sophia-CTI-Templates-v17.1.txt \\" >&2
-        echo "           _v18_cse_build/triples \\" >&2
-        echo "           ${SFT_DIR}/data/ift_data_2026_05_13_v18_cse.raw.json \\" >&2
+        echo "           _v18p1_cse_build/triples \\" >&2
+        echo "           ${SFT_DIR}/data/ift_data_2026_05_11_v18p1_cse.raw.json \\" >&2
         echo "           10 3500" >&2
-        echo "         echo \"PID=\$!\" > _v18_cse_build/build.pid" >&2
-        echo "         nohup bash _v18_cse_build/watcher.sh > _v18_cse_build/watcher.log 2>&1 &" >&2
+        echo "         echo \"PID=\$!\" > _v18p1_cse_build/build.pid" >&2
+        echo "         nohup bash _v18p1_cse_build/watcher.sh > _v18p1_cse_build/watcher.log 2>&1 &" >&2
         exit 2
     fi
 done
