@@ -117,7 +117,14 @@ EFFECTIVE_GPUS=$(( GPU_COUNT > 0 ? GPU_COUNT : 1 ))
 
 D_BATCH=1; D_GA=$(( 16 / (D_BATCH * EFFECTIVE_GPUS) )); [[ ${D_GA} -lt 1 ]] && D_GA=1
 
-EXTRA_COMMON="--deepspeed ${DS_CONFIG} --save_total_limit 2 --save_only_model True --enable_liger_kernel True --disable_gradient_checkpointing True --eval_dataset ${VAL_NAME} --val_size 0"
+# v14.1 hot-fix (--disable_gradient_checkpointing True) was sized for 8xH100
+# where ZeRO-3 shards each parameter across 8 ranks; on <8 GPUs the per-rank
+# activation footprint OOMs at cutoff=4096+packing=on, so re-enable
+# gradient checkpointing (LlamaFactory default) for those configurations.
+GC_FLAG="--disable_gradient_checkpointing True"
+[[ "${GPU_COUNT}" -lt 8 ]] && GC_FLAG=""
+
+EXTRA_COMMON="--deepspeed ${DS_CONFIG} --save_total_limit 2 --save_only_model True --enable_liger_kernel True ${GC_FLAG} --eval_dataset ${VAL_NAME} --val_size 0"
 
 export FORCE_TORCHRUN=1
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
