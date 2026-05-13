@@ -62,6 +62,12 @@ if [[ ! -f "${ORCH}" ]]; then
     exit 2
 fi
 
+# Bench client needs pandas/openai/transformers/tqdm, which live in 'ctibench',
+# not in the 'vllm' env that typically launches this sweep. Default
+# BENCH_CONDA_ENV to ctibench so the orchestrator switches envs for the bench
+# loop. Honour any pre-set value (e.g. BENCH_CONDA_ENV=llm-sft for combined envs).
+export BENCH_CONDA_ENV="${BENCH_CONDA_ENV:-ctibench}"
+
 DEFAULT_MODELS="athena-cti-sft-qwen25-14b-v18-1-core-vllm,athena-cti-sft-qwen25-14b-v18-1-taa-vllm,athena-cti-sft-qwen25-14b-v18-1-cse-vllm"
 MODELS_CSV="${DEFAULT_MODELS}"
 TP="2"

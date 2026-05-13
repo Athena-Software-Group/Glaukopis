@@ -41,6 +41,13 @@
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Bench client needs pandas/openai/transformers/tqdm, which live in 'ctibench',
+# not in the 'vllm' env that typically launches this wrapper. Default
+# BENCH_CONDA_ENV to ctibench so the orchestrator switches envs for the bench
+# loop. Honour any pre-set value (e.g. BENCH_CONDA_ENV=llm-sft for combined envs).
+export BENCH_CONDA_ENV="${BENCH_CONDA_ENV:-ctibench}"
+
 exec bash "${SCRIPT_DIR}/run_foundation_8b_baselines.sh" \
     --model athena-cti-sft-qwen25-14b-v18-1-cse-vllm \
     --tp 2 --max-len 32768 \
