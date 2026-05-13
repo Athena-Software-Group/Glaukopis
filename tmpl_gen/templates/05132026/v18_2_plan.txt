@@ -1,15 +1,26 @@
-v18p2 training plan -- Stage 4 RMS-replay touch-up (post-CSE forgetting fix)
-============================================================================
+v18p2 training plan -- Stage 4 multi-shard replay touch-up (post-CSE forgetting fix)
+====================================================================================
 
-Vintage label    : v18p2   (HF: v18-1-cse-rms; promotes to v18-2 on sign-off)
+Vintage label    : v18p2   (HF: v18-2; ships as headline on sign-off)
 Architecture     : Single-stage appendix to the v18.1 chain. Stages 1
                    (Core), 2 (+TAA Classic), 3 (+CSE drill) are NOT
                    re-trained; the published v18.1-cse checkpoint is
-                   the base for a low-LR replay of the original Phase B
-                   catalog shard to reverse the CSE-stage RMS erosion.
+                   the base for a low-LR three-shard interleaved replay
+                   (Phase A MCQ-bearing + Phase B catalog + standalone
+                   TAA) to reverse the CSE-stage RMS erosion while
+                   protecting MCQ and TAA Classic axes.
 Author date      : 2026-05-13 (vintage dir tmpl_gen/templates/05132026/)
+                   v2 -- 2026-05-13: multi-shard recipe supersedes the
+                   single-shard cse-rms experiment after observing
+                   MCQ -4.0 pp and TAA Classic -12.0 pp regressions in
+                   that run; this document now describes the multi-shard
+                   recipe as the v18.2 ship candidate.
 Predecessors     : v18.1-cse (asg-ai/athena-cti-sft-qwen25-14b-v18-1-cse,
                               the published Stage 3 chained model).
+                   v18.1-cse-rms (asg-ai/athena-cti-sft-qwen25-14b-v18-1-
+                              cse-rms; single-shard Phase-B-only Stage 4
+                              touch-up. Retained as the v18.2 EXPERIMENT
+                              baseline for the multi-shard ship.).
                    v18.1-core / v18.1-taa  (intermediate chain refs;
                               source of the per-stage RMS trajectory
                               that isolates the regression to Stage 3).
@@ -20,8 +31,13 @@ Predecessors     : v18.1-cse (asg-ai/athena-cti-sft-qwen25-14b-v18-1-cse,
 Operational ref  : THIS FILE
                    Sophia-CTI-Templates-v18.1.txt   (UNCHANGED -- no
                                                      manifest delta)
+                   SFT/autotrain/run_sft_qwen25_14b_v18p2_multi_replay.sh
+                                                     (Stage 4 launcher,
+                                                      multi-shard; ship)
                    SFT/autotrain/run_sft_qwen25_14b_v18p1_rms_replay.sh
-                                                     (Stage 4 launcher)
+                                                     (Stage 4 launcher,
+                                                      single-shard; cse-rms
+                                                      experiment baseline)
                    SFT/autotrain/run_sft_qwen25_14b_v18p1_core.sh
                                                      (Phase B reference;
                                                       same shard, full LR)
@@ -74,59 +90,109 @@ Operational ref  : THIS FILE
 1.3 v18p2 is therefore RECIPE-DRIVEN, not corpus-driven. No template
     or manifest changes. The Stage 1, 2, 3 launchers, datasets, and
     row-count gates are untouched. v18p2 adds exactly one new artifact:
-    a Stage 4 launcher that replays Phase B's shard at 1/5th the LR
-    over the published v18.1-cse checkpoint.
+    a Stage 4 launcher that interleaves three existing shards (Phase A
+    MCQ-bearing + Phase B catalog + standalone TAA Classic) at 1/5th
+    the Phase B LR over the published v18.1-cse checkpoint.
+
+1.4 v18p2 EXPERIMENT (cse-rms; superseded). The first attempt at this
+    Stage 4 (run_sft_qwen25_14b_v18p1_rms_replay.sh, pushed to
+    asg-ai/athena-cti-sft-qwen25-14b-v18-1-cse-rms) replayed the Phase
+    B shard alone. It recovered RMS combined_f1 +11.3 pp and ATE
+    +5.8 pp -- but introduced new regressions of MCQ -4.0 pp and TAA
+    Classic -12.0 pp because those data types were absent from the
+    single-shard mix. v18.2 replaces that recipe with a three-shard
+    interleave that protects MCQ and TAA Classic alongside the catalog
+    drill. The cse-rms repo is retained for posterity / regression
+    comparison; the multi-shard build pushes to a NEW repo (v18-2).
 
 
 2. v18.1 -> v18.2 deltas
 ------------------------
 
-  (1) New Stage 4 launcher: run_sft_qwen25_14b_v18p1_rms_replay.sh.
-      Models on run_sft_qwen25_14b_v18p1_plus_taa.sh (single-shard
-      appendix structure) but substitutes Phase B's geometry for
-      TAA's. No other launcher modified.
+  (1) New Stage 4 launcher: run_sft_qwen25_14b_v18p2_multi_replay.sh.
+      Models on run_sft_qwen25_14b_v18p1_rms_replay.sh (the cse-rms
+      experiment) but substitutes a three-shard interleaved dataset
+      mix for the single Phase B shard, via LlamaFactory's
+      mix_strategy=interleave_under + interleave_probs. No other
+      launcher modified.
 
-  (2) New HF push target: asg-ai/athena-cti-sft-qwen25-14b-v18-1-cse-rms.
+  (2) New HF push target: asg-ai/athena-cti-sft-qwen25-14b-v18-2.
       The v18.1-cse weights remain the published Stage 3 ship; the
-      cse-rms repo is the v18.2 candidate. On sign-off (§5) it is
-      promoted by alias, not by overwrite.
+      cse-rms repo is retained as the v18.2 EXPERIMENT baseline; the
+      v18-2 repo is the v18.2 ship. On sign-off (§5) v18-2 is promoted
+      by alias, not by overwrite of v18.1-cse.
 
-  (3) New vLLM alias entry in SFT/test/pipelines/models.py (added
-      post-push, in a follow-up commit alongside a benchmark wrapper):
-        'athena-cti-sft-qwen25-14b-v18-1-cse-rms-vllm':
-            'asg-ai/athena-cti-sft-qwen25-14b-v18-1-cse-rms'
+  (3) New vLLM alias entry in SFT/test/pipelines/models.py:
+        'athena-cti-sft-qwen25-14b-v18-2-vllm':
+            'asg-ai/athena-cti-sft-qwen25-14b-v18-2'
+      (Added alongside the cse-rms alias which is retained.)
 
-  (4) Stages 1, 2, 3 are NOT re-trained. The Phase B shard
-      (ift_data_2026_05_11_v18p1_core_b_rms_ate_vsp_rcm) is reused
-      verbatim. The TAA shard and CSE shard are not consumed.
+  (4) Stages 1, 2, 3 are NOT re-trained. All three Stage 4 shards
+      (Phase A core_a_kb_mcq_taa_soc_cm_ms_yn, Phase B
+      core_b_rms_ate_vsp_rcm, standalone taa) are reused verbatim
+      from the v18.1 build. The CSE shard is not consumed.
 
 
 3. Touch-up recipe (Stage 4 only)
 ---------------------------------
 
 3.1 Hardware: 4x H100 80GB. Single phase:
-      Stage 4 (RMS/ATE/VSP/RCM replay; cutoff 16384, packing off,
-              lr 1e-6, effective batch 4, --max-samples 5000, 1
-              epoch, eval/save every 200 steps)
+      Stage 4 (multi-shard replay; cutoff 16384, packing off, lr 1e-6,
+              effective batch 4, --max-samples 6000, 1 epoch,
+              eval/save every 200 steps,
+              mix_strategy=interleave_under, interleave_probs
+              0.25 / 0.40 / 0.35 over Phase A / Phase B / TAA)
 
-3.2 Datasets:
-      Stage 4 : ift_data_2026_05_11_v18p1_core_b_rms_ate_vsp_rcm
-                (same shard as Core Phase B; replayed not re-installed)
+3.2 Datasets (interleaved):
+      Stage 4 : ift_data_2026_05_11_v18p1_core_a_kb_mcq_taa_soc_cm_ms_yn
+                (Phase A; MCQ + KB + TAA + SOC + CM + MS + YN coverage;
+                 protects the MCQ axis that cse-rms eroded)         prob 0.25
+                ift_data_2026_05_11_v18p1_core_b_rms_ate_vsp_rcm
+                (Phase B catalog drill; the only place RMS/ATE/VSP/RCM
+                 are ever installed; primary recovery target)       prob 0.40
+                ift_data_2026_05_11_v18p1_taa
+                (standalone TAA Classic shard, identical to the
+                 Stage 2 +TAA shard; protects TAA Classic axis that
+                 cse-rms eroded by -12.0 pp)                        prob 0.35
       Eval    : ift_data_2026_05_11_v18p1_core_val
 
-3.3 Recipe deltas vs Phase B (the install run for the same shard):
+3.3 Recipe deltas vs cse-rms (the single-shard predecessor):
+      Datasets        1 (Phase B)      -> 3 (interleaved)
+      Mix strategy    none             -> interleave_under (probs 0.25/0.40/0.35)
+      --max-samples   5000             -> 6000  (proportional bump for 3 axes)
+      LR              1e-6                1e-6  (UNCHANGED)
+      cutoff          16384               16384 (UNCHANGED)
+      packing         off                 off   (UNCHANGED)
+      Effective batch 4                   4     (UNCHANGED)
+      eval/save steps 200                 200   (UNCHANGED)
+
+    Recipe deltas vs Phase B (the install run for the catalog shard):
       LR              5e-6     -> 1e-6     (1/5th -- replay, not install)
       Effective batch 8        -> 4        (half -- gentler updates)
-      --max-samples   70000    -> 5000     (~14x reduction; touch-up)
+      --max-samples   70000    -> 6000     (~12x reduction; touch-up)
+      Datasets        1                3   (multi-axis protection)
       cutoff          16384       16384    (UNCHANGED -- preserve geometry)
       packing         off         off      (UNCHANGED -- preserve geometry)
       eval/save steps 400      -> 200      (denser checkpointing)
       gradient ckpt   on          on       (UNCHANGED; LF default)
       DS offload      off (8x)  -> on (4x) (memory-pressure adjustment)
 
-3.4 Push target: asg-ai/athena-cti-sft-qwen25-14b-v18-1-cse-rms
-3.5 Wallclock (estimate): ~80-100 min on 4xH100 (1250 optimizer
+3.4 Push target: asg-ai/athena-cti-sft-qwen25-14b-v18-2
+3.5 Wallclock (estimate): ~100-120 min on 4xH100 (~1500 optimizer
     steps at ~4-5 s/step at this cutoff with offload on).
+
+3.6 Mix-probability rationale. The 0.25 / 0.40 / 0.35 split is
+    weighted toward the largest observed regression deltas:
+      - Phase B (0.40): RMS install is the only catalog drill in
+        the chain and the most fragile; the cse-rms run showed
+        these probabilities recover +11 pp at this exposure.
+      - TAA (0.35): cse-rms regressed TAA Classic by -12 pp (the
+        largest delta), so TAA gets the second-largest share to
+        re-cement the Stage 2 specialization.
+      - Phase A (0.25): MCQ regressed only -4 pp in cse-rms; Phase
+        A also dilutes with non-MCQ rows (KB / SOC / CM / MS / YN)
+        so a smaller share is sufficient. Phase A's TAA rows are
+        a no-op overlap with the standalone TAA shard at worst.
 
 
 4. Why a low-LR replay (and not a deeper Phase B re-install)
@@ -143,10 +209,17 @@ Operational ref  : THIS FILE
     CSE displaced with off-distribution updates) without disturbing
     the CSE drill's short-form pattern.
 
-4.3 The shard contains ATE and VSP rows in addition to RMS, so the
-    same touch-up incidentally replays those installations. RCM is
-    also in the shard but recovers naturally during CSE; RCM rows
-    in the touch-up are a no-op at worst.
+4.3 The Phase B shard contains ATE and VSP rows in addition to RMS,
+    so the catalog-share replay incidentally replays those
+    installations. RCM is also in the shard but recovers naturally
+    during CSE; RCM rows in the touch-up are a no-op at worst.
+
+4.4 The Phase A and TAA shards exist in the mix purely as anti-
+    forgetting buffers, not as primary install vehicles. Their job
+    is to keep MCQ and TAA Classic distributions in the gradient
+    signal so the catalog-share's updates do not drag those axes
+    off-distribution (the failure mode that the cse-rms experiment
+    exposed).
 
 
 5. Sign-off and falsification
@@ -154,7 +227,8 @@ Operational ref  : THIS FILE
 
 5.1 v18p2 (Stage 4 standalone benchmark) MUST PASS:
       RMS combined_f1 >= 55.0   (sanity: must beat v18.1-cse's 46.34
-                                  and approach v18.1-taa's 57.91)
+                                  and approach v18.1-taa's 57.91;
+                                  cse-rms achieved 57.6, set the floor)
       ATE             >= 63.0   (must restore most of the 7-pp Stage-3
                                   loss; v18.1-taa was 63.20)
       VSP             >= 80.0   (must restore most of the 8-pp Stage-3
@@ -163,7 +237,11 @@ Operational ref  : THIS FILE
 5.2 v18p2 MUST NOT regress (>=2 pp drop) on:
       CSE-TI accuracy >= 34.0   (v18.1-cse: 36.07 -- protect CSE gain)
       CSE-Malware acc >= 20.0   (v18.1-cse: 22.37 -- protect CSE gain)
-      MCQ accuracy    >= 70.0   (v18.1-cse: 72.03)
+      MCQ accuracy    >= 70.0   (v18.1-cse: 72.03 -- cse-rms regressed
+                                  to ~68; multi-shard MUST recover)
+      TAA Classic     >= 40.0   (cse-rms regressed by -12 pp; multi-
+                                  shard MUST hold within 2 pp of v18.1-
+                                  cse's TAA Classic baseline)
       RCM accuracy    >= 67.5   (v18.1-cse: 69.60)
       CyberMetric-2K  >= 85.5   (v18.1-cse: 87.70)
       CyberMetric-10K >= 81.0   (v18.1-cse: 83.40)
@@ -171,28 +249,41 @@ Operational ref  : THIS FILE
 5.3 v18p2 is NOT expected to reach v17.1 RMS parity (62.64 strict f1).
     Phase B itself installed RMS at 56.34 strict, ~6 pp under v17.1 --
     so even a perfect replay caps near 56-58 strict. Closing the v17.1
-    RMS gap requires v18.3 (a Core-stage Phase B re-tune; see 5.4).
+    RMS gap requires v18.3 (a Core-stage Phase B re-tune; see 5.5c).
 
 5.4 If 5.1 passes and 5.2 holds, asg-ai/athena-cti-sft-qwen25-14b-
-    v18-1-cse-rms is promoted to the headline v18.2 ship and the
-    master results table is updated.
+    v18-2 is promoted to the headline v18.2 ship and the master
+    results table is updated. The cse-rms repo is retained for
+    posterity but unaliased from production.
 
 5.5 If 5.1 fails on RMS only, options in escalation order:
-      (a) Re-run with --max-samples 10000 (deeper replay).
+      (a) Re-run with --max-samples 10000 (deeper replay) and probs
+          tilted toward Phase B (e.g. 0.20 / 0.50 / 0.30).
       (b) Re-run with --lr 5e-7 (gentler) AND --max-samples 10000.
       (c) Build v18.3 with a re-tuned Phase B (deeper RMS install
           at the source) and re-chain TAA + CSE downstream.
 
-5.6 If 5.2 fails (CSE / MCQ / RCM regress), the touch-up was too
-    aggressive. Lower max-samples (3000) and/or LR (5e-7) and re-run.
+5.6 If 5.2 fails on TAA Classic or MCQ, the corresponding shard's
+    interleave probability was too low. Re-run with the failing
+    axis bumped (e.g. raise TAA prob from 0.35 to 0.45 and drop
+    Phase B to 0.30; or raise Phase A prob from 0.25 to 0.35 and
+    drop Phase B to 0.30). Keep --max-samples constant so the
+    touch-up does not lengthen disproportionately.
+
+5.7 If 5.2 fails on CSE (CSE-TI/CSE-Malware regress), the touch-up
+    was too aggressive overall. Lower --max-samples (4000) and/or
+    LR (5e-7) and re-run.
 
 
 6. Sign-off
 -----------
 
-6.1 Authored 2026-05-13 with sign-off from project lead.
+6.1 Authored 2026-05-13 with sign-off from project lead. Revised
+    2026-05-13 (v2) to multi-shard recipe after the cse-rms experiment
+    exposed MCQ -4.0 pp and TAA Classic -12.0 pp regressions.
 6.2 Diagnosis source: per-stage benchmark response files for the
     v18.1 chain on the bench host (responses/asg-ai_athena-cti-sft-
-    qwen25-14b-v18-1-{core,taa,cse}/summary_model.json), generated
-    via SFT/test/utils/serve_and_bench_v18p1_{core,taa,cse}.sh on
-    2026-05-13. Per-axis trajectory in §1.1.
+    qwen25-14b-v18-1-{core,taa,cse,cse-rms}/summary_model.json),
+    generated via SFT/test/utils/serve_and_bench_v18p1_{core,taa,cse,
+    rms_replay}.sh on 2026-05-13. Per-axis trajectory in §1.1; cse-rms
+    experiment results in §1.4.
