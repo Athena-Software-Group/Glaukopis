@@ -280,12 +280,21 @@ model_mapping = {
     'athena-cti-sft-qwen25-14b-v18-1-core-vllm':               'asg-ai/athena-cti-sft-qwen25-14b-v18-1-core',
     'athena-cti-sft-qwen25-14b-v18-1-taa-vllm':                'asg-ai/athena-cti-sft-qwen25-14b-v18-1-taa',
     'athena-cti-sft-qwen25-14b-v18-1-cse-vllm':                'asg-ai/athena-cti-sft-qwen25-14b-v18-1-cse',
-    # v18.2 candidate: v18.1-cse + Stage 4 RMS-replay touch-up. Phase B shard
-    # (ift_data_2026_05_11_v18p1_core_b_rms_ate_vsp_rcm) replayed at lr 1e-6
-    # over v18.1-cse to reverse the CSE-stage RMS regression. See
-    # tmpl_gen/templates/05132026/v18_2_plan.txt and
+    # v18.2 candidate (single-shard): v18.1-cse + Stage 4 RMS-replay touch-up.
+    # Phase B shard (ift_data_2026_05_11_v18p1_core_b_rms_ate_vsp_rcm) replayed
+    # at lr 1e-6 over v18.1-cse to reverse the CSE-stage RMS regression. Retained
+    # for regression comparison; superseded as the ship candidate by v18-2.
+    # See tmpl_gen/templates/05132026/v18_2_plan.txt and
     # SFT/autotrain/run_sft_qwen25_14b_v18p1_rms_replay.sh.
     'athena-cti-sft-qwen25-14b-v18-1-cse-rms-vllm':            'asg-ai/athena-cti-sft-qwen25-14b-v18-1-cse-rms',
+    # v18.2 ship candidate (multi-shard): v18.1-cse + Stage 4 3-shard replay
+    # interleaving Phase A (MCQ), Phase B (RMS/ATE/VSP/RCM), and standalone TAA
+    # at lr 1e-6 with mix_strategy=interleave_under, probs 0.25/0.40/0.35.
+    # Designed to recover RMS while protecting MCQ and TAA Classic (which
+    # regressed in the cse-rms single-shard touch-up). See
+    # tmpl_gen/templates/05132026/v18_2_plan.txt and
+    # SFT/autotrain/run_sft_qwen25_14b_v18p2_multi_replay.sh.
+    'athena-cti-sft-qwen25-14b-v18-2-vllm':                    'asg-ai/athena-cti-sft-qwen25-14b-v18-2',
     # HF Inference Providers route. Custom community fine-tunes are not in the
     # default Together/Fireworks/Novita/etc. catalogs; this alias only resolves
     # if the model is exposed via an HF Inference Endpoint or the legacy
