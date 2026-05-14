@@ -35,13 +35,16 @@
 #                       ift_data_2026_05_11_v18p1_taa                            (0.35)
 #   - 1 epoch, lr 1e-6, cutoff 16384, packing OFF
 #   - Effective batch 4   (per_device 1 x grad_accum 1 x 4 GPUs)
-#   - eval/save every 200 steps
-#   - --max-samples 6000  (~1500 optimizer steps; ~100-120 min on 4xH100)
+#   - save every 200 steps; intra-training eval DISABLED (see body comment)
+#   - --max-samples 2400 (per dataset; --max-samples is per-shard in
+#     LlamaFactory, applied BEFORE interleaving). interleave_under +
+#     probs P stops at min_source_size / max(P) = 2400/0.40 = 6000 final
+#     training samples (~1500 optimizer steps; ~80-100 min on 4xH100).
 #   - Gradient checkpointing ON (LlamaFactory default; required at this cutoff)
 #   - Push: YES -> ${HF_USERNAME}/athena-cti-sft-qwen25-14b-v18-2
 #                  (NEW repo; cse-rms repo retained for regression comparison)
 #
-# Estimated wall-time on 4xH100: ~1.5-2 h.
+# Estimated wall-time on 4xH100: ~80-100 min.
 #
 # Full v18.1 chain with multi-shard touch-up:
 #   1. ./run_sft_qwen25_14b_v18p1_core.sh             # broad + Phase B  -> v18-1-core
@@ -69,7 +72,13 @@ REPO_ID=""
 BASE_MODEL=""
 OUTPUT_DIR=""
 REPORT_TO="wandb"
-MAX_SAMPLES=6000
+# --max-samples is applied PER DATASET in LlamaFactory (each shard subsampled
+# to N rows BEFORE interleaving). With interleave_under + probs P, the
+# resulting interleaved dataset has size N / max(P) (the highest-weighted
+# source determines when interleaving stops). Default 2400 with probs
+# 0.25/0.40/0.35 -> 2400/0.40 = 6000 final training samples (~1500 optimizer
+# steps at eff_bs 4, ~80-100 min on 4xH100 -- matches the cse-rms wallclock).
+MAX_SAMPLES=2400
 LR="1e-06"
 PROBS="0.25,0.40,0.35"
 DRY_RUN=0
@@ -112,23 +121,25 @@ DS_PHASE_B="ift_data_2026_05_11_v18p1_core_b_rms_ate_vsp_rcm"
 DS_TAA="ift_data_2026_05_11_v18p1_taa"
 DATASETS="${DS_PHASE_A},${DS_PHASE_B},${DS_TAA}"
 
-# LlamaFactory's data_args validator requires len(eval_dataset) ==
-# len(interleave_probs) when interleaving (see hparams/data_args.py:169).
-# We therefore align one eval shard per train shard: core_val covers Phase A
-# and Phase B (it is the unified Core validator built from both phases),
-# and taa_val covers the standalone TAA shard.
-VAL_PHASE_A="ift_data_2026_05_11_v18p1_core_val"
-VAL_PHASE_B="ift_data_2026_05_11_v18p1_core_val"
-VAL_TAA="ift_data_2026_05_11_v18p1_taa_val"
-VAL_DATASETS="${VAL_PHASE_A},${VAL_PHASE_B},${VAL_TAA}"
+# Intra-training eval is DISABLED for this multi-shard touch-up. LlamaFactory
+# requires len(eval_dataset) == len(interleave_probs) when interleaving, and
+# its loader keys datasets by name -- so listing core_val twice (the natural
+# eval for Phase A and Phase B which share the unified core_val) silently
+# dedupes to 2 unique entries against 3 probs, raising:
+#   numpy.random.Generator.choice: a and p must have same size
+# Producing three truly distinct eval shards would require a data build
+# (phase_a_val / phase_b_val split out of core_val); not worth it for a
+# touch-up where sign-off is via the AthenaBench/CSE/CM bench suites and
+# eval loss is monitoring-only. The trainer still logs per-step train loss
+# at logging_steps=5.
 
-for ds in "${DS_PHASE_A}" "${DS_PHASE_B}" "${DS_TAA}" "${VAL_PHASE_A}" "${VAL_TAA}"; do
+for ds in "${DS_PHASE_A}" "${DS_PHASE_B}" "${DS_TAA}"; do
     if [[ ! -f "${SFT_DIR}/data/${ds}.json" ]]; then
         echo "[FAIL] v18.2 multi-replay dataset missing: SFT/data/${ds}.json" >&2
         echo "       These shards are reused verbatim from the v18.1 build" >&2
-        echo "       (Phase A / Phase B / standalone TAA + matching val sets);" >&2
-        echo "       rebuild via run_sft_qwen25_14b_v18p1_core.sh / _plus_taa.sh" >&2
-        echo "       data preflights or copy from the Core training host." >&2
+        echo "       (Phase A / Phase B / standalone TAA); rebuild via" >&2
+        echo "       run_sft_qwen25_14b_v18p1_core.sh / _plus_taa.sh data" >&2
+        echo "       preflights or copy from the Core training host." >&2
         exit 2
     fi
 done
@@ -151,7 +162,7 @@ DS_CONFIG="examples/deepspeed/ds_z3_offload_config.json"
 EFFECTIVE_GPUS=$(( GPU_COUNT > 0 ? GPU_COUNT : 1 ))
 R_BATCH=1; R_GA=$(( 4 / (R_BATCH * EFFECTIVE_GPUS) )); [[ ${R_GA} -lt 1 ]] && R_GA=1
 
-EXTRA_COMMON="--deepspeed ${DS_CONFIG} --save_total_limit 2 --save_only_model True --enable_liger_kernel True --eval_dataset ${VAL_DATASETS} --val_size 0 --mix_strategy interleave_under --interleave_probs ${PROBS}"
+EXTRA_COMMON="--deepspeed ${DS_CONFIG} --save_total_limit 2 --save_only_model True --enable_liger_kernel True --do_eval False --val_size 0 --mix_strategy interleave_under --interleave_probs ${PROBS}"
 
 export FORCE_TORCHRUN=1
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
@@ -184,7 +195,7 @@ echo "  batch math   : per_device=${R_BATCH} grad_accum=${R_GA} -> eff_bs=$(( R_
 echo "  base model   : ${BASE_MODEL}"
 echo "  datasets     : ${DATASETS}"
 echo "  mix strategy : interleave_under  probs=${PROBS}  (Phase A / Phase B / TAA)"
-echo "  eval datasets: ${VAL_DATASETS}  max_samples=${MAX_SAMPLES}"
+echo "  max samples  : ${MAX_SAMPLES}/dataset -> ~$(( MAX_SAMPLES * 100 / 40 )) total interleaved (eval disabled)"
 echo "  learning rate: ${LR}  (Phase B was 5e-06; touch-up is 1/5th, same as cse-rms)"
 echo "  output dir   : ${OUTPUT_DIR}"
 echo "  hf repo      : ${REPO_ID}"
