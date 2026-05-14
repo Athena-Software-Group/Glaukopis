@@ -132,6 +132,14 @@ DATASETS="${DS_PHASE_A},${DS_PHASE_B},${DS_TAA}"
 # touch-up where sign-off is via the AthenaBench/CSE/CM bench suites and
 # eval loss is monitoring-only. The trainer still logs per-step train loss
 # at logging_steps=5.
+#
+# To fully disable eval we must override BOTH --do_eval AND --eval_strategy.
+# transformers.TrainingArguments.__post_init__ auto-flips do_eval back to
+# True whenever eval_strategy != "no", so --do_eval False alone is silently
+# undone and the parser validator at hparams/parser.py:344-347 still fires
+# ("Please make sure eval_dataset be provided or val_size >1e-6"). The base
+# run_train.sh sets --eval_strategy steps for normal training, so the
+# override below (--eval_strategy no) is mandatory for this run.
 
 for ds in "${DS_PHASE_A}" "${DS_PHASE_B}" "${DS_TAA}"; do
     if [[ ! -f "${SFT_DIR}/data/${ds}.json" ]]; then
@@ -162,7 +170,7 @@ DS_CONFIG="examples/deepspeed/ds_z3_offload_config.json"
 EFFECTIVE_GPUS=$(( GPU_COUNT > 0 ? GPU_COUNT : 1 ))
 R_BATCH=1; R_GA=$(( 4 / (R_BATCH * EFFECTIVE_GPUS) )); [[ ${R_GA} -lt 1 ]] && R_GA=1
 
-EXTRA_COMMON="--deepspeed ${DS_CONFIG} --save_total_limit 2 --save_only_model True --enable_liger_kernel True --do_eval False --val_size 0 --mix_strategy interleave_under --interleave_probs ${PROBS}"
+EXTRA_COMMON="--deepspeed ${DS_CONFIG} --save_total_limit 2 --save_only_model True --enable_liger_kernel True --do_eval False --eval_strategy no --val_size 0 --mix_strategy interleave_under --interleave_probs ${PROBS}"
 
 export FORCE_TORCHRUN=1
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
