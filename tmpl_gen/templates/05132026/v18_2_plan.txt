@@ -312,3 +312,128 @@ Operational ref  : THIS FILE
     generated via SFT/test/utils/serve_and_bench_v18p1_{core,taa,cse,
     rms_replay}.sh on 2026-05-13. Per-axis trajectory in §1.1; cse-rms
     experiment results in §1.4.
+
+
+
+7. v18.2 bench result and v18.2.1 iteration
+-------------------------------------------
+
+7.1 v18.2 ship candidate bench (2026-05-14, 2xH100 via
+    SFT/test/utils/serve_and_bench_v18p2_multi_replay.sh; full sweep
+    completed in 8m10s wallclock):
+
+      axis                v18.1-cse   cse-rms      v18.2     §5 bar     verdict
+      ----                ---------   -------     ------     ------     -------
+      RMS combined_f1        46.34       ~57.6     54.72    >= 55.0     MISS (-0.28)
+      ATE                    58.60       ~64.4     63.20    >= 63.0     PASS (hairline)
+      VSP                    76.29         --      83.87    >= 80.0     PASS
+      MCQ                    72.03        ~68      62.33    >= 70.0     MISS (-7.67)
+      TAA Classic combined     --         --      47.50    >= 40.0     PASS
+      RCM                    69.60         --      72.55    >= 67.5     PASS
+      CSE-TI accuracy        36.07         --      41.25    >= 34.0     PASS (+5.2)
+      CSE-Malware accuracy   22.37         --      24.14    >= 20.0     PASS (+1.8)
+      CyberMetric-2K         87.70         --      88.95    >= 85.5     PASS
+      CyberMetric-10K        83.40         --      83.94    >= 81.0     PASS
+
+7.2 Diagnosis of the two failures.
+
+      MCQ. The multi-shard recipe was designed specifically to protect
+      MCQ via Phase A's MCQ-bearing rows, but MCQ regressed MORE than
+      in cse-rms (which had no Phase A at all): -9.7 pp from v18.1-cse
+      vs cse-rms's -4.0 pp. Two plausible mechanisms:
+        (a) Phase A's MCQ density is low. Phase A is the unified shard
+            _kb_mcq_taa_soc_cm_ms_yn -- MCQ rows are diluted by 6 other
+            content types, so Phase A at 0.25 likely yields < 10% of
+            training tokens being MCQ-shaped, insufficient to hold the
+            decoder pattern against the 0.40 catalog-share gradient.
+        (b) The standalone TAA shard at 0.35 (absent from cse-rms)
+            installs heavy short-form structured generation that
+            directly competes with MCQ's short-letter decoder pattern.
+            cse-rms had no TAA exposure -> less pattern competition ->
+            less MCQ damage. The TAA shard's 0.35 share appears to be
+            net negative for MCQ.
+
+      RMS. Hairline (0.28 pp). Cleared §5.1's intent (recovered +8.4 pp
+      from v18.1-cse's 46.34) but failed the threshold. v18.2's Phase B
+      effective share dropped from cse-rms's 1.0 to 0.40, yielding fewer
+      install-shard steps (~600 of 1500 vs cse-rms's full 1250),
+      explaining the under-shoot vs cse-rms's 57.6 RMS.
+
+7.3 v18.2.1 iteration (this file's revision; the new ship candidate).
+
+      Recipe delta vs v18.2 (geometry/LR/cutoff/packing/eff_bs all
+      UNCHANGED):
+        Phase A prob   0.25 -> 0.35  (+0.10; restore MCQ)
+        Phase B prob   0.40 -> 0.45  (+0.05; close the RMS hairline)
+        TAA prob       0.35 -> 0.20  (-0.15; per 7.2(b) hypothesis;
+                                       TAA combined was already PASSING
+                                       and the standalone TAA share
+                                       appears to net-cost MCQ)
+        --max-samples  2400 -> 3000  (+25% per dataset; ~1667 vs 1500
+                                       total optimizer steps; +22% wall)
+
+      Sample-count math: 3000 / max(P) = 3000 / 0.45 = 6667 final
+      interleaved samples (vs v18.2's 6000). Wallclock ~95-115 min
+      on 4xH100 (vs v18.2's ~80-100 min envelope; the v18.2 actual
+      was within that range).
+
+      Push target: asg-ai/athena-cti-sft-qwen25-14b-v18-2-1 (NEW repo;
+      v18-2 retained for regression comparison; v18.2.1 promotes to
+      headline ship on §5 sign-off).
+
+      Base model: asg-ai/athena-cti-sft-qwen25-14b-v18-1-cse (UNCHANGED;
+      v18.2.1 is a fresh Stage 4 over the v18.1-cse base, NOT a touch-up
+      on top of v18.2 -- so it inherits the same CSE drill circuits
+      v18.2 inherited and is independently comparable to v18.2 on every
+      axis).
+
+      Operational: SFT/autotrain/run_sft_qwen25_14b_v18p2p1_multi_replay.sh
+                   SFT/test/utils/serve_and_bench_v18p2p1_multi_replay.sh
+                   SFT/test/pipelines/models.py alias
+                       'athena-cti-sft-qwen25-14b-v18-2-1-vllm'
+
+7.4 v18.2.1 falsification (refines §5 thresholds for this iteration).
+
+      MUST PASS (5.1 unchanged):
+        RMS combined_f1 >= 55.0   (v18.2: 54.72; expected: 56.5-58.5
+                                    given +0.05 Phase B share + 22%
+                                    more steps)
+        ATE             >= 63.0   (v18.2: 63.20; expected: stable or up)
+        VSP             >= 80.0   (v18.2: 83.87; expected: stable)
+
+      MUST NOT REGRESS (5.2 with MCQ updated):
+        MCQ accuracy    >= 70.0   (v18.2: 62.33; expected: 70-73 given
+                                    +0.10 Phase A share AND -0.15 TAA
+                                    share. If MCQ recovers but stops
+                                    in 67-70 range, that's a partial
+                                    win -- bumping Phase A further or
+                                    dropping TAA to 0 next; see 7.5.)
+        CSE-TI accuracy >= 34.0   (v18.2: 41.25)
+        CSE-Malware acc >= 20.0   (v18.2: 24.14)
+        TAA Classic comb >= 40.0   (v18.2: 47.50; expected: drops some
+                                    given TAA prob halved-and-then-some.
+                                    Floor 40 is the cse-rms-equivalent
+                                    PASS bar; if TAA combined drops
+                                    below 40 the TAA share is too low
+                                    -- escalate per 7.5.)
+        RCM accuracy    >= 67.5   (v18.2: 72.55)
+        CyberMetric-2K  >= 85.5   (v18.2: 88.95)
+        CyberMetric-10K >= 81.0   (v18.2: 83.94)
+
+7.5 v18.2.1 escalation paths.
+
+      (a) If MCQ still misses (62-69): TAA share is the culprit.
+          Drop TAA to 0.10 or 0.0 (run as 2-shard interleave) and
+          re-balance Phase A 0.50 / Phase B 0.50.
+
+      (b) If RMS still misses (54-55): bump --max-samples to 4000/ds
+          (8889 interleaved samples ~ 2222 steps; ~140 min wallclock).
+          Same probs.
+
+      (c) If TAA combined regresses below 40 but MCQ recovers: TAA
+          drop was correct but went too far. Restore TAA to 0.25
+          and drop Phase A to 0.30 / Phase B 0.45.
+
+      (d) If both MCQ and RMS still miss after (a)+(b): escalate to
+          v18.3 (deeper Core-stage Phase B re-tune at the source
+          per §5.5(c)).

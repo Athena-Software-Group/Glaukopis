@@ -294,7 +294,20 @@ model_mapping = {
     # regressed in the cse-rms single-shard touch-up). See
     # tmpl_gen/templates/05132026/v18_2_plan.txt and
     # SFT/autotrain/run_sft_qwen25_14b_v18p2_multi_replay.sh.
+    # Bench (2026-05-14): MCQ 62.33 (target >=70.0; -7.67 pp MISS),
+    # RMS 54.72 (target >=55.0; -0.28 pp hairline MISS); other axes all PASS
+    # (CSE-TI 41.25 / CSE-Mal 24.14 / VSP 83.87 / ATE 63.20 / RCM 72.55 /
+    # TAA combined 47.50 / CM-2K 88.95 / CM-10K 83.94). Superseded by v18-2-1.
     'athena-cti-sft-qwen25-14b-v18-2-vllm':                    'asg-ai/athena-cti-sft-qwen25-14b-v18-2',
+    # v18.2.1 ship candidate (multi-shard, rebalanced): v18.1-cse + Stage 4
+    # 3-shard replay with PROBS 0.35/0.45/0.20 and --max-samples 3000/dataset.
+    # Iteration of v18.2 to recover MCQ (Phase A 0.25 -> 0.35) and close the
+    # 0.28 pp RMS hairline (Phase B 0.40 -> 0.45) while dropping TAA share
+    # (0.35 -> 0.20; TAA combined was already PASSING and the standalone TAA
+    # short-form pattern likely competed with MCQ's letter-decoder). lr 1e-6,
+    # cutoff 16384, packing off (UNCHANGED). See plan §7 and
+    # SFT/autotrain/run_sft_qwen25_14b_v18p2p1_multi_replay.sh.
+    'athena-cti-sft-qwen25-14b-v18-2-1-vllm':                  'asg-ai/athena-cti-sft-qwen25-14b-v18-2-1',
     # HF Inference Providers route. Custom community fine-tunes are not in the
     # default Together/Fireworks/Novita/etc. catalogs; this alias only resolves
     # if the model is exposed via an HF Inference Endpoint or the legacy
