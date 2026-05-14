@@ -125,6 +125,14 @@ model_mapping = {
     'qwen2.5-32b-vllm':                        'Qwen/Qwen2.5-32B-Instruct',
     'phi-4-vllm':                              'microsoft/phi-4',
     'gemma-2-9b-vllm':                         'google/gemma-2-9b-it',
+    # Gemma 4 31B Dense (IT). Multimodal (text+image), 256K trained context, 60
+    # transformer layers + 1024-tok sliding window. Served text-only here:
+    # the bench harness only sends /v1/chat/completions with text, and the
+    # vLLM serve cmd should pass `--limit-mm-per-prompt image=0` via --extra
+    # to skip the vision-encoder KV pre-allocation. Native ctx is 256K but
+    # we cap --max-len at 49152 for parity with the cybersoceval-mode auto-pick
+    # (TI rows ~32K-32.7K). Weights ~62GB bf16 -> tp=2 on H100 (~31GB per GPU).
+    'gemma-4-31b-it-vllm':                     'google/gemma-4-31B-it',
     'ministral-8b-vllm':                       'mistralai/Ministral-8B-Instruct-2410',
     'mistral-7b-vllm':                         'mistralai/Mistral-7B-Instruct-v0.3',
     'athena-cti-cpt-llama31-8b-v1-vllm':       'asg-ai/athena-cti-cpt-llama31-8b-v1',
