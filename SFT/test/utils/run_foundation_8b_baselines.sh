@@ -235,6 +235,13 @@ if [[ -n "${MAX_LEN_OVERRIDE}" ]]; then
     SERVE_MAX_LEN="${MAX_LEN_OVERRIDE}"
 fi
 SERVE_EXTRA="--gpu-memory-utilization 0.90 --max-num-seqs ${SERVE_MAX_SEQS}${REASONING_EXTRA}"
+# Optional env-var passthrough for ad-hoc vllm serve flags (e.g.
+# `--limit-mm-per-prompt image=0` for multimodal-capable models served
+# text-only here, like Gemma 4 31B IT). Whitespace-trimmed and appended
+# verbatim to the existing SERVE_EXTRA template.
+if [[ -n "${EXTRA_SERVE_FLAGS:-}" ]]; then
+    SERVE_EXTRA="${SERVE_EXTRA} ${EXTRA_SERVE_FLAGS}"
+fi
 
 UTC="$(date -u +%Y-%m-%dT%H-%M-%SZ)"
 LOG="${SCRIPT_DIR}/foundation_8b_baselines_${UTC}.log"
