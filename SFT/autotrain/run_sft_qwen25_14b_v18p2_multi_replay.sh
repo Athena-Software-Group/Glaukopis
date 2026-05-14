@@ -111,15 +111,24 @@ DS_PHASE_A="ift_data_2026_05_11_v18p1_core_a_kb_mcq_taa_soc_cm_ms_yn"
 DS_PHASE_B="ift_data_2026_05_11_v18p1_core_b_rms_ate_vsp_rcm"
 DS_TAA="ift_data_2026_05_11_v18p1_taa"
 DATASETS="${DS_PHASE_A},${DS_PHASE_B},${DS_TAA}"
-VAL_NAME="ift_data_2026_05_11_v18p1_core_val"
 
-for ds in "${DS_PHASE_A}" "${DS_PHASE_B}" "${DS_TAA}" "${VAL_NAME}"; do
+# LlamaFactory's data_args validator requires len(eval_dataset) ==
+# len(interleave_probs) when interleaving (see hparams/data_args.py:169).
+# We therefore align one eval shard per train shard: core_val covers Phase A
+# and Phase B (it is the unified Core validator built from both phases),
+# and taa_val covers the standalone TAA shard.
+VAL_PHASE_A="ift_data_2026_05_11_v18p1_core_val"
+VAL_PHASE_B="ift_data_2026_05_11_v18p1_core_val"
+VAL_TAA="ift_data_2026_05_11_v18p1_taa_val"
+VAL_DATASETS="${VAL_PHASE_A},${VAL_PHASE_B},${VAL_TAA}"
+
+for ds in "${DS_PHASE_A}" "${DS_PHASE_B}" "${DS_TAA}" "${VAL_PHASE_A}" "${VAL_TAA}"; do
     if [[ ! -f "${SFT_DIR}/data/${ds}.json" ]]; then
         echo "[FAIL] v18.2 multi-replay dataset missing: SFT/data/${ds}.json" >&2
         echo "       These shards are reused verbatim from the v18.1 build" >&2
-        echo "       (Phase A / Phase B / standalone TAA); rebuild via" >&2
-        echo "       run_sft_qwen25_14b_v18p1_core.sh / _plus_taa.sh data" >&2
-        echo "       preflights or copy from the Core training host." >&2
+        echo "       (Phase A / Phase B / standalone TAA + matching val sets);" >&2
+        echo "       rebuild via run_sft_qwen25_14b_v18p1_core.sh / _plus_taa.sh" >&2
+        echo "       data preflights or copy from the Core training host." >&2
         exit 2
     fi
 done
@@ -142,7 +151,7 @@ DS_CONFIG="examples/deepspeed/ds_z3_offload_config.json"
 EFFECTIVE_GPUS=$(( GPU_COUNT > 0 ? GPU_COUNT : 1 ))
 R_BATCH=1; R_GA=$(( 4 / (R_BATCH * EFFECTIVE_GPUS) )); [[ ${R_GA} -lt 1 ]] && R_GA=1
 
-EXTRA_COMMON="--deepspeed ${DS_CONFIG} --save_total_limit 2 --save_only_model True --enable_liger_kernel True --eval_dataset ${VAL_NAME} --val_size 0 --mix_strategy interleave_under --interleave_probs ${PROBS}"
+EXTRA_COMMON="--deepspeed ${DS_CONFIG} --save_total_limit 2 --save_only_model True --enable_liger_kernel True --eval_dataset ${VAL_DATASETS} --val_size 0 --mix_strategy interleave_under --interleave_probs ${PROBS}"
 
 export FORCE_TORCHRUN=1
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
@@ -175,7 +184,7 @@ echo "  batch math   : per_device=${R_BATCH} grad_accum=${R_GA} -> eff_bs=$(( R_
 echo "  base model   : ${BASE_MODEL}"
 echo "  datasets     : ${DATASETS}"
 echo "  mix strategy : interleave_under  probs=${PROBS}  (Phase A / Phase B / TAA)"
-echo "  eval dataset : ${VAL_NAME}  max_samples=${MAX_SAMPLES}"
+echo "  eval datasets: ${VAL_DATASETS}  max_samples=${MAX_SAMPLES}"
 echo "  learning rate: ${LR}  (Phase B was 5e-06; touch-up is 1/5th, same as cse-rms)"
 echo "  output dir   : ${OUTPUT_DIR}"
 echo "  hf repo      : ${REPO_ID}"
