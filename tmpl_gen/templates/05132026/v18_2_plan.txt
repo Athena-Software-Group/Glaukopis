@@ -437,3 +437,169 @@ Operational ref  : THIS FILE
       (d) If both MCQ and RMS still miss after (a)+(b): escalate to
           v18.3 (deeper Core-stage Phase B re-tune at the source
           per §5.5(c)).
+
+
+
+8. v18.2.1 bench result and v18.2.2 iteration
+---------------------------------------------
+
+8.1 v18.2.1 ship-candidate bench (2026-05-14, 2xH100 via
+    SFT/test/utils/serve_and_bench_v18p2p1_multi_replay.sh; full sweep
+    completed in 8m06s wallclock):
+
+      axis                v18.1-cse   v18.2     v18.2.1    §7.4 bar    verdict
+      ----                ---------   ------    -------    --------    -------
+      RMS combined_f1        46.34    54.72      50.37    >= 55.0     MISS (-4.63)
+      ATE                    58.60    63.20      62.40    >= 63.0     MISS (-0.60)
+      VSP                    76.29    83.87      82.65    >= 80.0     PASS
+      MCQ                    72.03    62.33      63.17    >= 70.0     MISS (-6.83)
+      TAA Classic combined     --     47.50      47.00    >= 40.0     PASS
+      TAA canonical combined   --       --        3.01    (n/a; see 8.2.4)
+      RCM                    69.60    72.55      66.80    >= 67.5     MISS (-0.70)
+      CSE-TI accuracy        36.07    41.25      41.79    >= 34.0     PASS
+      CSE-Malware accuracy   22.37    24.14      23.48    >= 20.0     PASS
+      CyberMetric-2K         87.70    88.95      89.35    >= 85.5     PASS
+      CyberMetric-10K        83.40    83.94      84.17    >= 81.0     PASS
+
+    v18.2.1 fails 4 gates (MCQ, RMS, ATE, RCM) vs v18.2's 2 (MCQ, RMS-by-0.28).
+    Strict regression of the §7.4 gate package. v18.2 remains the closest-to-
+    ship Stage 4 variant produced so far, though it too is sub-floor.
+
+8.2 Diagnosis: the v18.2 -> v18.2.1 rebalance backfired on both target axes
+    and dragged two previously-passing axes below their floors.
+
+      8.2.1 MCQ. Phase A 0.25 -> 0.35 was supposed to add MCQ-bearing
+            gradient signal sufficient to recover MCQ to >= 70.0. Actual
+            delta: +0.84 pp, within run-to-run noise. The 0.10 prob bump
+            was nowhere near enough to dent a -9.70 pp regression from
+            v18.1-cse. Combined with --max-samples 2400 -> 3000 (+22%
+            steps), the larger Stage 4 footprint over-exposed Phase B
+            and TAA gradient signal in absolute terms even as Phase A's
+            relative share rose -- net effect approximately zero.
+
+      8.2.2 RMS. Phase B 0.40 -> 0.45 was supposed to close the 0.28 pp
+            hairline. Actual delta: -4.35 pp -- INVERTED. Mechanism:
+            Phase B is a 4-task shard (rms+ate+vsp+rcm); raising its
+            interleave probability raises ALL four in lockstep, so the
+            RMS-specific signal ratio inside the Stage 4 mix did not
+            improve. The +22% step bump then over-trained the dilution.
+            Confirmation: ATE -0.80 and RCM -5.75 also regressed under
+            the larger Phase B share, consistent with Phase B's multi-
+            task structure delivering more catalog-style training
+            without preferentially restoring RMS.
+
+      8.2.3 Trade ratio (Stage 4's MCQ-for-RMS exchange):
+
+              variant         dMCQ       dRMS    ratio (|dRMS/dMCQ|)
+              -------         ----       ----    -------------------
+              cse -> v18.2    -9.70 pp   +8.38   0.86
+              cse -> v18.2.1  -8.86 pp   +4.03   0.45
+
+            v18.2.1's trade is half as efficient as v18.2's. Stage 4
+            multi-shard at higher prob/step counts loses RMS install
+            efficiency without buying back MCQ. The first-order
+            implication: the v18.2 prob mix was the right one and
+            v18.2 was on the better side of the diminishing-returns
+            curve; v18.2.1 pushed past the optimum on both probs and
+            step count.
+
+      8.2.4 TAA-canonical anomaly. v18.2.1 reports combined_accuracy
+            3.01% on the 133-row canonical TAA shard (vs 47.00% on the
+            100-row classic shard). Not a §7.4 gate (TAA classic is the
+            gated axis) but the 24x gap between classic and canonical
+            plausible-accuracy is anomalous and not yet diagnosed --
+            track separately when v18.2.2 lands and back-fill v18.2's
+            canonical score for the comparison anchor.
+
+8.3 v18.2.2 iteration -- "smaller, not different".
+
+      Hypothesis: the v18.2 prob mix is correct and the regression is
+      caused by Stage 4 being TOO LONG (over-exposure of the catalog
+      shard erodes the Phase A and CSE drill circuits). Reducing the
+      step count without changing probs should preserve the RMS gain
+      while reducing the MCQ damage, and protect ATE/RCM from sliding
+      below their floors.
+
+      Recipe delta vs v18.2 (the only differences; geometry/LR/cutoff
+      /packing/eff_bs all UNCHANGED):
+
+        Phase A prob   0.35 -> 0.25  (REVERT to v18.2)
+        Phase B prob   0.45 -> 0.40  (REVERT to v18.2)
+        TAA prob       0.20 -> 0.35  (REVERT to v18.2)
+        --max-samples  3000 -> 1500  (-50% per dataset; ~937 vs 1500
+                                       v18.2 / 1667 v18.2.1 optimizer
+                                       steps; ~50-65 min wallclock)
+
+      Sample-count math: 1500 / max(P) = 1500 / 0.40 = 3750 final
+      interleaved samples (vs v18.2's 6000, v18.2.1's 6667). Wallclock
+      ~50-65 min on 4xH100 (vs v18.2's ~80-100 min envelope).
+
+      Push target: asg-ai/athena-cti-sft-qwen25-14b-v18-2-2 (NEW repo;
+      v18-2 and v18-2-1 retained for regression comparison; v18.2.2
+      promotes to headline ship on §8.4 sign-off).
+
+      Base model: asg-ai/athena-cti-sft-qwen25-14b-v18-1-cse (UNCHANGED;
+      v18.2.2 is a fresh Stage 4 over the v18.1-cse base, comparable to
+      v18.2 and v18.2.1 on every axis).
+
+      Operational: SFT/autotrain/run_sft_qwen25_14b_v18p2p2_multi_replay.sh
+                   SFT/test/utils/serve_and_bench_v18p2p2_multi_replay.sh
+                   SFT/test/pipelines/models.py alias
+                       'athena-cti-sft-qwen25-14b-v18-2-2-vllm'
+
+8.4 v18.2.2 falsification (refines §7.4 thresholds for this iteration).
+
+      MUST PASS (5.1 unchanged):
+        RMS combined_f1 >= 55.0   (v18.2: 54.72; expected: 53-56 given
+                                    -50% steps but same prob mix --
+                                    monotone-with-steps assumption gives
+                                    a slight RMS loss vs v18.2; if RMS
+                                    lands in 53-55 zone the trade-ratio
+                                    hypothesis is partly confirmed and
+                                    the Phase A anchor escalation in
+                                    §8.5(a) is the next test)
+        ATE             >= 63.0   (v18.2: 63.20; expected: stable)
+        VSP             >= 80.0   (v18.2: 83.87; expected: stable)
+
+      MUST NOT REGRESS (5.2 unchanged):
+        MCQ accuracy    >= 70.0   (v18.2: 62.33; expected: 65-70 given
+                                    -50% Stage 4 exposure but same prob
+                                    mix; if MCQ lands 67-70 the trade-
+                                    ratio hypothesis is confirmed and
+                                    the anchor escalation closes the
+                                    final gap)
+        CSE-TI accuracy >= 34.0   (v18.2: 41.25; expected: stable or up
+                                    -- less Stage 4 = less CSE drift)
+        CSE-Malware acc >= 20.0   (v18.2: 24.14; expected: stable or up)
+        TAA Classic comb >= 40.0   (v18.2: 47.50; expected: 45-50; with
+                                    same TAA prob and -50% steps the
+                                    risk is undershooting rather than
+                                    over-shooting)
+        RCM accuracy    >= 67.5   (v18.2: 72.55; expected: 70-73)
+        CyberMetric-2K  >= 85.5   (v18.2: 88.95; expected: stable)
+        CyberMetric-10K >= 81.0   (v18.2: 83.94; expected: stable)
+
+8.5 v18.2.2 escalation paths.
+
+      (a) If MCQ recovers (>=70) but RMS misses (53-55): "late Phase A
+          anchor" pass -- chain a small Phase-A-only Stage 4b on top of
+          v18.2.2 (--max-samples 500, lr 1e-6, eff_bs 4, ~10-15 min).
+          Goal: bias the final gradient updates toward MCQ-decoder
+          circuits without disturbing the Phase B install. Push as
+          v18-2-2-anchor.
+
+      (b) If MCQ misses (<=68) AND RMS passes (>=55): the step cut was
+          too aggressive on MCQ recovery. Try v18.2.3 with --max-samples
+          2000 (between v18.2.1's 3000 and v18.2.2's 1500).
+
+      (c) If both MCQ and RMS still miss but the trade ratio is BETTER
+          than v18.2 (|dRMS/dMCQ| > 0.86): the smaller Stage 4 hypothesis
+          is correct but needs a different prob skew. Try probs 0.30/
+          0.35/0.35 with --max-samples 1500.
+
+      (d) If both MCQ and RMS still miss and the trade ratio is WORSE
+          than v18.2: Stage 4 multi-shard has hit its ceiling. Escalate
+          to v18.3 (Core-stage Phase B re-tune at the source per
+          §5.5(c)). v18.2 remains the closest variant and ships with
+          a documented gate exception or is dropped in favour of
+          v18.1-cse + the cse-rms single-shard touch-up.

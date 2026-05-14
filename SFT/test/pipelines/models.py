@@ -307,15 +307,30 @@ model_mapping = {
     # (CSE-TI 41.25 / CSE-Mal 24.14 / VSP 83.87 / ATE 63.20 / RCM 72.55 /
     # TAA combined 47.50 / CM-2K 88.95 / CM-10K 83.94). Superseded by v18-2-1.
     'athena-cti-sft-qwen25-14b-v18-2-vllm':                    'asg-ai/athena-cti-sft-qwen25-14b-v18-2',
-    # v18.2.1 ship candidate (multi-shard, rebalanced): v18.1-cse + Stage 4
-    # 3-shard replay with PROBS 0.35/0.45/0.20 and --max-samples 3000/dataset.
-    # Iteration of v18.2 to recover MCQ (Phase A 0.25 -> 0.35) and close the
-    # 0.28 pp RMS hairline (Phase B 0.40 -> 0.45) while dropping TAA share
-    # (0.35 -> 0.20; TAA combined was already PASSING and the standalone TAA
-    # short-form pattern likely competed with MCQ's letter-decoder). lr 1e-6,
-    # cutoff 16384, packing off (UNCHANGED). See plan §7 and
+    # v18.2.1 (multi-shard, rebalanced): v18.1-cse + Stage 4 3-shard replay
+    # with PROBS 0.35/0.45/0.20 and --max-samples 3000/dataset. Iteration of
+    # v18.2 to recover MCQ (Phase A 0.25 -> 0.35) and close the 0.28 pp RMS
+    # hairline (Phase B 0.40 -> 0.45) while dropping TAA share (0.35 -> 0.20;
+    # TAA combined was already PASSING and the standalone TAA short-form
+    # pattern likely competed with MCQ's letter-decoder). lr 1e-6, cutoff
+    # 16384, packing off (UNCHANGED). See plan §7 and
     # SFT/autotrain/run_sft_qwen25_14b_v18p2p1_multi_replay.sh.
+    # Bench (2026-05-14): MCQ 63.17 (target >=70.0; -6.83 pp MISS, +0.84 vs
+    # v18.2 = within noise), RMS 50.37 (target >=55.0; -4.63 pp MISS, -4.35
+    # vs v18.2 = INVERTED), ATE 62.40 (-0.60 MISS), RCM 66.80 (-0.70 MISS);
+    # other axes PASS (VSP 82.65 / TAA combined 47.00 / CSE-TI 41.79 /
+    # CSE-Mal 23.48 / CM-2K 89.35 / CM-10K 84.17). Strict regression of the
+    # §7.4 gate package (4 fails vs v18.2's 2). Trade ratio |dRMS/dMCQ| 0.45
+    # vs v18.2's 0.86 -- half as efficient. Superseded by v18-2-2.
     'athena-cti-sft-qwen25-14b-v18-2-1-vllm':                  'asg-ai/athena-cti-sft-qwen25-14b-v18-2-1',
+    # v18.2.2 ship candidate (multi-shard, "smaller, not different"): v18.1-cse
+    # + Stage 4 3-shard replay with the v18.2 prob mix REVERTED (0.25/0.40/0.35)
+    # and --max-samples 3000 -> 1500 per dataset (-50% steps vs v18.2.1; -38%
+    # vs v18.2). Hypothesis: the v18.2 prob mix was correct and the regression
+    # is over-exposure damage from too many Stage 4 steps, not an under-exposure
+    # of any one shard. lr 1e-6, cutoff 16384, packing off (UNCHANGED). See
+    # plan §8 and SFT/autotrain/run_sft_qwen25_14b_v18p2p2_multi_replay.sh.
+    'athena-cti-sft-qwen25-14b-v18-2-2-vllm':                  'asg-ai/athena-cti-sft-qwen25-14b-v18-2-2',
     # HF Inference Providers route. Custom community fine-tunes are not in the
     # default Together/Fireworks/Novita/etc. catalogs; this alias only resolves
     # if the model is exposed via an HF Inference Endpoint or the legacy

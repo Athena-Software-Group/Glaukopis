@@ -1,0 +1,109 @@
+v18.2.2 READY -- 2026-05-14
+===========================
+
+Status         : READY-TO-LAUNCH (training)
+Vintage label  : v18p2p2  (HF: v18-2-2)
+Branch         : feat/05142026-v18p2p2-multi-replay
+Successor of   : v18.2.1 (failed §7.4 gate package: MCQ -6.83, RMS -4.63,
+                  ATE -0.60, RCM -0.70 vs the floors); ultimately also
+                 v18.2 (closest-to-ship, MCQ -7.67, RMS -0.28).
+Strategy       : "smaller, not different" -- revert v18.2.1's prob mix
+                 back to v18.2's (0.25/0.40/0.35) AND cut --max-samples
+                 from 3000 to 1500 per dataset (-50% steps vs v18.2.1,
+                 -38% vs v18.2). Hypothesis: the v18.2 prob mix is
+                 correct and the v18.2.1 regression is over-exposure
+                 damage (Stage 4 ran too long, eroding Phase A and CSE
+                 drill circuits). A shorter Stage 4 should preserve the
+                 RMS gain while reducing MCQ damage and protect ATE/RCM
+                 from sliding below their floors.
+
+Falsification (must hold for ship; full table in plan.txt §4):
+  RMS combined_f1 >= 55.0   (v18.2: 54.72;   expected: 53-56)
+  MCQ accuracy    >= 70.0   (v18.2: 62.33;   expected: 65-70)
+  ATE             >= 63.0   (v18.2: 63.20;   expected: stable)
+  VSP             >= 80.0   (v18.2: 83.87;   expected: stable)
+  RCM accuracy    >= 67.5   (v18.2: 72.55;   expected: 70-73)
+  TAA Classic     >= 40.0   (v18.2: 47.50;   expected: 45-50)
+  CSE-TI          >= 34.0   (v18.2: 41.25;   expected: stable or up)
+  CSE-Malware     >= 20.0   (v18.2: 24.14;   expected: stable or up)
+  CyberMetric-2K  >= 85.5   (v18.2: 88.95;   expected: stable)
+  CyberMetric-10K >= 81.0   (v18.2: 83.94;   expected: stable)
+
+
+Artifacts changed under this branch
+-----------------------------------
+NEW (training launcher):
+  SFT/autotrain/run_sft_qwen25_14b_v18p2p2_multi_replay.sh
+NEW (bench wrapper):
+  SFT/test/utils/serve_and_bench_v18p2p2_multi_replay.sh
+MODIFIED:
+  SFT/test/pipelines/models.py                       (v18-2-2 alias +
+                                                       v18-2-1 bench
+                                                       results back-fill)
+  tmpl_gen/templates/05132026/v18_2_plan.txt          (added §8: v18.2.1
+                                                       result, trade-ratio
+                                                       analysis, v18.2.2
+                                                       hypothesis/recipe/
+                                                       gates/escalation)
+NEW (this vintage dir):
+  tmpl_gen/templates/05142026/READY                  (this file)
+  tmpl_gen/templates/05142026/plan.txt               (self-contained
+                                                       plan; fwd-pointer
+                                                       to 05132026 §8 for
+                                                       the trade-ratio
+                                                       diagnosis)
+
+
+JSON SFT data artifact inventory
+--------------------------------
+NO NEW SHARDS. All three datasets are reused VERBATIM from the v18.1
+build and were already shipped to the 4xH100 training host for the
+v18.2 / v18.2.1 runs. They are also already registered in
+SFT/data/dataset_info.json.
+
+  PHASE A (MCQ-bearing; protects MCQ axis)
+    SFT/data/ift_data_2026_05_11_v18p1_core_a_kb_mcq_taa_soc_cm_ms_yn.json
+        size 258,007,516 bytes (~246 MiB)
+        registered key: ift_data_2026_05_11_v18p1_core_a_kb_mcq_taa_soc_cm_ms_yn
+        interleave prob 0.25
+
+  PHASE B (catalog drill; primary RMS install)
+    SFT/data/ift_data_2026_05_11_v18p1_core_b_rms_ate_vsp_rcm.json
+        size 145,313,701 bytes (~139 MiB)
+        registered key: ift_data_2026_05_11_v18p1_core_b_rms_ate_vsp_rcm
+        interleave prob 0.40
+
+  TAA (standalone TAA Classic; protects TAA Classic axis)
+    SFT/data/ift_data_2026_05_11_v18p1_taa.json
+        size 24,500,727 bytes (~23 MiB)
+        registered key: ift_data_2026_05_11_v18p1_taa
+        interleave prob 0.35
+
+scp checklist for the 4xH100 training host: NONE -- all three files
+were transferred in the v18.1 build wave (see 05112026/README-18-1.md
+§4.2 for original transfer notes). Pre-flight verification on the
+training host:
+    test -f ~/Glaukopis/SFT/data/ift_data_2026_05_11_v18p1_core_a_kb_mcq_taa_soc_cm_ms_yn.json && \
+    test -f ~/Glaukopis/SFT/data/ift_data_2026_05_11_v18p1_core_b_rms_ate_vsp_rcm.json && \
+    test -f ~/Glaukopis/SFT/data/ift_data_2026_05_11_v18p1_taa.json && \
+    echo "v18p2p2 shards present"
+The launcher itself aborts at line ~155 if any of the three files is
+missing.
+
+dataset_info.json: NO EDITS. The three keys above are already present
+(SFT/data/dataset_info.json lines 602/610/642 in the current tree).
+
+
+Run-book pointers
+-----------------
+Training (4xH100, ~50-65 min):
+    bash SFT/autotrain/run_sft_qwen25_14b_v18p2p2_multi_replay.sh
+    # pushes to asg-ai/athena-cti-sft-qwen25-14b-v18-2-2
+
+Benchmark (2xH100, ~8 min, after HF push completes):
+    BENCH_CONDA_ENV=ctibench bash SFT/test/utils/serve_and_bench_v18p2p2_multi_replay.sh
+
+Sign-off:
+    See plan.txt §4 (gates) and §5 (escalation paths). Promotion is
+    by alias swap in SFT/test/pipelines/models.py, NOT by overwrite of
+    asg-ai/athena-cti-sft-qwen25-14b-v18-1-cse.
