@@ -34,7 +34,8 @@
 #                           [--rows N] [--dry-run]
 #
 # Environment:
-#   HUGGINGFACE_TOKEN (or HF_TOKEN)  Required. Loaded from SFT/test/.env if
+#   HUGGINGFACE_TOKEN (or HF_TOKEN)  Required. Loaded from SFT/.env (or
+#                                    SFT/test/.env as a legacy fallback) if
 #                                    not already exported. Token must have
 #                                    'Inference Providers' scope.
 #   HF_INFERENCE_ENDPOINT_URL        Optional. When set, bypasses provider
@@ -97,23 +98,29 @@ case "${MODE}" in
     retry-errors) MODE_ARGS=( --retry-errors --yes ) ;;
 esac
 
-# Pre-flight: HF token. pipelines/models.py auto-loads SFT/test/.env via
-# python-dotenv at import time, but a missing token surfaces mid-run as
-# a 401 from the router. Source .env here too so we can fail fast with a
-# clearer message before any suite kicks off. Skipped under --dry-run so
-# the script is testable on dev boxes without HF credentials.
+# Pre-flight: HF token. pipelines/models.py calls load_dotenv() with no
+# explicit path, which walks parent directories from cwd; from
+# SFT/test/ that resolves SFT/.env correctly. We mirror that lookup
+# here so a missing token fails fast (clear message) rather than
+# surfacing mid-run as a 401 from the router. Canonical location is
+# SFT/.env (one level above SFT/test/); SFT/test/.env retained as a
+# legacy fallback. Skipped under --dry-run so the script is testable
+# on dev boxes without HF credentials.
 if [[ ${DRY_RUN} -eq 0 ]]; then
     if [[ -z "${HUGGINGFACE_TOKEN:-}" && -z "${HF_TOKEN:-}" ]]; then
-        if [[ -f "${SCRIPT_DIR}/../.env" ]]; then
-            set -a
-            # shellcheck disable=SC1091
-            source "${SCRIPT_DIR}/../.env"
-            set +a
-        fi
+        for env_path in "${SCRIPT_DIR}/../../.env" "${SCRIPT_DIR}/../.env"; do
+            if [[ -f "${env_path}" ]]; then
+                set -a
+                # shellcheck disable=SC1091
+                source "${env_path}"
+                set +a
+                break
+            fi
+        done
     fi
     if [[ -z "${HUGGINGFACE_TOKEN:-}" && -z "${HF_TOKEN:-}" ]]; then
         echo "[FAIL] HUGGINGFACE_TOKEN (or HF_TOKEN) is required for HF Router routing." >&2
-        echo "       Either export it in this shell or add it to SFT/test/.env." >&2
+        echo "       Either export it in this shell or add it to SFT/.env." >&2
         exit 2
     fi
 fi
