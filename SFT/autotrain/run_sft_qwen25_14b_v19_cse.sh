@@ -125,7 +125,11 @@ D_BATCH=1; D_GA=$(( 16 / (D_BATCH * EFFECTIVE_GPUS) )); [[ ${D_GA} -lt 1 ]] && D
 GC_FLAG="--disable_gradient_checkpointing True"
 [[ "${GPU_COUNT}" -lt 8 ]] && GC_FLAG=""
 
-EXTRA_COMMON="--deepspeed ${DS_CONFIG} --save_total_limit 2 --save_only_model True --enable_liger_kernel True ${GC_FLAG} --eval_dataset ${VAL_NAME} --val_size 0"
+# --per_device_eval_batch_size 1 is a 4xH100 hardening vs the v18p1 8xH100
+# baseline (HF Trainer eval batch defaults to 8 -- not inherited from train --
+# which materializes ~10 GiB of logits at cutoff=4096 / vocab=152064 and OOMs
+# under 4-rank ZeRO-3 where per-rank training state already fills ~76 GiB).
+EXTRA_COMMON="--deepspeed ${DS_CONFIG} --save_total_limit 2 --save_only_model True --enable_liger_kernel True ${GC_FLAG} --per_device_eval_batch_size 1 --eval_dataset ${VAL_NAME} --val_size 0"
 
 export FORCE_TORCHRUN=1
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"

@@ -126,7 +126,15 @@ EFFECTIVE_GPUS=$(( GPU_COUNT > 0 ? GPU_COUNT : 1 ))
 A_BATCH=2; A_GA=$(( 16 / (A_BATCH * EFFECTIVE_GPUS) )); [[ ${A_GA} -lt 1 ]] && A_GA=1
 B_BATCH=1; B_GA=$(( 8  / (B_BATCH * EFFECTIVE_GPUS) )); [[ ${B_GA} -lt 1 ]] && B_GA=1
 
-EXTRA_COMMON="--deepspeed ${DS_CONFIG} --save_total_limit 2 --save_only_model True --enable_liger_kernel True --eval_dataset ${VAL_NAME} --val_size 0"
+# --per_device_eval_batch_size 1 is a 4xH100 hardening vs the v18p1 8xH100
+# baseline: HF Trainer defaults eval batch to 8 (NOT inherited from train batch),
+# so the eval-time cross-entropy logits would peak at
+# eval_batch * cutoff * vocab * 4 = 8 * 8192 * 152064 * 4B ~= 39.9 GiB at
+# Phase A and 79.7 GiB at Phase B. With ZeRO-3 across only 4 ranks (vs 8x),
+# per-rank training state already occupies ~76 GiB, leaving no headroom for
+# the eval logits -- the run OOMs at the first eval_steps=500 hit. Lowering
+# eval batch to 1 cuts the logits to ~5 GiB / ~10 GiB respectively.
+EXTRA_COMMON="--deepspeed ${DS_CONFIG} --save_total_limit 2 --save_only_model True --enable_liger_kernel True --per_device_eval_batch_size 1 --eval_dataset ${VAL_NAME} --val_size 0"
 
 export FORCE_TORCHRUN=1
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
