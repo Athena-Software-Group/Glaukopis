@@ -1,0 +1,42 @@
+{
+  "_doc": "Per-family row-count gate for the v19 CSE build pipeline. Per tmpl_gen/templates/05152026/v19_plan.txt. v19 carries v17.1 floors verbatim because v19_cse.txt is byte-identical to v17.1.txt (SHA256 9923f71f...). The build halts before train/val split if any axis is below its reject_if_below value in the post-dedup corpus. shortname_patterns are exact matches OR prefix matches (trailing '*' = prefix match).",
+  "_provenance": {
+    "carries_from": "tmpl_gen/templates/05102026/v17_1_row_count_gate.json",
+    "axis_floors_unchanged_vs_source": true,
+    "rationale": "v19 stages 3 (TAA) and 4 (CSE) reproduce the v18.x chain bit-for-bit; only the Stage 5 (Recalibrate) interleave-probs change. Row-count gate is therefore unchanged."
+  },
+  "axes": [
+    {
+      "_note": "Carried from v17.1 verbatim. JS.CSE.TI.GRP.{1,2,3} + JS.CSE.TI.MAL.{1,2,3} declared sum: 1500*3 + 2500 + 1500*2 = 10000. Floor sized to ~50% of declared to give the per-actor cap (60) headroom. v17 actual under this plan: 5914.",
+      "axis": "CSE-TI-actor",
+      "target": 8000,
+      "reject_if_below": 5000,
+      "max_allowed": 13000,
+      "shortname_patterns": ["JS.CSE.TI.GRP.1", "JS.CSE.TI.GRP.2", "JS.CSE.TI.GRP.3", "JS.CSE.TI.MAL.1", "JS.CSE.TI.MAL.2", "JS.CSE.TI.MAL.3"]
+    },
+    {
+      "_note": "Carried from v17.1 verbatim. JS.CSE.TI.CMP.1 declared 2500; JS.CSE.TI.NEG.1 declared 1500. v17 actual: 2242.",
+      "axis": "CSE-TI-other",
+      "target": 2200,
+      "reject_if_below": 1400,
+      "max_allowed": 3500,
+      "shortname_patterns": ["JS.CSE.TI.CMP.*", "JS.CSE.TI.NEG.*"]
+    },
+    {
+      "_note": "Carried from v17.1 verbatim. JS.CSE.MAL.RPT.{1,2,3} declared sum: 5500 against the ~830 malware anchor pool. v17 actual: 5039.",
+      "axis": "CSE-MAL-rpt",
+      "target": 4500,
+      "reject_if_below": 3000,
+      "max_allowed": 7000,
+      "shortname_patterns": ["JS.CSE.MAL.RPT.*"]
+    },
+    {
+      "_note": "Carried from v17.1 verbatim. JS.CSE.MAL.TAC.1 declared 1500; JS.CSE.MAL.TGT.1 declared 1500; JS.CSE.MAL.NEG.1 declared 1000. v17 actual: 3753.",
+      "axis": "CSE-MAL-other",
+      "target": 3300,
+      "reject_if_below": 2000,
+      "max_allowed": 5000,
+      "shortname_patterns": ["JS.CSE.MAL.TAC.*", "JS.CSE.MAL.TGT.*", "JS.CSE.MAL.NEG.*"]
+    }
+  ]
+}

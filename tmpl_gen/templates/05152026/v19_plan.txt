@@ -1,0 +1,232 @@
+v19 training plan -- ground-up reproducible rebuild of the v18.1 / v18.2 recipe
+=================================================================================
+
+Vintage label    : v19   (HF: v19-core, v19-taa, v19-cse, v19-recalibrate)
+Architecture     : Full 5-stage chain (Phase A broad re-anchor + Phase B
+                   AthenaBench catalog drill -> v19-core; +TAA Classic
+                   drill -> v19-taa; +CSE letter-set drill -> v19-cse;
+                   3-shard interleaved low-LR replay touch-up ->
+                   v19-recalibrate). The only training-recipe delta vs
+                   v18.2 is the Stage 5 (Recalibrate) interleave-probs
+                   mix: 0.25/0.40/0.35 -> 0.33/0.33/0.34 (equal weight,
+                   sums to 1.0 with the 0.34 absorbing the 0.99 -> 1.00
+                   rounding to keep the LlamaFactory loader happy).
+Author date      : 2026-05-15 (vintage dir tmpl_gen/templates/05152026/)
+Predecessors     : v18.1-core / v18.1-taa / v18.1-cse  (chain shape;
+                              same per-stage hyperparameters).
+                   v18.2     (Stage 5 recipe template; this run reuses
+                              the cutoff/LR/eff-bs/max-samples geometry
+                              verbatim and changes ONLY the probs).
+                   v18.2.1 / v18.2.2  (Stage 5 prob-mix iterations that
+                              motivated the equal-weight design; see §1.2).
+Operational ref  : THIS FILE
+                   Sophia-CTI-Templates-v19_core.txt    (Core-shard manifest;
+                                                         body byte-identical
+                                                         to v18.1.txt)
+                   Sophia-CTI-Templates-v19_taa.txt     (TAA-shard manifest;
+                                                         body byte-identical
+                                                         to v16.txt)
+                   Sophia-CTI-Templates-v19_cse.txt     (CSE-shard manifest;
+                                                         body byte-identical
+                                                         to v17.1.txt)
+                   v19_row_count_gate.json              (Core build gates;
+                                                         carried from
+                                                         v18_1_row_count_gate
+                                                         .json verbatim)
+                   _v19_core_build/watcher.sh           (Core build pipeline;
+                                                         forked from
+                                                         _v18p1_build/ -- v18.1
+                                                         skips MCQ.EXT.* gen,
+                                                         which v19 inherits)
+                   _v19_taa_build/watcher.sh            (TAA build pipeline;
+                                                         forked from
+                                                         _v18_taa_build/)
+                   _v19_cse_build/watcher.sh            (CSE build pipeline;
+                                                         forked from
+                                                         _v18_cse_build/)
+                   SFT/autotrain/run_sft_qwen25_14b_v19_core.sh
+                                                         (Stages 1+2 launcher)
+                   SFT/autotrain/run_sft_qwen25_14b_v19_taa.sh
+                                                         (Stage 3 launcher)
+                   SFT/autotrain/run_sft_qwen25_14b_v19_cse.sh
+                                                         (Stage 4 launcher)
+                   SFT/autotrain/run_sft_qwen25_14b_v19_recalibrate.sh
+                                                         (Stage 5 launcher)
+
+
+1. Why v19 exists -- reproducibility-first rebuild + equal-weight Stage 5
+-------------------------------------------------------------------------
+
+1.1 Reproducibility. v18.1 and v18.2 were built with template manifests
+    sourced from earlier vintage directories (v16 -> TAA, v17.1 -> CSE)
+    via implicit cross-vintage references rather than self-contained
+    artifacts. The build infrastructure (_v18p1_build/, _v18_taa_build/,
+    _v18_cse_build/) lived on the build host as gitignored "local
+    scratch" trees. Reproducing v18.x from a clean checkout therefore
+    required (a) reconstructing the cross-vintage dependency graph and
+    (b) re-deriving the build watchers. v19 collapses both: the three
+    manifests are co-located in 05152026/ as v19_{core,taa,cse}.txt
+    (byte-identical bodies to their predecessors -- §2.1), and the
+    build infrastructure ships in-repo under _v19_*_build/ so a clean
+    checkout can run the full data cycle deterministically.
+
+1.2 Equal-weight Stage 5. v18.2 (probs 0.25/0.40/0.35 over Phase A /
+    Phase B / TAA) recovered RMS combined_f1 +8.4 pp (46.34 -> 54.72)
+    against the v18.1-cse base but plateaued MCQ at 62.33 (gate 70.0).
+    v18.2.1 attempted to lift MCQ via Phase A 0.25 -> 0.35 / Phase B
+    0.45 / TAA 0.20 plus --max-samples 2400 -> 3000; it strictly
+    regressed against v18.2 on 4 axes vs v18.2's 2 (MCQ 63.17, RMS
+    50.37, ATE 62.40, RCM 66.80). v18.2.2 reverted to v18.2's prob mix
+    with --max-samples 1500; preliminary results showed plateau on MCQ
+    61.5 and a TAA Canonical regression to 2.6 (vs v16 39.5). Two
+    observations from the v18.2.x series motivate the v19 Stage 5
+    design:
+
+      (a) The v18.2 probs (0.25/0.40/0.35) bias toward Phase B (catalog
+          recovery) at the expense of Phase A (MCQ + KB anchor). Equal-
+          weight 0.33/0.33/0.34 redistributes ~8 pp of training mass
+          from Phase B to Phase A and ~2 pp to TAA. This is a small
+          shift in absolute terms but removes the design-bias that
+          v18.2.1 amplified in the wrong direction and v18.2.2 reverted
+          conservatively.
+
+      (b) interleave_under stops at min_source_size / max(P). With
+          v18.2's max(P) = 0.40, --max-samples 2400 yielded 6000
+          interleaved rows (~1500 steps). With v19's max(P) = 0.34,
+          --max-samples 2400 yields 7059 rows (~1765 steps, ~17%
+          longer). To preserve v18.2's wallclock and step count while
+          changing only the prob mix, v19 keeps --max-samples 2400 (the
+          extra ~265 steps of TAA + Phase A exposure is the intended
+          consequence of equal-weighting; if it falsifies, we cap at
+          --max-samples 2040 in v19.1 and rerun).
+
+1.3 v19 is therefore RECIPE+INFRASTRUCTURE, not corpus-driven. No
+    template-body changes. No row-count gate changes. The Stage 1, 2,
+    3, 4 training hyperparameters carry from v18.1 verbatim. The Stage
+    5 prob mix is the sole behavioural delta from v18.2.
+
+
+2. v18.2 -> v19 deltas
+----------------------
+
+  (1) Vintage directory: tmpl_gen/templates/05152026/. Self-contained:
+      contains all 3 stage manifests (v19_core / v19_taa / v19_cse .txt),
+      the row-count gate (v19_row_count_gate.json), this plan, and the
+      vintage README.
+
+  (2) Stage manifests reflect prior versions verbatim:
+        v19_core.txt   = v18.1.txt   (SHA256 7e76b44f...)
+        v19_taa.txt    = v16.txt     (SHA256 843e26e4...)
+        v19_cse.txt    = v17.1.txt   (SHA256 9923f71f...)
+      Stored under v19 names so the build pipeline reads the v19
+      vintage exclusively (no cross-vintage dependency).
+
+  (3) Build infrastructure tracked in-repo: _v19_core_build/,
+      _v19_taa_build/, _v19_cse_build/ ship in the repository (forked
+      from _v18p1_build/, _v18_taa_build/, _v18_cse_build/ with
+      v19-named output paths and the v19 row-count gate path). A
+      .gitignore whitelist (!_v19_*_build/) is added on commit.
+
+  (4) Output dataset names: ift_data_2026_05_15_v19_<axis>.json. Seven
+      shards: core_a_kb_mcq_taa_soc_cm_ms_yn, core_b_rms_ate_vsp_rcm,
+      core_val, taa, taa_val, cse, cse_val.
+
+  (5) Stage 5 launcher: run_sft_qwen25_14b_v19_recalibrate.sh.
+      Forked from run_sft_qwen25_14b_v18p2_multi_replay.sh. Sole
+      delta: --probs default 0.25,0.40,0.35 -> 0.33,0.33,0.34.
+
+  (6) HF push targets:
+        asg-ai/athena-cti-sft-qwen25-14b-v19-core
+        asg-ai/athena-cti-sft-qwen25-14b-v19-taa
+        asg-ai/athena-cti-sft-qwen25-14b-v19-cse
+        asg-ai/athena-cti-sft-qwen25-14b-v19-recalibrate
+      All four cumulative; v19-recalibrate is base + Phase A + Phase B
+      + TAA + CSE + Recalibrate replay.
+
+
+3. Row-count plan
+-----------------
+
+3.1 Carries v18p1 floors verbatim. See v19_row_count_gate.json. No
+    axis floor changes vs v18.1.
+
+
+4. Training recipe (5 stages; verbatim from v18.1 + v18.2 except §4.5)
+-----------------------------------------------------------------------
+
+4.1 Stage 1 -- Phase A (broad knowledge re-anchor; intermediate, not
+    pushed). Base Qwen/Qwen2.5-14B-Instruct. Datasets:
+    ift_data_2026_05_15_v19_core_a_kb_mcq_taa_soc_cm_ms_yn,
+    tulu_3_sft_mixture, alpaca_en_demo. cutoff 8192, packing on, lr
+    1e-5, eff_bs 16, --max-samples 240000, 1 epoch. ~8 h on 8xH100.
+
+4.2 Stage 2 -- Phase B (RMS+ATE+VSP+RCM catalog drill). Base = Stage 1
+    local checkpoint. Dataset: ift_data_2026_05_15_v19_core_b_rms_ate_
+    vsp_rcm. cutoff 16384, packing off, lr 5e-6, eff_bs 8, --max-samples
+    70000, 1 epoch, eval/save every 400 steps. ~5 h on 8xH100. Push:
+    asg-ai/athena-cti-sft-qwen25-14b-v19-core.
+
+4.3 Stage 3 -- TAA Classic narrow drill. Base = v19-core. Dataset:
+    ift_data_2026_05_15_v19_taa. cutoff 4096, packing on, lr 5e-6,
+    eff_bs 16, --max-samples 33000, 1 epoch. ~6-8 h on 8xH100. Push:
+    asg-ai/athena-cti-sft-qwen25-14b-v19-taa.
+
+4.4 Stage 4 -- CSE letter-set drill. Base = v19-taa. Dataset:
+    ift_data_2026_05_15_v19_cse. cutoff 4096, packing on, lr 5e-6,
+    eff_bs 16, --max-samples 33000, 1 epoch. ~4-6 h on 8xH100. Push:
+    asg-ai/athena-cti-sft-qwen25-14b-v19-cse.
+
+4.5 Stage 5 -- Recalibrate (3-shard interleaved low-LR replay; v19
+    DELTA). Base = v19-cse. Datasets (interleaved, mix_strategy
+    interleave_under): Phase A (prob 0.33) + Phase B (prob 0.33) +
+    standalone TAA (prob 0.34). cutoff 16384, packing off, lr 1e-6
+    (1/5 the Phase B catalog-install LR), eff_bs 4, --max-samples 2400
+    per dataset. interleave_under stops at 2400 / 0.34 = 7059
+    interleaved rows (~1765 optimizer steps; ~95-115 min on 4xH100).
+    Push: asg-ai/athena-cti-sft-qwen25-14b-v19-recalibrate.
+
+4.6 Total wall-time: ~24 h on 8xH100 for Stages 1-4; ~95-115 min
+    additional on 4xH100 for Stage 5. v19-recalibrate ships as the
+    headline.
+
+
+5. Sign-off and falsification
+-----------------------------
+
+5.1 v19-core (after Stage 2) MUST PASS:
+      CKT (MCQ) >= 70.0   (v18-1-core 67.37 baseline; lifts on v19
+                           Stage 5 if it falsifies here)
+      RMS       >= 55.0   (v18-1-core 57.69 baseline)
+      VSP       >= 80.0   (v18-1-core 84.30 baseline)
+      ATE       >= 60.0   (v18-1-core 65.60 baseline)
+      RCM       >= 67.5   (v18-1-core 71.30 baseline)
+      All v18-core - 2pp tolerance applied per axis.
+
+5.2 v19-taa MUST PASS: TAA Classic >= 40.0 and v19-core axes within
+    -2pp.
+
+5.3 v19-cse MUST PASS: CSE-TI >= 34.0, CSE-Malware >= 20.0 and v19-taa
+    axes within -2pp on MCQ + TAA + RCM. Stage-3 RMS / ATE / VSP
+    erosion is expected (per v18.1 trajectory) and is the target of
+    Stage 5.
+
+5.4 v19-recalibrate MUST PASS: RMS >= 54.0, MCQ >= 62.0, TAA Classic
+    >= 40.0, CSE-TI >= 34.0, CSE-Malware >= 20.0, ATE >= 62.0, RCM >=
+    67.5, VSP >= 80.0, CyberMetric-2K >= 85.5, CyberMetric-10K >= 81.0.
+    Floor set is the v18.2 §7.4 gate package carried forward.
+
+5.5 If 5.4 passes, v19-recalibrate is the published v19 headline.
+    If it misses on MCQ alone (the most likely fail mode given the
+    v18.2.x history), v19.1 caps Stage 5 --max-samples to 2040 to
+    match v18.2's step count and reruns. If it misses on TAA alone,
+    v19.1 reverts Stage 5 probs to 0.30/0.40/0.30 (a bias-toward-Phase-B
+    + TAA-cap-restored midpoint).
+
+
+6. Sign-off
+-----------
+
+6.1 Authored 2026-05-15 with sign-off from project lead.
+6.2 Diagnosis source: v18.2 / v18.2.1 / v18.2.2 sweep summaries on
+    the bench host (responses/asg-ai_athena-cti-sft-qwen25-14b-v18-2*/
+    summary_*_v1.md), §1.2 of this plan.

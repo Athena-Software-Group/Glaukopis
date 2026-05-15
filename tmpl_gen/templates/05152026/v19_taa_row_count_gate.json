@@ -1,0 +1,26 @@
+{
+  "_doc": "Per-family row-count gate for the v19 TAA build pipeline. Per tmpl_gen/templates/05152026/v19_plan.txt. v19 carries v16 floors verbatim because v19_taa.txt is byte-identical to v16.txt (SHA256 843e26e4...). The build halts before train/val split if any axis is below its reject_if_below value in the post-dedup corpus. shortname_patterns are exact matches OR prefix matches (trailing '*' = prefix match).",
+  "_provenance": {
+    "carries_from": "tmpl_gen/templates/05092026/v16_row_count_gate.json",
+    "axis_floors_unchanged_vs_source": true,
+    "rationale": "v19 stages 3 (TAA) and 4 (CSE) reproduce the v18.x chain bit-for-bit; only the Stage 5 (Recalibrate) interleave-probs change. Row-count gate is therefore unchanged."
+  },
+  "axes": [
+    {
+      "_note": "Carried from v16 verbatim. v16 manifest §3 lifts AB.TAA.{1,2,3,5} Count: 1500-2000 -> 3000 each and JS.TAA.{1,2,3} Count: 400 -> 2500 each. Per-actor cap 40 + per-primary grouping reduce post-balance actuals; floor sized to ~50% of declared. max_allowed protects against accidental Count: re-balloon.",
+      "axis": "TAA-attribution",
+      "target": 12000,
+      "reject_if_below": 8000,
+      "max_allowed": 21000,
+      "shortname_patterns": ["AB.TAA.1", "AB.TAA.2", "AB.TAA.3", "AB.TAA.4", "AB.TAA.5", "JS.TAA.1", "JS.TAA.2", "JS.TAA.3"]
+    },
+    {
+      "_note": "Carried from v16 verbatim. v16 manifest §3 lifts AB.TAA.IE.{1,2} Count: 1500 -> 2500 each, AB.TAA.NEG.1 Count: 1500 -> 2500, JS.TAA.IE.1 Count: 1000 -> 2000, JS.TAA.NEG.1 Count: 500 -> 2000. Floor sized to ~70% of manifest target.",
+      "axis": "TAA-IE-NEG",
+      "target": 10000,
+      "reject_if_below": 7000,
+      "max_allowed": 14500,
+      "shortname_patterns": ["AB.TAA.IE.*", "AB.TAA.NEG.*", "JS.TAA.IE.*", "JS.TAA.NEG.*"]
+    }
+  ]
+}

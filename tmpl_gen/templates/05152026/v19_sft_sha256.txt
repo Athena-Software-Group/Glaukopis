@@ -1,0 +1,30 @@
+# v19 SFT shard SHA256 manifest -- 2026-05-15 vintage
+#
+# Per-shard SHA256 of the seven SFT JSON outputs produced by the
+# v19 build pipeline (see README.md and v19_plan.txt). Generated
+# from a clean Neo4j substrate (athena-cti-db) with shuffle seed
+# 42 and val_per_axis 50; build infrastructure is the unmodified
+# fork of _v18p1_build / _v18_taa_build / _v18_cse_build with
+# only paths and gate-plan locations relabeled to v19. The Stage 5
+# 0.33 / 0.33 / 0.34 interleave-probs change is a training-time
+# delta and does not affect any of the seven shards listed below.
+#
+# Per-shard row counts:
+#   258,434  ift_data_2026_05_15_v19_core_a_kb_mcq_taa_soc_cm_ms_yn.json   (Phase A train: KB+MCQ+TAA+SOC+CM+MS+YN)
+#    71,414  ift_data_2026_05_15_v19_core_b_rms_ate_vsp_rcm.json           (Phase B train: RMS+ATE+VSP+RCM)
+#       550  ift_data_2026_05_15_v19_core_val.json                         (Core val; per-axis 50)
+#    20,362  ift_data_2026_05_15_v19_taa.json                              (Stage 3 TAA train)
+#       150  ift_data_2026_05_15_v19_taa_val.json                          (TAA val; per-axis 50)
+#    18,801  ift_data_2026_05_15_v19_cse.json                              (Stage 4 CSE train)
+#       350  ift_data_2026_05_15_v19_cse_val.json                          (CSE val; per-axis 50)
+#
+# Verify on the training host after rsync (run from SFT/data/):
+#   shasum -a 256 -c /path/to/v19_sft_sha256.txt
+
+a96a2d79172f05c838fee10a6743200e46d515f5c75e81bbaa6643b3e68af503  ift_data_2026_05_15_v19_core_a_kb_mcq_taa_soc_cm_ms_yn.json
+059b39f53d964d2d3841f4a3e3f5bff92299bb802e59f5c2a8449803bda829e9  ift_data_2026_05_15_v19_core_b_rms_ate_vsp_rcm.json
+f9e81cd345f3503c0c263999887b3b85915ba000e710c400318d68084bbb7ac3  ift_data_2026_05_15_v19_core_val.json
+60b9431936927a39c1838e2c5b046c74056af0796318d7763707ef6ee79dd59e  ift_data_2026_05_15_v19_taa.json
+96002b2cbd362a68095c3cacae0f3fceda6c01ec931181ff636526081c3b9527  ift_data_2026_05_15_v19_taa_val.json
+9b6ba4fb0dba25079dde70626ac44ace7a789dd328eb96126dc2e83d7f232afc  ift_data_2026_05_15_v19_cse.json
+a4907bb8966a068f4f0206337e97b9cccbec509db2e666b25d2afab588fc05df  ift_data_2026_05_15_v19_cse_val.json
