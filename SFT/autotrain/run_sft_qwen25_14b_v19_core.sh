@@ -36,7 +36,15 @@
 #                                    [--report-to wandb|none]
 #                                    [--phase a|b|ab]   # default: ab
 #                                    [--offload | --no-offload]
+#                                    [--skip-eval]      # disables in-training eval
 #                                    [--dry-run]
+#
+# --skip-eval is the targeted fix for Phase B OOM at cutoff=16384: the eval
+# cross-entropy logits ([1, 16384, 152064] fp32 = ~10 GiB) crash GPU 1 at the
+# first eval boundary even with batch=1, because no-offload training already
+# occupies ~70 GiB per rank. Eval-during-training is monitoring-only (no
+# load_best_model_at_end), so disabling it changes zero training-state
+# weights -- final benchmark suite remains the authoritative quality signal.
 
 set -euo pipefail
 
@@ -50,6 +58,7 @@ REPORT_TO="wandb"
 PHASE="ab"
 DRY_RUN=0
 OFFLOAD="auto"
+SKIP_EVAL=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -61,7 +70,8 @@ while [[ $# -gt 0 ]]; do
         --dry-run)      DRY_RUN=1;         shift ;;
         --offload)      OFFLOAD="on";      shift ;;
         --no-offload)   OFFLOAD="off";     shift ;;
-        -h|--help) sed -n '3,40p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        --skip-eval)    SKIP_EVAL=1;       shift ;;
+        -h|--help) sed -n '3,48p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "Unknown argument: $1" >&2; exit 1 ;;
     esac
 done
@@ -134,7 +144,23 @@ B_BATCH=1; B_GA=$(( 8  / (B_BATCH * EFFECTIVE_GPUS) )); [[ ${B_GA} -lt 1 ]] && B
 # per-rank training state already occupies ~76 GiB, leaving no headroom for
 # the eval logits -- the run OOMs at the first eval_steps=500 hit. Lowering
 # eval batch to 1 cuts the logits to ~5 GiB / ~10 GiB respectively.
-EXTRA_COMMON="--deepspeed ${DS_CONFIG} --save_total_limit 2 --save_only_model True --enable_liger_kernel True --per_device_eval_batch_size 1 --eval_dataset ${VAL_NAME} --val_size 0"
+#
+# Even at eval batch=1 the Phase B logits ([1, 16384, 152064] fp32 ~= 10 GiB)
+# crash at the first eval boundary on 4xH100 no-offload because Liger's fused
+# linear-cross-entropy is bypassed by Trainer.prediction_step (the eval path
+# falls through to nn.functional.cross_entropy on materialized logits). When
+# --skip-eval is passed we replace the eval block with --eval_strategy no,
+# which sets do_eval=False and prevents _maybe_log_save_evaluate from ever
+# entering the prediction loop. Eval-time arguments (eval_dataset/val_size/
+# per_device_eval_batch_size) are dropped because they're irrelevant when
+# eval_strategy=no, and run_train.sh's BASE_ARGS hardcodes --val_size 0.1
+# which we'd otherwise need to override anyway.
+EXTRA_BASE="--deepspeed ${DS_CONFIG} --save_total_limit 2 --save_only_model True --enable_liger_kernel True"
+if [[ ${SKIP_EVAL} -eq 1 ]]; then
+    EXTRA_COMMON="${EXTRA_BASE} --eval_strategy no"
+else
+    EXTRA_COMMON="${EXTRA_BASE} --per_device_eval_batch_size 1 --eval_dataset ${VAL_NAME} --val_size 0"
+fi
 
 export FORCE_TORCHRUN=1
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
@@ -171,7 +197,7 @@ run_phase_b() {
         --extra "${EXTRA_COMMON}" "${DRY_FLAG[@]}"
 }
 
-echo "  gpus visible : ${GPU_COUNT}  cpu offload: ${OFFLOAD}"
+echo "  gpus visible : ${GPU_COUNT}  cpu offload: ${OFFLOAD}  skip-eval: ${SKIP_EVAL}"
 echo "  phase A dir  : ${PHASE_A_DIR}"
 echo "  phase B dir  : ${PHASE_B_DIR}"
 echo "  hf repo      : ${REPO_ID}  (only Phase B is pushed)"
