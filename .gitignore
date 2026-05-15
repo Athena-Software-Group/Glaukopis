@@ -462,4 +462,24 @@ SFT/test/responses/fdtn-ai_Foundation-Sec-8B-Reasoning
 # row-count gate live under tmpl_gen/ where they belong. Anything previously
 # tracked under _v*_build/ has been removed from history-going-forward.
 _v*_build/
+
+# v19 reproducibility-first vintage exception: the build infrastructure
+# (watchers, generators, gates, val/train splitters) ships in-repo so a clean
+# checkout regenerates the SFT shards deterministically. Runtime artifacts
+# (logs, reports, *.pid, triples/, *_seed.json, *_status.json) stay ignored.
+!_v19_core_build/
+_v19_core_build/*
+!_v19_core_build/_neo4j_check.py
+!_v19_core_build/watcher.sh
+!_v19_core_build/build_val_slice.py
+!_v19_core_build/validate_corpus.py
+!_v19_taa_build/
+_v19_taa_build/*
+!_v19_taa_build/watcher.sh
+!_v19_taa_build/build_val_slice.py
+!_v19_cse_build/
+_v19_cse_build/*
+!_v19_cse_build/watcher.sh
+!_v19_cse_build/build_val_slice.py
+!_v19_cse_build/letter_balance_gate.py
 SFT/test/SFT/test/benchmark_data/
