@@ -352,6 +352,14 @@ model_mapping = {
     'athena-cti-sft-qwen25-14b-v19-taa-vllm':                  'asg-ai/athena-cti-sft-qwen25-14b-v19-taa',
     'athena-cti-sft-qwen25-14b-v19-cse-vllm':                  'asg-ai/athena-cti-sft-qwen25-14b-v19-cse',
     'athena-cti-sft-qwen25-14b-v19-recalibrate-vllm':          'asg-ai/athena-cti-sft-qwen25-14b-v19-recalibrate',
+    # v19-recalibrate-v18p2mix: Stage 5 isolation variant. v19-cse + 3-shard
+    # interleave with the v18.2 prob mix (0.25/0.40/0.35) at the v18.2-matched
+    # step count (--max-samples 2400 -> ~1500 steps, byte-identical to v18.2).
+    # Only training-recipe delta vs v19-recalibrate is --probs. Bench delta vs
+    # v19-recalibrate isolates the prob-mix contribution; bench delta vs v18-2
+    # isolates the v19-cse base-checkpoint contribution. Pushed by
+    # SFT/autotrain/run_sft_qwen25_14b_v19_recalibrate_v18p2mix.sh.
+    'athena-cti-sft-qwen25-14b-v19-recalibrate-v18p2mix-vllm': 'asg-ai/athena-cti-sft-qwen25-14b-v19-recalibrate-v18p2mix',
     # HF Inference Providers route. Custom community fine-tunes are not in the
     # default Together/Fireworks/Novita/etc. catalogs; this alias only resolves
     # if the model is exposed via an HF Inference Endpoint or the legacy
