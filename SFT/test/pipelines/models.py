@@ -331,6 +331,27 @@ model_mapping = {
     # of any one shard. lr 1e-6, cutoff 16384, packing off (UNCHANGED). See
     # plan §8 and SFT/autotrain/run_sft_qwen25_14b_v18p2p2_multi_replay.sh.
     'athena-cti-sft-qwen25-14b-v18-2-2-vllm':                  'asg-ai/athena-cti-sft-qwen25-14b-v18-2-2',
+    # v19 ground-up reproducible 5-stage chain off Qwen2.5-14B-Instruct, built
+    # on the 2026_05_15 v19 datasets. Stage outputs (each pushed to its own HF
+    # repo so any checkpoint can be benchmarked independently; v19-recalibrate
+    # is the published headline):
+    #   Stage 1+2 Core (broad re-anchor + axis catalog drill)  -> v19-core
+    #   Stage 3   TAA Classic refresher (chains off v19-core)  -> v19-taa
+    #   Stage 4   CSE letter-set drill (chains off v19-taa)    -> v19-cse
+    #   Stage 5   3-shard interleaved replay (probs 0.33/0.33/0.34, lr 1e-6,
+    #             cutoff 16384, packing off; chains off v19-cse)
+    #                                                          -> v19-recalibrate
+    # Recipe is byte-identical to v18.1+TAA+CSE+v18.2 except the Stage 5 prob
+    # mix moves from v18.2's 0.25/0.40/0.35 to equal-weight 0.33/0.33/0.34.
+    # Headline gate (v19_plan.txt §5.4, carried from v18.2 §7.4): RMS >= 54.0,
+    # MCQ >= 62.0, TAA Classic >= 40.0, CSE-TI >= 34.0, CSE-Malware >= 20.0,
+    # ATE >= 62.0, RCM >= 67.5, VSP >= 80.0, CM-2K >= 85.5, CM-10K >= 81.0.
+    # Pushed by SFT/autotrain/run_sft_qwen25_14b_v19_{core,taa,cse,recalibrate}.sh.
+    # See tmpl_gen/templates/05152026/v19_plan.txt.
+    'athena-cti-sft-qwen25-14b-v19-core-vllm':                 'asg-ai/athena-cti-sft-qwen25-14b-v19-core',
+    'athena-cti-sft-qwen25-14b-v19-taa-vllm':                  'asg-ai/athena-cti-sft-qwen25-14b-v19-taa',
+    'athena-cti-sft-qwen25-14b-v19-cse-vllm':                  'asg-ai/athena-cti-sft-qwen25-14b-v19-cse',
+    'athena-cti-sft-qwen25-14b-v19-recalibrate-vllm':          'asg-ai/athena-cti-sft-qwen25-14b-v19-recalibrate',
     # HF Inference Providers route. Custom community fine-tunes are not in the
     # default Together/Fireworks/Novita/etc. catalogs; this alias only resolves
     # if the model is exposed via an HF Inference Endpoint or the legacy
