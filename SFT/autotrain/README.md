@@ -40,6 +40,7 @@ the Qwen-2.5-14B reference chain ships.
 | `run_sft_qwen25_14b_v20_taa.sh` | 3 (TAA Classic refresher) | `…/v20-core` → `…/athena-cti-sft-qwen25-14b-v20-taa` |
 | `run_sft_qwen25_14b_v20_cse.sh` | 4 (CSE letter-set drill) | `…/v20-taa` → `…/athena-cti-sft-qwen25-14b-v20-cse` |
 | `run_sft_qwen25_14b_v20_recalibrate.sh` | 5 (3-shard interleaved replay) | `…/v20-cse` → `…/athena-cti-sft-qwen25-14b-v20-recalibrate` (**headline**) |
+| `run_sft_qwen25_14b_v20_chain.sh` | **3 → 4 → 5 wrapper** (sequential TAA → CSE → Recalibrate; `--include-core` to also run 1+2 first) | gates each stage on the prior stage's HF push being readable |
 
 Per-stage recipes (cutoff, packing, LR, eff_bs, eval/save), wall-time
 budgets, and sign-off gates are in [`../SFT_FLOW.md`](../SFT_FLOW.md).
@@ -110,22 +111,34 @@ conda activate llm-sft
 ls -lh data/ift_data_2026_05_16_v20_*.json || \
     rsync -avP workstation:Glaukopis/SFT/data/ift_data_2026_05_16_v20_*.json data/
 
-# 3. Launch the v20 chain stage-by-stage. Each launcher writes to
-#    SFT/saves/..., pushes the merged checkpoint to HF on exit 0, and
-#    becomes the base model for the next stage.
+# 3a. Stage-by-stage (each launcher writes to SFT/saves/..., pushes
+#     the merged checkpoint to HF on exit 0, and becomes the base
+#     model for the next stage):
 cd autotrain
 ./run_sft_qwen25_14b_v20_core.sh          # Stage 1+2, ~13h on 8xH100
 ./run_sft_qwen25_14b_v20_taa.sh           # Stage 3,   ~6-8h
 ./run_sft_qwen25_14b_v20_cse.sh           # Stage 4,   ~4-6h
 ./run_sft_qwen25_14b_v20_recalibrate.sh   # Stage 5,   ~95-115min on 4xH100
 
+# 3b. Or run TAA -> CSE -> Recalibrate as a single chained job. Each
+#     stage is gated on the prior stage's HF push being readable; on
+#     any non-zero exit the chain halts and leaves the partial state
+#     intact for restart via --start-stage.
+./run_sft_qwen25_14b_v20_chain.sh                                # TAA -> CSE -> Recalibrate
+./run_sft_qwen25_14b_v20_chain.sh --include-core                 # full 5-stage chain
+./run_sft_qwen25_14b_v20_chain.sh --start-stage cse              # resume from Stage 4
+./run_sft_qwen25_14b_v20_chain.sh --start-stage recalibrate      # only Stage 5
+
 # 4. After Stage 5 pushes, benchmark the headline checkpoint
 ./run_athenabench.sh --alias athena-cti-sft-qwen25-14b-v20-recalibrate
 ```
 
 Each v20 launcher accepts `--dry-run`, `--repo-id`, `--report-to`,
-`--offload`/`--no-offload`, and `--extra "..."`. See `SFT_FLOW.md §3`
-for the per-stage recipe table and `§4` for the sign-off gate matrix.
+`--offload`/`--no-offload`, and `--extra "..."`. The chain wrapper
+also accepts `--probs`, `--max-samples`, `--lr` (forwarded to
+Recalibrate only) and `--skip-readiness-check` (skip the pre-stage
+HF probe). See `SFT_FLOW.md §3` for the per-stage recipe table and
+`§4` for the sign-off gate matrix.
 
 ## Quick start (legacy 8B v7 baseline)
 
@@ -202,6 +215,47 @@ HF push command without executing anything. `../utils/run_train.sh`
 handles timestamped output dirs, git-sha snapshotting into
 `train_config.json`, tee'd logs at `train.log`, and the merge +
 upload step.
+
+### `run_sft_qwen25_14b_v20_chain.sh` (sequential wrapper)
+
+Runs Stages 3 → 4 → 5 (and optionally Stage 1+2 first) as a single
+unattended job. Each stage launches its own per-stage script under
+the hood, so per-stage logs, output dirs, and HF pushes are unchanged
+— the wrapper only adds chaining and a pre-stage HF-readability
+probe so a silent push failure cannot waste the next stage's
+compute. Aggregate progress is teed to
+`SFT/saves/v20_chain_<ts>/chain.log` and each stage's stdout to
+`SFT/saves/v20_chain_<ts>/<stage>.log`.
+
+```bash
+./run_sft_qwen25_14b_v20_chain.sh [--start-stage taa|cse|recalibrate]
+                                  [--include-core]
+                                  [--report-to wandb|none]
+                                  [--offload | --no-offload]
+                                  [--probs P_A,P_B,P_TAA]     # recalibrate only
+                                  [--max-samples N]           # recalibrate only
+                                  [--lr LR]                   # recalibrate only
+                                  [--skip-readiness-check]
+                                  [--dry-run]
+```
+
+Behaviour:
+
+- `--start-stage taa` (default) runs TAA → CSE → Recalibrate; assumes
+  `…/v20-core` is already on HF (probed first).
+- `--start-stage cse` resumes from Stage 4; assumes `…/v20-taa` is on HF.
+- `--start-stage recalibrate` resumes from Stage 5; assumes `…/v20-cse` is on HF.
+- `--include-core` runs Stage 1+2 first (rare; Core is normally run
+  standalone because its wall-time is comparable to the rest of the
+  chain combined and you usually want a sign-off review on `v20-core`
+  before committing to TAA / CSE / Recalibrate).
+- `--skip-readiness-check` disables the per-stage HF probe (useful
+  when running fully offline with `--base-model <local-dir>` overrides
+  threaded through the per-stage launchers; pass via `--extra` on
+  each stage if needed).
+- `--dry-run` propagates to every stage; the chain prints each stage's
+  `llamafactory-cli` invocation and the post-train HF push command
+  without executing anything.
 
 ### Porting v20 to Llama-3.1-8B-Instruct and gemma-4-31B-it
 

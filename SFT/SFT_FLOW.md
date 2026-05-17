@@ -160,6 +160,36 @@ with DeepSpeed ZeRO-3 and bf16, source `SFT/.env` for
 | 4 | `run_sft_qwen25_14b_v20_cse.sh` | `ift_data_2026_05_16_v20_cse` | 4096 | on | 5e-6 | 16 | 100 | `…/v20-taa` → `…/v20-cse` |
 | 5 | `run_sft_qwen25_14b_v20_recalibrate.sh` | `core_a` (0.25) + `core_b` (0.40) + `taa` (0.35), `interleave_under` | 16384 | off | 1e-6 | 4 | 200 | `…/v20-cse` → `…/v20-recalibrate` |
 
+### Chained execution — `run_sft_qwen25_14b_v20_chain.sh`
+
+Stages 3 → 4 → 5 can be run as a single unattended job via the
+chain wrapper. Each stage launches its own per-stage script
+unchanged (same output dirs, same per-stage train.log, same HF
+push); the wrapper adds (a) sequential execution gated on the prior
+stage's non-zero exit halting the chain, and (b) a pre-stage
+HF-readability probe so a silent push failure does not waste the
+next stage's compute. Aggregate log lives at
+`SFT/saves/v20_chain_<ts>/chain.log`; per-stage stdout is teed to
+`SFT/saves/v20_chain_<ts>/<stage>.log`.
+
+```bash
+# Default: TAA -> CSE -> Recalibrate (assumes …/v20-core already on HF).
+./run_sft_qwen25_14b_v20_chain.sh
+
+# Full 5-stage chain (rare; Core wall-time ~= TAA+CSE+Recalibrate combined).
+./run_sft_qwen25_14b_v20_chain.sh --include-core
+
+# Resume from a partial run.
+./run_sft_qwen25_14b_v20_chain.sh --start-stage cse           # 4 -> 5
+./run_sft_qwen25_14b_v20_chain.sh --start-stage recalibrate   # 5 only
+
+# Forward common knobs to every stage.
+./run_sft_qwen25_14b_v20_chain.sh --report-to none --no-offload
+
+# Recalibrate-specific knobs (forwarded only to Stage 5).
+./run_sft_qwen25_14b_v20_chain.sh --probs 0.25,0.40,0.35 --max-samples 2400 --lr 1e-6
+```
+
 ### Per-stage notes (rationale and gotchas)
 
 - **Stage 1+2 (Core)** runs both phases back-to-back inside the single
@@ -317,6 +347,7 @@ SFT/
     run_sft_qwen25_14b_v20_taa.sh          Stage 3
     run_sft_qwen25_14b_v20_cse.sh          Stage 4
     run_sft_qwen25_14b_v20_recalibrate.sh  Stage 5 (final)
+    run_sft_qwen25_14b_v20_chain.sh        Stage 3 -> 4 -> 5 sequential wrapper
     run_abaligned_sft_v7.sh                Llama-3.1-8B v7 baseline (legacy)
     run_abaligned_sft_qwen25_14b_v{7,8,8small,81,9,10}.sh   pre-v11 lineage
     run_sft_qwen25_14b_v{11,12,13,14,14_1,16,17,18,18p1,18p2,19}*.sh  v11..v19 lineage
