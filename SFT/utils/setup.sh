@@ -296,11 +296,38 @@ if command -v git >/dev/null 2>&1; then
 fi
 
 # 1. Miniconda bootstrap ------------------------------------------------------
+# Verda cloud RTX Pro 6000 base image (and other bare CUDA images: lambdalabs,
+# vast.ai, plain nvidia/cuda:*-base) ship without conda *and* sometimes without
+# curl/bzip2/ca-certificates either, which the Miniconda installer needs to
+# fetch + unpack itself. Install those prerequisites via apt first when running
+# as root on a Debian/Ubuntu base, then drop the installer into $HOME so the
+# script still works for unprivileged callers on shared boxes (RunPod, etc.).
 if ! command -v conda >/dev/null 2>&1; then
     echo "=== conda not found — installing Miniconda to \$HOME/miniconda3 ==="
+    if command -v apt-get >/dev/null 2>&1 && [[ $(id -u) -eq 0 ]]; then
+        MINICONDA_APT_DEPS=()
+        command -v curl  >/dev/null 2>&1 || MINICONDA_APT_DEPS+=("curl")
+        command -v bzip2 >/dev/null 2>&1 || MINICONDA_APT_DEPS+=("bzip2")
+        [[ -f /etc/ssl/certs/ca-certificates.crt ]] || MINICONDA_APT_DEPS+=("ca-certificates")
+        if [[ ${#MINICONDA_APT_DEPS[@]} -gt 0 ]]; then
+            echo "  installing apt prereqs: ${MINICONDA_APT_DEPS[*]}"
+            DEBIAN_FRONTEND=noninteractive apt-get update -y >/dev/null
+            DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+                "${MINICONDA_APT_DEPS[@]}" >/dev/null
+        fi
+    fi
     MINICONDA_INSTALLER="/tmp/Miniconda3-latest-Linux-x86_64.sh"
-    curl -L -o "${MINICONDA_INSTALLER}" \
-        https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+    if command -v curl >/dev/null 2>&1; then
+        curl -fsSL -o "${MINICONDA_INSTALLER}" \
+            https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+    elif command -v wget >/dev/null 2>&1; then
+        wget -qO "${MINICONDA_INSTALLER}" \
+            https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+    else
+        echo "  [FATAL] neither curl nor wget on PATH; cannot fetch Miniconda installer." >&2
+        echo "          Install one of them (apt-get install -y curl) and rerun." >&2
+        exit 1
+    fi
     bash "${MINICONDA_INSTALLER}" -b -p "${HOME}/miniconda3"
     rm -f "${MINICONDA_INSTALLER}"
     export PATH="${HOME}/miniconda3/bin:${PATH}"
@@ -308,6 +335,26 @@ fi
 
 # shellcheck disable=SC1091
 source "$(conda info --base)/etc/profile.d/conda.sh"
+
+# Anaconda channel Terms of Service acceptance ------------------------------
+# Since conda 24.7 the default channels (repo.anaconda.com/pkgs/main and
+# /pkgs/r) require an explicit one-time ToS acceptance; otherwise every
+# `conda create` / `conda install` aborts with "CondaToSNonInteractiveError:
+# Terms of Service have not been accepted". Acceptance is recorded under
+# ~/.conda/ and idempotent, so we run it unconditionally on every setup
+# invocation -- cheap, and protects fresh boxes that haven't been bootstrapped
+# before. The `conda tos` subcommand only landed in conda 24.7; older conda
+# builds error out, which we treat as non-fatal (those installs don't enforce
+# ToS anyway).
+if conda tos --help >/dev/null 2>&1; then
+    echo "=== Accepting Anaconda channel ToS (one-time; idempotent) ==="
+    for ch in https://repo.anaconda.com/pkgs/main \
+              https://repo.anaconda.com/pkgs/r; do
+        conda tos accept --override-channels --channel "${ch}" >/dev/null 2>&1 \
+            && echo "  ok: ${ch}" \
+            || echo "  [WARN] could not accept ToS for ${ch} (non-fatal)"
+    done
+fi
 
 # Install one stack ({train|test|all}) into a named conda env. Caller is
 # responsible for passing a valid stack string; env is created on first use
