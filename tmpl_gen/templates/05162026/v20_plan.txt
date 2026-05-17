@@ -1,0 +1,173 @@
+v20 training plan -- axis-density rebalance + Stage 5 revert vs v19
+=====================================================================
+
+Vintage label    : v20   (HF: v20-core, v20-taa, v20-cse, v20-recalibrate)
+Architecture     : Full 5-stage chain (Phase A broad re-anchor + Phase B
+                   AthenaBench catalog drill -> v20-core; +TAA Classic
+                   drill -> v20-taa; +CSE letter-set drill -> v20-cse;
+                   3-shard interleaved low-LR replay touch-up ->
+                   v20-recalibrate). The chain topology, recipe shapes,
+                   and per-stage hyperparameters are byte-identical to
+                   v19; v20 is a targeted axis-density rebalance + a
+                   Stage 5 prob-mix revert to the v18.2 distribution.
+Author date      : 2026-05-16 (vintage dir tmpl_gen/templates/05162026/)
+Predecessors     : v19   (build pipeline, manifests, launchers, and gate
+                          files are forked from v19 with vintage labels
+                          relabeled and per-axis Count: ceilings bumped
+                          on the regressed axes -- see §2)
+                   v18.2 (Stage 5 prob mix that v20 reverts to;
+                          0.25/0.40/0.35 over Phase A / Phase B / TAA)
+                   v18.1 (Core recipe lineage carried via v19)
+Operational ref  : THIS FILE
+                   Sophia-CTI-Templates-v20_core.txt   (Core manifest;
+                                                        body byte-id v19_core)
+                   Sophia-CTI-Templates-v20_taa.txt    (TAA manifest;
+                                                        body byte-id v19_taa)
+                   Sophia-CTI-Templates-v20_cse.txt    (CSE manifest;
+                                                        4 TI Count: bumps
+                                                        from v19_cse)
+                   v20_row_count_gate.json             (Core gates; ATE
+                                                        and RCM floors
+                                                        bumped vs v19)
+                   v20_taa_row_count_gate.json         (TAA gates; carried
+                                                        from v19_taa verbatim)
+                   v20_cse_row_count_gate.json         (CSE gates; TI-actor
+                                                        and TI-other floors
+                                                        bumped vs v19)
+                   _v20_core_build/watcher.sh          (Core build pipeline)
+                   _v20_taa_build/watcher.sh           (TAA build pipeline)
+                   _v20_cse_build/watcher.sh           (CSE build pipeline)
+                   SFT/autotrain/run_sft_qwen25_14b_v20_core.sh
+                   SFT/autotrain/run_sft_qwen25_14b_v20_taa.sh
+                   SFT/autotrain/run_sft_qwen25_14b_v20_cse.sh
+                   SFT/autotrain/run_sft_qwen25_14b_v20_recalibrate.sh
+
+1. Why v20 exists -- v19 axis regressions vs v18.1 baseline
+-----------------------------------------------------------
+
+1.1 v19 was the reproducibility-first rebuild of v18.1. The v19 final
+    (v19-recalibrate) regressed against v18.1 / v18.2 on three axes
+    that the v18.x chain had previously passed:
+
+        axis            v18-1-core   v18.2    v19-core   v19-recal   Delta vs v18-1
+        ATE             65.6         63.2     55.8       57.0        -8.6 pp
+        RCM             71.3         72.6     62.6       70.1        -1.2 pp
+        CSE-TI          24.7         34.0     28.1       33.4        -0.6 pp (vs v18.2)
+        (other axes)    nominal      nominal  nominal    nominal     within +/- 2 pp
+
+    ATE/RCM lost ground in Stage 1 (Core) and were not fully recovered
+    by Stage 5; CSE-TI plateaued below its v18.2 mark. Per the v19
+    post-mortem the underlying cause is a basin-shift attributable to
+    (a) a hardware change (8xH100 build -> 4xH100 build doubles grad-
+    accum frequency and halves DP rank) and (b) data drift between
+    runs. v20 cannot eliminate (a); it compensates via (b) by raising
+    the gradient signal on the regressed axes.
+
+1.2 Stage 5 prob revert. v19's Stage 5 used equal-weight 0.33/0.33/0.34
+    over Phase A / Phase B / TAA, an experimental departure from v18.2's
+    asymmetric 0.25/0.40/0.35. The equal-weight mix transferred ~7 pp of
+    optimizer mass off Phase B (catalog drill -- the home of ATE/RCM/RMS)
+    onto Phase A (broad knowledge). v20 reverts to v18.2's distribution
+    so the recalibration touch-up reapplies the catalog axes that the
+    Stage 4 CSE drill erodes.
+
+2. v19 -> v20 deltas (this run's full delta list)
+--------------------------------------------------
+
+2.1 Core build (manifest unchanged; build-time ceiling raised).
+    The v19 Core manifest declared no per-template Count: directive on
+    AB.ATE.* / JS.ATE.* / AB.RCM.* / JS.RCM.* (per-axis density was
+    governed by the count_max=3500 ceiling at make_dataset.sh CLI
+    time). v20 raises count_max 3500 -> 5500 for the Core build only;
+    no manifest body changes. Expected per-axis effect (Phase B shard):
+
+        axis    v19 actual   v20 expected   gradient signal delta
+        ATE     16,967       ~26,500        +56% on ATE templates
+        RCM     28,772       ~45,000        +56% on RCM templates
+
+    RMS, VSP, MCQ, MS, TAA, SOC, CM templates have explicit Count:
+    ceilings; the count_max bump is a no-op for those families.
+
+2.2 CSE build (manifest Count: bumps on the regressed TI axis).
+    Five JS.CSE.TI.* templates are bumped from Count: 1500 to
+    Count: 2500 to raise the TI-actor + TI-other gradient signal:
+
+        shortname             v19 Count    v20 Count    role
+        JS.CSE.TI.GRP.2       1500         2500         group -> 3 techniques (TI-actor)
+        JS.CSE.TI.GRP.3       1500         2500         group -> 1 technique  (TI-actor)
+        JS.CSE.TI.MAL.2       1500         2500         malware -> 3 techniques (TI-actor)
+        JS.CSE.TI.MAL.3       1500         2500         malware -> 1 technique  (TI-actor)
+        JS.CSE.TI.NEG.1       1500         2500         group -> 0 techniques (TI-other; negatives)
+
+    The remaining CSE template Count: directives (TI.GRP.1=2500,
+    TI.MAL.1=2500, TI.CMP.1=2500, the MAL.* family) are carried from
+    v19_cse.txt verbatim. The four CSE-TI-actor templates and the
+    negative-discrimination template now contribute ~12,500 declared
+    rows vs v19's ~10,500; combined with the existing GRP.1/MAL.1
+    2500 ceilings the TI-actor axis declared total moves from 11,000
+    to 13,000 (+18%) and the TI-other (CMP+NEG) axis moves from 4,000
+    to 5,000 (+25%).
+
+2.3 TAA build (manifest unchanged; gate unchanged).
+    v19_taa.txt carries verbatim into v20_taa.txt. TAA Classic was
+    not in the regressed-axis set (v19 TAA Classic 47.5 vs v18.2's
+    47.7; within instrument noise).
+
+2.4 Row-count gate floors revised (Core + CSE).
+    v20_row_count_gate.json: ATE floor 12500 -> 22000; RCM floor 9000
+    -> 36000. Other Core axes carry v19 floors. v20_cse_row_count_
+    gate.json: TI-actor floor 5000 -> 8500; TI-other floor 1400 ->
+    2400. v20_taa_row_count_gate.json carries v19_taa floors verbatim.
+
+2.5 Stage 5 (Recalibrate) interleave_probs revert.
+    v19's equal-weight 0.33/0.33/0.34 -> v18.2's asymmetric
+    0.25/0.40/0.35 (Phase A / Phase B / TAA). The bias-toward-Phase-B
+    is the v18.2 design: Phase B is the catalog axis sink and absorbs
+    the largest share of the recalibration touch-up.
+
+3. Row-count gate plan
+----------------------
+
+See v20_row_count_gate.json (Core), v20_taa_row_count_gate.json (TAA),
+v20_cse_row_count_gate.json (CSE) for the per-axis REJECT_IF_BELOW
+values. Each watcher invokes tmpl_gen/scripts/check_corpus_row_counts.py
+against the appropriate plan file; the build halts at Phase 6 if any
+axis is below its floor in the post-dedup corpus.
+
+4. Per-stage training recipe
+----------------------------
+
+4.1 Stage 1+2 (Core): byte-identical to v19_core launcher; only the
+    dataset names move (2026_05_15 -> 2026_05_16; v19 -> v20) and the
+    HF push target moves (v19-core -> v20-core). Phase A: lr 1e-5,
+    cutoff 8192, packing on, eff_bs 16, --max-samples 240000. Phase
+    B: lr 5e-6, cutoff 16384, packing off, eff_bs 8, eval/save every
+    400 steps.
+
+4.2 Stage 3 (+TAA): byte-identical to v19_taa launcher; dataset and
+    HF target renames only. Recipe: 1 epoch, lr 5e-6, cutoff 4096,
+    packing on, eff_bs 16, --max-samples 33000.
+
+4.3 Stage 4 (+CSE): byte-identical to v19_cse launcher; dataset and
+    HF target renames only. Recipe same as Stage 3.
+
+4.4 Stage 5 (Recalibrate): byte-identical to v19_recalibrate launcher
+    except --probs default reverts to 0.25,0.40,0.35. Recipe: 1 epoch,
+    lr 1e-6, cutoff 16384, packing off, eff_bs 4, --max-samples 2400.
+    At --probs 0.25,0.40,0.35 -> --max-samples / max(P) = 2400/0.40 =
+    6000 interleaved rows (~1500 optimizer steps; ~80-100 min on
+    4xH100, ~15% shorter than v19's ~1765 steps at probs 0.33/0.33/0.34).
+
+5. Sign-off gates (per stage)
+-----------------------------
+
+Carried from v19 §5 with the v18.2 §7.4 gate package for the Stage 5
+deliverable. The full gate package is documented in README.md §3.
+
+6. Falsification
+----------------
+
+If v20-recalibrate misses ATE >= 62.0 or RCM >= 67.5 despite the
+density bumps, the residual gap is attributable to the basin-shift
+in §1.1 (a) and a follow-on v21 would need to either revert to 8xH100
+training or restructure the Stage 5 mix further to bias toward Phase B.

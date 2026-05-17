@@ -1,0 +1,229 @@
+================================================================================
+Sophia CTI Templates -- v16 (Qwen2.5-14B-Instruct, single-axis TAA specialist
+                              trained off the frozen v12 baseline; v15 W1-rev)
+================================================================================
+
+This file is the self-contained template manifest for the v16 training run.
+v16 is the second specialist branch in the v15 parallel architecture
+(v12_plan.txt §3.1 architecture, v15_plan.txt §1 motivation): an
+INDEPENDENT narrow-SFT branch off asg-ai/athena-cti-sft-qwen25-14b-v12,
+focused exclusively on threat-actor attribution. The v15 W1 experiment
+(v12-plus-taa, trained on the v14 four-shard TAA slice) confirmed the
+parallel topology preserves non-target axes but failed to move TAA Classic
+because the v14 TAA shard was 68.5% Canonical alias-resolution data
+(MISP.CANON 35.8% + TAA.CANON 32.7%; see v15_plan.txt §3 and the v15 W1
+post-mortem in tmpl_gen/templates/05102026/README.md §1.2). Canonical
+alias resolution is NOT measured by the formal TAA Classic benchmark, so
+the model spent ~22.4K rows of training capacity on a task the score
+ignores while only ~430 rows targeted the JSON-shaped attribution surface
+(JS.TAA.{1,2,3}) that CyberSOCEval-TI exercises.
+
+v16 corrects the shard composition by purging Canonical entirely and
+bumping the per-template Count: ceiling on every Classic and JSON-shaped
+attribution template, plus the IE/NEG hard-negative discrimination
+families. The training topology is unchanged from v15 W1: one epoch,
+v9-narrow recipe (cutoff 4096, packing on, lr 5e-6, eff_bs 16) on the
+v12 base. Output checkpoint is asg-ai/athena-cti-sft-qwen25-14b-v16.
+
+v15 W1 -> v16 deltas (manifest only)
+-------------------------------------
+  (1) PURGE TAA.CANON.{1,2,3} (entire Section 6.1 of v14 manifest +
+      programmatic generator block at v14 manifest lines 3160-3185).
+      v14 actuals: 10,717 rows / 32.7% of the v14 TAA shard. v16
+      actuals: 0 rows. Removed because TAA Canonical (alias->canonical
+      resolution) is not part of the formal TAA Classic benchmark and
+      v15 W1 demonstrated that training on it does not move TAA Classic.
+
+  (2) PURGE MISP.CANON.{1,2,3} (entire Section 1/2/3 of v14 manifest
+      lines 3277-3338, programmatic generator only). v14 actuals:
+      11,730 rows / 35.8% of the v14 TAA shard. v16 actuals: 0 rows.
+      Same rationale as (1); MISP CC-0 alias galaxy is also unrelated
+      to TAA Classic.
+
+  (3) BUMP Count: directives across the surviving TAA families to
+      reclaim the freed capacity for the attribution surface that the
+      benchmark actually measures:
+
+         shortname        v14 Count    v16 Count    v14 actual    v16 target
+         AB.TAA.1         (default)    3000         ~1000         ~3000
+         AB.TAA.2         (default)    3000         ~1000         ~3000
+         AB.TAA.3         (default)    3000         ~1000         ~3000
+         AB.TAA.4         (default)    200          112           ~150
+         AB.TAA.5         (default)    3000         ~900          ~3000
+         AB.TAA.IE.1      1500         2500         ~1500         ~2500
+         AB.TAA.IE.2      1500         2500         ~1500         ~2500
+         AB.TAA.NEG.1     1500         2500         1467          ~2500
+         JS.TAA.1         400          2500         ~150          ~2500
+         JS.TAA.2         400          2500         ~150          ~2500
+         JS.TAA.3         400          2500         ~150          ~2500
+         JS.TAA.IE.1      1000         2000         993           ~2000
+         JS.TAA.NEG.1     500          2000         483           ~2000
+
+      Estimated v16 declared total: ~30,200 rows. Estimated actual
+      yield (subject to Neo4j anchor cardinality and the TAA actor
+      cap of 60, lifted 40 -> 60 in v16): ~22-26K rows, of which ~12K are JSON-shaped
+      attribution (vs ~430 in v14) and ~14K are Classic / IE / NEG.
+
+  (4) NO RECIPE OR TOPOLOGY CHANGE vs v15 W1. Same v9-narrow
+      single-epoch recipe (cutoff 4096, packing on, lr 5e-6, eff_bs
+      16); same v12 base; same parallel-branching architecture.
+      v16 isolates the data confound (CANON dilution) from the
+      topology question that v15 W1 already answered (parallel
+      narrow SFT preserves non-target axes).
+
+  (5) Template bodies (AB.TAA.{1..5}, AB.TAA.IE.{1,2}, AB.TAA.NEG.1,
+      JS.TAA.{1..3}, JS.TAA.IE.1, JS.TAA.NEG.1) are imported byte-
+      for-byte from the v14 manifest. The only edits are the Count:
+      directives. The licence-allowlist gate (carried from v13/v14)
+      validates every emitted row carries source=athena-cti-db-
+      internal; v16 introduces no new generators or vendored seeds.
+
+The v16 corpus is licence-equivalent to v12's TAA slice: one source,
+one allowlist tag (athena-cti-db-internal), zero programmatic generators.
+
+================================================================================
+SECTION TAA -- AB.TAA.{1..5} Threat Actor Attribution (Classic, prose)
+================================================================================
+Source: athena-cti-db-internal
+Provenance: tmpl_gen/templates/05082026/Sophia-CTI-Templates-v14.txt §6
+Bodies imported byte-for-byte from v14; only Count: directives changed.
+Anchor selector {grp:intrusion-set.name} binds to MITRE ATT&CK Groups
+(187 documented intrusion sets in the local Neo4j; ~4,362 group->attack
+edges; ~647 group->malware edges; ~457 group->tool edges; 25 documented
+campaigns).
+--------------------------------------------------------------------------------
+
+AB.TAA.1 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center performing threat actor attribution from observed tradecraft. Analyse the following anonymised incident summary, which reports the MITRE ATT&CK techniques and malware family observed during an intrusion, and identify the responsible named intrusion set. Consult the MITRE ATT&CK groups knowledge base, reason about which documented intrusion set the combination of techniques and tooling matches, and then state the adversary name.
+Question: <*{grp:intrusion-set.name}*>An adversary has been observed employing MITRE ATT&CK techniques {ap1:grp.uses>attack-pattern.name} ({ap1.mitre_id}), {ap2:grp.uses>attack-pattern.name} ({ap2.mitre_id}), and {ap3:grp.uses>attack-pattern.name} ({ap3.mitre_id}), alongside the malware family {mw:grp.uses>malware.name}.
+Answer: The joint use of {ap1.name}, {ap2.name}, and {ap3.name} together with {mw.name} matches the documented tradecraft of {grp.name} ({grp.mitre_id}). Therefore, the adversary is {grp.name}.
+Sample: grp
+Count: 3000
+
+AB.TAA.2 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center performing threat actor attribution from observed tradecraft. Analyse the following anonymised narrative summarising attacker techniques and associated tooling and identify the responsible adversary. Consult the MITRE ATT&CK groups knowledge base, reason about which documented intrusion set the evidence matches, and then state the adversary name.
+Question: <*{grp:intrusion-set.name}*>An adversary has been observed employing MITRE ATT&CK technique {ap1:grp.uses>attack-pattern.mitre_id} ({ap1.name}) together with technique {ap2:grp.uses>attack-pattern.mitre_id} ({ap2.name}), and has deployed the malware family {mw:grp.uses>malware.name}.
+Answer: Use of {ap1.name} and {ap2.name} together with {mw.name} matches the documented tradecraft of {grp.name} ({grp.mitre_id}). Therefore, the adversary is {grp.name}.
+Sample: grp
+Count: 3000
+
+AB.TAA.3 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center performing threat actor attribution from observed tradecraft. Analyse the following anonymised incident summary, which reports only the MITRE ATT&CK techniques observed during an intrusion (no malware indicators were recovered), and identify the responsible named intrusion set. Consult the MITRE ATT&CK groups knowledge base, reason about which documented intrusion set the combination of techniques matches, and then state the adversary name.
+Question: <*{grp:intrusion-set.name}*>An adversary was observed employing MITRE ATT&CK techniques {ap1:grp.uses>attack-pattern.name} ({ap1.mitre_id}), {ap2:grp.uses>attack-pattern.name} ({ap2.mitre_id}), and {ap3:grp.uses>attack-pattern.name} ({ap3.mitre_id}).
+Answer: The combination of {ap1.name}, {ap2.name}, and {ap3.name} is the documented tradecraft of {grp.name} ({grp.mitre_id}). Therefore, the adversary is {grp.name}.
+Sample: grp
+Count: 3000
+
+AB.TAA.4 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center reviewing a documented campaign attribution. Analyse the following campaign summary and identify the responsible named intrusion set. Consult the MITRE ATT&CK groups and campaigns knowledge bases, reason about which documented intrusion set owns the campaign, and then state the adversary name.
+Question: <*{grp:intrusion-set.name}*>During the {cp:grp.attributed-to<campaign.name} campaign ({cp.mitre_id}), operators employed MITRE ATT&CK techniques {ap1:cp.uses>attack-pattern.name} ({ap1.mitre_id}) and {ap2:cp.uses>attack-pattern.name} ({ap2.mitre_id}). Campaign description: <desc>{cp.description}</desc>
+Answer: MITRE ATT&CK attributes the {cp.name} campaign to {grp.name} ({grp.mitre_id}); the observed techniques {ap1.name} and {ap2.name} match the group's documented tradecraft. Therefore, the adversary is {grp.name}.
+Sample: grp
+Count: 200
+
+AB.TAA.5 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center performing threat actor attribution from tooling and tradecraft telemetry. Analyse the following anonymised summary combining MITRE ATT&CK techniques and the dual-use or custom tool observed, and identify the responsible named intrusion set. Consult the MITRE ATT&CK groups knowledge base, reason about which documented intrusion set the evidence matches, and then state the adversary name.
+Question: <*{grp:intrusion-set.name}*>An adversary was observed employing MITRE ATT&CK techniques {ap1:grp.uses>attack-pattern.name} ({ap1.mitre_id}) and {ap2:grp.uses>attack-pattern.name} ({ap2.mitre_id}), together with the tool {tl:grp.uses>tool.name}.
+Answer: Use of {ap1.name} and {ap2.name} together with {tl.name} matches the documented tradecraft of {grp.name} ({grp.mitre_id}). Therefore, the adversary is {grp.name}.
+Sample: grp
+Count: 3000
+
+
+================================================================================
+SECTION TAA-IE-NEG -- AB.TAA.IE.* / AB.TAA.NEG.* (insufficient-evidence
+                       refusal + paired-candidate hard-negative discrimination)
+================================================================================
+Source: athena-cti-db-internal
+Provenance: tmpl_gen/templates/05082026/Sophia-CTI-Templates-v14.txt §G.1
+Bodies imported byte-for-byte from v14; only Count: directives changed.
+The IE templates draw {ap}/{tl} from the unbound MITRE ATT&CK
+attack-pattern / tool catalogue (no group anchor) so the model learns
+to refuse on under-specified evidence. The NEG template anchors a
+correct group {grp} and a confounder {rel} from the same intrusion-set
+catalogue; Per_primary_grouping: false ensures the (grp, rel) pair
+diversifies across rows.
+--------------------------------------------------------------------------------
+
+AB.TAA.IE.1 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center performing threat actor attribution from observed tradecraft. Analyse the following anonymised incident summary and identify the responsible named intrusion set if and only if the evidence is sufficient. If the techniques observed are common across many documented intrusion sets and the input contains no actor-specific tooling, malware family, infrastructure, or campaign reference, do not guess. The final line of your response must be exactly: Insufficient evidence to attribute.
+Question: An adversary was observed employing MITRE ATT&CK techniques {ap1:attack-pattern.mitre_id} ({ap1.name}) and {ap2:attack-pattern.mitre_id} ({ap2.name}). No malware family, custom tooling, infrastructure indicator, or campaign attribution information was recovered.
+Answer: The techniques {ap1.name} ({ap1.mitre_id}) and {ap2.name} ({ap2.mitre_id}) are general MITRE ATT&CK techniques documented as used across many intrusion sets, and no group-specific malware, tool, infrastructure, or campaign indicator was observed in this summary. Without an actor-specific signal, the available evidence is not sufficient to single out a named intrusion set.
+
+Answer: Insufficient evidence to attribute.
+{force ap1.mitre_id != ap2.mitre_id}
+Sample: ap1
+Count: 2500
+
+AB.TAA.IE.2 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center performing threat actor attribution from observed tradecraft. Analyse the following anonymised incident summary and identify the responsible named intrusion set if and only if the evidence is sufficient. A single dual-use tool used by many intrusion sets is not an actor-specific signal. If the input lacks a custom malware family, infrastructure indicator, or campaign attribution, do not guess. The final line of your response must be exactly: Insufficient evidence to attribute.
+Question: An adversary was observed employing MITRE ATT&CK technique {ap1:attack-pattern.mitre_id} ({ap1.name}) together with the dual-use tool {tl:tool.name}. No custom malware family, infrastructure indicator, or campaign attribution information was recovered.
+Answer: The technique {ap1.name} ({ap1.mitre_id}) is general MITRE ATT&CK tradecraft and {tl.name} is a dual-use tool documented as used by many intrusion sets. Without a custom malware family, infrastructure, or campaign indicator, the available evidence is not sufficient to single out a named intrusion set.
+
+Answer: Insufficient evidence to attribute.
+Sample: ap1
+Count: 2500
+
+AB.TAA.NEG.1 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center performing threat actor attribution from observed tradecraft. You are presented with two candidate intrusion sets. Analyse the evidence, identify the single intrusion set whose documented tradecraft matches, and explicitly justify why the other candidate is rejected. The final line of your response must begin with "Therefore, the adversary is " and contain only the correct intrusion-set name.
+Question: <*{grp:intrusion-set.name}*><*{rel:intrusion-set.name}*>An adversary was observed employing MITRE ATT&CK techniques {ap1:grp.uses>attack-pattern.name} ({ap1.mitre_id}), {ap2:grp.uses>attack-pattern.name} ({ap2.mitre_id}), alongside the malware family {mw:grp.uses>malware.name}. The two candidate intrusion sets under consideration are {grp.name} and {rel.name}.
+Answer: The combination of {ap1.name}, {ap2.name}, and {mw.name} is documented MITRE ATT&CK tradecraft for {grp.name} ({grp.mitre_id}). MITRE ATT&CK does not document {rel.name} as the operator of {mw.name} in this combination. Therefore, the adversary is {grp.name}.
+{force grp.mitre_id != rel.mitre_id}
+Sample: grp
+Count: 2500
+Per_primary_grouping: false
+
+
+================================================================================
+SECTION JS-TAA -- JS.TAA.{1,2,3} JSON-output threat actor attribution
+                   (mirrors AB.TAA.{1,3,5}; targets CyberSOCEval-TI shape)
+================================================================================
+Source: athena-cti-db-internal
+Provenance: tmpl_gen/templates/05082026/Sophia-CTI-Templates-v14.txt §D.5
+Bodies imported byte-for-byte from v14; only Count: directives changed.
+JS.TAA.{1,2,3} are the JSON-shaped twins of AB.TAA.{1,3,5}: same
+{grp:intrusion-set.name} anchor selector, same Cypher pattern, but
+the model emits a single {"actor": ..., "actor_id": ..., "rationale":
+...} JSON object. v14 declared Count=400 each (~150 actual after
+per-primary grouping); v16 lifts to Count=2500 each so JSON-shaped
+attribution gets ~7,500 declared rows -- the v14 shortfall (~430
+rows total) was the leading suspect for the CyberSOCEval-TI score
+gap that v15 W1 surfaced.
+--------------------------------------------------------------------------------
+
+JS.TAA.1 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center performing threat actor attribution from observed tradecraft. Analyse the following anonymised incident summary, which reports the MITRE ATT&CK techniques and malware family observed during an intrusion, and identify the responsible named intrusion set. Consult the MITRE ATT&CK groups knowledge base, reason about which documented intrusion set the combination of techniques and tooling matches, and then respond with a single JSON object on one line containing the keys "actor" (the intrusion-set name), "actor_id" (the MITRE ATT&CK group ID, format G####) and "rationale" (one short sentence). Do not output anything before or after the JSON object.
+Question: <*{grp:intrusion-set.name}*>An adversary has been observed employing MITRE ATT&CK techniques {ap1:grp.uses>attack-pattern.name} ({ap1.mitre_id}), {ap2:grp.uses>attack-pattern.name} ({ap2.mitre_id}), and {ap3:grp.uses>attack-pattern.name} ({ap3.mitre_id}), alongside the malware family {mw:grp.uses>malware.name}.
+Answer: <OBR>"actor": "{grp.name}", "actor_id": "{grp.mitre_id}", "rationale": "The joint use of {ap1.name}, {ap2.name}, and {ap3.name} together with {mw.name} matches the documented tradecraft of {grp.name}."<CBR>
+Sample: grp
+Count: 2500
+
+JS.TAA.2 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center performing threat actor attribution from observed tradecraft. Analyse the following anonymised incident summary, which reports only the MITRE ATT&CK techniques observed during an intrusion (no malware indicators were recovered), and identify the responsible named intrusion set. Consult the MITRE ATT&CK groups knowledge base, reason about which documented intrusion set the combination of techniques matches, and then respond with a single JSON object on one line containing the keys "actor" (the intrusion-set name), "actor_id" (the MITRE ATT&CK group ID, format G####) and "rationale" (one short sentence). Do not output anything before or after the JSON object.
+Question: <*{grp:intrusion-set.name}*>An adversary was observed employing MITRE ATT&CK techniques {ap1:grp.uses>attack-pattern.name} ({ap1.mitre_id}), {ap2:grp.uses>attack-pattern.name} ({ap2.mitre_id}), and {ap3:grp.uses>attack-pattern.name} ({ap3.mitre_id}).
+Answer: <OBR>"actor": "{grp.name}", "actor_id": "{grp.mitre_id}", "rationale": "The combination of {ap1.name}, {ap2.name}, and {ap3.name} is the documented tradecraft of {grp.name}."<CBR>
+Sample: grp
+Count: 2500
+
+JS.TAA.3 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center performing threat actor attribution from tooling and tradecraft telemetry. Analyse the following anonymised summary combining MITRE ATT&CK techniques and the dual-use or custom tool observed, and identify the responsible named intrusion set. Consult the MITRE ATT&CK groups knowledge base, reason about which documented intrusion set the evidence matches, and then respond with a single JSON object on one line containing the keys "actor" (the intrusion-set name), "actor_id" (the MITRE ATT&CK group ID, format G####) and "rationale" (one short sentence). Do not output anything before or after the JSON object.
+Question: <*{grp:intrusion-set.name}*>An adversary was observed employing MITRE ATT&CK techniques {ap1:grp.uses>attack-pattern.name} ({ap1.mitre_id}) and {ap2:grp.uses>attack-pattern.name} ({ap2.mitre_id}), together with the tool {tl:grp.uses>tool.name}.
+Answer: <OBR>"actor": "{grp.name}", "actor_id": "{grp.mitre_id}", "rationale": "Use of {ap1.name} and {ap2.name} together with {tl.name} matches the documented tradecraft of {grp.name}."<CBR>
+Sample: grp
+Count: 2500
+
+
+================================================================================
+SECTION JS-TAA-IE-NEG -- JS.TAA.IE.1 / JS.TAA.NEG.1
+                          (JSON-shaped insufficient-evidence + paired-candidate)
+================================================================================
+Source: athena-cti-db-internal
+Provenance: tmpl_gen/templates/05082026/Sophia-CTI-Templates-v14.txt §G.1
+Bodies imported byte-for-byte from v14; only Count: directives changed.
+JSON twins of AB.TAA.IE.1 and AB.TAA.NEG.1 emitting the same key
+schema as JS.TAA.{1,2,3} extended with a "rejected" key on NEG and
+the literal strings "INSUFFICIENT_EVIDENCE"/"NA" on IE.
+--------------------------------------------------------------------------------
+
+JS.TAA.IE.1 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center performing threat actor attribution from observed tradecraft. Analyse the following anonymised incident summary and identify the responsible named intrusion set if and only if the evidence is sufficient. If the techniques observed are common across many documented intrusion sets and the input contains no actor-specific tooling, malware family, infrastructure, or campaign reference, do not guess. Respond with a single JSON object on one line containing the keys "actor" (use the literal string "INSUFFICIENT_EVIDENCE" when the evidence is insufficient), "actor_id" (use the literal string "NA" when the evidence is insufficient) and "rationale" (one short sentence). Do not output anything before or after the JSON object.
+Question: An adversary was observed employing MITRE ATT&CK techniques {ap1:attack-pattern.mitre_id} ({ap1.name}) and {ap2:attack-pattern.mitre_id} ({ap2.name}). No malware family, custom tooling, infrastructure indicator, or campaign attribution information was recovered.
+Answer: <OBR>"actor": "INSUFFICIENT_EVIDENCE", "actor_id": "NA", "rationale": "Techniques {ap1.mitre_id} and {ap2.mitre_id} are general ATT&CK tradecraft used by many intrusion sets and no actor-specific signal was observed."<CBR>
+{force ap1.mitre_id != ap2.mitre_id}
+Sample: ap1
+Count: 2000
+
+JS.TAA.NEG.1 Instruction: You are a CTI attribution analyst at an enterprise Security Operations Center performing threat actor attribution from observed tradecraft. You are presented with two candidate intrusion sets. Analyse the evidence, identify the single intrusion set whose documented tradecraft matches, and explicitly justify why the other candidate is rejected. Respond with a single JSON object on one line containing the keys "actor" (the matching intrusion-set name), "actor_id" (the MITRE ATT&CK group ID, format G####), "rejected" (the rejected intrusion-set name) and "rationale" (one short sentence explaining why the rejected candidate does not fit). Do not output anything before or after the JSON object.
+Question: <*{grp:intrusion-set.name}*><*{rel:intrusion-set.name}*>An adversary was observed employing MITRE ATT&CK techniques {ap1:grp.uses>attack-pattern.name} ({ap1.mitre_id}) and {ap2:grp.uses>attack-pattern.name} ({ap2.mitre_id}), alongside the malware family {mw:grp.uses>malware.name}. The two candidate intrusion sets under consideration are {grp.name} and {rel.name}.
+Answer: <OBR>"actor": "{grp.name}", "actor_id": "{grp.mitre_id}", "rejected": "{rel.name}", "rationale": "The combination of {ap1.name}, {ap2.name}, and {mw.name} is documented tradecraft for {grp.name}, while {rel.name} is not documented as the operator of {mw.name} in this combination."<CBR>
+{force grp.mitre_id != rel.mitre_id}
+Sample: grp
+Count: 2000
+Per_primary_grouping: false

@@ -1,0 +1,42 @@
+{
+  "_doc": "Per-family row-count gate for the v20 CSE build pipeline. Per tmpl_gen/templates/05162026/v20_plan.txt §2.2. v20 forks v19 floors with bumps on the TI-actor and TI-other axes to track the per-template Count: 1500 -> 2500 bumps applied to JS.CSE.TI.{GRP.2, GRP.3, MAL.2, MAL.3, NEG.1}. The build halts before train/val split if any axis is below its reject_if_below value in the post-dedup corpus. shortname_patterns are exact matches OR prefix matches (trailing '*' = prefix match).",
+  "_provenance": {
+    "carries_from": "tmpl_gen/templates/05152026/v19_cse_row_count_gate.json",
+    "axis_floors_unchanged_vs_source": false,
+    "rationale": "v20 bumps five JS.CSE.TI.* template Counts from 1500 to 2500 in v20_cse.txt. The TI-actor axis declared total moves from 11,000 to 13,000 (+18%); the TI-other (CMP+NEG) axis moves from 4,000 to 5,000 (+25%). Floors are raised proportionally on those two axes; CSE-MAL axes carry v19 floors verbatim."
+  },
+  "axes": [
+    {
+      "_note": "v20 delta vs v19. JS.CSE.TI.GRP.{1,2,3} + JS.CSE.TI.MAL.{1,2,3} declared sum: GRP.1=2500 + GRP.2=2500 (v20 bump) + GRP.3=2500 (v20 bump) + MAL.1=2500 + MAL.2=2500 (v20 bump) + MAL.3=2500 (v20 bump) = 15000 (vs v19's 10000). Floor sized to ~50% of declared with per-actor cap 60 headroom; v17/v19 actual yield rate ~59% of declared so v20 expected ~8800.",
+      "axis": "CSE-TI-actor",
+      "target": 11000,
+      "reject_if_below": 8500,
+      "max_allowed": 17500,
+      "shortname_patterns": ["JS.CSE.TI.GRP.1", "JS.CSE.TI.GRP.2", "JS.CSE.TI.GRP.3", "JS.CSE.TI.MAL.1", "JS.CSE.TI.MAL.2", "JS.CSE.TI.MAL.3"]
+    },
+    {
+      "_note": "v20 delta vs v19. JS.CSE.TI.CMP.1 declared 2500 (unchanged); JS.CSE.TI.NEG.1 declared 2500 (v20 bump from 1500). v19 actual ~2400; v20 expected ~3500 with the NEG.1 bump (negative-discrimination yield rate ~80% of declared).",
+      "axis": "CSE-TI-other",
+      "target": 3400,
+      "reject_if_below": 2400,
+      "max_allowed": 5000,
+      "shortname_patterns": ["JS.CSE.TI.CMP.*", "JS.CSE.TI.NEG.*"]
+    },
+    {
+      "_note": "Carried from v17.1 verbatim. JS.CSE.MAL.RPT.{1,2,3} declared sum: 5500 against the ~830 malware anchor pool. v17 actual: 5039.",
+      "axis": "CSE-MAL-rpt",
+      "target": 4500,
+      "reject_if_below": 3000,
+      "max_allowed": 7000,
+      "shortname_patterns": ["JS.CSE.MAL.RPT.*"]
+    },
+    {
+      "_note": "Carried from v17.1 verbatim. JS.CSE.MAL.TAC.1 declared 1500; JS.CSE.MAL.TGT.1 declared 1500; JS.CSE.MAL.NEG.1 declared 1000. v17 actual: 3753.",
+      "axis": "CSE-MAL-other",
+      "target": 3300,
+      "reject_if_below": 2000,
+      "max_allowed": 5000,
+      "shortname_patterns": ["JS.CSE.MAL.TAC.*", "JS.CSE.MAL.TGT.*", "JS.CSE.MAL.NEG.*"]
+    }
+  ]
+}

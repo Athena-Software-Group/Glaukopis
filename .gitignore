@@ -482,4 +482,22 @@ _v19_cse_build/*
 !_v19_cse_build/watcher.sh
 !_v19_cse_build/build_val_slice.py
 !_v19_cse_build/letter_balance_gate.py
+
+# v20 vintage (same in-repo build-infra carve-out as v19; per
+# tmpl_gen/templates/05162026/v20_plan.txt §1.3).
+!_v20_core_build/
+_v20_core_build/*
+!_v20_core_build/_neo4j_check.py
+!_v20_core_build/watcher.sh
+!_v20_core_build/build_val_slice.py
+!_v20_core_build/validate_corpus.py
+!_v20_taa_build/
+_v20_taa_build/*
+!_v20_taa_build/watcher.sh
+!_v20_taa_build/build_val_slice.py
+!_v20_cse_build/
+_v20_cse_build/*
+!_v20_cse_build/watcher.sh
+!_v20_cse_build/build_val_slice.py
+!_v20_cse_build/letter_balance_gate.py
 SFT/test/SFT/test/benchmark_data/
