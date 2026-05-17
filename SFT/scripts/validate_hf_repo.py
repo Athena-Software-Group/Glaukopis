@@ -38,8 +38,10 @@ PRESETS = {
              "athena-cti-sft-qwen25-14b-v20-cse", "athena-cti-sft-qwen25-14b-v20-recalibrate"],
             "qwen2.5-14b"),
 }
-REQUIRED_FILES = {"config.json", "tokenizer_config.json", "model.safetensors.index.json"}
+REQUIRED_FILES = {"config.json", "tokenizer_config.json"}
 TOKENIZER_ANY_OF = ({"tokenizer.json"}, {"tokenizer.model"}, {"vocab.json", "merges.txt"})
+WEIGHT_INDEX_NAMES = ("model.safetensors.index.json", "pytorch_model.bin.index.json")
+SINGLE_WEIGHT_NAMES = ("model.safetensors", "pytorch_model.bin")
 
 
 def _load_dotenv():
@@ -57,27 +59,55 @@ def _resolve_token(cli):
     return cli or os.environ.get("HF_TOKEN") or os.environ.get("HUGGINGFACE_TOKEN")
 
 
+def _detect_weight_layout(files):
+    """Return (kind, names) for the weight files: ('sharded', [idx_name]),
+    ('single', [weight_name]), or ('none', []). Sharded takes precedence."""
+    fs = set(files)
+    for idx in WEIGHT_INDEX_NAMES:
+        if idx in fs:
+            return "sharded", [idx]
+    for single in SINGLE_WEIGHT_NAMES:
+        if single in fs:
+            return "single", [single]
+    return "none", []
+
+
 def _check_manifest(files):
     missing = REQUIRED_FILES - set(files)
     if missing:
         return False, f"missing required files: {sorted(missing)}"
     if not any(group <= set(files) for group in TOKENIZER_ANY_OF):
         return False, f"no usable tokenizer (need any of {[sorted(g) for g in TOKENIZER_ANY_OF]})"
-    shards = [f for f in files if f.startswith("model-") and f.endswith(".safetensors")]
-    if not shards:
-        return False, "no model-*.safetensors shards"
-    return True, f"{len(shards)} shard(s), tokenizer present"
+    kind, _ = _detect_weight_layout(files)
+    if kind == "sharded":
+        shards = [f for f in files if (f.startswith("model-") and f.endswith(".safetensors"))
+                  or (f.startswith("pytorch_model-") and f.endswith(".bin"))]
+        if not shards:
+            return False, "weight index present but no model-*/pytorch_model-* shards"
+        return True, f"sharded ({len(shards)} shard(s)), tokenizer present"
+    if kind == "single":
+        return True, "single-file weights, tokenizer present"
+    return False, f"no weight files (looked for {list(WEIGHT_INDEX_NAMES + SINGLE_WEIGHT_NAMES)})"
 
 
-def _check_shard_sizes(api, repo_id, files_info):
+def _check_weight_sizes(api, repo_id, files_info, files):
+    kind, names = _detect_weight_layout(files)
+    if kind == "none":
+        return False, "no weight files to size-check"
+    by_path = {fi.path: fi.size for fi in files_info if fi.size is not None}
+    if kind == "single":
+        size = by_path.get(names[0])
+        if size is None:
+            return False, f"{names[0]} listed but no size metadata"
+        return True, f"single file {names[0]}, size={size / 1e9:.2f} GB"
     from huggingface_hub import hf_hub_download
-    idx_path = hf_hub_download(repo_id=repo_id, filename="model.safetensors.index.json")
+    idx_path = hf_hub_download(repo_id=repo_id, filename=names[0])
     index = json.loads(Path(idx_path).read_text())
     total = index.get("metadata", {}).get("total_size")
     shard_names = sorted(set(index.get("weight_map", {}).values()))
-    actual = sum(fi.size for fi in files_info if fi.path in shard_names and fi.size is not None)
+    actual = sum(by_path.get(s, 0) for s in shard_names)
     if total is not None and abs(actual - total) > 1024:
-        return False, f"shard size mismatch: index total_size={total}, sum of shard sizes={actual}"
+        return False, f"shard size mismatch: index total_size={total}, sum={actual}"
     return True, f"shards={len(shard_names)}, total={actual / 1e9:.2f} GB"
 
 
@@ -115,13 +145,21 @@ def validate_repo(repo_id, expected_cfg, token, deep):
     files = [s.rfilename for s in info.siblings]
     files_info = [type("F", (), dict(path=s.rfilename, size=s.size))() for s in info.siblings]
     ok_man, msg_man = _check_manifest(files); print(f"  [{'PASS' if ok_man else 'FAIL'}] manifest    : {msg_man}")
-    ok_shard, msg_shard = _check_shard_sizes(api, repo_id, files_info); print(f"  [{'PASS' if ok_shard else 'FAIL'}] shard sizes : {msg_shard}")
-    ok_cfg, msg_cfg = _check_config(api, repo_id, expected_cfg); print(f"  [{'PASS' if ok_cfg else 'FAIL'}] config      : {msg_cfg}")
-    results = [ok_man, ok_shard, ok_cfg]
-    if deep:
-        ok_tok, msg_tok = _check_tokenizer_roundtrip(repo_id, token)
-        print(f"  [{'PASS' if ok_tok else 'FAIL'}] tokenizer   : {msg_tok}")
-        results.append(ok_tok)
+    results = [ok_man]
+    if ok_man:
+        ok_w, msg_w = _check_weight_sizes(api, repo_id, files_info, files)
+        print(f"  [{'PASS' if ok_w else 'FAIL'}] weight sizes: {msg_w}")
+        ok_cfg, msg_cfg = _check_config(api, repo_id, expected_cfg)
+        print(f"  [{'PASS' if ok_cfg else 'FAIL'}] config      : {msg_cfg}")
+        results += [ok_w, ok_cfg]
+        if deep:
+            ok_tok, msg_tok = _check_tokenizer_roundtrip(repo_id, token)
+            print(f"  [{'PASS' if ok_tok else 'FAIL'}] tokenizer   : {msg_tok}")
+            results.append(ok_tok)
+    else:
+        print(f"  [SKIP] downstream checks skipped (manifest failed); files on repo:")
+        for f in sorted(files):
+            print(f"           - {f}")
     return all(results)
 
 
