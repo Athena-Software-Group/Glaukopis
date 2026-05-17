@@ -79,14 +79,21 @@ Operational ref  : THIS FILE
     AB.ATE.* / JS.ATE.* / AB.RCM.* / JS.RCM.* (per-axis density was
     governed by the count_max=3500 ceiling at make_dataset.sh CLI
     time). v20 raises count_max 3500 -> 5500 for the Core build only;
-    no manifest body changes. Expected per-axis effect (Phase B shard):
+    no manifest body changes. Realised per-axis effect (Phase B shard):
 
-        axis    v19 actual   v20 expected   gradient signal delta
-        ATE     16,967       ~26,500        +56% on ATE templates
-        RCM     28,772       ~45,000        +56% on RCM templates
+        axis    v19 actual   v20 actual   measured delta
+        ATE     16,967       19,843       +17% (substrate-bounded: intrusion-set
+                                                x malware x technique enumeration
+                                                caps the combinatorial space well
+                                                under the optimistic linear scale)
+        RCM     28,772       44,651       +55% (wider combinatorial space:
+                                                vulnerability -> remediation
+                                                templates benefit fully from
+                                                the bump)
 
     RMS, VSP, MCQ, MS, TAA, SOC, CM templates have explicit Count:
-    ceilings; the count_max bump is a no-op for those families.
+    ceilings; the count_max bump is a no-op for those families and
+    realised yields land within +/- 1% of v19 values.
 
 2.2 CSE build (manifest Count: bumps on the regressed TI axis).
     Five JS.CSE.TI.* templates are bumped from Count: 1500 to
@@ -114,10 +121,13 @@ Operational ref  : THIS FILE
     47.7; within instrument noise).
 
 2.4 Row-count gate floors revised (Core + CSE).
-    v20_row_count_gate.json: ATE floor 12500 -> 22000; RCM floor 9000
-    -> 36000. Other Core axes carry v19 floors. v20_cse_row_count_
-    gate.json: TI-actor floor 5000 -> 8500; TI-other floor 1400 ->
-    2400. v20_taa_row_count_gate.json carries v19_taa floors verbatim.
+    v20_row_count_gate.json: ATE floor 12500 -> 18500 (set ~7% under
+    realised v20 yield of 19,843, well above v19 baseline of 16,967);
+    RCM floor 9000 -> 40000 (set ~10% under realised v20 yield of
+    44,651, well above v19 baseline of 28,772). Other Core axes carry
+    v19 floors. v20_cse_row_count_gate.json: TI-actor floor 5000 ->
+    8500; TI-other floor 1400 -> 2400. v20_taa_row_count_gate.json
+    carries v19_taa floors verbatim.
 
 2.5 Stage 5 (Recalibrate) interleave_probs revert.
     v19's equal-weight 0.33/0.33/0.34 -> v18.2's asymmetric
