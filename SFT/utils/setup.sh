@@ -303,34 +303,56 @@ fi
 # as root on a Debian/Ubuntu base, then drop the installer into $HOME so the
 # script still works for unprivileged callers on shared boxes (RunPod, etc.).
 if ! command -v conda >/dev/null 2>&1; then
-    echo "=== conda not found — installing Miniconda to \$HOME/miniconda3 ==="
-    if command -v apt-get >/dev/null 2>&1 && [[ $(id -u) -eq 0 ]]; then
-        MINICONDA_APT_DEPS=()
-        command -v curl  >/dev/null 2>&1 || MINICONDA_APT_DEPS+=("curl")
-        command -v bzip2 >/dev/null 2>&1 || MINICONDA_APT_DEPS+=("bzip2")
-        [[ -f /etc/ssl/certs/ca-certificates.crt ]] || MINICONDA_APT_DEPS+=("ca-certificates")
-        if [[ ${#MINICONDA_APT_DEPS[@]} -gt 0 ]]; then
-            echo "  installing apt prereqs: ${MINICONDA_APT_DEPS[*]}"
-            DEBIAN_FRONTEND=noninteractive apt-get update -y >/dev/null
-            DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-                "${MINICONDA_APT_DEPS[@]}" >/dev/null
-        fi
-    fi
-    MINICONDA_INSTALLER="/tmp/Miniconda3-latest-Linux-x86_64.sh"
-    if command -v curl >/dev/null 2>&1; then
-        curl -fsSL -o "${MINICONDA_INSTALLER}" \
-            https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
-    elif command -v wget >/dev/null 2>&1; then
-        wget -qO "${MINICONDA_INSTALLER}" \
-            https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+    # Recover from "conda installed but not on PATH" before reinstalling.
+    # This happens when a prior setup.sh run installed Miniconda to
+    # $HOME/miniconda3 but the shell session predates that install (or the
+    # PATH export was never persisted via `conda init`). In that case the
+    # binary is already on disk and reusing it is correct; reinstalling
+    # would either trip the installer's "directory already exists" guard
+    # or wipe perfectly good environments.
+    if [[ -x "${HOME}/miniconda3/bin/conda" ]]; then
+        echo "=== conda not on PATH but \$HOME/miniconda3 exists — reusing it ==="
+        export PATH="${HOME}/miniconda3/bin:${PATH}"
     else
-        echo "  [FATAL] neither curl nor wget on PATH; cannot fetch Miniconda installer." >&2
-        echo "          Install one of them (apt-get install -y curl) and rerun." >&2
-        exit 1
+        echo "=== conda not found — installing Miniconda to \$HOME/miniconda3 ==="
+        if command -v apt-get >/dev/null 2>&1 && [[ $(id -u) -eq 0 ]]; then
+            MINICONDA_APT_DEPS=()
+            command -v curl  >/dev/null 2>&1 || MINICONDA_APT_DEPS+=("curl")
+            command -v bzip2 >/dev/null 2>&1 || MINICONDA_APT_DEPS+=("bzip2")
+            [[ -f /etc/ssl/certs/ca-certificates.crt ]] || MINICONDA_APT_DEPS+=("ca-certificates")
+            if [[ ${#MINICONDA_APT_DEPS[@]} -gt 0 ]]; then
+                echo "  installing apt prereqs: ${MINICONDA_APT_DEPS[*]}"
+                DEBIAN_FRONTEND=noninteractive apt-get update -y >/dev/null
+                DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+                    "${MINICONDA_APT_DEPS[@]}" >/dev/null
+            fi
+        fi
+        MINICONDA_INSTALLER="/tmp/Miniconda3-latest-Linux-x86_64.sh"
+        if command -v curl >/dev/null 2>&1; then
+            curl -fsSL -o "${MINICONDA_INSTALLER}" \
+                https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+        elif command -v wget >/dev/null 2>&1; then
+            wget -qO "${MINICONDA_INSTALLER}" \
+                https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+        else
+            echo "  [FATAL] neither curl nor wget on PATH; cannot fetch Miniconda installer." >&2
+            echo "          Install one of them (apt-get install -y curl) and rerun." >&2
+            exit 1
+        fi
+        # -b batch (no prompts), -p prefix. If $HOME/miniconda3 exists but
+        # lacks bin/conda (broken half-install from an aborted prior run),
+        # the installer refuses with "File or directory already exists".
+        # Detect that ahead of time and pass -u (update in place) so reruns
+        # heal a broken tree instead of bailing out.
+        MINICONDA_INSTALL_FLAGS=(-b -p "${HOME}/miniconda3")
+        if [[ -d "${HOME}/miniconda3" ]]; then
+            echo "  [recovery] \$HOME/miniconda3 exists but bin/conda is missing; running installer with -u"
+            MINICONDA_INSTALL_FLAGS=(-b -u -p "${HOME}/miniconda3")
+        fi
+        bash "${MINICONDA_INSTALLER}" "${MINICONDA_INSTALL_FLAGS[@]}"
+        rm -f "${MINICONDA_INSTALLER}"
+        export PATH="${HOME}/miniconda3/bin:${PATH}"
     fi
-    bash "${MINICONDA_INSTALLER}" -b -p "${HOME}/miniconda3"
-    rm -f "${MINICONDA_INSTALLER}"
-    export PATH="${HOME}/miniconda3/bin:${PATH}"
 fi
 
 # shellcheck disable=SC1091
