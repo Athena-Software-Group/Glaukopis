@@ -2,6 +2,18 @@
 
 A benchmarking framework for evaluating Large Language Models (LLMs) on Cyber Threat Intelligence (CTI) tasks.
 
+The harness is base-model-agnostic; the same prompts, scoring code, and
+response-cache layout apply to public hosted models (via `-hf` aliases)
+and to private fine-tuned checkpoints (via `-vllm` aliases). The
+canonical private targets are the four v20 checkpoints on
+`Qwen/Qwen2.5-14B-Instruct` (`…-v20-{core,taa,cse,recalibrate}`); the
+planned follow-ons port the same v20 chain to
+`meta-llama/Llama-3.1-8B-Instruct` and `google/gemma-4-31B-it` (see
+[`../SFT_FLOW.md`](../SFT_FLOW.md) for the chain and
+[`../autotrain/README.md`](../autotrain/README.md) for the launcher
+roster). Add their `-vllm` aliases to `pipelines/models.py` when each
+ports lands.
+
 ## Overview
 
 Athena CTI Bench provides a comprehensive evaluation suite for assessing Large Language Model (LLM) performance across fifteen key Cyber Threat Intelligence (CTI) and general reasoning tasks.
@@ -337,18 +349,48 @@ Without this, base Llama-3.1-8B emits `<|end_of_text|>` as token 1 on
 open-ended CTI prompts (ATE, RMS, TAA, RCM) and returns empty strings,
 producing misleading 0% baselines.
 
-**Available `-vllm` model keys**:
+**Available `-vllm` model keys** (selected; full list in
+[`pipelines/models.py`](pipelines/models.py)):
 
-| Key | Backing model |
+*Base models (public, served from local weights):*
+
+| Key                                   | Backing model |
 |---|---|
-| `llama-3-8b-base-vllm`                    | `meta-llama/Llama-3.1-8B`                         |
-| `llama-3-8b-vllm`                         | `meta-llama/Meta-Llama-3.1-8B-Instruct`           |
-| `qwen3-32b-vllm`                          | `Qwen/Qwen3-32B`                                  |
-| `athena-cti-cpt-llama31-8b-v1-vllm`       | `asg-ai/athena-cti-cpt-llama31-8b-v1`             |
-| `athena-cti-sft-llama31-8b-abaligned-v4-vllm` | `asg-ai/athena-cti-sft-llama31-8b-abaligned-v4` |
+| `llama-3-8b-base-vllm`                | `meta-llama/Llama-3.1-8B` |
+| `llama-3-8b-vllm`                     | `meta-llama/Meta-Llama-3.1-8B-Instruct` |
+| `qwen2.5-14b-vllm`                    | `Qwen/Qwen2.5-14B-Instruct` |
+| `qwen3-32b-vllm`                      | `Qwen/Qwen3-32B` |
+| `gemma-4-31b-it-vllm`                 | `google/gemma-4-31B-it` |
+
+*Canonical v20 SFT checkpoints (Qwen-2.5-14B-Instruct, chained):*
+
+| Key                                                  | Backing model |
+|---|---|
+| `athena-cti-sft-qwen25-14b-v20-core-vllm`            | `asg-ai/athena-cti-sft-qwen25-14b-v20-core` |
+| `athena-cti-sft-qwen25-14b-v20-taa-vllm`             | `asg-ai/athena-cti-sft-qwen25-14b-v20-taa` |
+| `athena-cti-sft-qwen25-14b-v20-cse-vllm`             | `asg-ai/athena-cti-sft-qwen25-14b-v20-cse` |
+| `athena-cti-sft-qwen25-14b-v20-recalibrate-vllm`     | `asg-ai/athena-cti-sft-qwen25-14b-v20-recalibrate` *(headline)* |
+
+*Legacy checkpoints (retained for regression comparison):*
+
+| Key                                                  | Backing model |
+|---|---|
+| `athena-cti-sft-qwen25-14b-v19-recalibrate-vllm`     | `asg-ai/athena-cti-sft-qwen25-14b-v19-recalibrate` |
+| `athena-cti-sft-qwen25-14b-v18-2-vllm`               | `asg-ai/athena-cti-sft-qwen25-14b-v18-2` *(prior production ship)* |
+| `athena-cti-cpt-llama31-8b-v1-vllm`                  | `asg-ai/athena-cti-cpt-llama31-8b-v1` |
+| `athena-cti-sft-llama31-8b-abaligned-v7` *(no -vllm suffix; loads via transformers)* | `asg-ai/athena-cti-sft-llama31-8b-abaligned-v7` |
+
+*Planned aliases (land when the v20 chain ports to additional bases):*
+
+| Key (planned)                                              | Backing model |
+|---|---|
+| `athena-cti-sft-llama31-8b-v20-recalibrate-vllm` *(planned)* | `…/athena-cti-sft-llama31-8b-v20-recalibrate` |
+| `athena-cti-sft-gemma4-31b-v20-recalibrate-vllm` *(planned)* | `…/athena-cti-sft-gemma4-31b-v20-recalibrate` |
 
 Additional keys can be registered by adding an entry to `model_mapping` in
-`pipelines/models.py` with the `-vllm` suffix.
+`pipelines/models.py` with the `-vllm` suffix; the suffix is the only
+contract that routes the call through `VLLMModel` rather than the
+local transformers path.
 
 **Config via env** (consumed by `VLLMModel` on the client side):
 
@@ -373,10 +415,11 @@ is unsafe (RoPE positions past the trained max produce NaN).
 
 | Model family | Native ctx | `--max-len` | `--max-num-seqs` | `--batch` |
 |---|---:|---:|---:|---:|
-| Qwen2.5-14B-Instruct  | 32768 | 32768 | 32 | 32 |
-| Qwen2.5-32B-Instruct  | 32768 | 32768 | 16 | 16 |
-| Llama-3.1-8B-Instruct | 131072 | 65536 | 32-64 | 32-64 |
+| Qwen2.5-14B-Instruct  | 32768  | 32768 | 32     | 32     |
+| Qwen2.5-32B-Instruct  | 32768  | 32768 | 16     | 16     |
+| Llama-3.1-8B-Instruct | 131072 | 65536 | 32-64  | 32-64  |
 | Foundation-Sec-8B (Llama-3.1 base) | 131072 | 49152 | 32 | 32 |
+| Gemma-4-31B-it        | 262144 | 49152 | 16     | 16     |
 
 Match `--batch` (client) to `--max-num-seqs` (server) so client concurrency
 does not queue beyond engine capacity. Validated v15 W1 invocation for the

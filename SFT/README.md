@@ -8,11 +8,17 @@ from Sophia CTI templates via [`tmpl_gen`](../tmpl_gen/README.md),
 continued pre-training (CPT) and supervised fine-tuning (SFT) runs are
 launched from [`cpt/`](../cpt/README.md) and
 [`autotrain/`](autotrain/README.md), and evaluation is driven from
-[`test/`](test/README.md) against the AthenaBench suite. The current
-targets are **Llama-3.1-8B-Instruct** (SFT) and **Llama-3.1-8B** (CPT
-base); the training datasets are the AthenaBench-aligned
-`ift_data_2026_04_23_trimmed_v3` (full SFT) and `…_v4` (LoRA SFT, MCQ
-and TAA dropped).
+[`test/`](test/README.md) against the AthenaBench, CyberMetric, and
+CyberSOCEval suites. The current canonical SFT target is
+**Qwen-2.5-14B-Instruct** under the **v20** chain (four sequential
+launchers producing the cumulative `v20-core → v20-taa → v20-cse →
+v20-recalibrate` checkpoints; `v20-recalibrate` is the headline
+release). The earlier **Llama-3.1-8B-Instruct + v7** recipe remains a
+fully documented 8B baseline (62.64 % strict F1 on `athena-rms`). CPT
+continues to target **Llama-3.1-8B** (base) for corpus-level adaptation.
+
+For the full v20 chain — template manifests, dataset shards, launchers,
+recipes, and sign-off gates — see [`SFT_FLOW.md`](SFT_FLOW.md).
 
 ---
 
@@ -67,46 +73,57 @@ Full flag reference: `./utils/setup.sh --help`.
 
 ### b) Train an SFT model
 
-Full-parameter SFT of `Llama-3.1-8B-Instruct` on the AthenaBench-aligned
-v3 dataset (`ift_data_2026_04_23_trimmed_v3`) via LlamaFactory +
-DeepSpeed ZeRO-3, launched by
-[`autotrain/run_abaligned_sft.sh`](autotrain/run_abaligned_sft.sh):
+The canonical pipeline is the **v20 chain** — full-parameter SFT of
+`Qwen-2.5-14B-Instruct` across four sequential launchers, each
+consuming the prior stage's pushed HF checkpoint as its base. The
+template manifests, row-count gates, build watchers, and master plan
+all live under [`tmpl_gen/templates/05162026/`](../tmpl_gen/templates/05162026/);
+see [`SFT_FLOW.md`](SFT_FLOW.md) for the full description.
 
 ```bash
-# Confirm the 37 MB training file is on-host (gitignored; rsync from workstation).
-ls -lh SFT/data/ift_data_2026_04_23_trimmed_v3.json
+# Confirm the seven v20 JSON shards are on-host (gitignored; rsync from workstation,
+# or build via tmpl_gen/data_generation/make_dataset.sh -- see SFT_FLOW.md §2).
+ls -lh SFT/data/ift_data_2026_05_16_v20_{core_a_kb_mcq_taa_soc_cm_ms_yn,core_b_rms_ate_vsp_rcm,core_val,taa,taa_val,cse,cse_val}.json
 
 conda activate llm-sft
 cd SFT/autotrain
-./run_abaligned_sft.sh --dry-run        # inspect the llamafactory-cli command first
-./run_abaligned_sft.sh                  # 3 epochs, lr=1e-5, bf16, ZeRO-3
+
+# Stage 1+2: broad re-anchor (Phase A) + AthenaBench catalog drill (Phase B).
+./run_sft_qwen25_14b_v20_core.sh         # ~13 h on 8xH100, ~26 h on 4xH100 -> v20-core
+
+# Stage 3: TAA Classic narrow drill on top of v20-core.
+./run_sft_qwen25_14b_v20_taa.sh          # ~6-8 h on 8xH100              -> v20-taa
+
+# Stage 4: CyberSOCEval letter-set narrow drill on top of v20-taa.
+./run_sft_qwen25_14b_v20_cse.sh          # ~4-6 h on 8xH100              -> v20-cse
+
+# Stage 5: 3-shard interleaved low-LR recalibration on top of v20-cse.
+./run_sft_qwen25_14b_v20_recalibrate.sh  # ~95-115 min on 4xH100         -> v20-recalibrate
 ```
 
-On exit 0 the merged full-weight model is pushed to
-`hf://${HF_USERNAME}/athena-cti-sft-llama31-8b-abaligned-v3`. ZeRO-3 CPU
-offload is auto-enabled on single-GPU hosts; override with `--offload` /
-`--no-offload`.
+Each launcher pushes its merged full-weight checkpoint to
+`hf://${HF_USERNAME}/athena-cti-sft-qwen25-14b-v20-{core,taa,cse,recalibrate}`
+on exit 0. ZeRO-3 CPU offload is auto-enabled at < 4 GPUs (Core / TAA /
+CSE) and < 8 GPUs (Recalibrate); override with `--offload` /
+`--no-offload`. All four accept `--dry-run` to print the
+`llamafactory-cli` invocation without executing.
 
-LoRA variant on the v4 dataset (MCQ + TAA dropped; the adapter is merged
-at upload time):
+**Legacy 8B baseline** — full-parameter SFT of `Llama-3.1-8B-Instruct`
+on the consolidated v7 dataset (~181 k rows). First Llama-3.1-8B run
+to land above the v0 baseline on every athena task; in particular
+`athena-rms` recovered from 5.88 % (v0) / 0.00 % (v6) to
+**62.64 % strict F1**. Full recipe details, hyperparameter rationale,
+validated benchmark scores, and troubleshooting are in
+[`autotrain/README.md`](autotrain/README.md) (*v7 recipe and results*
+section).
 
 ```bash
-./run_abaligned_sft_v4.sh               # LoRA r=16, 1 epoch
+./run_abaligned_sft_v7.sh                # Llama-3.1-8B, v7, 3 epochs, lr=1e-5, cutoff 4096
 ```
 
-Current canonical recipe (full-parameter SFT on the consolidated v7
-dataset; supersedes v6 which regressed `athena-rms` to 0 % F1):
-
-```bash
-./run_abaligned_sft_v7.sh               # 3 epochs, lr=1e-5, cutoff_len=4096, ZeRO-3
-```
-
-v7 is the first run to land above the v0 baseline on every athena
-task; in particular `athena-rms` recovered from 5.88 % (v0) /
-0.00 % (v6) to **62.64 % strict F1**. Full recipe details,
-hyperparameter rationale, validated benchmark scores, and
-troubleshooting are in [`autotrain/README.md`](autotrain/README.md)
-(*v7 recipe and results* section).
+Older Llama-3.1-8B launchers (`run_abaligned_sft.sh`,
+`run_abaligned_sft_v4.sh`, etc.) are retained for provenance; see the
+table in [`autotrain/README.md`](autotrain/README.md).
 
 ### c) Train a CPT (continued pre-training) model
 
@@ -348,20 +365,29 @@ documented in [`tmpl_gen/README.md`](../tmpl_gen/README.md).
 
 ### Train — SFT and CPT launchers
 
-Two training modes are supported, both driven by LlamaFactory:
+The canonical SFT pipeline is the four-stage v20 chain on
+Qwen-2.5-14B-Instruct. Each stage consumes the prior stage's pushed
+HF checkpoint as its base model; only the final stage's checkpoint is
+the headline release. CPT lives at the repo root and targets the
+Llama-3.1-8B base. Older Llama-3.1-8B and Qwen-2.5-14B SFT launchers
+(v3 / v4 / v7 / v8.x / v9 / v10–v19) are retained for provenance.
 
-| Mode | Launcher | Default recipe |
-|------|----------|----------------|
-| SFT (full-parameter, **canonical**) | [`autotrain/run_abaligned_sft_v7.sh`](autotrain/run_abaligned_sft_v7.sh) | Llama-3.1-8B-Instruct, consolidated `v7` dataset (~181k rows), 3 epochs, lr=1e-5, bf16, ZeRO-3, `cutoff_len=4096` |
-| SFT (full-parameter, legacy) | [`autotrain/run_abaligned_sft.sh`](autotrain/run_abaligned_sft.sh) | Llama-3.1-8B-Instruct, `v3` dataset, 3 epochs, lr=1e-5, bf16, ZeRO-3 |
-| SFT (LoRA) | [`autotrain/run_abaligned_sft_v4.sh`](autotrain/run_abaligned_sft_v4.sh) | Llama-3.1-8B-Instruct, `v4` dataset, LoRA r=16, 1 epoch |
-| CPT | [`cpt/train_cpt.sh`](../cpt/train_cpt.sh) | Llama-3.1-8B (base), LoRA r=32, 1 epoch, packed raw text |
+| Stage | Launcher | Base model | Push target |
+|---|---|---|---|
+| **v20 / 1+2 Core** | [`autotrain/run_sft_qwen25_14b_v20_core.sh`](autotrain/run_sft_qwen25_14b_v20_core.sh) | `Qwen/Qwen2.5-14B-Instruct` | `…/athena-cti-sft-qwen25-14b-v20-core` |
+| **v20 / 3 TAA** | [`autotrain/run_sft_qwen25_14b_v20_taa.sh`](autotrain/run_sft_qwen25_14b_v20_taa.sh) | `asg-ai/athena-cti-sft-qwen25-14b-v20-core` | `…/athena-cti-sft-qwen25-14b-v20-taa` |
+| **v20 / 4 CSE** | [`autotrain/run_sft_qwen25_14b_v20_cse.sh`](autotrain/run_sft_qwen25_14b_v20_cse.sh) | `asg-ai/athena-cti-sft-qwen25-14b-v20-taa` | `…/athena-cti-sft-qwen25-14b-v20-cse` |
+| **v20 / 5 Recalibrate** | [`autotrain/run_sft_qwen25_14b_v20_recalibrate.sh`](autotrain/run_sft_qwen25_14b_v20_recalibrate.sh) | `asg-ai/athena-cti-sft-qwen25-14b-v20-cse` | `…/athena-cti-sft-qwen25-14b-v20-recalibrate` |
+| **8B baseline (v7)** | [`autotrain/run_abaligned_sft_v7.sh`](autotrain/run_abaligned_sft_v7.sh) | `meta-llama/Llama-3.1-8B-Instruct` | `…/athena-cti-sft-llama31-8b-abaligned-v7` |
+| **CPT** | [`cpt/train_cpt.sh`](../cpt/train_cpt.sh) | `meta-llama/Llama-3.1-8B` (base) | `…/athena-cti-cpt-llama31-8b-<run-id>` |
 
 Every launcher accepts `--dry-run` (print the `llamafactory-cli`
-command and exit) and auto-configures DeepSpeed offload for
-single-GPU hosts. On exit 0 the merged full-weight model is pushed to
-`hf://${HF_USERNAME}/<repo-id>`. Flag reference, checkpoint layout,
-and hyperparameter rationale are in
+command and exit) and auto-configures DeepSpeed offload based on
+visible GPU count. On exit 0 the merged full-weight checkpoint is
+pushed to `hf://${HF_USERNAME}/<repo-id>`. Per-stage recipe details
+(cutoff, packing, eff_bs, LR schedule, sign-off gates) are in
+[`SFT_FLOW.md`](SFT_FLOW.md); flag-reference, checkpoint layout, and
+historical-launcher index are in
 [`autotrain/README.md`](autotrain/README.md) and
 [`cpt/README.md`](../cpt/README.md).
 
@@ -390,12 +416,16 @@ tooling (`test/utils/diff_hf_vllm_responses.py`) are documented in
 
 ## Notes
 
-- **GPU requirements**: Full-parameter SFT of Llama-3.1-8B-Instruct on
-  an A100 80 GB requires ZeRO-3 with CPU offload (auto-enabled by the
-  autotrain launcher on single-GPU hosts). The LoRA `v4` recipe fits
-  without offload. See
-  [`autotrain/README.md`](autotrain/README.md) for memory budgets per
-  configuration.
+- **GPU requirements**: The v20 Qwen-2.5-14B chain is sized for
+  8×H100 80 GB (Phase A / Phase B / TAA / CSE) and 4×H100 80 GB
+  (Recalibrate); Phase B (cutoff 16384, packing off) is the
+  memory-tight stage. The v20 launchers auto-flip ZeRO-3 CPU offload
+  on at < 4 GPUs (Core / TAA / CSE) and < 8 GPUs (Recalibrate);
+  override with `--offload` / `--no-offload`. The legacy 8B v7
+  full-parameter recipe runs on a single A100 80 GB with ZeRO-3 + CPU
+  offload, or on ≥ 2× 80 GB without offload. See
+  [`autotrain/README.md`](autotrain/README.md) and
+  [`SFT_FLOW.md`](SFT_FLOW.md) for per-stage memory budgets.
 - **CUDA compatibility**: Verify that your PyTorch CUDA version
   matches your driver's supported CUDA version before starting
   training. Mismatches cause silent failures or crashes.
