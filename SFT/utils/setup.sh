@@ -23,7 +23,13 @@
 #   5. [test]  SFT/test requirements + git-lfs + CyberSOCEval data fetch
 #              (Athena/CTI/CyberMetric data are committed regular files; only
 #              CyberSOCEval requires post-checkout downloads, which run via
-#              SFT/test/utils/fetch_cybersoceval_data.py unless --skip-cybersoceval)
+#              SFT/test/utils/fetch_cybersoceval_data.py. The fetch is gated
+#              to --mode test and --mode vllm only -- it is intentionally
+#              skipped under --mode all and --mode train so training-only
+#              boxes don't burn time pulling PurpleLlama/CrowdStrike PDFs
+#              they will never read. --skip-cybersoceval still forces it
+#              off in the test/vllm modes; populate later from any host with
+#              `cd SFT/test && python utils/fetch_cybersoceval_data.py`.)
 #   6. [vllm]  vllm + openai client into an isolated env (default: vllm),
 #              plus the [test] stack into ctibench unless --no-bench-env
 #   7. flash-attn (only for the train stack; optional, non-fatal; skipped
@@ -217,7 +223,18 @@ echo "  cuda tag  : ${CUDA_TAG}"
 echo "  extras    : ${EXTRAS:-<none>}"
 echo "  flash-attn: $([[ ${INSTALL_FLASH_ATTN} -eq 1 ]] && echo yes || echo no)"
 echo "  git lfs   : $([[ ${RUN_LFS_PULL} -eq 1 ]] && echo yes || echo no)"
-echo "  cybersoce : $([[ ${FETCH_CYBERSOCEVAL} -eq 1 ]] && echo yes || echo no)"
+# CyberSOCEval fetch is mode-gated: only test and vllm pull the corpus,
+# even when FETCH_CYBERSOCEVAL=1 (the default). Surfacing the effective
+# decision here avoids the "I asked for --mode all, why didn't the data
+# land?" question downstream.
+if [[ ${FETCH_CYBERSOCEVAL} -eq 1 && ( "${MODE}" == "test" || "${MODE}" == "vllm" ) ]]; then
+    CSE_SUMMARY="yes"
+elif [[ ${FETCH_CYBERSOCEVAL} -eq 0 ]]; then
+    CSE_SUMMARY="no (--skip-cybersoceval)"
+else
+    CSE_SUMMARY="no (mode=${MODE}; only test/vllm fetch)"
+fi
+echo "  cybersoce : ${CSE_SUMMARY}"
 if [[ "${MODE}" == "vllm" ]]; then
     echo "  bench env : $([[ ${INSTALL_BENCH_WITH_VLLM} -eq 1 ]] && echo 'yes (ctibench co-install)' || echo no)"
 fi
@@ -545,10 +562,17 @@ install_stack() {
         # from CrowdStrike/CyberSOCEval_data, the threat-intel question set
         # comes from meta-llama/PurpleLlama, and per-question PDFs are
         # downloaded from the upstream vendors then converted to text via
-        # pypdf (already pinned in SFT/test/requirements.txt). Idempotent
-        # on rerun. Skipped with --skip-cybersoceval (e.g. air-gapped hosts
-        # or training-only nodes that won't run benchmarks).
-        if [[ ${FETCH_CYBERSOCEVAL} -eq 1 ]]; then
+        # pypdf (already pinned in SFT/test/requirements.txt). The fetch
+        # is wall-time non-trivial (~5-15 min of PDFs/JSONs, gated by the
+        # ic3.gov / web.archive.org rate limits) and pulls ~200MB to disk,
+        # so it's gated to operator intent: only --mode test and --mode
+        # vllm trigger the download. --mode all and --mode train skip it
+        # silently because those paths are normally used on training
+        # boxes that will never read the corpus. --skip-cybersoceval still
+        # forces it off in test/vllm modes (e.g. air-gapped reruns).
+        # Idempotent: rerunning fetch_cybersoceval_data.py from any host
+        # populates it on demand.
+        if [[ ${FETCH_CYBERSOCEVAL} -eq 1 && ( "${MODE}" == "test" || "${MODE}" == "vllm" ) ]]; then
             echo "=== Fetching CyberSOCEval data (CrowdStrike + Meta PurpleLlama) ==="
             set +e
             (cd "${TEST_DIR}" && python utils/fetch_cybersoceval_data.py \
@@ -564,9 +588,13 @@ install_stack() {
                 echo "         Other benchmark suites (athena, ctibench, cybermetric)"
                 echo "         are unaffected."
             fi
-        else
+        elif [[ ${FETCH_CYBERSOCEVAL} -eq 0 ]]; then
             echo "=== Skipping CyberSOCEval data fetch (--skip-cybersoceval) ==="
             echo "         To populate later:"
+            echo "             cd ${TEST_DIR} && python utils/fetch_cybersoceval_data.py"
+        else
+            echo "=== Skipping CyberSOCEval data fetch (mode=${MODE}; only test/vllm fetch) ==="
+            echo "         To populate later (any host, no torch needed):"
             echo "             cd ${TEST_DIR} && python utils/fetch_cybersoceval_data.py"
         fi
     fi

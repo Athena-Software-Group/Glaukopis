@@ -39,13 +39,20 @@
 # Default push target: ${HF_USERNAME}/athena-cti-sft-qwen25-14b-v21-core.
 #
 # Estimated wall-time:
-#   8xH100 80GB SXM        : ~13 h (Phase A 8 h, Phase B 5 h).
-#   8xRTX PRO 6000 96GB    : ~17-20 h. Recipe is byte-identical to 8xH100
-#     SXM (GPU_COUNT==8 hits the same A_GA=1 / B_GA=1 / GC-disabled path);
-#     wall-time inflates ~1.3-1.5x because ZeRO-3 all-gather/reduce-scatter
-#     runs over PCIe Gen5 (~64 GB/s) instead of NVLink (~900 GB/s). The
-#     extra 16 GB/rank vs H100 is unused at this recipe -- preserved for
-#     v18.1 effective-batch parity.
+#   8xH100 80GB SXM        : ~13 h (Phase A 8 h, Phase B 5 h). Default
+#     --gc auto path: GC disabled on GPU_COUNT==8, activations fit in
+#     ~78GB/rank with 2GB headroom.
+#   8xRTX PRO 6000 96GB    : ~21-25 h with --gc on (REQUIRED on this
+#     hardware; observed OOM at Phase A step 0 with the default GC-off
+#     path -- activations at cutoff=8192 packing=on bs=2 consume the full
+#     94GB rank capacity in pytorch>=2.5 / transformers>=4.50, leaving no
+#     margin for the o_proj backward temp buffer. --gc on adds ~25%
+#     wall-clock vs the H100 SXM path via activation recompute but
+#     preserves identical gradients / optimizer steps / effective batch,
+#     well inside the v21 §5.1 ±1.5pp reproducibility band.) ZeRO-3
+#     all-gather/reduce-scatter runs over PCIe Gen5 (~64 GB/s) instead
+#     of NVLink (~900 GB/s) which adds another ~1.3-1.5x communication
+#     overhead on top.
 #   4xH100 80GB SXM        : ~26 h (Phase A 16 h, Phase B 10 h). GPU-count
 #     auto-detect halves micro-batches per optimizer step (A_GA 2->4,
 #     B_GA 1->2) so effective batch is preserved; gradient checkpointing
@@ -58,9 +65,18 @@
 #                                      [--report-to wandb|none]
 #                                      [--phase a|b|ab]   # default: ab
 #                                      [--offload | --no-offload]
+#                                      [--gc auto|on|off] # default: auto
 #                                      [--skip-eval]      # disables in-training eval
 #                                      [--resume]         # resume from latest ckpt in phase dir
 #                                      [--dry-run]
+#
+# --gc controls gradient checkpointing. auto (default) disables GC for
+# GPU_COUNT>=8 and enables for <8, matching the original v18.1 8xH100 SXM
+# tuning. Pass --gc on to force-enable (REQUIRED on 8xRTX PRO 6000 96GB
+# to avoid the Phase A step-0 OOM; recipe-equivalent, just adds ~25%
+# wall-clock via activation recompute). --gc off is the escape hatch for
+# hardware with even more headroom than 80GB H100 SXM if/when that
+# materializes -- no current use case.
 #
 # --skip-eval is the targeted fix for in-training eval OOM (observed on
 # 4xH100 at Phase A step 500 cutoff=8192: ForCausalLMLoss materialises a
@@ -94,6 +110,7 @@ DRY_RUN=0
 OFFLOAD="auto"
 SKIP_EVAL=0
 RESUME=0
+GC_OVERRIDE="auto"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -105,14 +122,16 @@ while [[ $# -gt 0 ]]; do
         --dry-run)      DRY_RUN=1;         shift ;;
         --offload)      OFFLOAD="on";      shift ;;
         --no-offload)   OFFLOAD="off";     shift ;;
+        --gc)           GC_OVERRIDE="$2";  shift 2 ;;
         --skip-eval)    SKIP_EVAL=1;       shift ;;
         --resume)       RESUME=1;          shift ;;
-        -h|--help) sed -n '3,72p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) sed -n '3,79p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "Unknown argument: $1" >&2; exit 1 ;;
     esac
 done
 
 case "${PHASE}" in a|b|ab) ;; *) echo "--phase must be a|b|ab" >&2; exit 1 ;; esac
+case "${GC_OVERRIDE}" in auto|on|off) ;; *) echo "--gc must be auto|on|off" >&2; exit 1 ;; esac
 
 for env_file in "${SFT_DIR}/.env" "${SFT_DIR}/.env.local" "${SCRIPT_DIR}/.env"; do
     [[ -f "${env_file}" ]] && { set -a; source "${env_file}"; set +a; }
@@ -198,12 +217,21 @@ A_BATCH=2; A_GA=$(( 16 / (A_BATCH * EFFECTIVE_GPUS) )); [[ ${A_GA} -lt 1 ]] && A
 B_BATCH=1; B_GA=$(( 8  / (B_BATCH * EFFECTIVE_GPUS) )); [[ ${B_GA} -lt 1 ]] && B_GA=1
 
 # v14.1 hot-fix (--disable_gradient_checkpointing True) was sized for 8xH100
-# where ZeRO-3 shards each parameter across 8 ranks; on <8 GPUs the per-rank
-# weight + activation footprint OOMs (Phase B at cutoff=16384 packing=off is
-# the danger case), so re-enable gradient checkpointing (LlamaFactory default)
-# for those configurations.
-GC_FLAG="--disable_gradient_checkpointing True"
-[[ "${GPU_COUNT}" -lt 8 ]] && GC_FLAG=""
+# 80GB SXM where ZeRO-3 shards each parameter across 8 ranks; on <8 GPUs the
+# per-rank weight + activation footprint OOMs (Phase B at cutoff=16384
+# packing=off is the danger case), so re-enable gradient checkpointing
+# (LlamaFactory default) for those configurations. --gc on additionally
+# forces GC back on regardless of GPU count -- required on 8xRTX PRO 6000
+# 96GB (Verda) where the 8xH100-sized GC-off recipe OOMs at Phase A step 0
+# despite the +16GB/rank nominal headroom; see the §"Estimated wall-time"
+# header block for the full diagnosis.
+case "${GC_OVERRIDE}" in
+    on)   GC_FLAG="" ;;
+    off)  GC_FLAG="--disable_gradient_checkpointing True" ;;
+    auto) GC_FLAG="--disable_gradient_checkpointing True"
+          [[ "${GPU_COUNT}" -lt 8 ]] && GC_FLAG=""
+          ;;
+esac
 
 EXTRA_BASE="--deepspeed ${DS_CONFIG} --save_total_limit 2 --save_only_model True --enable_liger_kernel True ${GC_FLAG}"
 if [[ ${SKIP_EVAL} -eq 1 ]]; then
@@ -258,6 +286,7 @@ echo "  phase A dir  : ${PHASE_A_DIR}"
 echo "  phase B dir  : ${PHASE_B_DIR}"
 echo "  hf repo      : ${REPO_ID}  (only Phase B is pushed)"
 echo "  alloc conf   : ${PYTORCH_CUDA_ALLOC_CONF}"
+echo "  grad-ckpt    : $([[ -z "${GC_FLAG}" ]] && echo on || echo off)  (--gc ${GC_OVERRIDE})"
 echo "  skip-eval    : $([[ ${SKIP_EVAL} -eq 1 ]] && echo on || echo off)"
 echo "  resume       : $([[ ${RESUME} -eq 1 ]] && echo on || echo off)"
 echo
