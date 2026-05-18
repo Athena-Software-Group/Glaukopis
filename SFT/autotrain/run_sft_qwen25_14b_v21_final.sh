@@ -29,14 +29,21 @@
 #      sign-off if you want the canonical short name -- pass
 #      --repo-id asg-ai/athena-cti-sft-qwen25-14b-v21 to override here)
 #
-# Estimated wall-time on 8xH100: ~4-6 h (corpus size matches v17.1).
+# Estimated wall-time:
+#   8xH100 80GB: ~4-6 h (corpus size matches v17.1).
+#   4xH100 80GB: ~8-12 h. GPU-count auto-detect: D_GA scales 2->4 so
+#     effective batch stays 16; gradient checkpointing is auto-enabled
+#     for <8 GPUs (see GC_FLAG below) to fit cutoff=4096 packing=on in
+#     80GB once the ZeRO-3 weight shard doubles.
 #
 # Full v21 chain (run sequentially after each push completes on HF):
 #   1. ./run_sft_qwen25_14b_v21_core.sh        # broad + axis  -> v21-core
 #   2. ./run_sft_qwen25_14b_v21_plus_taa.sh    # TAA Classic   -> v21-taa
 #   3. ./run_sft_qwen25_14b_v21_final.sh       # CSE drill     -> v21-cse (final)
 #
-# Estimated total wall-clock on 8xH100 80GB: ~24 h.
+# Estimated total wall-clock:
+#   8xH100 80GB: ~24 h.
+#   4xH100 80GB: ~46-54 h.
 #
 # Usage:
 #   ./run_sft_qwen25_14b_v21_final.sh [--repo-id USER/NAME]

@@ -38,7 +38,13 @@
 # Only Phase B's final merged model is pushed to HF.
 # Default push target: ${HF_USERNAME}/athena-cti-sft-qwen25-14b-v21-core.
 #
-# Estimated wall-time on 8xH100 80GB: ~13 h (Phase A 8 h, Phase B 5 h).
+# Estimated wall-time:
+#   8xH100 80GB: ~13 h (Phase A 8 h, Phase B 5 h).
+#   4xH100 80GB: ~26 h (Phase A 16 h, Phase B 10 h). GPU-count auto-detect
+#     halves micro-batches per optimizer step (A_GA 2->4, B_GA 1->2) so
+#     effective batch is preserved; gradient checkpointing is re-enabled
+#     for <8 GPUs to keep Phase B's cutoff=16384 packing=off pass within
+#     80GB once the ZeRO-3 weight shard doubles.
 #
 # Usage:
 #   ./run_sft_qwen25_14b_v21_core.sh [--repo-id USER/NAME]
@@ -133,7 +139,15 @@ EFFECTIVE_GPUS=$(( GPU_COUNT > 0 ? GPU_COUNT : 1 ))
 A_BATCH=2; A_GA=$(( 16 / (A_BATCH * EFFECTIVE_GPUS) )); [[ ${A_GA} -lt 1 ]] && A_GA=1
 B_BATCH=1; B_GA=$(( 8  / (B_BATCH * EFFECTIVE_GPUS) )); [[ ${B_GA} -lt 1 ]] && B_GA=1
 
-EXTRA_COMMON="--deepspeed ${DS_CONFIG} --save_total_limit 2 --save_only_model True --enable_liger_kernel True --eval_dataset ${VAL_NAME} --val_size 0"
+# v14.1 hot-fix (--disable_gradient_checkpointing True) was sized for 8xH100
+# where ZeRO-3 shards each parameter across 8 ranks; on <8 GPUs the per-rank
+# weight + activation footprint OOMs (Phase B at cutoff=16384 packing=off is
+# the danger case), so re-enable gradient checkpointing (LlamaFactory default)
+# for those configurations.
+GC_FLAG="--disable_gradient_checkpointing True"
+[[ "${GPU_COUNT}" -lt 8 ]] && GC_FLAG=""
+
+EXTRA_COMMON="--deepspeed ${DS_CONFIG} --save_total_limit 2 --save_only_model True --enable_liger_kernel True ${GC_FLAG} --eval_dataset ${VAL_NAME} --val_size 0"
 
 export FORCE_TORCHRUN=1
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
@@ -142,6 +156,9 @@ for var in NNODES NODE_RANK NPROC_PER_NODE MASTER_ADDR MASTER_PORT RDZV_ID MIN_N
 done
 if [[ "${GPU_COUNT}" -gt 0 ]]; then
     export NPROC_PER_NODE="${GPU_COUNT}"
+fi
+if [[ "${GPU_COUNT}" -ne 8 ]]; then
+    echo "[warn] recipe sized for 8 GPUs (8xH100); detected ${GPU_COUNT}. Effective batch preserved via grad-accum auto-scaling: phase_A eff_bs=$(( A_BATCH * A_GA * EFFECTIVE_GPUS )) phase_B eff_bs=$(( B_BATCH * B_GA * EFFECTIVE_GPUS ))." >&2
 fi
 
 DRY_FLAG=(); [[ ${DRY_RUN} -eq 1 ]] && DRY_FLAG=( --dry-run )

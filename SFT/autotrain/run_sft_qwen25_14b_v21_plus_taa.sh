@@ -25,7 +25,12 @@
 #   - Gradient checkpointing OFF (v14.1 hot-fix carried forward)
 #   - Push: YES -> ${HF_USERNAME}/athena-cti-sft-qwen25-14b-v21-taa
 #
-# Estimated wall-time on 8xH100: ~6-8 h.
+# Estimated wall-time:
+#   8xH100 80GB: ~6-8 h.
+#   4xH100 80GB: ~12-16 h. GPU-count auto-detect: D_GA scales 2->4 so
+#     effective batch stays 16; gradient checkpointing is auto-enabled
+#     for <8 GPUs (see GC_FLAG below) to fit cutoff=4096 packing=on in
+#     80GB once the ZeRO-3 weight shard doubles.
 #
 # Full v21 chain (run sequentially after each push completes on HF):
 #   1. ./run_sft_qwen25_14b_v21_core.sh        # broad + axis  -> v21-core
