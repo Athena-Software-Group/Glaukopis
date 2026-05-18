@@ -142,12 +142,40 @@ for ds in ift_data_2026_05_18_v21_core_a_kb_mcq_taa_soc_cm_ms_yn \
     fi
 done
 
-GPU_COUNT="$(python - <<'PY' 2>/dev/null || echo 0
+if [[ -n "${GPU_COUNT_OVERRIDE:-}" ]]; then
+    GPU_COUNT="${GPU_COUNT_OVERRIDE}"
+    GPU_PROBE_SOURCE="override"
+else
+    GPU_COUNT="$(python - <<'PY' 2>/dev/null || echo 0
 import torch
 print(torch.cuda.device_count() if torch.cuda.is_available() else 0)
 PY
 )"
-GPU_COUNT="${GPU_COUNT:-0}"
+    GPU_PROBE_SOURCE="torch"
+    if [[ -z "${GPU_COUNT}" || "${GPU_COUNT}" == "0" ]] && command -v nvidia-smi >/dev/null 2>&1; then
+        NVIDIA_COUNT="$(nvidia-smi -L 2>/dev/null | wc -l | tr -d ' ')"
+        if [[ -n "${NVIDIA_COUNT}" && "${NVIDIA_COUNT}" != "0" ]]; then
+            GPU_COUNT="${NVIDIA_COUNT}"
+            GPU_PROBE_SOURCE="nvidia-smi (torch probe returned 0 -- check 'python -c \"import torch; torch.cuda.is_available()\"' in this shell)"
+        fi
+    fi
+    GPU_COUNT="${GPU_COUNT:-0}"
+fi
+# Fail-fast guard: nproc_per_node=0 produces a cryptic torchrun AssertionError
+# 30 seconds into the run. Better to refuse to launch and surface the probe
+# diagnostic immediately. Override with GPU_COUNT_OVERRIDE=N when running on
+# a CPU-only host for inspection (e.g. --dry-run).
+if [[ "${GPU_COUNT}" == "0" && ${DRY_RUN} -eq 0 ]]; then
+    echo "[FAIL] GPU probe returned 0 (source: ${GPU_PROBE_SOURCE})." >&2
+    echo "  Verify in this shell:" >&2
+    echo "    python -c 'import torch; print(torch.cuda.is_available(), torch.cuda.device_count())'" >&2
+    echo "    nvidia-smi -L" >&2
+    echo "    echo CUDA_VISIBLE_DEVICES=\${CUDA_VISIBLE_DEVICES:-<unset>}" >&2
+    echo "  Then either fix the env (conda activate llm-sft; unset CUDA_VISIBLE_DEVICES)" >&2
+    echo "  or re-run with an explicit override:" >&2
+    echo "    GPU_COUNT_OVERRIDE=4 ./run_sft_qwen25_14b_v21_core.sh ..." >&2
+    exit 3
+fi
 
 if [[ "${OFFLOAD}" == "auto" ]]; then
     if [[ "${GPU_COUNT}" -lt 4 ]]; then OFFLOAD="on"; else OFFLOAD="off"; fi
