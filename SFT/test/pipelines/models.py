@@ -360,6 +360,19 @@ model_mapping = {
     # isolates the v19-cse base-checkpoint contribution. Pushed by
     # SFT/autotrain/run_sft_qwen25_14b_v19_recalibrate_v18p2mix.sh.
     'athena-cti-sft-qwen25-14b-v19-recalibrate-v18p2mix-vllm': 'asg-ai/athena-cti-sft-qwen25-14b-v19-recalibrate-v18p2mix',
+    # v20 5-stage chain (Qwen2.5-14B-Instruct + v20 Phase A/B Core, +TAA, +CSE,
+    # +Recalibrate). v20 carries the v19 chain topology forward with an axis-
+    # density rebalance (raised count_max for ATE / RCM / CSE-TI in the catalog
+    # build) and a Stage 5 revert to the v18.2-style interleave probabilities.
+    # Headline gate (v20_plan.txt §5.4, carried from v19 §5.4): RMS >= 54.0,
+    # MCQ >= 62.0, TAA Classic >= 40.0, CSE-TI >= 34.0, CSE-Malware >= 20.0,
+    # ATE >= 62.0, RCM >= 67.5, VSP >= 80.0, CM-2K >= 85.5, CM-10K >= 81.0.
+    # Pushed by SFT/autotrain/run_sft_qwen25_14b_v20_{core,taa,cse,recalibrate}.sh
+    # (or chained via SFT/autotrain/run_sft_qwen25_14b_v20_chain.sh).
+    'athena-cti-sft-qwen25-14b-v20-core-vllm':                 'asg-ai/athena-cti-sft-qwen25-14b-v20-core',
+    'athena-cti-sft-qwen25-14b-v20-taa-vllm':                  'asg-ai/athena-cti-sft-qwen25-14b-v20-taa',
+    'athena-cti-sft-qwen25-14b-v20-cse-vllm':                  'asg-ai/athena-cti-sft-qwen25-14b-v20-cse',
+    'athena-cti-sft-qwen25-14b-v20-recalibrate-vllm':          'asg-ai/athena-cti-sft-qwen25-14b-v20-recalibrate',
     # HF Inference Providers route. Custom community fine-tunes are not in the
     # default Together/Fireworks/Novita/etc. catalogs; this alias only resolves
     # if the model is exposed via an HF Inference Endpoint or the legacy
