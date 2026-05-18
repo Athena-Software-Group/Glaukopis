@@ -1,0 +1,167 @@
+v21 training plan -- v18.1 strict reproducibility experiment
+============================================================
+
+Vintage label    : v21   (HF: v21)
+Architecture     : Three-stage chain identical in shape to v18.1
+                   (Core -> TAA Classic -> CSE). Forked from v18.1
+                   for one purpose: rebuild the datasets from byte-
+                   identical template / gate inputs at a new date
+                   stamp, retrain on the rebuilt data with the v18.1
+                   recipe, and benchmark against the v18.1 numbers
+                   to verify the v18.1 -> v19 -> v20 regression is
+                   data-build-driven (not silent recipe drift).
+Author date      : 2026-05-18 (vintage dir tmpl_gen/templates/05182026/)
+Predecessors     : v18.1 (asg-ai/athena-cti-sft-qwen25-14b-v18-1-{core,
+                          taa,cse}, the published v18.1 chain).
+                          Reference targets for the §5 sign-off gate.
+Operational ref  : THIS FILE
+                   Sophia-CTI-Templates-v21.txt       (Core; byte-eq
+                                                       v18.1 Core)
+                   Sophia-CTI-Templates-v21_taa.txt   (TAA; byte-eq
+                                                       v16 / v18.1 TAA)
+                   Sophia-CTI-Templates-v21_cse.txt   (CSE; byte-eq
+                                                       v17.1 / v18.1 CSE)
+                   v21_row_count_gate.json            (Core; byte-eq
+                                                       v18.1)
+                   v21_taa_row_count_gate.json        (TAA; byte-eq
+                                                       v16 / v18.1)
+                   v21_cse_row_count_gate.json        (CSE; byte-eq
+                                                       v17.1 / v18.1)
+                   _v21_core_build/watcher.sh         (Core build,
+                                                       forked from
+                                                       _v18p1_build)
+                   _v21_taa_build/watcher.sh          (TAA build)
+                   _v21_cse_build/watcher.sh          (CSE build)
+                   SFT/autotrain/run_sft_qwen25_14b_v21_core.sh
+                   SFT/autotrain/run_sft_qwen25_14b_v21_plus_taa.sh
+                   SFT/autotrain/run_sft_qwen25_14b_v21_final.sh
+
+
+1. Why v21 exists -- the v18.1 -> v19 -> v20 regression
+-------------------------------------------------------
+
+1.1 v18.1-core posted Total Score 58.9 (master results table).
+    v19-core posted 58.5 and v20-core posted 57.9 against the same
+    eval suite. Each chain Stage 1 launcher
+    (run_sft_qwen25_14b_v{18p1,19,20}_core.sh) is documented as
+    "byte-identical recipe to v18p1_core.sh; only dataset names,
+    HF push target, and build-dir / plan references change". The
+    regression is therefore in one of:
+      (a) silent template-content drift between vintages;
+      (b) silent row-count-gate drift between vintages;
+      (c) data-build non-determinism (substrate sampling, dedup
+          tiebreaks, shuffle seeding) at fixed inputs.
+
+1.2 v21 disambiguates by forcing (a) and (b) to identity vs v18.1:
+    every template body and every gate JSON in tmpl_gen/templates/
+    05182026/ is a SHA-verified byte copy of its v18.1 / v16 / v17.1
+    predecessor. Only paperwork (this file, README-21.md) and naming
+    (file paths, dataset names, HF push targets, build dirs) differs.
+
+1.3 If v21 reproduces v18.1 within instrument noise (§5.1), the
+    v19 / v20 regression is fully attributed to dataset deltas
+    documented in the v19 / v20 plans (manifest Count: bumps,
+    floor lifts, etc.) and the v18.1 corpus shape is the locked
+    Core target for any subsequent vintage.
+
+1.4 If v21 misses v18.1 numbers despite byte-identical inputs, the
+    regression is (c) data-build non-determinism, and the next step
+    is seed-pin + sampling-stable substrate sampling in the
+    watcher.sh / make_dataset.sh pipeline (out of scope for v21).
+
+
+2. v18.1 -> v21 deltas
+----------------------
+
+  (1) Template files: ZERO content change. v21 copies (SHA-verified):
+        Sophia-CTI-Templates-v21.txt     <- v18.1 (Core)
+        Sophia-CTI-Templates-v21_taa.txt <- v16   (TAA, as v18.1 used)
+        Sophia-CTI-Templates-v21_cse.txt <- v17.1 (CSE, as v18.1 used)
+
+  (2) Row-count gates: ZERO content change. v21 copies (SHA-verified):
+        v21_row_count_gate.json     <- v18_1_row_count_gate.json
+        v21_taa_row_count_gate.json <- v16_row_count_gate.json
+        v21_cse_row_count_gate.json <- v17_1_row_count_gate.json
+
+  (3) Training recipe: ZERO change. v21 launchers
+      (run_sft_qwen25_14b_v21_{core,plus_taa,final}.sh) are clones
+      of run_sft_qwen25_14b_v18p1_*.sh with only the following
+      string substitutions:
+        v18p1 / v18-1   ->  v21
+        05_11           ->  05_18
+        05112026        ->  05182026
+        _v18p1_*_build  ->  _v21_*_build
+
+  (4) HF push targets:
+        athena-cti-sft-qwen25-14b-v18-1-core ->  ...-v21-core
+        athena-cti-sft-qwen25-14b-v18-1-taa  ->  ...-v21-taa
+        athena-cti-sft-qwen25-14b-v18-1-cse  ->  ...-v21-cse
+
+  (5) Build-dir layout follows the v19 / v20 per-stage convention:
+        _v21_core_build/   (was _v18p1_build/ for v18.1 Core)
+        _v21_taa_build/    (was _v18p1_taa_build/)
+        _v21_cse_build/    (was _v18p1_cse_build/)
+      Each stage gets its own substrate / triples / logs tree;
+      none are shared.
+
+
+3. Training recipe (verbatim from v18.1; see v18_1_plan.txt §4)
+---------------------------------------------------------------
+
+3.1 Stage 1 (Core, run_sft_qwen25_14b_v21_core.sh):
+      Phase A : cutoff 8192, packing on, lr 1e-5, eff_bs 16,
+                --max-samples 240000, 1 epoch
+      Phase B : cutoff 16384, packing off, lr 5e-6, eff_bs 8,
+                --max-samples 70000, 1 epoch, eval/save 400 steps
+3.2 Stage 2 (TAA, run_sft_qwen25_14b_v21_plus_taa.sh):
+      cutoff 4096, packing on, lr 5e-6, eff_bs 16,
+      --max-samples 33000, 1 epoch, eval/save 100 steps
+3.3 Stage 3 (CSE, run_sft_qwen25_14b_v21_final.sh):
+      cutoff 4096, packing on, lr 5e-6, eff_bs 16,
+      --max-samples 33000, 1 epoch, eval/save 100 steps
+
+
+4. Datasets
+-----------
+
+      Stage 1 Phase A : ift_data_2026_05_18_v21_core_a_kb_mcq_taa_soc_cm_ms_yn,
+                        tulu_3_sft_mixture, alpaca_en_demo
+      Stage 1 Phase B : ift_data_2026_05_18_v21_core_b_rms_ate_vsp_rcm
+      Stage 1 Eval    : ift_data_2026_05_18_v21_core_val
+      Stage 2         : ift_data_2026_05_18_v21_taa  (eval: ..._val)
+      Stage 3         : ift_data_2026_05_18_v21_cse  (eval: ..._val)
+
+
+5. Sign-off and falsification
+-----------------------------
+
+5.1 v21-core (Stage 1 standalone benchmark) MUST PASS within +/- 1.5pp
+    of v18.1-core on each axis (instrument-noise band):
+      CKT  : v18.1-core 67.4   -> v21 target 65.9..68.9
+      RMS  : v18.1-core 56.3 F1 -> v21 target 54.8..57.8
+      VSP  : v18.1-core 84.3   -> v21 target 82.8..85.8
+      ATE  : v18.1-core 65.6   -> v21 target 64.1..67.1
+      RCM  : v18.1-core 71.3   -> v21 target 69.8..72.8
+      Total: v18.1-core 58.9   -> v21 target 57.4..60.4
+
+5.2 PASS (within band on all axes): v18.1-core recipe is bit-
+    reproducible from byte-identical template + gate inputs.
+    Conclude v19 / v20 regression is dataset-content driven.
+
+5.3 FAIL on any axis with v21 < v18.1-core - 1.5pp:
+    data-build non-determinism is implicated. Diagnose via
+    diff-by-hash on the rebuilt ift_data_2026_05_18_v21_*.json
+    files vs ift_data_2026_05_11_v18p1_*.json on the workstation;
+    pin the divergent stage (substrate sampling, dedup, shuffle).
+
+
+6. Sign-off
+-----------
+
+6.1 Authored 2026-05-18 as a strict-reproducibility fork of v18.1
+    after v19-core (58.5) and v20-core (57.9) both regressed against
+    v18.1-core (58.9) under "byte-identical recipe" launchers.
+6.2 Diagnosis source: master results table 2026-05-17,
+    SFT/autotrain/run_sft_qwen25_14b_v{18p1,19,20}_core.sh diff
+    review, and v18_1_plan.txt §1 (the v18 -> v18.1 corpus-driven
+    fix that originally established the v18.1-core peak).

@@ -45,6 +45,24 @@ the Qwen-2.5-14B reference chain ships.
 Per-stage recipes (cutoff, packing, LR, eff_bs, eval/save), wall-time
 budgets, and sign-off gates are in [`../SFT_FLOW.md`](../SFT_FLOW.md).
 
+### v21 chain (v18.1 byte-identical replay, Qwen-2.5-14B-Instruct)
+
+v21 is a clean re-derivation of the v18.1 chain on freshly built datasets
+(date stamp `2026_05_18`) using the SAME templates, row-count gates,
+shuffles, and per-axis Counts as v18.1, and the SAME training
+hyperparameters (`lr`, `cutoff`, `eff_bs`, `packing`, `max-samples`,
+`save/eval-steps`). Only the dataset filenames and HF push targets
+change. Purpose: recover the v18.1 Core optimum and isolate whether the
+v19/v20 regression is data-build variance vs recipe drift. See
+[`../../tmpl_gen/templates/05182026/v21_plan.txt`](../../tmpl_gen/templates/05182026/v21_plan.txt)
+for the replication recipe.
+
+| File | Stage | Base → push target |
+|---|---|---|
+| `run_sft_qwen25_14b_v21_core.sh` | 1+2 (Phase A re-anchor + Phase B catalog drill) | `Qwen/Qwen2.5-14B-Instruct` → `…/athena-cti-sft-qwen25-14b-v21-core` |
+| `run_sft_qwen25_14b_v21_plus_taa.sh` | 3 (TAA Classic refresher) | `…/v21-core` → `…/athena-cti-sft-qwen25-14b-v21-taa` |
+| `run_sft_qwen25_14b_v21_final.sh` | 4 (CSE letter-set drill, **headline**) | `…/v21-taa` → `…/athena-cti-sft-qwen25-14b-v21-cse` |
+
 ### Legacy 14B launchers (Qwen-2.5-14B, retained for regression)
 
 | File | Purpose |

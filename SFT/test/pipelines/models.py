@@ -373,6 +373,19 @@ model_mapping = {
     'athena-cti-sft-qwen25-14b-v20-taa-vllm':                  'asg-ai/athena-cti-sft-qwen25-14b-v20-taa',
     'athena-cti-sft-qwen25-14b-v20-cse-vllm':                  'asg-ai/athena-cti-sft-qwen25-14b-v20-cse',
     'athena-cti-sft-qwen25-14b-v20-recalibrate-vllm':          'asg-ai/athena-cti-sft-qwen25-14b-v20-recalibrate',
+    # v21 3-stage chain (Qwen2.5-14B-Instruct + v21 Phase A/B Core, +TAA, +CSE).
+    # v21 is a byte-identical replay of the v18.1 chain on freshly rebuilt
+    # datasets (new date stamp 2026_05_18) with the SAME templates, gates,
+    # counts, mixes, and hyperparameters as v18.1; only the dataset filenames
+    # and HF push targets change. Goal: recover the v18.1 Core optimum and
+    # establish whether the v19/v20 regression is data-build variance vs
+    # recipe drift. Headline targets (= v18.1 Core gates): CKT 62.6, RMS 55.6,
+    # VSP 76.8, plus the v18.1 TAA / CSE downstream parity. Pushed by
+    # SFT/autotrain/run_sft_qwen25_14b_v21_{core,plus_taa,final}.sh.
+    # See tmpl_gen/templates/05182026/v21_plan.txt for the replication recipe.
+    'athena-cti-sft-qwen25-14b-v21-core-vllm':                 'asg-ai/athena-cti-sft-qwen25-14b-v21-core',
+    'athena-cti-sft-qwen25-14b-v21-taa-vllm':                  'asg-ai/athena-cti-sft-qwen25-14b-v21-taa',
+    'athena-cti-sft-qwen25-14b-v21-cse-vllm':                  'asg-ai/athena-cti-sft-qwen25-14b-v21-cse',
     # HF Inference Providers route. Custom community fine-tunes are not in the
     # default Together/Fireworks/Novita/etc. catalogs; this alias only resolves
     # if the model is exposed via an HF Inference Endpoint or the legacy

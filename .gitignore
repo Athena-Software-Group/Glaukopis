@@ -500,4 +500,22 @@ _v20_cse_build/*
 !_v20_cse_build/watcher.sh
 !_v20_cse_build/build_val_slice.py
 !_v20_cse_build/letter_balance_gate.py
+
+# v21 strict-reproducibility replay of v18.1 (same in-repo build-infra
+# carve-out as v19 / v20; per tmpl_gen/templates/05182026/v21_plan.txt).
+!_v21_core_build/
+_v21_core_build/*
+!_v21_core_build/_neo4j_check.py
+!_v21_core_build/_substrate_probe_mcq.py
+!_v21_core_build/watcher.sh
+!_v21_core_build/build_val_slice.py
+!_v21_taa_build/
+_v21_taa_build/*
+!_v21_taa_build/watcher.sh
+!_v21_taa_build/build_val_slice.py
+!_v21_cse_build/
+_v21_cse_build/*
+!_v21_cse_build/watcher.sh
+!_v21_cse_build/build_val_slice.py
+!_v21_cse_build/letter_balance_gate.py
 SFT/test/SFT/test/benchmark_data/
