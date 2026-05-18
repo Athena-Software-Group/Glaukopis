@@ -1,13 +1,14 @@
 #!/bin/bash
 
-# Train an SFT model from scratch (no resume) and persist the result to a
-# dedicated output directory.
+# Train an SFT model and persist the result to a dedicated output directory.
 #
 # Wraps llamafactory-cli with the conventions used by the ift_training_*.sh
 # scripts at the SFT repo root: LoRA by default, bf16, cosine schedule,
 # wandb reporting optional. The key difference is that this launcher:
 #   - always writes to a fresh output dir (timestamped, or --output-dir),
-#     and refuses to overwrite an existing one unless --overwrite is given;
+#     and refuses to overwrite an existing one unless --overwrite or
+#     --resume is given (--resume keeps the dir and asks Trainer to pick
+#     up from the latest checkpoint-N subdir);
 #   - snapshots the effective flags + git sha to <output_dir>/train_config.json;
 #   - tees stdout+stderr to <output_dir>/train.log.
 #
@@ -21,7 +22,7 @@
 #                  [--run-name NAME] [--wandb-project NAME]
 #                  [--push-to-hf org/repo] [--hf-public] [--hf-export-dir DIR]
 #                  [--extra "--flag value --flag2 value2"]
-#                  [--overwrite] [--dry-run]
+#                  [--overwrite] [--resume] [--dry-run]
 #
 # Defaults (tuned for a single H100 80GB; override as needed):
 #   --model         meta-llama/Llama-3.1-8B-Instruct
@@ -80,6 +81,7 @@ REPORT_TO="none"
 OUTPUT_DIR=""
 EXTRA_ARGS=""
 OVERWRITE=0
+RESUME=0
 DRY_RUN=0
 RUN_NAME=""
 WANDB_PROJECT_ARG=""
@@ -111,6 +113,7 @@ while [[ $# -gt 0 ]]; do
         --hf-export-dir) HF_EXPORT_DIR="$2";     shift 2 ;;
         --extra)         EXTRA_ARGS="$2";        shift 2 ;;
         --overwrite)     OVERWRITE=1;            shift ;;
+        --resume)        RESUME=1;               shift ;;
         --dry-run)       DRY_RUN=1;              shift ;;
         -h|--help)
             sed -n '3,56p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
@@ -143,13 +146,16 @@ if [[ -z "${OUTPUT_DIR}" ]]; then
 fi
 
 if [[ -e "${OUTPUT_DIR}" ]]; then
-    if [[ ${OVERWRITE} -ne 1 ]]; then
+    if [[ ${RESUME} -eq 1 ]]; then
+        echo "[resume] keeping existing ${OUTPUT_DIR} (--resume_from_checkpoint true will auto-detect latest)"
+    elif [[ ${OVERWRITE} -ne 1 ]]; then
         echo "Output dir already exists: ${OUTPUT_DIR}" >&2
-        echo "Pass --overwrite to remove it, or choose a different --output-dir." >&2
+        echo "Pass --overwrite to remove it, --resume to continue from the latest checkpoint, or choose a different --output-dir." >&2
         exit 2
+    else
+        echo "[overwrite] removing existing ${OUTPUT_DIR}"
+        rm -rf -- "${OUTPUT_DIR}"
     fi
-    echo "[overwrite] removing existing ${OUTPUT_DIR}"
-    rm -rf -- "${OUTPUT_DIR}"
 fi
 mkdir -p "${OUTPUT_DIR}"
 LOG_FILE="${OUTPUT_DIR}/train.log"
@@ -283,6 +289,14 @@ BASE_ARGS=(
     --overwrite_output_dir False
     --save_only_model False
 )
+
+# When --resume is set, ask Transformers' Trainer to pick up from the latest
+# checkpoint in --output_dir (resume_from_checkpoint=True auto-detects the
+# newest checkpoint-N subdir). Optimizer/scheduler state, RNG, dataloader
+# position, and global_step are all restored from that subdir.
+if [[ ${RESUME} -eq 1 ]]; then
+    BASE_ARGS+=( --resume_from_checkpoint True )
+fi
 
 # shellcheck disable=SC2206
 EXTRA_ARR=( ${EXTRA_ARGS} )

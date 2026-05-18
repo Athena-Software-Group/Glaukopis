@@ -43,7 +43,11 @@
 #                                          [--output-dir DIR]
 #                                          [--report-to wandb|none]
 #                                          [--offload | --no-offload]
+#                                          [--skip-eval] [--resume]
 #                                          [--dry-run]
+#
+# --skip-eval / --resume mirror the v21_core launcher; see that script's
+# header for the in-training eval OOM rationale.
 
 set -euo pipefail
 
@@ -56,6 +60,8 @@ OUTPUT_DIR=""
 REPORT_TO="wandb"
 DRY_RUN=0
 OFFLOAD="auto"
+SKIP_EVAL=0
+RESUME=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -66,7 +72,9 @@ while [[ $# -gt 0 ]]; do
         --dry-run)      DRY_RUN=1;         shift ;;
         --offload)      OFFLOAD="on";      shift ;;
         --no-offload)   OFFLOAD="off";     shift ;;
-        -h|--help) sed -n '3,40p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        --skip-eval)    SKIP_EVAL=1;       shift ;;
+        --resume)       RESUME=1;          shift ;;
+        -h|--help) sed -n '3,45p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "Unknown argument: $1" >&2; exit 1 ;;
     esac
 done
@@ -129,7 +137,12 @@ D_BATCH=1; D_GA=$(( 16 / (D_BATCH * EFFECTIVE_GPUS) )); [[ ${D_GA} -lt 1 ]] && D
 GC_FLAG="--disable_gradient_checkpointing True"
 [[ "${GPU_COUNT}" -lt 8 ]] && GC_FLAG=""
 
-EXTRA_COMMON="--deepspeed ${DS_CONFIG} --save_total_limit 2 --save_only_model True --enable_liger_kernel True ${GC_FLAG} --eval_dataset ${VAL_NAME} --val_size 0"
+EXTRA_BASE="--deepspeed ${DS_CONFIG} --save_total_limit 2 --save_only_model True --enable_liger_kernel True ${GC_FLAG}"
+if [[ ${SKIP_EVAL} -eq 1 ]]; then
+    EXTRA_COMMON="${EXTRA_BASE} --eval_strategy no"
+else
+    EXTRA_COMMON="${EXTRA_BASE} --per_device_eval_batch_size 1 --eval_dataset ${VAL_NAME} --val_size 0"
+fi
 
 export FORCE_TORCHRUN=1
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
@@ -144,6 +157,7 @@ if [[ "${GPU_COUNT}" -ne 8 ]]; then
 fi
 
 DRY_FLAG=(); [[ ${DRY_RUN} -eq 1 ]] && DRY_FLAG=( --dry-run )
+RESUME_FLAG=(); [[ ${RESUME} -eq 1 ]] && RESUME_FLAG=( --resume )
 
 run_v21_plus_taa() {
     echo "=== v21+TAA (Qwen2.5-14B): TAA Classic narrow drill from v21-core (cutoff=4096, packing=on, lr=5e-6, eff_bs=16) [v9 recipe; CHAINED] ==="
@@ -154,7 +168,8 @@ run_v21_plus_taa() {
         --cutoff 4096 --save-steps 100 --eval-steps 100 --packing true \
         --max-samples 33000 --report-to "${REPORT_TO}" \
         --output-dir "${OUTPUT_DIR}" --push-to-hf "${REPO_ID}" \
-        --extra "${EXTRA_COMMON}" "${DRY_FLAG[@]}"
+        --extra "${EXTRA_COMMON}" \
+        ${RESUME_FLAG[@]+"${RESUME_FLAG[@]}"} ${DRY_FLAG[@]+"${DRY_FLAG[@]}"}
 }
 
 echo "  gpus visible : ${GPU_COUNT}  nproc: ${NPROC_PER_NODE:-auto}  cpu offload: ${OFFLOAD}  ds: ${DS_CONFIG}"
@@ -164,6 +179,8 @@ echo "  dataset      : ${DATASET}  (eval: ${VAL_NAME})"
 echo "  output dir   : ${OUTPUT_DIR}"
 echo "  hf repo      : ${REPO_ID}"
 echo "  alloc conf   : ${PYTORCH_CUDA_ALLOC_CONF}"
+echo "  skip-eval    : $([[ ${SKIP_EVAL} -eq 1 ]] && echo on || echo off)"
+echo "  resume       : $([[ ${RESUME} -eq 1 ]] && echo on || echo off)"
 echo
 
 run_v21_plus_taa

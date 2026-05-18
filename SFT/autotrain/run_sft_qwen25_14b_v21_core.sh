@@ -52,7 +52,27 @@
 #                                      [--report-to wandb|none]
 #                                      [--phase a|b|ab]   # default: ab
 #                                      [--offload | --no-offload]
+#                                      [--skip-eval]      # disables in-training eval
+#                                      [--resume]         # resume from latest ckpt in phase dir
 #                                      [--dry-run]
+#
+# --skip-eval is the targeted fix for in-training eval OOM (observed on
+# 4xH100 at Phase A step 500 cutoff=8192: ForCausalLMLoss materialises a
+# [batch, 8192, 152064] fp32 logits tensor for cross-entropy because
+# Liger's fused linear-cross-entropy is bypassed by Trainer.prediction_step --
+# ~9.3 GiB on top of the resident ZeRO-3 weight + activation footprint
+# tips the 80GB budget over). When --skip-eval is passed we replace the
+# eval block with --eval_strategy no, which sets do_eval=False and
+# prevents _maybe_log_save_evaluate from ever entering the prediction
+# loop. Eval-time arguments (eval_dataset/val_size) are dropped because
+# they're irrelevant when eval_strategy=no. Bench evaluation (AthenaBench
+# etc.) runs out-of-band via SFT/test/utils/serve_and_bench_v21_*.sh and
+# is unaffected.
+#
+# --resume keeps the existing --phase-{a,b}-dir and asks Trainer to pick
+# up from the newest checkpoint-N subdir (optimizer/scheduler state, RNG,
+# dataloader position, global_step all restored). Useful for OOM-recovery
+# without burning the wall-clock spent before the crash.
 
 set -euo pipefail
 
@@ -66,6 +86,8 @@ REPORT_TO="wandb"
 PHASE="ab"
 DRY_RUN=0
 OFFLOAD="auto"
+SKIP_EVAL=0
+RESUME=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -77,7 +99,9 @@ while [[ $# -gt 0 ]]; do
         --dry-run)      DRY_RUN=1;         shift ;;
         --offload)      OFFLOAD="on";      shift ;;
         --no-offload)   OFFLOAD="off";     shift ;;
-        -h|--help) sed -n '3,49p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        --skip-eval)    SKIP_EVAL=1;       shift ;;
+        --resume)       RESUME=1;          shift ;;
+        -h|--help) sed -n '3,72p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "Unknown argument: $1" >&2; exit 1 ;;
     esac
 done
@@ -147,7 +171,12 @@ B_BATCH=1; B_GA=$(( 8  / (B_BATCH * EFFECTIVE_GPUS) )); [[ ${B_GA} -lt 1 ]] && B
 GC_FLAG="--disable_gradient_checkpointing True"
 [[ "${GPU_COUNT}" -lt 8 ]] && GC_FLAG=""
 
-EXTRA_COMMON="--deepspeed ${DS_CONFIG} --save_total_limit 2 --save_only_model True --enable_liger_kernel True ${GC_FLAG} --eval_dataset ${VAL_NAME} --val_size 0"
+EXTRA_BASE="--deepspeed ${DS_CONFIG} --save_total_limit 2 --save_only_model True --enable_liger_kernel True ${GC_FLAG}"
+if [[ ${SKIP_EVAL} -eq 1 ]]; then
+    EXTRA_COMMON="${EXTRA_BASE} --eval_strategy no"
+else
+    EXTRA_COMMON="${EXTRA_BASE} --per_device_eval_batch_size 1 --eval_dataset ${VAL_NAME} --val_size 0"
+fi
 
 export FORCE_TORCHRUN=1
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
@@ -162,6 +191,7 @@ if [[ "${GPU_COUNT}" -ne 8 ]]; then
 fi
 
 DRY_FLAG=(); [[ ${DRY_RUN} -eq 1 ]] && DRY_FLAG=( --dry-run )
+RESUME_FLAG=(); [[ ${RESUME} -eq 1 ]] && RESUME_FLAG=( --resume )
 
 run_phase_a() {
     echo "=== v21-Core Phase A (Qwen2.5-14B): broad knowledge re-anchor (cutoff=8192, packing=on, lr=1e-5) ==="
@@ -172,7 +202,8 @@ run_phase_a() {
         --cutoff 8192 --save-steps 500 --eval-steps 500 --packing true \
         --max-samples 240000 --report-to "${REPORT_TO}" \
         --output-dir "${PHASE_A_DIR}" \
-        --extra "${EXTRA_COMMON}" "${DRY_FLAG[@]}"
+        --extra "${EXTRA_COMMON}" \
+        ${RESUME_FLAG[@]+"${RESUME_FLAG[@]}"} ${DRY_FLAG[@]+"${DRY_FLAG[@]}"}
 }
 
 run_phase_b() {
@@ -184,7 +215,8 @@ run_phase_b() {
         --cutoff 16384 --save-steps 400 --eval-steps 400 --packing false \
         --max-samples 70000 --report-to "${REPORT_TO}" \
         --output-dir "${PHASE_B_DIR}" --push-to-hf "${REPO_ID}" \
-        --extra "${EXTRA_COMMON}" "${DRY_FLAG[@]}"
+        --extra "${EXTRA_COMMON}" \
+        ${RESUME_FLAG[@]+"${RESUME_FLAG[@]}"} ${DRY_FLAG[@]+"${DRY_FLAG[@]}"}
 }
 
 echo "  gpus visible : ${GPU_COUNT}  cpu offload: ${OFFLOAD}"
@@ -192,6 +224,8 @@ echo "  phase A dir  : ${PHASE_A_DIR}"
 echo "  phase B dir  : ${PHASE_B_DIR}"
 echo "  hf repo      : ${REPO_ID}  (only Phase B is pushed)"
 echo "  alloc conf   : ${PYTORCH_CUDA_ALLOC_CONF}"
+echo "  skip-eval    : $([[ ${SKIP_EVAL} -eq 1 ]] && echo on || echo off)"
+echo "  resume       : $([[ ${RESUME} -eq 1 ]] && echo on || echo off)"
 echo
 
 case "${PHASE}" in
