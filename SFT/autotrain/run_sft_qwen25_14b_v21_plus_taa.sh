@@ -26,11 +26,14 @@
 #   - Push: YES -> ${HF_USERNAME}/athena-cti-sft-qwen25-14b-v21-taa
 #
 # Estimated wall-time:
-#   8xH100 80GB: ~6-8 h.
-#   4xH100 80GB: ~12-16 h. GPU-count auto-detect: D_GA scales 2->4 so
-#     effective batch stays 16; gradient checkpointing is auto-enabled
-#     for <8 GPUs (see GC_FLAG below) to fit cutoff=4096 packing=on in
-#     80GB once the ZeRO-3 weight shard doubles.
+#   8xH100 80GB SXM        : ~6-8 h.
+#   8xRTX PRO 6000 96GB    : ~8-12 h. Same recipe as 8xH100 SXM (GPU_COUNT==8
+#     path: D_GA=2, GC disabled); ~1.3-1.5x wall-time from PCIe Gen5 vs
+#     NVLink for ZeRO-3 collectives.
+#   4xH100 80GB SXM        : ~12-16 h. GPU-count auto-detect: D_GA scales
+#     2->4 so effective batch stays 16; gradient checkpointing is
+#     auto-enabled for <8 GPUs (see GC_FLAG below) to fit cutoff=4096
+#     packing=on in 80GB once the ZeRO-3 weight shard doubles.
 #
 # Full v21 chain (run sequentially after each push completes on HF):
 #   1. ./run_sft_qwen25_14b_v21_core.sh        # broad + axis  -> v21-core

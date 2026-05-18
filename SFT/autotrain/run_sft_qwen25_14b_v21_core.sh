@@ -39,12 +39,18 @@
 # Default push target: ${HF_USERNAME}/athena-cti-sft-qwen25-14b-v21-core.
 #
 # Estimated wall-time:
-#   8xH100 80GB: ~13 h (Phase A 8 h, Phase B 5 h).
-#   4xH100 80GB: ~26 h (Phase A 16 h, Phase B 10 h). GPU-count auto-detect
-#     halves micro-batches per optimizer step (A_GA 2->4, B_GA 1->2) so
-#     effective batch is preserved; gradient checkpointing is re-enabled
-#     for <8 GPUs to keep Phase B's cutoff=16384 packing=off pass within
-#     80GB once the ZeRO-3 weight shard doubles.
+#   8xH100 80GB SXM        : ~13 h (Phase A 8 h, Phase B 5 h).
+#   8xRTX PRO 6000 96GB    : ~17-20 h. Recipe is byte-identical to 8xH100
+#     SXM (GPU_COUNT==8 hits the same A_GA=1 / B_GA=1 / GC-disabled path);
+#     wall-time inflates ~1.3-1.5x because ZeRO-3 all-gather/reduce-scatter
+#     runs over PCIe Gen5 (~64 GB/s) instead of NVLink (~900 GB/s). The
+#     extra 16 GB/rank vs H100 is unused at this recipe -- preserved for
+#     v18.1 effective-batch parity.
+#   4xH100 80GB SXM        : ~26 h (Phase A 16 h, Phase B 10 h). GPU-count
+#     auto-detect halves micro-batches per optimizer step (A_GA 2->4,
+#     B_GA 1->2) so effective batch is preserved; gradient checkpointing
+#     is re-enabled for <8 GPUs to keep Phase B's cutoff=16384 packing=off
+#     pass within 80GB once the ZeRO-3 weight shard doubles.
 #
 # Usage:
 #   ./run_sft_qwen25_14b_v21_core.sh [--repo-id USER/NAME]
