@@ -6,6 +6,8 @@
 # Run this ONCE per fresh remote box BEFORE any other Glaukopis tooling.
 # After it completes, follow up with:
 #   1. rsync SFT/.env from the source box -> <target>/SFT/.env
+#      (skip if --env-file already pointed at a full credentials file;
+#       in that case just `cp` or symlink it into <target>/SFT/.env)
 #   2. rsync SFT/data/ift_data_*.json shards (gitignored datasets)
 #   3. cd <target>/SFT/utils && ./setup.sh --cuda cu128   (or cu130)
 #
@@ -15,14 +17,27 @@
 #   GIT_USER_EMAIL=you@example.com \
 #       ./bootstrap_remote.sh
 #
+# Usage (.env file; recommended on Verda/RunPod/etc. that pre-stage creds):
+#   # 1. scp this script + your .env onto the fresh host:
+#   #      scp SFT/utils/bootstrap_remote.sh root@HOST:/root/
+#   #      scp /path/to/.env                  root@HOST:/root/.env
+#   # 2. On the remote host:
+#   ./bootstrap_remote.sh --env-file /root/.env
+#   # (auto-detected if --env-file is omitted and ${HOME}/.env exists)
+#
 # Usage (interactive; token read silently):
 #   ./bootstrap_remote.sh
 #
 # Usage (flags):
 #   ./bootstrap_remote.sh --git-user-name "..." --git-user-email "..." \
 #                         --git-token ghp_xxx \
-#                         [--target ~/Glaukopis] [--branch main] \
-#                         [--repo-url https://github.com/ORG/REPO.git]
+#                         [--env-file PATH] [--target ~/Glaukopis] \
+#                         [--branch main] [--repo-url https://github.com/ORG/REPO.git]
+#
+# Precedence (highest -> lowest) for GITHUB_TOKEN / GIT_USER_NAME /
+# GIT_USER_EMAIL: CLI flag > pre-existing shell export > --env-file value
+# > interactive prompt. So passing --git-token always overrides whatever
+# the .env file says, which matches the principle of least surprise.
 #
 # Re-running is safe: existing git identity is overwritten, the github.com
 # line in ~/.git-credentials is rotated (not stacked), and an existing
@@ -35,16 +50,18 @@ BRANCH="${BRANCH:-main}"
 GIT_USER_NAME="${GIT_USER_NAME:-}"
 GIT_USER_EMAIL="${GIT_USER_EMAIL:-}"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
+ENV_FILE=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --git-user-name)  GIT_USER_NAME="$2"; shift 2 ;;
         --git-user-email) GIT_USER_EMAIL="$2"; shift 2 ;;
         --git-token)      GITHUB_TOKEN="$2"; shift 2 ;;
+        --env-file)       ENV_FILE="$2"; shift 2 ;;
         --target)         TARGET_DIR="$2"; shift 2 ;;
         --branch)         BRANCH="$2"; shift 2 ;;
         --repo-url)       REPO_URL="$2"; shift 2 ;;
-        -h|--help)        sed -n '3,28p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help)        sed -n '3,44p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "Unknown argument: $1" >&2; exit 1 ;;
     esac
 done
@@ -52,8 +69,42 @@ done
 command -v git >/dev/null 2>&1 \
     || { echo "git not installed on this host; install it before re-running." >&2; exit 1; }
 
+# .env auto-detect: if no --env-file was passed but ${HOME}/.env exists
+# (the recommended pre-stage path for Verda / RunPod / Modal / etc.),
+# use it. Skipped if the operator explicitly passed all three creds via
+# flags / shell exports, since there'd be nothing to read.
+if [[ -z "${ENV_FILE}" && -f "${HOME}/.env" ]]; then
+    if [[ -z "${GIT_USER_NAME}" || -z "${GIT_USER_EMAIL}" || -z "${GITHUB_TOKEN}" ]]; then
+        ENV_FILE="${HOME}/.env"
+        echo "=== Auto-detected ${ENV_FILE} (use --env-file '' to opt out) ==="
+    fi
+fi
+
+# Source --env-file so values persisted there fill in anything still empty
+# after CLI parsing + shell exports. Values that came from CLI flags or
+# pre-existing shell exports take precedence (snapshot-and-restore pattern).
+# `set -a` exports every assignment in the sourced file so subprocesses
+# (e.g. the upcoming `git clone`) inherit them too.
+if [[ -n "${ENV_FILE}" ]]; then
+    if [[ ! -f "${ENV_FILE}" ]]; then
+        echo "--env-file not found: ${ENV_FILE}" >&2
+        exit 2
+    fi
+    _name_pre="${GIT_USER_NAME}"
+    _email_pre="${GIT_USER_EMAIL}"
+    _token_pre="${GITHUB_TOKEN}"
+    set -a
+    # shellcheck source=/dev/null
+    source "${ENV_FILE}"
+    set +a
+    [[ -n "${_name_pre}"  ]] && GIT_USER_NAME="${_name_pre}"
+    [[ -n "${_email_pre}" ]] && GIT_USER_EMAIL="${_email_pre}"
+    [[ -n "${_token_pre}" ]] && GITHUB_TOKEN="${_token_pre}"
+fi
+
 # Interactive fill-in for anything still missing. Token read with -s so it
-# never lands on the terminal or in shell history.
+# never lands on the terminal or in shell history. Skipped automatically
+# when all three values were satisfied by CLI flags / shell exports / .env.
 if [[ -z "${GIT_USER_NAME}"  ]]; then read -rp  "Git user.name : " GIT_USER_NAME; fi
 if [[ -z "${GIT_USER_EMAIL}" ]]; then read -rp  "Git user.email: " GIT_USER_EMAIL; fi
 if [[ -z "${GITHUB_TOKEN}"   ]]; then read -rsp "GitHub PAT (ghp_...): " GITHUB_TOKEN; echo; fi
