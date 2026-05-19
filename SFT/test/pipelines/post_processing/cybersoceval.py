@@ -8,6 +8,15 @@ public leaderboard:
   2. ``$\\boxed{A,B,C}$`` LaTeX-style fallback (threat_intel_reasoning).
   3. Bare ``{...}`` JSON object via balanced-brace extraction
      (malware_analysis primary path).
+  4. Lenient regex fallback for malformed JSON: extract the first
+     ``"correct_answers": [letters]`` slice via regex regardless of the
+     surrounding JSON's validity. Recovers v21 SFT-trained Llama-3.1-8B
+     outputs that break ``json.loads`` in three documented ways: a
+     trailing-period artefact (``[].}`` instead of ``[]}``) on the Core
+     checkpoint's malware rows, duplicate ``correct_answers`` keys from
+     repetition collapse on the TAA checkpoint's TI rows, and list-of-
+     dicts schema drift on TAA malware rows. Matches the
+     letter-balance-gate tolerance in ``_v21_cse_build/letter_balance_gate.py``.
 
 The returned string is a canonical ``A,B,C`` form (sorted, upper-cased,
 deduplicated) so the evaluator can split on comma without re-parsing.
@@ -23,6 +32,12 @@ from typing import Iterable, List
 _JSON_OBJECT_RE = re.compile(r"<json_object>(.*?)</json_object>", re.DOTALL)
 _BOXED_RE = re.compile(r"\$\\boxed\{([^}]*)\}\$")
 _LETTER_RE = re.compile(r"\b([A-J])\b")
+# Lenient fallback: matches the first `"correct_answers": [...]` array even
+# when the surrounding JSON is malformed (trailing-period artefacts, duplicate
+# keys, schema drift). `[^\]]*` is sufficient because the array contents are
+# always quoted single letters -- no nested brackets to escape.
+_CORRECT_ANSWERS_ARR_RE = re.compile(r'"correct_answers"\s*:\s*\[([^\]]*)\]')
+_LETTER_QUOTED_RE = re.compile(r'"([A-J])"')
 
 
 def _extract_json_object(text: str):
@@ -120,6 +135,18 @@ def _extract_letters_from_response(response: str) -> str:
         ans = parsed.get("correct_answers")
         if isinstance(ans, list):
             return _canonicalize(ans)
+
+    # Lenient regex fallback. Triggered when the response contains a
+    # `"correct_answers": [letters]` slice but the enclosing JSON is
+    # malformed (so the balanced-brace + json.loads path returned None).
+    # Empirically catches ~all parse errors on v21 SFT-trained Llama-3.1-8B
+    # cybersoceval rows; the model's first answer commit is always well-
+    # formed even when the surrounding object collapses into trailing
+    # punctuation or duplicate-key rambling.
+    m = _CORRECT_ANSWERS_ARR_RE.search(flat)
+    if m:
+        letters = _LETTER_QUOTED_RE.findall(m.group(1))
+        return _canonicalize(letters)
 
     return ""
 
