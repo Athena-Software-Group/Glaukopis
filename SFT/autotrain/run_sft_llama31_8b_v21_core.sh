@@ -43,22 +43,16 @@
 #
 # Estimated wall-time (8B is ~1.75x lighter than Qwen2.5-14B; weight,
 # activation, and optimizer-state footprints all scale roughly linearly):
-#   8xH100 80GB SXM        : ~7-9 h (Phase A ~4-5 h, Phase B ~3-4 h).
-#     Default --gc auto path: GC disabled on GPU_COUNT==8. 8B at
-#     cutoff=8192 packing=on bs=2 fits comfortably with ~40-50GB
-#     headroom/rank under ZeRO-3.
-#   8xRTX PRO 6000 96GB    : ~11-15 h with --gc auto. 8B's lighter
-#     activation footprint typically clears the OOM mode the 14B
-#     recipe hit on this hardware, so --gc on is usually NOT required
-#     (pass it only if Phase A step 0 OOMs). ZeRO-3 all-gather /
-#     reduce-scatter still pays the PCIe Gen5 (~64 GB/s) vs NVLink
-#     (~900 GB/s) ~1.3-1.5x communication overhead.
-#   4xH100 80GB SXM        : ~14-18 h. GPU-count auto-detect halves
-#     micro-batches per optimizer step (A_GA 1->2, B_GA 1->2) so
-#     effective batch is preserved; gradient checkpointing is
-#     auto-enabled for <8 GPUs to fit Phase B's cutoff=16384
-#     packing=off pass within 80GB once the ZeRO-3 weight shard
-#     doubles.
+#   8xH100 80GB SXM        : ~8-11 h with --gc on default (Phase A
+#     ~5-6 h, Phase B ~3-4 h). Pass --gc off when FA2 is confirmed
+#     loaded to recover ~15-20% throughput (~7-9 h total).
+#   8xRTX PRO 6000 96GB    : ~13-18 h with --gc on default. ZeRO-3
+#     all-gather / reduce-scatter pays the PCIe Gen5 (~64 GB/s) vs
+#     NVLink (~900 GB/s) ~1.3-1.5x communication overhead on top of
+#     the GC throughput cost.
+#   4xH100 80GB SXM        : ~16-22 h with --gc on default. GPU-count
+#     auto-detect halves micro-batches per optimizer step (A_GA 1->2,
+#     B_GA 1->2) so effective batch is preserved.
 #
 # Usage:
 #   ./run_sft_llama31_8b_v21_core.sh [--repo-id USER/NAME]
@@ -66,15 +60,17 @@
 #                                     [--report-to wandb|none]
 #                                     [--phase a|b|ab]   # default: ab
 #                                     [--offload | --no-offload]
-#                                     [--gc auto|on|off] # default: auto
+#                                     [--gc auto|on|off] # default: on
 #                                     [--skip-eval]      # disables in-training eval
 #                                     [--resume]         # resume from latest ckpt in phase dir
 #                                     [--dry-run]
 #
-# --gc / --skip-eval / --resume semantics mirror the Qwen 14B v21 Core
+# --skip-eval / --resume semantics mirror the Qwen 14B v21 Core
 # launcher; see that script's header (run_sft_qwen25_14b_v21_core.sh)
-# for the full rationale on the GPU_COUNT>=8 GC-disable default, the
-# in-training eval OOM workaround, and the resume-from-checkpoint path.
+# for the in-training eval OOM workaround and the resume-from-checkpoint
+# path. --gc differs: this launcher defaults to --gc on (safer against
+# silent SDPA fallback on fresh llm-sft envs); pass --gc off when FA2
+# is confirmed importable to recover the original throughput target.
 
 set -euo pipefail
 
@@ -90,7 +86,7 @@ DRY_RUN=0
 OFFLOAD="auto"
 SKIP_EVAL=0
 RESUME=0
-GC_OVERRIDE="auto"
+GC_OVERRIDE="on"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -199,9 +195,16 @@ B_BATCH=1; B_GA=$(( 8  / (B_BATCH * EFFECTIVE_GPUS) )); [[ ${B_GA} -lt 1 ]] && B
 # parameter across 8 ranks. On the 8B architecture the activation
 # footprint is materially lighter, so GC-off is comfortable on both
 # 8xH100 80GB SXM and 8xRTX PRO 6000 96GB at the default Phase B
-# geometry. The same auto policy is kept for parity: GC disabled when
-# GPU_COUNT>=8, GC enabled when <8. --gc on remains the escape hatch
-# if a future hardware/library combination tightens the per-rank budget.
+# geometry -- BUT only when flash-attn 2 is actually loaded. On a fresh
+# llm-sft env where the flash-attn prebuilt wheel 404s (cu130 / unusual
+# torch+python combo) the runtime silently falls back to SDPA, whose
+# O(seq^2) attention activations exceed the per-rank budget at cutoff
+# 8192 packing=on and produce a step-0 OOM on the LM-head allgather.
+# Default flipped to --gc on for safety: ~15-20% slower than GC-off
+# (Phase A ~5-6h instead of ~4-5h on 8xH100) but immune to a silent
+# SDPA fallback. Pass --gc off when FA2 import is confirmed and the
+# throughput matters; --gc auto preserves the original GPU_COUNT>=8
+# branch for callers who want the old behaviour explicitly.
 case "${GC_OVERRIDE}" in
     on)   GC_FLAG="" ;;
     off)  GC_FLAG="--disable_gradient_checkpointing True" ;;
