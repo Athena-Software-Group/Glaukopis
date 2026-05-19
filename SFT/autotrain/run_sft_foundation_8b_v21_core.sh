@@ -1,0 +1,307 @@
+#!/bin/bash
+
+# v21-Core two-phase full-parameter SFT of Foundation-Sec-8B-Instruct on the
+# v21 core corpus (broad + axis shards). Stage 1 of the v21 chain
+# applied to the 8B architecture (tmpl_gen/templates/05182026/v21_plan.txt
+# §7.5); the resulting checkpoint is the base for the v21 TAA + CSE +
+# Recalibrate chain on Foundation-Sec-8B.
+#
+# Why a Foundation-Sec-8B v21 chain exists:
+#   The v21 chain on Qwen2.5-14B shipped at 62.3 Total (v21-recalibrate),
+#   above v18.1-core (58.9) and v21-core (60.8). The Llama-3.1-8B v21
+#   port tests whether the Core->TAA->CSE->Recalibrate chain shape
+#   generalises off the Qwen2.5 family; this Foundation-Sec-8B-Instruct
+#   port additionally tests whether starting from a domain-anchored base
+#   (Cisco's cybersecurity SFT+RLHF on Llama-3.1-8B) shifts the per-axis
+#   recovery pattern vs the generic Llama-3.1-8B-Instruct starting point.
+#
+# Foundation-Sec-8B-Instruct provenance (fdtn-ai/Foundation-Sec-8B-Instruct):
+#   - Cisco SFT+RLHF cybersecurity model on the Llama-3.1-8B architecture
+#     (same params, same tokenizer vocab, identical attention shape).
+#   - Ships a custom jinja chat template using '<|system|>'/'<|user|>'/
+#     '<|assistant|>' markers plus a baked-in Cisco/Metis system prompt.
+#     We deliberately train under --template llama3 (matching the Llama-3.1
+#     v21 sibling chain): LlamaFactory overwrites the saved tokenizer's
+#     chat_template with the one selected by --template at SFT time, so
+#     the post-SFT model is internally consistent (Athena task envelopes
+#     supply their own system prompts; we don't want the baked-in Cisco
+#     persona to leak through). Trade-off mirrors the v8-small Foundation
+#     launcher (run_abaligned_sft_foundation_8b_v8.sh): the SFT re-maps
+#     Foundation's instruction-following from '<|system|>' tokens onto
+#     '<|start_header_id|>system' tokens; at the v21 corpus size (~410K
+#     Phase A rows + ~70K Phase B rows + TAA/CSE chain) this is solidly
+#     above the rewrite threshold.
+#   - Runs in the standard `llm-sft` conda env (NOT `llm-sft-gemma`); no
+#     LlamaFactory version-check skip or mm_plugin patch needed.
+#
+# Recipe parity with run_sft_llama31_8b_v21_core.sh:
+#   - Identical Phase A / Phase B geometry (cutoff, packing, lr,
+#     effective batch, max-samples, save/eval steps).
+#   - Identical dataset names; the v21 shards are template-baked and
+#     architecture-independent.
+#   - Only the base model, SAFE_MODEL path component, and HF push
+#     targets change. --template stays llama3 (Foundation shares the
+#     Llama-3.1 architecture).
+#
+# Phase shape (identical to v21-Core / v18.1-Core):
+#   Phase A -- broad knowledge re-anchor
+#     - Datasets   : ift_data_2026_05_18_v21_core_a_kb_mcq_taa_soc_cm_ms_yn,
+#                    tulu_3_sft_mixture, alpaca_en_demo
+#     - 1 epoch, lr 1e-5, cutoff 8192, packing on
+#     - Effective batch 16
+#     - --max-samples 240000
+#
+#   Phase B -- AthenaBench catalog recovery
+#     - Datasets   : ift_data_2026_05_18_v21_core_b_rms_ate_vsp_rcm
+#     - 1 epoch, lr 5e-6, cutoff 16384, packing OFF
+#     - Effective batch 8 (cutoff doubled => half the effective batch)
+#     - eval/save every 400 steps
+#     - --model points at Phase A's output dir
+#
+# Only Phase B's final merged model is pushed to HF.
+# Default push target: ${HF_USERNAME}/athena-cti-sft-foundation-8b-v21-core.
+#
+# Estimated wall-time (8B is ~1.75x lighter than Qwen2.5-14B; weight,
+# activation, and optimizer-state footprints all scale roughly linearly):
+#   8xH100 80GB SXM        : ~8-11 h with --gc on default (Phase A
+#     ~5-6 h, Phase B ~3-4 h). Pass --gc off when FA2 is confirmed
+#     loaded to recover ~15-20% throughput (~7-9 h total).
+#   8xRTX PRO 6000 96GB    : ~13-18 h with --gc on default. ZeRO-3
+#     all-gather / reduce-scatter pays the PCIe Gen5 (~64 GB/s) vs
+#     NVLink (~900 GB/s) ~1.3-1.5x communication overhead on top of
+#     the GC throughput cost.
+#   4xH100 80GB SXM        : ~16-22 h with --gc on default. GPU-count
+#     auto-detect halves micro-batches per optimizer step (A_GA 1->2,
+#     B_GA 1->2) so effective batch is preserved.
+#
+# Usage:
+#   ./run_sft_foundation_8b_v21_core.sh [--repo-id USER/NAME]
+#                                     [--phase-a-dir DIR] [--phase-b-dir DIR]
+#                                     [--report-to wandb|none]
+#                                     [--phase a|b|ab]   # default: ab
+#                                     [--offload | --no-offload]
+#                                     [--gc auto|on|off] # default: on
+#                                     [--skip-eval]      # disables in-training eval
+#                                     [--resume]         # resume from latest ckpt in phase dir
+#                                     [--dry-run]
+#
+# --skip-eval / --resume semantics mirror the Qwen 14B v21 Core
+# launcher; see that script's header (run_sft_qwen25_14b_v21_core.sh)
+# for the in-training eval OOM workaround and the resume-from-checkpoint
+# path. --gc differs: this launcher defaults to --gc on (safer against
+# silent SDPA fallback on fresh llm-sft envs); pass --gc off when FA2
+# is confirmed importable to recover the original throughput target.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SFT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+REPO_ID=""
+PHASE_A_DIR=""
+PHASE_B_DIR=""
+REPORT_TO="wandb"
+PHASE="ab"
+DRY_RUN=0
+OFFLOAD="auto"
+SKIP_EVAL=0
+RESUME=0
+GC_OVERRIDE="on"
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --repo-id)      REPO_ID="$2";      shift 2 ;;
+        --phase-a-dir)  PHASE_A_DIR="$2";  shift 2 ;;
+        --phase-b-dir)  PHASE_B_DIR="$2";  shift 2 ;;
+        --report-to)    REPORT_TO="$2";    shift 2 ;;
+        --phase)        PHASE="$2";        shift 2 ;;
+        --dry-run)      DRY_RUN=1;         shift ;;
+        --offload)      OFFLOAD="on";      shift ;;
+        --no-offload)   OFFLOAD="off";     shift ;;
+        --gc)           GC_OVERRIDE="$2";  shift 2 ;;
+        --skip-eval)    SKIP_EVAL=1;       shift ;;
+        --resume)       RESUME=1;          shift ;;
+        -h|--help) sed -n '3,76p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        *) echo "Unknown argument: $1" >&2; exit 1 ;;
+    esac
+done
+
+case "${PHASE}" in a|b|ab) ;; *) echo "--phase must be a|b|ab" >&2; exit 1 ;; esac
+case "${GC_OVERRIDE}" in auto|on|off) ;; *) echo "--gc must be auto|on|off" >&2; exit 1 ;; esac
+
+for env_file in "${SFT_DIR}/.env" "${SFT_DIR}/.env.local" "${SCRIPT_DIR}/.env"; do
+    [[ -f "${env_file}" ]] && { set -a; source "${env_file}"; set +a; }
+done
+
+if [[ -z "${REPO_ID}" ]]; then
+    : "${HF_USERNAME:?Set HF_USERNAME in SFT/.env (or pass --repo-id USER/NAME)}"
+    REPO_ID="${HF_USERNAME}/athena-cti-sft-foundation-8b-v21-core"
+fi
+
+TIMESTAMP="$(date +"%Y-%m-%d-%H-%M-%S")"
+SAFE_MODEL="fdtn-ai_Foundation-Sec-8B-Instruct"
+[[ -z "${PHASE_A_DIR}" ]] && PHASE_A_DIR="${SFT_DIR}/saves/${SAFE_MODEL}/full/v21_core_phase_a_${TIMESTAMP}"
+[[ -z "${PHASE_B_DIR}" ]] && PHASE_B_DIR="${SFT_DIR}/saves/${SAFE_MODEL}/full/v21_core_phase_b_${TIMESTAMP}"
+
+PHASE_A_DATASETS="ift_data_2026_05_18_v21_core_a_kb_mcq_taa_soc_cm_ms_yn,tulu_3_sft_mixture,alpaca_en_demo"
+PHASE_B_DATASETS="ift_data_2026_05_18_v21_core_b_rms_ate_vsp_rcm"
+VAL_NAME="ift_data_2026_05_18_v21_core_val"
+
+for ds in ift_data_2026_05_18_v21_core_a_kb_mcq_taa_soc_cm_ms_yn \
+          ift_data_2026_05_18_v21_core_b_rms_ate_vsp_rcm \
+          "${VAL_NAME}"; do
+    if [[ ! -f "${SFT_DIR}/data/${ds}.json" ]]; then
+        echo "[FAIL] v21-core dataset missing: SFT/data/${ds}.json" >&2
+        echo "       Build via:" >&2
+        echo "         bash tmpl_gen/data_generation/make_dataset.sh \\" >&2
+        echo "           tmpl_gen/templates/05182026/Sophia-CTI-Templates-v21.txt \\" >&2
+        echo "           _v21_core_build/triples \\" >&2
+        echo "           ${SFT_DIR}/data/ift_data_2026_05_18_v21_core.raw.json \\" >&2
+        echo "           10 1500" >&2
+        echo "         bash _v21_core_build/watcher.sh   # all phases" >&2
+        exit 2
+    fi
+done
+
+if [[ -n "${GPU_COUNT_OVERRIDE:-}" ]]; then
+    GPU_COUNT="${GPU_COUNT_OVERRIDE}"
+    GPU_PROBE_SOURCE="override"
+else
+    GPU_COUNT="$(python - <<'PY' 2>/dev/null || echo 0
+import torch
+print(torch.cuda.device_count() if torch.cuda.is_available() else 0)
+PY
+)"
+    GPU_PROBE_SOURCE="torch"
+    if [[ -z "${GPU_COUNT}" || "${GPU_COUNT}" == "0" ]] && command -v nvidia-smi >/dev/null 2>&1; then
+        NVIDIA_COUNT="$(nvidia-smi -L 2>/dev/null | wc -l | tr -d ' ')"
+        if [[ -n "${NVIDIA_COUNT}" && "${NVIDIA_COUNT}" != "0" ]]; then
+            GPU_COUNT="${NVIDIA_COUNT}"
+            GPU_PROBE_SOURCE="nvidia-smi (torch probe returned 0 -- check 'python -c \"import torch; torch.cuda.is_available()\"' in this shell)"
+        fi
+    fi
+    GPU_COUNT="${GPU_COUNT:-0}"
+fi
+# Fail-fast guard mirrors run_sft_qwen25_14b_v21_core.sh; see that
+# launcher's header for the nproc_per_node=0 / torchrun AssertionError
+# rationale and the GPU_COUNT_OVERRIDE escape hatch.
+if [[ "${GPU_COUNT}" == "0" && ${DRY_RUN} -eq 0 ]]; then
+    echo "[FAIL] GPU probe returned 0 (source: ${GPU_PROBE_SOURCE})." >&2
+    echo "  Verify in this shell:" >&2
+    echo "    python -c 'import torch; print(torch.cuda.is_available(), torch.cuda.device_count())'" >&2
+    echo "    nvidia-smi -L" >&2
+    echo "    echo CUDA_VISIBLE_DEVICES=\${CUDA_VISIBLE_DEVICES:-<unset>}" >&2
+    echo "  Then either fix the env (conda activate llm-sft; unset CUDA_VISIBLE_DEVICES)" >&2
+    echo "  or re-run with an explicit override:" >&2
+    echo "    GPU_COUNT_OVERRIDE=4 ./run_sft_foundation_8b_v21_core.sh ..." >&2
+    exit 3
+fi
+
+if [[ "${OFFLOAD}" == "auto" ]]; then
+    if [[ "${GPU_COUNT}" -lt 4 ]]; then OFFLOAD="on"; else OFFLOAD="off"; fi
+fi
+DS_CONFIG="examples/deepspeed/ds_z3_offload_config.json"
+[[ "${OFFLOAD}" == "off" ]] && DS_CONFIG="examples/deepspeed/ds_z3_config.json"
+
+EFFECTIVE_GPUS=$(( GPU_COUNT > 0 ? GPU_COUNT : 1 ))
+# Phase A runs cutoff=8192 with packing on; 8B fits batch=2 trivially
+# on >=40GB GPUs under ZeRO-3 (no offload). Phase B stays at batch=1
+# because cutoff=16384 with packing off is memory-tight even at 8B.
+A_BATCH=2; A_GA=$(( 16 / (A_BATCH * EFFECTIVE_GPUS) )); [[ ${A_GA} -lt 1 ]] && A_GA=1
+B_BATCH=1; B_GA=$(( 8  / (B_BATCH * EFFECTIVE_GPUS) )); [[ ${B_GA} -lt 1 ]] && B_GA=1
+
+# v14.1 hot-fix (--disable_gradient_checkpointing True) was originally
+# sized for 8xH100 80GB SXM running Qwen2.5-14B where ZeRO-3 shards each
+# parameter across 8 ranks. On the 8B architecture the activation
+# footprint is materially lighter, so GC-off is comfortable on both
+# 8xH100 80GB SXM and 8xRTX PRO 6000 96GB at the default Phase B
+# geometry -- BUT only when flash-attn 2 is actually loaded. On a fresh
+# llm-sft env where the flash-attn prebuilt wheel 404s (cu130 / unusual
+# torch+python combo) the runtime silently falls back to SDPA, whose
+# O(seq^2) attention activations exceed the per-rank budget at cutoff
+# 8192 packing=on and produce a step-0 OOM on the LM-head allgather.
+# Default flipped to --gc on for safety: ~15-20% slower than GC-off
+# (Phase A ~5-6h instead of ~4-5h on 8xH100) but immune to a silent
+# SDPA fallback. Pass --gc off when FA2 import is confirmed and the
+# throughput matters; --gc auto preserves the original GPU_COUNT>=8
+# branch for callers who want the old behaviour explicitly.
+case "${GC_OVERRIDE}" in
+    on)   GC_FLAG="" ;;
+    off)  GC_FLAG="--disable_gradient_checkpointing True" ;;
+    auto) GC_FLAG="--disable_gradient_checkpointing True"
+          [[ "${GPU_COUNT}" -lt 8 ]] && GC_FLAG=""
+          ;;
+esac
+
+# save_only_model=False keeps optimizer / scheduler / RNG / DeepSpeed ZeRO
+# partitioned states alongside each checkpoint, which is the only way
+# --resume_from_checkpoint can rehydrate a mid-run failure. Was previously
+# True to save disk during the Qwen 14B chain era; on 8B the per-checkpoint
+# cost is ~48 GB instead of ~16 GB and with save_total_limit=2 the peak
+# scratch per phase is ~96 GB -- trivial against the 2 TB /home partition.
+# Each phase's *final* merged output is still a clean weights-only dir
+# (Trainer materialises it post-train), so downstream stages still pick up
+# the same artefact they always did.
+EXTRA_BASE="--deepspeed ${DS_CONFIG} --save_total_limit 2 --save_only_model False --enable_liger_kernel True ${GC_FLAG}"
+if [[ ${SKIP_EVAL} -eq 1 ]]; then
+    EXTRA_COMMON="${EXTRA_BASE} --eval_strategy no"
+else
+    EXTRA_COMMON="${EXTRA_BASE} --per_device_eval_batch_size 1 --eval_dataset ${VAL_NAME} --val_size 0"
+fi
+
+export FORCE_TORCHRUN=1
+export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
+for var in NNODES NODE_RANK NPROC_PER_NODE MASTER_ADDR MASTER_PORT RDZV_ID MIN_NNODES MAX_NNODES; do
+    [[ -z "${!var:-}" ]] && unset "${var}"
+done
+if [[ "${GPU_COUNT}" -gt 0 ]]; then
+    export NPROC_PER_NODE="${GPU_COUNT}"
+fi
+if [[ "${GPU_COUNT}" -ne 8 ]]; then
+    echo "[warn] recipe sized for 8 GPUs (8xH100); detected ${GPU_COUNT}. Effective batch preserved via grad-accum auto-scaling: phase_A eff_bs=$(( A_BATCH * A_GA * EFFECTIVE_GPUS )) phase_B eff_bs=$(( B_BATCH * B_GA * EFFECTIVE_GPUS ))." >&2
+fi
+
+DRY_FLAG=(); [[ ${DRY_RUN} -eq 1 ]] && DRY_FLAG=( --dry-run )
+RESUME_FLAG=(); [[ ${RESUME} -eq 1 ]] && RESUME_FLAG=( --resume )
+
+run_phase_a() {
+    echo "=== v21-Core Phase A (Foundation-Sec-8B): broad knowledge re-anchor (cutoff=8192, packing=on, lr=1e-5) ==="
+    bash "${SFT_DIR}/utils/run_train.sh" \
+        --model "fdtn-ai/Foundation-Sec-8B-Instruct" \
+        --dataset "${PHASE_A_DATASETS}" --template llama3 --finetuning full \
+        --epochs 1 --lr 1e-05 --batch ${A_BATCH} --grad-accum ${A_GA} \
+        --cutoff 8192 --save-steps 500 --eval-steps 500 --packing true \
+        --max-samples 240000 --report-to "${REPORT_TO}" \
+        --output-dir "${PHASE_A_DIR}" \
+        --extra "${EXTRA_COMMON}" \
+        ${RESUME_FLAG[@]+"${RESUME_FLAG[@]}"} ${DRY_FLAG[@]+"${DRY_FLAG[@]}"}
+}
+
+run_phase_b() {
+    echo "=== v21-Core Phase B (Foundation-Sec-8B): RMS+ATE+VSP+RCM catalog recovery (cutoff=16384, packing=off, lr=5e-6) ==="
+    bash "${SFT_DIR}/utils/run_train.sh" \
+        --model "${PHASE_A_DIR}" \
+        --dataset "${PHASE_B_DATASETS}" --template llama3 --finetuning full \
+        --epochs 1 --lr 5e-06 --batch ${B_BATCH} --grad-accum ${B_GA} \
+        --cutoff 16384 --save-steps 400 --eval-steps 400 --packing false \
+        --max-samples 70000 --report-to "${REPORT_TO}" \
+        --output-dir "${PHASE_B_DIR}" --push-to-hf "${REPO_ID}" \
+        --extra "${EXTRA_COMMON}" \
+        ${RESUME_FLAG[@]+"${RESUME_FLAG[@]}"} ${DRY_FLAG[@]+"${DRY_FLAG[@]}"}
+}
+
+echo "  gpus visible : ${GPU_COUNT}  cpu offload: ${OFFLOAD}"
+echo "  phase A dir  : ${PHASE_A_DIR}"
+echo "  phase B dir  : ${PHASE_B_DIR}"
+echo "  hf repo      : ${REPO_ID}  (only Phase B is pushed)"
+echo "  alloc conf   : ${PYTORCH_CUDA_ALLOC_CONF}"
+echo "  grad-ckpt    : $([[ -z "${GC_FLAG}" ]] && echo on || echo off)  (--gc ${GC_OVERRIDE})"
+echo "  skip-eval    : $([[ ${SKIP_EVAL} -eq 1 ]] && echo on || echo off)"
+echo "  resume       : $([[ ${RESUME} -eq 1 ]] && echo on || echo off)"
+echo
+
+case "${PHASE}" in
+    a)  run_phase_a ;;
+    b)  run_phase_b ;;
+    ab) run_phase_a; run_phase_b ;;
+esac

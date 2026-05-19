@@ -406,6 +406,23 @@ model_mapping = {
     'athena-cti-sft-llama31-8b-v21-taa-vllm':                  'asg-ai/athena-cti-sft-llama31-8b-v21-taa',
     'athena-cti-sft-llama31-8b-v21-cse-vllm':                  'asg-ai/athena-cti-sft-llama31-8b-v21-cse',
     'athena-cti-sft-llama31-8b-v21-recalibrate-vllm':          'asg-ai/athena-cti-sft-llama31-8b-v21-recalibrate',
+    # v21 chain ported to fdtn-ai/Foundation-Sec-8B-Instruct (Cisco SFT+RLHF
+    # cybersecurity model on the Llama-3.1-8B architecture). Same 4-stage
+    # recipe and same datasets as the Llama-3.1-8B v21 chain; the only
+    # difference is the starting checkpoint -- a domain-anchored Cisco
+    # security SFT rather than generic Llama-3.1-8B-Instruct. --template
+    # stays llama3 (Foundation shares the Llama-3.1 architecture and LF
+    # rewrites the saved chat_template at SFT time, overriding Foundation's
+    # custom '<|system|>'/'<|user|>'/'<|assistant|>' template). Pushed by
+    # SFT/autotrain/run_sft_foundation_8b_v21_{core,plus_taa,final,recalibrate}.sh
+    # (or chained via SFT/autotrain/run_sft_foundation_8b_v21_chain.sh).
+    # The post-SFT checkpoints serve via the standard llama3 jinja (vLLM
+    # picks it up from the saved tokenizer_config.json); no chat-template
+    # override needed at serve time.
+    'athena-cti-sft-foundation-8b-v21-core-vllm':              'asg-ai/athena-cti-sft-foundation-8b-v21-core',
+    'athena-cti-sft-foundation-8b-v21-taa-vllm':               'asg-ai/athena-cti-sft-foundation-8b-v21-taa',
+    'athena-cti-sft-foundation-8b-v21-cse-vllm':               'asg-ai/athena-cti-sft-foundation-8b-v21-cse',
+    'athena-cti-sft-foundation-8b-v21-recalibrate-vllm':       'asg-ai/athena-cti-sft-foundation-8b-v21-recalibrate',
     # v21 chain ported to Gemma 4 31B-it. Same 4-stage recipe (Core Phase
     # A/B -> TAA -> CSE -> Recalibrate) and same datasets as the Qwen
     # 14B v21 chain; only the base model, --template (qwen -> gemma4),
