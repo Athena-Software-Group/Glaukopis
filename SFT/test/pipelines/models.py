@@ -393,6 +393,38 @@ model_mapping = {
     'athena-cti-sft-qwen25-14b-v21-taa-vllm':                  'asg-ai/athena-cti-sft-qwen25-14b-v21-taa',
     'athena-cti-sft-qwen25-14b-v21-cse-vllm':                  'asg-ai/athena-cti-sft-qwen25-14b-v21-cse',
     'athena-cti-sft-qwen25-14b-v21-recalibrate-vllm':          'asg-ai/athena-cti-sft-qwen25-14b-v21-recalibrate',
+    # v21 chain ported to Llama-3.1-8B-Instruct. Same 4-stage recipe (Core
+    # Phase A/B -> TAA -> CSE -> Recalibrate) and same datasets as the Qwen
+    # 14B v21 chain; only the base model, --template (qwen -> llama3), and
+    # HF push targets differ. Pushed by
+    # SFT/autotrain/run_sft_llama31_8b_v21_{core,plus_taa,final,recalibrate}.sh
+    # (or chained via SFT/autotrain/run_sft_llama31_8b_v21_chain.sh).
+    # Cross-architecture probe of the v21 recipe: whether the Qwen 14B
+    # Stage-3-CSE-erodes-VSP / Stage-4-recovers signature reproduces on the
+    # smaller Llama-3.1-8B architecture is the primary open question.
+    'athena-cti-sft-llama31-8b-v21-core-vllm':                 'asg-ai/athena-cti-sft-llama31-8b-v21-core',
+    'athena-cti-sft-llama31-8b-v21-taa-vllm':                  'asg-ai/athena-cti-sft-llama31-8b-v21-taa',
+    'athena-cti-sft-llama31-8b-v21-cse-vllm':                  'asg-ai/athena-cti-sft-llama31-8b-v21-cse',
+    'athena-cti-sft-llama31-8b-v21-recalibrate-vllm':          'asg-ai/athena-cti-sft-llama31-8b-v21-recalibrate',
+    # v21 chain ported to Gemma 4 31B-it. Same 4-stage recipe (Core Phase
+    # A/B -> TAA -> CSE -> Recalibrate) and same datasets as the Qwen
+    # 14B v21 chain; only the base model, --template (qwen -> gemma4),
+    # --flash_attn (auto -> sdpa; head_dim=512 / FA #2427 pending), and
+    # HF push targets differ. Pushed by
+    # SFT/autotrain/run_sft_gemma4_31b_v21_{core,plus_taa,final,recalibrate}.sh
+    # (or chained via SFT/autotrain/run_sft_gemma4_31b_v21_chain.sh).
+    # Cross-architecture + scale probe of the v21 recipe: the 8B (Llama)
+    # and 31B (Gemma) ports together bracket the scale axis; whether the
+    # Qwen 14B Stage-3-CSE-erodes-VSP / Stage-4-recovers signature
+    # reproduces is the primary open question.
+    # vLLM-serve caveats for the trained checkpoints (text-only inputs):
+    #   --limit-mm-per-prompt image=0 (skip vision-encoder KV pre-alloc),
+    #   weights ~62GB bf16 -> tp=2 on H100 80GB (~31GB/GPU) or tp=1 on
+    #   B300 (288GB/GPU).
+    'athena-cti-sft-gemma4-31b-v21-core-vllm':                 'asg-ai/athena-cti-sft-gemma4-31b-v21-core',
+    'athena-cti-sft-gemma4-31b-v21-taa-vllm':                  'asg-ai/athena-cti-sft-gemma4-31b-v21-taa',
+    'athena-cti-sft-gemma4-31b-v21-cse-vllm':                  'asg-ai/athena-cti-sft-gemma4-31b-v21-cse',
+    'athena-cti-sft-gemma4-31b-v21-recalibrate-vllm':          'asg-ai/athena-cti-sft-gemma4-31b-v21-recalibrate',
     # HF Inference Providers route. Custom community fine-tunes are not in the
     # default Together/Fireworks/Novita/etc. catalogs; this alias only resolves
     # if the model is exposed via an HF Inference Endpoint or the legacy

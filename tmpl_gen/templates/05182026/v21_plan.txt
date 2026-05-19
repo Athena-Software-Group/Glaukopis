@@ -165,3 +165,62 @@ Operational ref  : THIS FILE
     SFT/autotrain/run_sft_qwen25_14b_v{18p1,19,20}_core.sh diff
     review, and v18_1_plan.txt §1 (the v18 -> v18.1 corpus-driven
     fix that originally established the v18.1-core peak).
+
+
+7. Outcome (recorded 2026-05-19)
+--------------------------------
+
+7.1 §5.1 gate result -- PARTIAL FAIL.
+    Total Score landed inside the +/- 1.5pp band, but two per-axis
+    sub-scores fell outside it. The v18.1 recipe is therefore NOT
+    bit-reproducible at axis granularity from byte-identical template /
+    gate inputs.
+      v21-core Total : 60.8   (target 57.4..60.4)    -> PASS Total
+      v21-core ATE   :        ATE delta -4.8pp        -> FAIL (>1.5pp)
+      v21-core RCM   :        RCM delta -3.1pp        -> FAIL (>1.5pp)
+      v21-core CKT/RMS/VSP   : within band (per-axis spot checks)
+    Per §5.3 this implicates data-build non-determinism (substrate
+    sampling order, dedup tiebreaks, shuffle seeding in
+    tmpl_gen/data_generation/make_dataset.sh and the Neo4j read
+    layer) rather than recipe drift. The v19 / v20 axis regressions
+    are now best explained by the same mechanism rather than the
+    Count: / floor lifts documented in their plans.
+
+7.2 Downstream stages were run via run_sft_qwen25_14b_v21_chain.sh
+    (TAA -> CSE -> Recalibrate; the latter is off-plan vs §3 and is
+    included here for v19/v20 chain parity, see that script's header).
+      v21-taa         : TAA Classic narrow drill, in-plan.
+      v21-cse         : VSP 72.9   (Core had 82.5; -9.6pp).
+                        The recurring "CSE narrow drill trades VSP
+                        for CSE-MAL" pattern seen in v18.1 / v19 / v20.
+      v21-recalibrate : Total 62.3, VSP recovered to 83.1.
+                        Best Athena Total of the v21 chain; only
+                        chain checkpoint with VSP back inside its
+                        v18.1-core band.
+
+7.3 Ship recommendation: athena-cti-sft-qwen25-14b-v21-recalibrate.
+    62.3 Total beats v21-core (60.8) and v18.1-core (58.9), VSP
+    recovered to 83.1, and CSE gains preserved by the low-LR
+    (1e-6) 3-shard interleave at probs 0.25/0.40/0.35.
+
+7.4 Conclusion on the §1.1 falsification matrix:
+      (a) template-content drift  : RULED OUT (SHA-verified identity).
+      (b) gate-content drift      : RULED OUT (SHA-verified identity).
+      (c) data-build non-determinism : LIVE SUSPECT (best fit for
+          the per-axis-but-not-Total drift observed at fixed
+          template / gate / recipe inputs).
+    Next vintage (post-v21) should pin Neo4j read order and seed
+    the substrate sampler / shuffle in make_dataset.sh / watcher.sh
+    before another reproducibility run is attempted.
+
+7.5 Architecture-transfer follow-up.
+    The v21 recipe (Phase A + Phase B Core, +TAA, +CSE, +Recalibrate)
+    is being applied verbatim to meta-llama/Llama-3.1-8B-Instruct to
+    test whether the chain shape generalises off Qwen2.5-14B. The same
+    dataset shards (ift_data_2026_05_18_v21_*) are reused (they are
+    template-baked and architecture-independent); only the base model
+    pointer, the LlamaFactory template (qwen -> llama3), the SAFE_MODEL
+    path component, and the HF push targets change. See
+    SFT/autotrain/run_sft_llama31_8b_v21_{core,plus_taa,final,
+    recalibrate,chain}.sh and the matching vLLM aliases registered in
+    SFT/test/pipelines/models.py.
