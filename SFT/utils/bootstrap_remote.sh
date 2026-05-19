@@ -5,11 +5,10 @@
 # the private Glaukopis repo, and clones the repo to a target directory.
 # Run this ONCE per fresh remote box BEFORE any other Glaukopis tooling.
 # After it completes, follow up with:
-#   1. rsync SFT/.env from the source box -> <target>/SFT/.env
-#      (skip if --env-file already pointed at a full credentials file;
-#       in that case just `cp` or symlink it into <target>/SFT/.env)
-#   2. rsync SFT/data/ift_data_*.json shards (gitignored datasets)
-#   3. cd <target>/SFT/utils && ./setup.sh --cuda cu128   (or cu130)
+#   1. rsync SFT/data/ift_data_*.json shards (gitignored datasets)
+#   2. cd <target>/SFT/utils && ./setup.sh --cuda cu128   (or cu130)
+# (A co-located .env beside this script is auto-moved into <target>/SFT/.env
+#  after a successful clone, so no manual rsync of credentials is needed.)
 #
 # Usage (env vars; values are NOT echoed):
 #   GITHUB_TOKEN=ghp_xxx \
@@ -18,12 +17,13 @@
 #       ./bootstrap_remote.sh
 #
 # Usage (.env file; recommended on Verda/RunPod/etc. that pre-stage creds):
-#   # 1. scp this script + your .env onto the fresh host:
+#   # 1. scp this script + your .env into the SAME directory on the host:
 #   #      scp SFT/utils/bootstrap_remote.sh root@HOST:/root/
 #   #      scp /path/to/.env                  root@HOST:/root/.env
 #   # 2. On the remote host:
-#   ./bootstrap_remote.sh --env-file /root/.env
-#   # (auto-detected if --env-file is omitted and ${HOME}/.env exists)
+#   ./bootstrap_remote.sh
+#   # The .env in the script's directory is auto-detected; pass
+#   # --env-file PATH to override or ${HOME}/.env as a fallback.
 #
 # Usage (interactive; token read silently):
 #   ./bootstrap_remote.sh
@@ -43,6 +43,8 @@
 # line in ~/.git-credentials is rotated (not stacked), and an existing
 # checkout is fetched + fast-forwarded instead of re-cloned.
 set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 REPO_URL="${REPO_URL:-https://github.com/Athena-Software-Group/Glaukopis.git}"
 TARGET_DIR="${TARGET_DIR:-${HOME}/Glaukopis}"
@@ -69,14 +71,23 @@ done
 command -v git >/dev/null 2>&1 \
     || { echo "git not installed on this host; install it before re-running." >&2; exit 1; }
 
-# .env auto-detect: if no --env-file was passed but ${HOME}/.env exists
-# (the recommended pre-stage path for Verda / RunPod / Modal / etc.),
-# use it. Skipped if the operator explicitly passed all three creds via
-# flags / shell exports, since there'd be nothing to read.
-if [[ -z "${ENV_FILE}" && -f "${HOME}/.env" ]]; then
+# .env auto-detect: if no --env-file was passed, search (in order):
+#   1. ${SCRIPT_DIR}/.env   -- co-located with this script (recommended:
+#      scp bootstrap_remote.sh + .env into the same directory on the
+#      fresh host, then just run ./bootstrap_remote.sh).
+#   2. ${HOME}/.env         -- legacy fallback for boxes that pre-stage
+#      creds in the home dir (Verda / RunPod / Modal / etc.).
+# Skipped if the operator explicitly passed all three creds via flags /
+# shell exports, since there'd be nothing to read.
+if [[ -z "${ENV_FILE}" ]]; then
     if [[ -z "${GIT_USER_NAME}" || -z "${GIT_USER_EMAIL}" || -z "${GITHUB_TOKEN}" ]]; then
-        ENV_FILE="${HOME}/.env"
-        echo "=== Auto-detected ${ENV_FILE} (use --env-file '' to opt out) ==="
+        for _candidate in "${SCRIPT_DIR}/.env" "${HOME}/.env"; do
+            if [[ -f "${_candidate}" ]]; then
+                ENV_FILE="${_candidate}"
+                echo "=== Auto-detected ${ENV_FILE} (use --env-file '' to opt out) ==="
+                break
+            fi
+        done
     fi
 fi
 
@@ -146,6 +157,28 @@ else
     git clone --branch "${BRANCH}" "${REPO_URL}" "${TARGET_DIR}"
 fi
 
+# Promote the co-located .env (if any) into the cloned tree so downstream
+# tooling (SFT/utils/setup.sh, run_train.sh, run_benchmark.sh, ...) can
+# pick up HF / wandb / API creds from the canonical SFT/.env path. Only
+# the sibling .env is moved; --env-file targets and ${HOME}/.env are left
+# in place so they remain reusable for re-runs / sibling hosts.
+SRC_ENV="${SCRIPT_DIR}/.env"
+DEST_ENV="${TARGET_DIR}/SFT/.env"
+if [[ -f "${SRC_ENV}" ]]; then
+    echo "=== Promoting co-located .env -> ${DEST_ENV} ==="
+    mkdir -p "$(dirname "${DEST_ENV}")"
+    if [[ -e "${DEST_ENV}" ]]; then
+        _backup="${DEST_ENV}.bak.$(date +%Y%m%d-%H%M%S)"
+        echo "  ${DEST_ENV} already exists; backing up to ${_backup}"
+        mv "${DEST_ENV}" "${_backup}"
+    fi
+    mv "${SRC_ENV}" "${DEST_ENV}"
+    chmod 600 "${DEST_ENV}" 2>/dev/null || true
+    echo "  ok (perms 0600)"
+else
+    echo "=== No co-located .env at ${SRC_ENV}; skipping promotion ==="
+fi
+
 # Scrub the token from this shell.
 unset GITHUB_TOKEN
 
@@ -156,11 +189,9 @@ echo "HEAD    : $(git -C "${TARGET_DIR}" log --oneline -1)"
 echo "Branch  : $(git -C "${TARGET_DIR}" rev-parse --abbrev-ref HEAD)"
 echo
 echo "Next steps:"
-echo "  1. From the source box, rsync SFT/.env over (creds for HF/wandb):"
-echo "       rsync -avP -e 'ssh -p <PORT>' SFT/.env <THIS_HOST>:${TARGET_DIR}/SFT/.env"
-echo "  2. From the source box, rsync the v21 dataset shards in parallel"
+echo "  1. From the source box, rsync the v21 dataset shards in parallel"
 echo "     (see the xargs -P4 rsync recipe in the v21 launch notes)."
-echo "  3. On THIS host, install the conda env + CUDA-matched torch:"
+echo "  2. On THIS host, install the conda env + CUDA-matched torch:"
 echo "       cd ${TARGET_DIR}/SFT/utils && ./setup.sh --cuda cu128"
 echo "       # (use cu130 if nvcc reports CUDA 13.x; cu128 is the floor for"
 echo "       #  Blackwell sm_120 / RTX PRO 6000)"
