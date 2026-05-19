@@ -125,9 +125,26 @@ done
 IFS=',' read -r -a MODELS <<< "${MODELS_CSV}"
 
 # HF-availability probe. Resolves alias -> HF repo id via the same AST parse
-# that serve_and_bench.sh uses, then HEADs the model API. Skips models that
-# are not yet pushed (e.g. when v21-taa is still training on the SFT box).
+# that serve_and_bench.sh uses, then HEADs the model API. Skips on 404 only
+# (true "not yet pushed"); 200 = public/cached, 401/403 = private + we are
+# not authenticated on the probe but vllm-serve will use HF_TOKEN /
+# ~/.cache/huggingface/token to download, so proceed. asg-ai org repos are
+# private, so this distinction is required to stop the probe from skipping
+# every v21 stage as "missing".
 BENCH_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+HF_PROBE_TOKEN="${HF_TOKEN:-${HUGGING_FACE_HUB_TOKEN:-}}"
+if [[ -z "${HF_PROBE_TOKEN}" && -f "${HOME}/.cache/huggingface/token" ]]; then
+    HF_PROBE_TOKEN="$(tr -d '\n\r' < "${HOME}/.cache/huggingface/token" 2>/dev/null || true)"
+fi
+hf_probe_status() {
+    local url="https://huggingface.co/api/models/$1"
+    if [[ -n "${HF_PROBE_TOKEN}" ]]; then
+        curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer ${HF_PROBE_TOKEN}" "${url}"
+    else
+        curl -s -o /dev/null -w "%{http_code}" "${url}"
+    fi
+}
 resolve_repo_id() {
     python - "${BENCH_DIR}/pipelines/models.py" "$1" <<'PY'
 import ast, sys
@@ -158,10 +175,16 @@ for alias in "${MODELS[@]}"; do
         echo "[skip] ${alias}: not found in pipelines/models.py" | tee -a "${SWEEP_LOG}"
         continue
     fi
-    if ! curl -fsS -o /dev/null "https://huggingface.co/api/models/${repo_id}"; then
-        echo "[skip] ${alias} (${repo_id}): not yet on HF (training may still be running)" | tee -a "${SWEEP_LOG}"
-        continue
-    fi
+    http_code="$(hf_probe_status "${repo_id}")"
+    case "${http_code}" in
+        200|401|403)
+            : ;;  # exists; private repos return 401/403 to anon and that's fine
+        404)
+            echo "[skip] ${alias} (${repo_id}): not yet on HF (HTTP 404 -- training may still be running)" | tee -a "${SWEEP_LOG}"
+            continue ;;
+        *)
+            echo "[warn] ${alias} (${repo_id}): HF probe returned HTTP ${http_code}; attempting bench anyway" | tee -a "${SWEEP_LOG}" ;;
+    esac
     echo | tee -a "${SWEEP_LOG}"
     echo "==================================================================" | tee -a "${SWEEP_LOG}"
     echo "  v21 sweep (Llama-3.1-8B) -> ${alias}  (${repo_id})" | tee -a "${SWEEP_LOG}"
