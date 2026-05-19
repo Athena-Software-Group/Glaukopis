@@ -213,7 +213,16 @@ case "${GC_OVERRIDE}" in
           ;;
 esac
 
-EXTRA_BASE="--deepspeed ${DS_CONFIG} --save_total_limit 2 --save_only_model True --enable_liger_kernel True ${GC_FLAG}"
+# save_only_model=False keeps optimizer / scheduler / RNG / DeepSpeed ZeRO
+# partitioned states alongside each checkpoint, which is the only way
+# --resume_from_checkpoint can rehydrate a mid-run failure. Was previously
+# True to save disk during the Qwen 14B chain era; on 8B the per-checkpoint
+# cost is ~48 GB instead of ~16 GB and with save_total_limit=2 the peak
+# scratch per phase is ~96 GB -- trivial against the 2 TB /home partition.
+# Each phase's *final* merged output is still a clean weights-only dir
+# (Trainer materialises it post-train), so downstream stages still pick up
+# the same artefact they always did.
+EXTRA_BASE="--deepspeed ${DS_CONFIG} --save_total_limit 2 --save_only_model False --enable_liger_kernel True ${GC_FLAG}"
 if [[ ${SKIP_EVAL} -eq 1 ]]; then
     EXTRA_COMMON="${EXTRA_BASE} --eval_strategy no"
 else
