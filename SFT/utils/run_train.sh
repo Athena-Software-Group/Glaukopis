@@ -147,7 +147,7 @@ fi
 
 if [[ -e "${OUTPUT_DIR}" ]]; then
     if [[ ${RESUME} -eq 1 ]]; then
-        echo "[resume] keeping existing ${OUTPUT_DIR} (--resume_from_checkpoint true will auto-detect latest)"
+        echo "[resume] keeping existing ${OUTPUT_DIR} (will resume from latest checkpoint-* subdir)"
     elif [[ ${OVERWRITE} -ne 1 ]]; then
         echo "Output dir already exists: ${OUTPUT_DIR}" >&2
         echo "Pass --overwrite to remove it, --resume to continue from the latest checkpoint, or choose a different --output-dir." >&2
@@ -290,12 +290,23 @@ BASE_ARGS=(
     --save_only_model False
 )
 
-# When --resume is set, ask Transformers' Trainer to pick up from the latest
-# checkpoint in --output_dir (resume_from_checkpoint=True auto-detects the
-# newest checkpoint-N subdir). Optimizer/scheduler state, RNG, dataloader
-# position, and global_step are all restored from that subdir.
+# When --resume is set, resolve the newest checkpoint-N subdir under
+# --output_dir and pass its absolute path to Transformers' Trainer.
+# TrainingArguments.resume_from_checkpoint is typed Optional[str], so the
+# CLI value is always taken as a literal path; passing "True" here is
+# interpreted as the path "True/" and crashes with FileNotFoundError on
+# trainer_state.json. Optimizer/scheduler state, RNG, dataloader position,
+# and global_step are all restored from the resolved checkpoint dir.
 if [[ ${RESUME} -eq 1 ]]; then
-    BASE_ARGS+=( --resume_from_checkpoint True )
+    latest_ckpt_n="$(ls -1d "${OUTPUT_DIR}"/checkpoint-* 2>/dev/null \
+        | sed 's|.*/checkpoint-||' | sort -n | tail -1)"
+    if [[ -z "${latest_ckpt_n}" ]]; then
+        echo "[resume] no checkpoint-* subdir under ${OUTPUT_DIR}" >&2
+        exit 3
+    fi
+    RESUME_DIR="${OUTPUT_DIR}/checkpoint-${latest_ckpt_n}"
+    echo "[resume] resuming from ${RESUME_DIR}"
+    BASE_ARGS+=( --resume_from_checkpoint "${RESUME_DIR}" )
 fi
 
 # shellcheck disable=SC2206
