@@ -239,6 +239,12 @@ fi
 
 export FORCE_TORCHRUN=1
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
+# LlamaFactory runtime check_version pins transformers<=5.2.0 in
+# extras/misc.py:check_dependencies(); Gemma 4 text-only SFT requires
+# transformers>=5.7.0 (PR #45222) and was validated end-to-end on 5.7+
+# in LF PR #45454. The runtime cap string was never bumped, so every
+# Gemma 4 run trips an ImportError at import-time without this override.
+export DISABLE_VERSION_CHECK="${DISABLE_VERSION_CHECK:-1}"
 for var in NNODES NODE_RANK NPROC_PER_NODE MASTER_ADDR MASTER_PORT RDZV_ID MIN_NNODES MAX_NNODES; do
     [[ -z "${!var:-}" ]] && unset "${var}"
 done
