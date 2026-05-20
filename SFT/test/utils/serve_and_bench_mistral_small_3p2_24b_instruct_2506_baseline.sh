@@ -29,11 +29,16 @@
 #   for KV cache at --max-num-seqs 32. Plenty of headroom.
 #
 # Context window:
-#   Native ctx is 128K; we cap --max-len at 40960 for parity with the
-#   other 24B-32B baselines so cybersoceval-TI rows (~32K-32.7K) fit
-#   with 8K generation headroom and KV cache stays bounded. Longer rows
-#   are caught by the client-side ctx-overflow path in
-#   pipelines/models.py (one-shot drop to floor and retry).
+#   Native ctx is 128K. We serve at 65536 because Mistral's V11
+#   tokenizer is less efficient on the dense JSON/STIX payloads in
+#   cybersoceval-TI than the Qwen/Llama tokenizers: rows that come in
+#   at ~32K on Qwen tokenize to ~57K here. 40960 (the Qwen3 baseline
+#   cap) hard-rejects ~30% of TI rows; 65536 gives ~8K headroom over
+#   the largest observed prompt while staying within native ctx and
+#   leaving enough KV-cache headroom on 2xH100 at max-num-seqs 32 for
+#   typical 4-8K prompts to run concurrently. Longer outliers are
+#   caught by the client-side ctx-overflow path in pipelines/models.py
+#   (logs a one-liner and drops the row).
 #
 # Usage:
 #   conda activate vllm
@@ -44,7 +49,7 @@
 #   --skip-athena | --skip-cybermetric | --skip-cybersoceval
 #   --rows N                               (smoke-test against first N rows)
 #   --cybermetric-size 2000,10000          (default; pass 2000 alone for short)
-#   --max-len N                            (override the 40960 cap below)
+#   --max-len N                            (override the 65536 cap below)
 #
 # Wallclock estimate (2xH100, 24B dense):
 #   Athena (~50 min) + CM-2K (~30 min) + CM-10K (~2.5 h) + CSE (~4 h)
@@ -69,6 +74,6 @@ export EXTRA_SERVE_FLAGS="${EXTRA_SERVE_FLAGS:---limit-mm-per-prompt '{\"image\"
 
 exec bash "${SCRIPT_DIR}/run_foundation_8b_baselines.sh" \
     --model mistral-small-3.2-24b-instruct-2506-vllm \
-    --tp 2 --max-len 40960 \
+    --tp 2 --max-len 65536 \
     --cybermetric-size 2000,10000 \
     "$@"

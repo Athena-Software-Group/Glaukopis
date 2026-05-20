@@ -907,12 +907,18 @@ class VLLMModel(BaseModel):
         print(f"vLLM client ready for {self.hf_model_id} (base_url={self.base_url}"
               f"{', ' + ', '.join(flags) if flags else ''})")
 
-    # vLLM 400 message: "maximum context length is N tokens. However, you
-    # requested M output tokens and your prompt contains at least P input
-    # tokens, for a total of at least N+1 tokens." We parse N to drop
-    # max_tokens to a small floor and retry, instead of dropping the row.
+    # vLLM 400 message has two forms depending on version:
+    #   old: "maximum context length is N tokens. However, you requested
+    #        M output tokens and your prompt contains at least P input
+    #        tokens, for a total of at least N+1 tokens."
+    #   new: "...your prompt contains P input tokens..." (no "at least"
+    #        hedge; vLLM 0.7+ reports the exact count once it tokenizes).
+    # The "at least" word is therefore optional. Without this the recovery
+    # path silently misses the modern format and every overflow row
+    # crashes with a full traceback instead of a clean one-line "prompt
+    # exceeds served context" log + drop.
     _CTX_OVERFLOW_RE = re.compile(
-        r"maximum context length is (\d+) tokens.*?prompt contains at least (\d+) input tokens",
+        r"maximum context length is (\d+) tokens.*?prompt contains (?:at least )?(\d+) input tokens",
         re.DOTALL,
     )
     # The "input_tokens >= P" figure in vLLM's error is NOT the true prompt
