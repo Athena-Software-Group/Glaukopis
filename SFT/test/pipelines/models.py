@@ -131,6 +131,17 @@ model_mapping = {
     # No '-no-think' suffix needed -- the Instruct-2507 chat template has
     # no thinking mode to suppress.
     'qwen3-30b-a3b-instruct-2507-vllm':        'Qwen/Qwen3-30B-A3B-Instruct-2507',
+    # Qwen3-30B-A3B pure-thinking July 2025 split. Same MoE base as the
+    # Instruct-2507 variant above but post-trained for reasoning-only
+    # output -- always emits a <think>...</think> trace before the final
+    # answer. Serve with `--reasoning-parser deepseek_r1` (or `qwen3` on
+    # vllm>=0.10) so the trace lands in `reasoning_content` and the
+    # bench-visible `content` field is just the final answer. Alias
+    # contains the 'thinking' substring (and NOT 'no-think') which
+    # VLLMModel detects to raise max_new_tokens to a thinking-mode floor
+    # (8192) -- the TASK_MAX_NEW_TOKENS table caps MCQ at 128 which would
+    # truncate every row mid-trace and collapse accuracy to <random.
+    'qwen3-30b-a3b-thinking-2507-vllm':        'Qwen/Qwen3-30B-A3B-Thinking-2507',
     'qwen2.5-14b-vllm':                        'Qwen/Qwen2.5-14B-Instruct',
     'qwen2.5-32b-vllm':                        'Qwen/Qwen2.5-32B-Instruct',
     'phi-4-vllm':                              'microsoft/phi-4',
@@ -866,8 +877,28 @@ class VLLMModel(BaseModel):
         # which Qwen's chat template (and the SGLang/vLLM OpenAI-compat layer)
         # honor by skipping the reasoning preamble entirely.
         self.disable_thinking = "no-think" in model_name.lower()
+        # Pure-thinking models (Qwen3-*-Thinking-2507, DeepSeek-R1, etc.)
+        # ALWAYS emit a <think>...</think> trace -- there is no off switch.
+        # The trace itself counts against max_tokens even when a server-side
+        # reasoning-parser routes it to `reasoning_content` for the client.
+        # The per-task caps in TASK_MAX_NEW_TOKENS (MCQ=128, RCM/RMS/TAA=256)
+        # are tuned for terse non-thinking models and will truncate every row
+        # mid-trace, collapsing accuracy to below random. Detect via the
+        # explicit 'thinking' substring in the alias (matches the upstream
+        # repo naming convention) and raise the per-request floor to 8192.
+        # Excludes '-no-think' aliases (which mean the opposite).
+        name_lc = model_name.lower()
+        self.is_thinking_model = "thinking" in name_lc and "no-think" not in name_lc
+        if self.is_thinking_model and self.disable_thinking:
+            # Can't be both; -no-think wins by intent (it's the explicit override).
+            self.is_thinking_model = False
+        flags = []
+        if self.disable_thinking:
+            flags.append("thinking=disabled")
+        if self.is_thinking_model:
+            flags.append("thinking=floor8192")
         print(f"vLLM client ready for {self.hf_model_id} (base_url={self.base_url}"
-              f"{', thinking=disabled' if self.disable_thinking else ''})")
+              f"{', ' + ', '.join(flags) if flags else ''})")
 
     # vLLM 400 message: "maximum context length is N tokens. However, you
     # requested M output tokens and your prompt contains at least P input
@@ -887,6 +918,14 @@ class VLLMModel(BaseModel):
     # the prompt itself is >= ctx and no retry can save the row; bail.
     _CTX_OVERFLOW_FLOOR = 64
     _MIN_GENERATION_BUDGET = 32
+    # Thinking-mode floor: trace + answer must both fit in max_tokens. The
+    # MCQ/short-answer per-task caps (128-512) are too tight by an order of
+    # magnitude; bump to a uniform 8192 floor when the alias declares
+    # thinking mode. Server-side --reasoning-parser routes the trace to
+    # `reasoning_content`, so the bench-visible `content` field is still
+    # just the final answer; the floor only affects the generation budget,
+    # not what the bench sees.
+    _THINKING_MIN_TOKENS = 8192
 
     def generate(self, question, task=None, cleanup_after=False, use_web_search=False,
                  temperature=0.0, max_new_tokens=2048, **kwargs):
@@ -898,6 +937,8 @@ class VLLMModel(BaseModel):
         messages.append({"role": "user", "content": question})
 
         effective_max = max_new_tokens
+        if self.is_thinking_model:
+            effective_max = max(int(effective_max or 0), self._THINKING_MIN_TOKENS)
         shrunk = False  # one-shot drop-to-floor on context overflow per call
         transient_budget = 5
         last_err = None
