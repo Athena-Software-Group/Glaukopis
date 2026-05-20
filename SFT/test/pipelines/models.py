@@ -121,14 +121,16 @@ model_mapping = {
     # MCQ tasks (CKT/ATE/TAA/CyberMetric) where the trace eats the generation
     # budget; keep qwen3-32b-vllm for tasks that benefit from CoT.
     'qwen3-32b-no-think-vllm':                 'Qwen/Qwen3-32B',
-    # Qwen3-32B pure-instruct July 2025 split. Distinct from qwen3-32b-vllm
-    # (the original April 2025 hybrid release): Instruct-2507 has no
-    # `<think>` mode at all, so no chat_template_kwargs override is needed
-    # and the model never emits reasoning preambles. Pre-train cutoff is
-    # ~7 months newer than Qwen2.5-32B's, with broader code/technical/CTI
-    # coverage. Use this as the baseline reference for any v21-on-Qwen3-32B
-    # SFT runs.
-    'qwen3-32b-instruct-2507-vllm':            'Qwen/Qwen3-32B-Instruct-2507',
+    # Qwen3-30B-A3B pure-instruct July 2025 split. MoE architecture: ~30.5B
+    # total params, ~3.3B active per token (128 experts, 8 routed). Distinct
+    # from the dense Qwen3-32B above. Pure non-thinking by design (no hybrid
+    # `<think>` mode), 262K native ctx. Pre-train ~7 months newer than the
+    # Qwen2.5 family. Use this as the ~30B-class pure-instruct baseline;
+    # weights footprint (~60 GB bf16 resident) is comparable to dense 32B
+    # but decode throughput is ~5-7x faster owing to the 3.3B active path.
+    # No '-no-think' suffix needed -- the Instruct-2507 chat template has
+    # no thinking mode to suppress.
+    'qwen3-30b-a3b-instruct-2507-vllm':        'Qwen/Qwen3-30B-A3B-Instruct-2507',
     'qwen2.5-14b-vllm':                        'Qwen/Qwen2.5-14B-Instruct',
     'qwen2.5-32b-vllm':                        'Qwen/Qwen2.5-32B-Instruct',
     'phi-4-vllm':                              'microsoft/phi-4',
