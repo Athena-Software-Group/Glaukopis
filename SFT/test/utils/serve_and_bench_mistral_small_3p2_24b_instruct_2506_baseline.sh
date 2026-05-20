@@ -61,7 +61,11 @@ export BENCH_CONDA_ENV="${BENCH_CONDA_ENV:-ctibench}"
 # Skip vision-encoder KV pre-allocation for the text-only bench. The
 # Mistral-Small-3.2 vision tower would otherwise reserve multi-GB per
 # rank for image features we never send.
-export EXTRA_SERVE_FLAGS="${EXTRA_SERVE_FLAGS:---limit-mm-per-prompt image=0}"
+#
+# vLLM 0.7+ takes --limit-mm-per-prompt as a JSON object; the older
+# key=value syntax errors with "Value image=0 cannot be converted to
+# <function loads>". JSON form works on both old and new vLLM.
+export EXTRA_SERVE_FLAGS="${EXTRA_SERVE_FLAGS:---limit-mm-per-prompt '{\"image\":0}'}"
 
 exec bash "${SCRIPT_DIR}/run_foundation_8b_baselines.sh" \
     --model mistral-small-3.2-24b-instruct-2506-vllm \
