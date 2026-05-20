@@ -421,6 +421,20 @@ model_mapping = {
     'athena-cti-sft-qwen25-14b-v21-taa-vllm':                  'asg-ai/athena-cti-sft-qwen25-14b-v21-taa',
     'athena-cti-sft-qwen25-14b-v21-cse-vllm':                  'asg-ai/athena-cti-sft-qwen25-14b-v21-cse',
     'athena-cti-sft-qwen25-14b-v21-recalibrate-vllm':          'asg-ai/athena-cti-sft-qwen25-14b-v21-recalibrate',
+    # v21 chain ported to Qwen2.5-32B-Instruct. Same 4-stage recipe (Core
+    # Phase A/B -> TAA -> CSE -> Recalibrate) and same datasets as the Qwen
+    # 14B v21 chain; only the base model and HF push targets differ (memory
+    # deltas: per_device_batch 2->1 on Phase A, --optim adamw_8bit, --gc on
+    # default; recipe LRs/cutoffs/probs held verbatim). Pushed by
+    # SFT/autotrain/run_sft_qwen25_32b_v21_{core,plus_taa,final,recalibrate}.sh
+    # (or chained via SFT/autotrain/run_sft_qwen25_32b_v21_chain.sh).
+    # Scale-up probe of the v21 recipe: whether the 14B v21 chain's 62.3
+    # Total ship score reproduces (or exceeds) on the dense 32B base under
+    # bit-identical templates/gates/mixes.
+    'athena-cti-sft-qwen25-32b-v21-core-vllm':                 'asg-ai/athena-cti-sft-qwen25-32b-v21-core',
+    'athena-cti-sft-qwen25-32b-v21-taa-vllm':                  'asg-ai/athena-cti-sft-qwen25-32b-v21-taa',
+    'athena-cti-sft-qwen25-32b-v21-cse-vllm':                  'asg-ai/athena-cti-sft-qwen25-32b-v21-cse',
+    'athena-cti-sft-qwen25-32b-v21-recalibrate-vllm':          'asg-ai/athena-cti-sft-qwen25-32b-v21-recalibrate',
     # v21 chain ported to Llama-3.1-8B-Instruct. Same 4-stage recipe (Core
     # Phase A/B -> TAA -> CSE -> Recalibrate) and same datasets as the Qwen
     # 14B v21 chain; only the base model, --template (qwen -> llama3), and
