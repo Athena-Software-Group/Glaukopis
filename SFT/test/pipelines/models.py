@@ -121,6 +121,14 @@ model_mapping = {
     # MCQ tasks (CKT/ATE/TAA/CyberMetric) where the trace eats the generation
     # budget; keep qwen3-32b-vllm for tasks that benefit from CoT.
     'qwen3-32b-no-think-vllm':                 'Qwen/Qwen3-32B',
+    # Qwen3-32B pure-instruct July 2025 split. Distinct from qwen3-32b-vllm
+    # (the original April 2025 hybrid release): Instruct-2507 has no
+    # `<think>` mode at all, so no chat_template_kwargs override is needed
+    # and the model never emits reasoning preambles. Pre-train cutoff is
+    # ~7 months newer than Qwen2.5-32B's, with broader code/technical/CTI
+    # coverage. Use this as the baseline reference for any v21-on-Qwen3-32B
+    # SFT runs.
+    'qwen3-32b-instruct-2507-vllm':            'Qwen/Qwen3-32B-Instruct-2507',
     'qwen2.5-14b-vllm':                        'Qwen/Qwen2.5-14B-Instruct',
     'qwen2.5-32b-vllm':                        'Qwen/Qwen2.5-32B-Instruct',
     'phi-4-vllm':                              'microsoft/phi-4',
