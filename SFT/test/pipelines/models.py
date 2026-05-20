@@ -156,6 +156,13 @@ model_mapping = {
     'gemma-4-31b-it-vllm':                     'google/gemma-4-31B-it',
     'ministral-8b-vllm':                       'mistralai/Ministral-8B-Instruct-2410',
     'mistral-7b-vllm':                         'mistralai/Mistral-7B-Instruct-v0.3',
+    # Mistral Small 3.2 24B Instruct (June 2025). 24B dense, multimodal
+    # (text+vision); served text-only here, so the serve cmd should pass
+    # `--limit-mm-per-prompt image=0` via EXTRA_SERVE_FLAGS to skip the
+    # vision-encoder KV pre-allocation. Native ctx 128K, weights ~48GB bf16
+    # -> tp=2 on H100 80GB (~24GB/rank). Pitched as a 32B-class candidate
+    # for the v21 SFT recipe; this alias is for the pre-SFT baseline.
+    'mistral-small-3.2-24b-instruct-2506-vllm': 'mistralai/Mistral-Small-3.2-24B-Instruct-2506',
     'athena-cti-cpt-llama31-8b-v1-vllm':       'asg-ai/athena-cti-cpt-llama31-8b-v1',
     'athena-cti-sft-llama31-8b-abaligned-v3-vllm': 'asg-ai/athena-cti-sft-llama31-8b-abaligned-v3',
     'athena-cti-sft-llama31-8b-abaligned-v4-vllm': 'asg-ai/athena-cti-sft-llama31-8b-abaligned-v4',
