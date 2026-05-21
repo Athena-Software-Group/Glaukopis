@@ -435,39 +435,88 @@ install_stack() {
     # in vllm mode and let vllm resolve its own dependency tree.
     if [[ "${stack}" != "vllm" ]]; then
         echo "=== Installing PyTorch (${CUDA_TAG}) into ${env} ==="
-        # --extra-index-url (not --index-url alone) so PyPI stays available
-        # as a fallback for torch's pure-Python transitive deps (fsspec,
-        # sympy, networkx, jinja2, ...). The per-CUDA wheel subindex
-        # (whl/cu126/, whl/cu128/, ...) ONLY carries torch/torchvision/
-        # torchaudio wheels and does not mirror those deps, so a plain
-        # --index-url makes pip 26+ fail resolution with the canonical
-        # "Cannot install torch ... because these package versions have
-        # conflicting dependencies. ... no matching distributions
-        # available ... fsspec" message. The +cuXXX wheels still win the
-        # resolver because the +cu126 local-version segment sorts higher
-        # than the plain x.y.z PyPI wheel per PEP 440.
-        pip install --index-url "${TORCH_INDEX_URL}" \
-                    --extra-index-url https://pypi.org/simple \
-                    torch torchvision torchaudio
 
-        # Make the cu-tag wheel index visible to every subsequent `pip
-        # install` in this env-build for the rest of this script. Without
-        # this, downstream installs that pull torch transitively (e.g.
-        # SFT/test/requirements.txt's `torch>=2.8.0` CVE pin, line 531
-        # below) only see PyPI's plain wheels, which since torch 2.9 are
-        # compiled against CUDA 13. pip then "upgrades" torch from
-        # +cu128 to +cu130 to satisfy the pin, orphans torchaudio at
-        # +cu128 (the cu130 wheel index doesn't publish torchaudio yet),
-        # and the env fails at first import with:
-        #   RuntimeError: Detected that PyTorch and TorchAudio were
-        #   compiled with different CUDA versions. PyTorch has CUDA
-        #   version 13.0 whereas TorchAudio has CUDA version 12.8.
-        # Exporting PIP_EXTRA_INDEX_URL keeps PyPI as the primary source
-        # (so non-torch deps continue to resolve normally) while making
-        # the cu-tag index available as a secondary -- +cu128 sorts
-        # higher than the plain PyPI wheel per PEP 440's local-version
-        # rules, so the +cu128 build wins any torch upgrade contest.
-        export PIP_EXTRA_INDEX_URL="${TORCH_INDEX_URL}"
+        # Pin to the latest torch/torchvision/torchaudio that the cu-tag
+        # wheel index actually publishes, instead of letting pip resolve
+        # an unbounded `torch torchvision torchaudio`. Two regressions
+        # this guards against, both observed during the 8xH200 bring-up:
+        #
+        # 1. PEP 440 upstream-version dominance. The cu128 sub-index
+        #    typically caps a release or two behind PyPI (today: cu128
+        #    has torch 2.11.0+cu128 max; PyPI has plain torch 2.12.0
+        #    compiled against cu13). With `pip install torch
+        #    --index-url cu128 --extra-index-url pypi`, pip compares
+        #    upstream versions first and only uses the +cu128 local
+        #    segment to break ties on the SAME upstream version, so
+        #    plain `2.12.0` from PyPI beats `2.11.0+cu128` from the
+        #    sub-index. The result is a cu13-compiled torch landing
+        #    alongside the +cu128 torchaudio that pip pulls correctly
+        #    (since the sub-index serves the only torchaudio 2.12 wheel
+        #    via the +cu128 build), producing the canonical:
+        #      RuntimeError: Detected that PyTorch and TorchAudio were
+        #      compiled with different CUDA versions. PyTorch has CUDA
+        #      version 13.0 whereas TorchAudio has CUDA version 12.8.
+        #    -- on first import.
+        #
+        # 2. Downstream pip installs (e.g. SFT/test/requirements.txt's
+        #    `torch>=2.8.0` CVE pin, line ~550 below) re-evaluate torch
+        #    against PyPI and, finding a higher upstream version there,
+        #    silently "upgrade" the env into the same broken state.
+        #
+        # Fix is two-part: (a) discover the highest +cu${CUDA_TAG#cu}
+        # torch wheel actually on the sub-index and pin to that exact
+        # version (so PyPI's higher upstream wheel can never beat it,
+        # because the strict pin excludes it from consideration); and
+        # (b) export PIP_CONSTRAINT for the rest of the script so any
+        # downstream `pip install` that touches torch is held to the
+        # same pin. The constraint file is keyed on the exact +cu
+        # local-version segment, so `torch>=2.8.0` style transitive
+        # pins still validate against it while preventing the silent
+        # upgrade past what the sub-index publishes.
+        TORCH_CU_VER="$(curl -fsSL "${TORCH_INDEX_URL}/torch/" \
+            | grep -oE "torch-[0-9]+\.[0-9]+\.[0-9]+\+${CUDA_TAG}" \
+            | sed -E "s/torch-//" \
+            | sort -uV \
+            | tail -1)"
+        TV_CU_VER="$(curl -fsSL "${TORCH_INDEX_URL}/torchvision/" \
+            | grep -oE "torchvision-[0-9]+\.[0-9]+\.[0-9]+\+${CUDA_TAG}" \
+            | sed -E "s/torchvision-//" \
+            | sort -uV \
+            | tail -1)"
+        TA_CU_VER="$(curl -fsSL "${TORCH_INDEX_URL}/torchaudio/" \
+            | grep -oE "torchaudio-[0-9]+\.[0-9]+\.[0-9]+\+${CUDA_TAG}" \
+            | sed -E "s/torchaudio-//" \
+            | sort -uV \
+            | tail -1)"
+        if [[ -z "${TORCH_CU_VER}" || -z "${TV_CU_VER}" || -z "${TA_CU_VER}" ]]; then
+            echo "  [WARN] could not discover torch/torchvision/torchaudio versions on"
+            echo "         ${TORCH_INDEX_URL} (torch='${TORCH_CU_VER}' tv='${TV_CU_VER}'"
+            echo "         ta='${TA_CU_VER}'); falling back to unpinned install -- the"
+            echo "         resulting env may have a cu-version mismatch on first import."
+            pip install --index-url "${TORCH_INDEX_URL}" \
+                        --extra-index-url https://pypi.org/simple \
+                        torch torchvision torchaudio
+        else
+            echo "  [pin] cu wheel index publishes max torch=${TORCH_CU_VER}"
+            echo "  [pin]                       torchvision=${TV_CU_VER}"
+            echo "  [pin]                       torchaudio=${TA_CU_VER}"
+            pip install --index-url "${TORCH_INDEX_URL}" \
+                        --extra-index-url https://pypi.org/simple \
+                        "torch==${TORCH_CU_VER}" \
+                        "torchvision==${TV_CU_VER}" \
+                        "torchaudio==${TA_CU_VER}"
+            # Hold the pin for the rest of this env build via PIP_CONSTRAINT
+            # so the test stack's torch>=2.8.0 line cannot silently regress
+            # the env to a PyPI cu13 wheel.
+            TORCH_PIN_FILE="$(mktemp -t torch-pin.XXXXXX.txt)"
+            cat > "${TORCH_PIN_FILE}" <<EOF
+torch==${TORCH_CU_VER}
+torchvision==${TV_CU_VER}
+torchaudio==${TA_CU_VER}
+EOF
+            export PIP_CONSTRAINT="${TORCH_PIN_FILE}"
+            export PIP_EXTRA_INDEX_URL="${TORCH_INDEX_URL}"
+        fi
     fi
 
     if [[ "${stack}" == "vllm" ]]; then
