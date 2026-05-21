@@ -71,6 +71,42 @@ done
 command -v git >/dev/null 2>&1 \
     || { echo "git not installed on this host; install it before re-running." >&2; exit 1; }
 
+# Install git-lfs system-wide if missing. The Glaukopis repo's pre-existing
+# global git-lfs templates install a post-merge hook into every fresh clone
+# regardless of whether .gitattributes actually tracks anything via LFS, and
+# that hook complains loudly on every `git pull` when git-lfs is not on
+# PATH:
+#   This repository is configured for Git LFS but 'git-lfs' was not found
+#   on your path. ...
+# The warning is benign (the repo's training data is gitignored and rsync'd
+# separately, not LFS-tracked), but it's noisy and easily mistaken for a
+# real fault. Install via the host's package manager when possible, else
+# warn and continue -- a downstream `bash SFT/utils/setup.sh` will install
+# git-lfs via conda-forge into the train env later, which silences the
+# warning permanently once that env is active.
+if ! command -v git-lfs >/dev/null 2>&1; then
+    echo "=== Installing git-lfs (system; needed by post-merge hook in clones) ==="
+    _lfs_installed=0
+    if command -v apt-get >/dev/null 2>&1; then
+        if apt-get update -qq >/dev/null 2>&1 && \
+           DEBIAN_FRONTEND=noninteractive apt-get install -y -qq git-lfs >/dev/null 2>&1; then
+            _lfs_installed=1
+        fi
+    elif command -v yum >/dev/null 2>&1; then
+        yum install -y -q git-lfs >/dev/null 2>&1 && _lfs_installed=1
+    elif command -v dnf >/dev/null 2>&1; then
+        dnf install -y -q git-lfs >/dev/null 2>&1 && _lfs_installed=1
+    fi
+    if [[ ${_lfs_installed} -eq 1 ]]; then
+        echo "  ok: $(git-lfs version 2>/dev/null | head -1)"
+    else
+        echo "  [WARN] could not install git-lfs via the host package manager."
+        echo "         Clone will succeed, but every subsequent 'git pull' in the"
+        echo "         clone will print a benign post-merge-hook warning until"
+        echo "         setup.sh installs git-lfs into the conda env."
+    fi
+fi
+
 # .env auto-detect: if no --env-file was passed, search (in order):
 #   1. ${SCRIPT_DIR}/.env   -- co-located with this script (recommended:
 #      scp bootstrap_remote.sh + .env into the same directory on the
@@ -192,6 +228,8 @@ echo "Next steps:"
 echo "  1. From the source box, rsync the v21 dataset shards in parallel"
 echo "     (see the xargs -P4 rsync recipe in the v21 launch notes)."
 echo "  2. On THIS host, install the conda env + CUDA-matched torch:"
-echo "       cd ${TARGET_DIR}/SFT/utils && ./setup.sh --cuda cu128"
-echo "       # (use cu130 if nvcc reports CUDA 13.x; cu128 is the floor for"
-echo "       #  Blackwell sm_120 / RTX PRO 6000)"
+echo "       cd ${TARGET_DIR}/SFT/utils && ./setup.sh"
+echo "       # Auto-detects CUDA from nvcc. Hopper/Blackwell -> cu128"
+echo "       # (auto-detected cu130 is capped to cu128 because whl/cu130"
+echo "       #  does not yet publish torchaudio; pass --cuda cu130 to opt"
+echo "       #  out of the cap if you'll source-build torchaudio yourself)."
