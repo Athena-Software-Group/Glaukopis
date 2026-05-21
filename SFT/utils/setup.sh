@@ -419,7 +419,20 @@ install_stack() {
     # in vllm mode and let vllm resolve its own dependency tree.
     if [[ "${stack}" != "vllm" ]]; then
         echo "=== Installing PyTorch (${CUDA_TAG}) into ${env} ==="
-        pip install --index-url "${TORCH_INDEX_URL}" torch torchvision torchaudio
+        # --extra-index-url (not --index-url alone) so PyPI stays available
+        # as a fallback for torch's pure-Python transitive deps (fsspec,
+        # sympy, networkx, jinja2, ...). The per-CUDA wheel subindex
+        # (whl/cu126/, whl/cu128/, ...) ONLY carries torch/torchvision/
+        # torchaudio wheels and does not mirror those deps, so a plain
+        # --index-url makes pip 26+ fail resolution with the canonical
+        # "Cannot install torch ... because these package versions have
+        # conflicting dependencies. ... no matching distributions
+        # available ... fsspec" message. The +cuXXX wheels still win the
+        # resolver because the +cu126 local-version segment sorts higher
+        # than the plain x.y.z PyPI wheel per PEP 440.
+        pip install --index-url "${TORCH_INDEX_URL}" \
+                    --extra-index-url https://pypi.org/simple \
+                    torch torchvision torchaudio
     fi
 
     if [[ "${stack}" == "vllm" ]]; then
