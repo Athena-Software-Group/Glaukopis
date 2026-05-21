@@ -187,6 +187,22 @@ if [[ "${CUDA_TAG}" == "auto" || ${CUDA_TAG_EXPLICIT} -eq 0 ]]; then
     fi
     if [[ -n "${detected_cu}" ]]; then
         candidate="cu${detected_cu}"
+        # PyTorch ecosystem cap: as of 2026-05, the whl/cu130 sub-index
+        # publishes torch and torchvision but NOT torchaudio, so an
+        # auto-detected cu130 host installs torch+cu130 from the index
+        # and silently pulls torchaudio (plain, cu128-compiled) from the
+        # PyPI fallback, producing a hard runtime trip on first import:
+        #   RuntimeError: Detected that PyTorch and TorchAudio were
+        #   compiled with different CUDA versions. PyTorch has CUDA
+        #   version 13.0 whereas TorchAudio has CUDA version 12.8.
+        # Hopper / Blackwell are fully supported by cu128, so cap the
+        # auto path there until the cu130 torchaudio wheel set lands.
+        # An explicit --cuda cu130 still works (opt-in; user accepts
+        # they may need to source-build torchaudio themselves).
+        if [[ "${candidate}" == "cu130" ]]; then
+            echo "  [auto-detect] system nvcc reports CUDA ${detected_cu}; capping --cuda at cu128 (whl/cu130 lacks torchaudio; pass --cuda cu130 to override)"
+            candidate="cu128"
+        fi
         case "${candidate}" in
             cu130|cu128|cu126|cu124|cu121|cu118)
                 if [[ "${CUDA_TAG}" == "auto" || "${candidate}" != "${CUDA_TAG}" ]]; then
