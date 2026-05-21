@@ -435,6 +435,23 @@ model_mapping = {
     'athena-cti-sft-qwen25-32b-v21-taa-vllm':                  'asg-ai/athena-cti-sft-qwen25-32b-v21-taa',
     'athena-cti-sft-qwen25-32b-v21-cse-vllm':                  'asg-ai/athena-cti-sft-qwen25-32b-v21-cse',
     'athena-cti-sft-qwen25-32b-v21-recalibrate-vllm':          'asg-ai/athena-cti-sft-qwen25-32b-v21-recalibrate',
+    # 32B-recipe variant of the off-plan Stage 4 Recalibrate touch-up.
+    # Parallel branch off v21-cse alongside qwen25-32b-v21-recalibrate
+    # (which uses the 14B recipe verbatim); naming reflects RECIPE
+    # PROVENANCE, not chain position. Motivated by the 14B-recipe port
+    # failing to recover VSP on Qwen2.5-32B-Instruct (post-cse VSP 78.9
+    # -> post-recal VSP 75.7, vs the 14B chain's 72.9 -> 83.1 lift).
+    # Three coupled deltas vs the standard recal, holding step count +
+    # wall-time constant so the only A/B variable is the recipe: lr 1e-6
+    # -> 3e-6 (clear the 32B + adamw_8bit optimizer noise floor),
+    # interleave probs 0.25/0.40/0.35 -> 0.15/0.60/0.25 (heavier Phase B
+    # share for VSP/RMS catalog re-exposure), --max-samples 2400 -> 3600
+    # (preserves the 6000 interleaved rows / ~1500 optimizer steps at
+    # the new max(P)=0.60). Base = v21-cse. Pushed by
+    # SFT/autotrain/run_sft_qwen25_32b_v21_recal_32b.sh. If VSP recovers
+    # without sacrificing the cse-stage gains, this becomes the 32B ship
+    # candidate; otherwise v21-cse stays the headline.
+    'athena-cti-sft-qwen25-32b-v21-recal-32b-vllm':            'asg-ai/athena-cti-sft-qwen25-32b-v21-recal-32b',
     # v21 chain ported to Llama-3.1-8B-Instruct. Same 4-stage recipe (Core
     # Phase A/B -> TAA -> CSE -> Recalibrate) and same datasets as the Qwen
     # 14B v21 chain; only the base model, --template (qwen -> llama3), and
