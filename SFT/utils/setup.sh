@@ -76,6 +76,9 @@
 #   (vllm mode also installs ctibench by default; --no-bench-env opts out)
 #   (git identity left untouched unless both --git-user-name and
 #    --git-user-email are passed, or GIT_USER_NAME/GIT_USER_EMAIL exported)
+#   (train stack caps torch at FA_MAX_TORCH_MINOR=2.8 by default so the
+#    prebuilt flash-attn 2.8.3 wheel exists; export FA_MAX_TORCH_MINOR=2.x
+#    to widen the cap, or pass --no-flash-attn to drop it entirely)
 #
 # Dependency note:
 #   LlamaFactory pins datasets<=4.0.0 and transformers<=5.2.0; SFT/test asks
@@ -97,6 +100,20 @@ ENV_NAME_EXPLICIT=0
 PYTHON_VERSION="3.11"
 EXTRAS="metrics deepspeed"
 INSTALL_FLASH_ATTN=1
+# Train stack only: cap the torch wheel that the cu sub-index install pulls
+# to a minor that flash-attn's current stable line (FA2 v2.8.3, see
+# install_flash_attn helper) ships prebuilt wheels for. The cu128 sub-index
+# has rolled past torch 2.8 (today: max torch 2.11.0+cu128), but FA 2.8.3
+# only publishes wheels for torch 2.4 - 2.8; if torch overshoots the cap,
+# the wheel URL 404s, the source-build fallback fails against torch's newer
+# API, and llamafactory's --flash_attn auto silently falls back to torch
+# SDPA. On Hopper / Blackwell the SDPA cuDNN backend then trips
+# "cudnn_frontend Error: No valid execution plans built" for Qwen2-class
+# attention shapes under gradient checkpointing -- the exact failure mode
+# observed on the 8xH200 v21 32B SFT run. Default 2.8 keeps both the CVE
+# floor (test/requirements.txt torch>=2.8.0) and the FA wheel satisfied.
+# Override with FA_MAX_TORCH_MINOR=2.x or skip via --no-flash-attn.
+FA_MAX_TORCH_MINOR="${FA_MAX_TORCH_MINOR:-2.8}"
 RUN_LFS_PULL=0
 SPLIT_ENVS=0
 RUN_CONDA_INIT=1
@@ -488,6 +505,57 @@ install_stack() {
             | sed -E "s/torchaudio-//" \
             | sort -uV \
             | tail -1)"
+        # Train-stack cap (see FA_MAX_TORCH_MINOR at top of file): re-pick the
+        # highest +cu wheels whose torch minor is <= FA_MAX_TORCH_MINOR so the
+        # prebuilt flash-attn wheel installed by install_flash_attn (below)
+        # actually exists. Pairing rule observed on the cu128 sub-index:
+        # torchaudio shares torch's X.Y; torchvision is 0.(Y+15) when torch
+        # major == 2 (torch 2.7 -> tv 0.22, 2.8 -> 0.23, 2.9 -> 0.24, ...).
+        # No-op for stack != train, and no-op when the discovered torch is
+        # already at or below the cap.
+        if [[ "${stack}" == "train" && ${INSTALL_FLASH_ATTN} -eq 1 && -n "${TORCH_CU_VER}" ]]; then
+            CAP_MM_ESC="${FA_MAX_TORCH_MINOR//./\\.}"
+            CAP_TORCH="$(curl -fsSL "${TORCH_INDEX_URL}/torch/" \
+                | grep -oE "torch-${CAP_MM_ESC}\.[0-9]+\+${CUDA_TAG}" \
+                | sed -E "s/torch-//" \
+                | sort -uV \
+                | tail -1)"
+            if [[ -n "${CAP_TORCH}" && "${CAP_TORCH}" != "${TORCH_CU_VER}" ]]; then
+                TORCH_MINOR="$(echo "${CAP_TORCH%%+*}" | cut -d. -f2)"
+                TV_CAP_MM="0.$(( TORCH_MINOR + 15 ))"
+                TA_CAP_MM="${FA_MAX_TORCH_MINOR}"
+                CAP_TV="$(curl -fsSL "${TORCH_INDEX_URL}/torchvision/" \
+                    | grep -oE "torchvision-${TV_CAP_MM//./\\.}\.[0-9]+\+${CUDA_TAG}" \
+                    | sed -E "s/torchvision-//" \
+                    | sort -uV \
+                    | tail -1)"
+                CAP_TA="$(curl -fsSL "${TORCH_INDEX_URL}/torchaudio/" \
+                    | grep -oE "torchaudio-${TA_CAP_MM//./\\.}\.[0-9]+\+${CUDA_TAG}" \
+                    | sed -E "s/torchaudio-//" \
+                    | sort -uV \
+                    | tail -1)"
+                if [[ -n "${CAP_TV}" && -n "${CAP_TA}" ]]; then
+                    echo "  [fa-cap] capping train torch ${TORCH_CU_VER} -> ${CAP_TORCH}"
+                    echo "  [fa-cap]              torchvision ${TV_CU_VER} -> ${CAP_TV}"
+                    echo "  [fa-cap]              torchaudio  ${TA_CU_VER} -> ${CAP_TA}"
+                    echo "  [fa-cap] reason: flash-attn 2.8.3 has no prebuilt wheel for"
+                    echo "  [fa-cap]         torch>${FA_MAX_TORCH_MINOR}; without the cap"
+                    echo "  [fa-cap]         SFT falls back to SDPA -> cuDNN frontend"
+                    echo "  [fa-cap]         failure on H100/H200 + Qwen2 + GC."
+                    echo "  [fa-cap] override: FA_MAX_TORCH_MINOR=2.x or --no-flash-attn."
+                    TORCH_CU_VER="${CAP_TORCH}"
+                    TV_CU_VER="${CAP_TV}"
+                    TA_CU_VER="${CAP_TA}"
+                else
+                    echo "  [fa-cap] WARN: torch cap ${CAP_TORCH} found but matching"
+                    echo "  [fa-cap]       torchvision ${TV_CAP_MM}.x / torchaudio"
+                    echo "  [fa-cap]       ${TA_CAP_MM}.x missing on ${TORCH_INDEX_URL};"
+                    echo "  [fa-cap]       leaving torch at ${TORCH_CU_VER}. flash-attn"
+                    echo "  [fa-cap]       install will most likely fail -- training on"
+                    echo "  [fa-cap]       H100/H200 with Qwen2 will then break."
+                fi
+            fi
+        fi
         if [[ -z "${TORCH_CU_VER}" || -z "${TV_CU_VER}" || -z "${TA_CU_VER}" ]]; then
             echo "  [WARN] could not discover torch/torchvision/torchaudio versions on"
             echo "         ${TORCH_INDEX_URL} (torch='${TORCH_CU_VER}' tv='${TV_CU_VER}'"
@@ -622,10 +690,43 @@ EOF
         install_flash_attn
         local fa_status=$?
         set -e
-        if [[ ${fa_status} -ne 0 ]]; then
-            echo "  [WARN] flash-attn install failed (exit ${fa_status}); continuing without it."
-            echo "         The benchmark runner defaults to SDPA; trainer configs that"
-            echo "         request flash-attn must be adjusted or this install repaired."
+        # install_flash_attn returns 0 even when the prebuilt wheel 404s and
+        # the source-build fallback is skipped (CUDA mismatch / no nvcc), so
+        # the exit code alone is not a reliable signal. Verify the import
+        # actually succeeds and escalate to a loud banner if it doesn't --
+        # the silent failure path is exactly what put the 8xH200 v21 32B
+        # SFT run into the cuDNN-frontend "No valid execution plans built"
+        # crash, because llamafactory's --flash_attn auto falls back to
+        # SDPA -> cuDNN backend, which can't plan Qwen2 attention shapes
+        # under gradient checkpointing on Hopper / Blackwell.
+        if [[ ${fa_status} -eq 0 ]] && python -c "import flash_attn" 2>/dev/null; then
+            local fa_installed_ver
+            fa_installed_ver="$(python -c 'import flash_attn; print(flash_attn.__version__)' 2>/dev/null || echo unknown)"
+            echo "  flash-attn import OK (version ${fa_installed_ver})."
+        else
+            echo
+            echo "  ############################################################"
+            echo "  # [WARN] flash-attn NOT available in ${env}."
+            echo "  #        install_flash_attn exit=${fa_status}; import flash_attn failed."
+            echo "  #"
+            echo "  #        Training on Hopper / Blackwell (H100 / H200 / B200)"
+            echo "  #        with Qwen2-class models + gradient checkpointing will"
+            echo "  #        fall back to SDPA, then to the cuDNN SDPA backend,"
+            echo "  #        which trips:"
+            echo "  #          RuntimeError: cuDNN Frontend error:"
+            echo "  #          [cudnn_frontend] Error: No valid execution plans built."
+            echo "  #"
+            echo "  #        Fix options (pick one before launching SFT):"
+            echo "  #          1. Re-run setup.sh after confirming the torch cap"
+            echo "  #             (FA_MAX_TORCH_MINOR=${FA_MAX_TORCH_MINOR}, default 2.8)"
+            echo "  #             actually held -- check the [fa-cap] lines above."
+            echo "  #          2. Drop the cap (FA_MAX_TORCH_MINOR=2.X) if a newer"
+            echo "  #             flash-attn release lands with matching wheels."
+            echo "  #          3. Pin --flash_attn sdpa in the launcher EXTRA_COMMON"
+            echo "  #             and export TORCH_CUDNN_SDPA_ENABLED=0 to keep"
+            echo "  #             SDPA off the cuDNN backend (~25% slower than FA2)."
+            echo "  ############################################################"
+            echo
         fi
     elif [[ "${CUDA_TAG}" == "cpu" ]]; then
         echo "=== Skipping flash-attn (CPU build) ==="
@@ -896,14 +997,27 @@ PY
         return 0
     fi
 
-    local wheel_url="https://github.com/Dao-AILab/flash-attention/releases/download/v${FLASH_ATTN_VERSION}/flash_attn-${FLASH_ATTN_VERSION}+cu${CU_MAJOR}torch${TORCH_MM}cxx11abiFALSE-${PY_TAG}-${PY_TAG}-linux_x86_64.whl"
-    echo "  Trying prebuilt wheel: ${wheel_url}"
-    if pip install --no-build-isolation "${wheel_url}" 2>&1 | tail -20; then
-        # tail returned 0 even on 404; verify flash_attn actually imports
-        if python -c "import flash_attn" 2>/dev/null; then
-            return 0
+    # Try both ABI variants of the prebuilt wheel. Modern torch wheels
+    # (>=2.4 on most cu sub-indices) default to cxx11abi=TRUE; older builds
+    # ship abi=FALSE. Picking the wrong one installs cleanly but fails at
+    # `import flash_attn` with a libstdc++ ABI mismatch, so try TRUE first
+    # and fall back to FALSE before declaring the wheel unavailable.
+    local wheel_base="https://github.com/Dao-AILab/flash-attention/releases/download/v${FLASH_ATTN_VERSION}/flash_attn-${FLASH_ATTN_VERSION}+cu${CU_MAJOR}torch${TORCH_MM}"
+    local abi
+    for abi in TRUE FALSE; do
+        local wheel_url="${wheel_base}cxx11abi${abi}-${PY_TAG}-${PY_TAG}-linux_x86_64.whl"
+        echo "  Trying prebuilt wheel (abi=${abi}): ${wheel_url}"
+        if pip install --no-build-isolation "${wheel_url}" 2>&1 | tail -20; then
+            # pip exits 0 even on 404 when fed a direct URL it can't fetch;
+            # confirm flash_attn actually imports before declaring success.
+            if python -c "import flash_attn" 2>/dev/null; then
+                echo "  flash-attn ${FLASH_ATTN_VERSION} installed (abi=${abi})."
+                return 0
+            fi
+            echo "  [WARN] wheel installed but import failed (likely ABI mismatch); trying next variant."
+            pip uninstall -y flash-attn >/dev/null 2>&1 || true
         fi
-    fi
+    done
     echo "  [WARN] Prebuilt wheel unavailable for torch ${TORCH_MM}+cu${CU_MAJOR} / ${PY_TAG}."
 
     # Gate the source-build fallback on a CUDA version match. nvcc's reported
