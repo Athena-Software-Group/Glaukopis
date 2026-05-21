@@ -64,7 +64,7 @@
 #                       ift_data_2026_05_18_v21_core_b_rms_ate_vsp_rcm         (0.60)
 #                       ift_data_2026_05_18_v21_taa                            (0.25)
 #   - 1 epoch, lr 3e-6, cutoff 16384, packing OFF
-#   - Effective batch 8 on 8xH100 (per_device 1 x grad_accum 1 x 8 GPUs)
+#   - Effective batch 8 on 8xH200 (per_device 1 x grad_accum 1 x 8 GPUs)
 #   - save every 200 steps; intra-training eval DISABLED (see body comment)
 #   - --max-samples 3600 (per dataset; 3600/0.60 = 6000 interleaved rows,
 #     ~1500 optimizer steps -- same step count as the original recal)
@@ -72,6 +72,8 @@
 #   - Push: YES -> ${HF_USERNAME}/athena-cti-sft-qwen25-32b-v21-recal-32b
 #
 # Estimated wall-time (matches original 32B recal; only composition changed):
+#   8xH200 141GB SXM     : ~2-3 h with offload on (HBM3e + higher bandwidth
+#                          gives ~1.3-1.4x over 8xH100 SXM at this shape).
 #   8xH100 80GB SXM      : ~3-4 h with offload on.
 #   8xRTX PRO 6000 96GB  : ~4-6 h (PCIe Gen5 vs NVLink + offload tax).
 #
@@ -173,11 +175,16 @@ PY
 GPU_COUNT="${GPU_COUNT:-0}"
 
 # 32B at cutoff=16384 packing=off with a 3-shard interleave leaves no
-# margin for the variable sequence-length spikes even on 8xH100 80GB with
-# adamw_8bit + Liger + GC; default to offload ON unconditionally and let
-# the caller pass --no-offload when they have FA2 confirmed loaded and
-# want the ~25% throughput win. Memory envelope is identical to the
-# original recal -- only LR / probs / max-samples differ.
+# margin for the variable sequence-length spikes on 8xH100 80GB with
+# adamw_8bit + Liger + GC, so offload defaulted ON there. On 8xH200 141GB
+# the per-rank ZeRO-3 weight+grad+optim footprint (~72 GB) fits inside
+# HBM comfortably and --no-offload is viable for a ~25% throughput win
+# (FA2 must be confirmed loaded). Default is still ON for parity with the
+# original 32B chain stages (core / taa / cse) so the recal-32b run uses
+# the same memory shape as the parent v21-cse run that produced its base
+# checkpoint; pass --no-offload to opt in to the H200-only fast path.
+# Memory envelope is otherwise identical to the original recal -- only
+# LR / probs / max-samples differ.
 if [[ "${OFFLOAD}" == "auto" ]]; then
     OFFLOAD="on"
 fi
@@ -185,7 +192,7 @@ DS_CONFIG="examples/deepspeed/ds_z3_offload_config.json"
 [[ "${OFFLOAD}" == "off" ]] && DS_CONFIG="examples/deepspeed/ds_z3_config.json"
 
 EFFECTIVE_GPUS=$(( GPU_COUNT > 0 ? GPU_COUNT : 1 ))
-# 32B chain host is assumed 8xH100 SXM. eff_bs target is 8
+# 32B chain host is assumed 8xH200 SXM. eff_bs target is 8
 # (per_device 1 x grad_accum 1 x 8 GPUs); identical to original recal.
 R_BATCH=1; R_GA=$(( 8 / (R_BATCH * EFFECTIVE_GPUS) )); [[ ${R_GA} -lt 1 ]] && R_GA=1
 
@@ -200,7 +207,7 @@ if [[ "${GPU_COUNT}" -gt 0 ]]; then
     export NPROC_PER_NODE="${GPU_COUNT}"
 fi
 if [[ "${GPU_COUNT}" -ne 8 ]]; then
-    echo "[warn] expected 8 GPUs (8xH100 SXM); detected ${GPU_COUNT}. 32B recal-32b at cutoff=16384 packing=off does not fit at GPU_COUNT<8 (ZeRO-3 weight shard doubles to ~16 GB/rank); effective batch will reflect detected count: eff_bs=$(( R_BATCH * R_GA * EFFECTIVE_GPUS ))." >&2
+    echo "[warn] expected 8 GPUs (8xH200 SXM); detected ${GPU_COUNT}. 32B recal-32b at cutoff=16384 packing=off is sized for GPU_COUNT=8; at <8 the ZeRO-3 weight shard doubles per rank and the rank-0 CPU gather peak at save-time can OOM the host (observed on 4xH100 80GB); effective batch will reflect detected count: eff_bs=$(( R_BATCH * R_GA * EFFECTIVE_GPUS ))." >&2
 fi
 
 DRY_FLAG=(); [[ ${DRY_RUN} -eq 1 ]] && DRY_FLAG=( --dry-run )
@@ -218,7 +225,7 @@ run_v21_recal_32b() {
 }
 
 echo "  gpus visible : ${GPU_COUNT}  nproc: ${NPROC_PER_NODE:-auto}  cpu offload: ${OFFLOAD}  ds: ${DS_CONFIG}"
-echo "  batch math   : per_device=${R_BATCH} grad_accum=${R_GA} -> eff_bs=$(( R_BATCH * R_GA * EFFECTIVE_GPUS )) (target 8 on 8xH100 SXM)"
+echo "  batch math   : per_device=${R_BATCH} grad_accum=${R_GA} -> eff_bs=$(( R_BATCH * R_GA * EFFECTIVE_GPUS )) (target 8 on 8xH200 SXM)"
 echo "  base model   : ${BASE_MODEL}"
 echo "  datasets     : ${DATASETS}"
 echo "  mix strategy : interleave_under  probs=${PROBS}  (Phase A / Phase B / TAA; Phase-B-heavy 32B recipe)"
