@@ -449,6 +449,25 @@ install_stack() {
         pip install --index-url "${TORCH_INDEX_URL}" \
                     --extra-index-url https://pypi.org/simple \
                     torch torchvision torchaudio
+
+        # Make the cu-tag wheel index visible to every subsequent `pip
+        # install` in this env-build for the rest of this script. Without
+        # this, downstream installs that pull torch transitively (e.g.
+        # SFT/test/requirements.txt's `torch>=2.8.0` CVE pin, line 531
+        # below) only see PyPI's plain wheels, which since torch 2.9 are
+        # compiled against CUDA 13. pip then "upgrades" torch from
+        # +cu128 to +cu130 to satisfy the pin, orphans torchaudio at
+        # +cu128 (the cu130 wheel index doesn't publish torchaudio yet),
+        # and the env fails at first import with:
+        #   RuntimeError: Detected that PyTorch and TorchAudio were
+        #   compiled with different CUDA versions. PyTorch has CUDA
+        #   version 13.0 whereas TorchAudio has CUDA version 12.8.
+        # Exporting PIP_EXTRA_INDEX_URL keeps PyPI as the primary source
+        # (so non-torch deps continue to resolve normally) while making
+        # the cu-tag index available as a secondary -- +cu128 sorts
+        # higher than the plain PyPI wheel per PEP 440's local-version
+        # rules, so the +cu128 build wins any torch upgrade contest.
+        export PIP_EXTRA_INDEX_URL="${TORCH_INDEX_URL}"
     fi
 
     if [[ "${stack}" == "vllm" ]]; then
