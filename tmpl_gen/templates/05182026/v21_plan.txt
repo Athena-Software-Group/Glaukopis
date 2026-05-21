@@ -224,3 +224,102 @@ Operational ref  : THIS FILE
     SFT/autotrain/run_sft_llama31_8b_v21_{core,plus_taa,final,
     recalibrate,chain}.sh and the matching vLLM aliases registered in
     SFT/test/pipelines/models.py.
+
+
+8. Qwen2.5-32B port -- Stage-4 recipe split
+-------------------------------------------
+
+8.1 Scope. The v21 chain is also ported to Qwen/Qwen2.5-32B-Instruct
+    to test recipe scaling. Stages 1-3 (Core / TAA / CSE) use the 14B
+    recipe verbatim (same datasets, same lr / cutoff / packing /
+    max-samples; only the base model pointer, --optim adamw_8bit, and
+    ZeRO-3 with CPU offload-on change to fit 32B on the 8xH200 / 8xH100
+    SXM footprint). Stages 1-3 reproduce the 14B chain shape on the
+    32B scale:
+
+      v21-core (32B)        : in-line with the v18.1->v21 corpus drift.
+      v21-taa  (32B)        : TAA Classic narrow drill, in-plan.
+      v21-cse  (32B)        : Total 65.8 / Weighted 64.9
+                              (2026-05-20 bench sweep). Beats 14B
+                              v21-cse and lands within ~3pp of the 14B
+                              v21-recalibrate Total pre-Stage-4. VSP
+                              78.9 (Core had higher; CSE narrow drill
+                              repeats the recurring VSP-for-CSE-MAL
+                              trade-off the 14B chain shows).
+
+8.2 Stage-4 (Recalibrate) -- the 14B recipe does NOT carry over.
+    The off-plan touch-up that lifts 14B VSP 72.9 -> 83.1 instead
+    drifts the wrong way at 32B scale under the byte-identical recipe:
+
+      v21-recalibrate (32B, 14B recipe verbatim, lr 1e-6, probs
+                          0.25/0.40/0.35, --max-samples 2400):
+        post-CSE VSP 78.9 -> post-recal VSP 75.7  (-3.2pp; WRONG WAY)
+        Other axes (CKT, CSE-TI) move correctly; only the VSP/RMS/ATE
+        re-anchor signal is missing.
+
+    Most parsimonious explanation: the 14B-tuned 1e-6 LR + 0.40
+    Phase-B share produces enough optimizer signal at 14B but sits at
+    the noise floor on 32B + adamw_8bit, so Phase B catalog
+    re-exposure cannot overpower the post-CSE residual at this scale.
+
+8.3 Parallel branches off v21-cse (NOT stacked). To isolate the
+    recipe variable cleanly, both Stage-4 variants are kept on disk
+    as parallel branches off the same v21-cse parent checkpoint, with
+    naming by RECIPE PROVENANCE (not chain position):
+
+      Branch (Stage 4)    HF target                                                    LR    Probs (A/B/TAA)      max-samples   Status
+      v21-recalibrate     asg-ai/athena-cti-sft-qwen25-32b-v21-recalibrate             1e-6  0.25 / 0.40 / 0.35   2400          Benched; fails VSP recovery (8.2).
+      v21-recal-32b       asg-ai/athena-cti-sft-qwen25-32b-v21-recal-32b               3e-6  0.15 / 0.60 / 0.25   3600          Trained 2026-05-21; bench pending.
+
+    Both branches share v21-cse as the parent so the downstream bench
+    isolates the Stage-4 recipe change.
+
+8.4 Three coupled deltas v21-recalibrate (32B) -> v21-recal-32b
+    (chosen to hold optimizer step count and wall-time constant so
+    the only A/B variable is the catalog-recovery recipe):
+
+      - LR        1e-6 -> 3e-6
+                  ~3x bump, rough 32B/14B param ratio; targets the
+                  adamw_8bit optimizer noise floor at 32B scale.
+      - Probs     0.25 / 0.40 / 0.35 -> 0.15 / 0.60 / 0.25
+                  Heavier Phase B share = more VSP/RMS catalog
+                  exposure per interleaved row. Phase A and TAA
+                  reduced because neither is the 32B bottleneck
+                  (CKT / TAA Classic in-band on v21-cse already).
+      - Max-samp  2400 -> 3600
+                  interleave_under cap = max_samples / max(P). New
+                  max(P)=0.60 -> 6000 interleaved rows; matches the
+                  original 2400/0.40 = 6000. Step count and wall-time
+                  preserved; only composition shifts.
+
+    Everything else (cutoff 16384, packing off, eff_bs 8, --optim
+    adamw_8bit, Liger, GC on, offload default-on at 32B, ZeRO-3) is
+    held identical to the 14B-recipe port.
+
+8.5 Launchers.
+      SFT/autotrain/run_sft_qwen25_32b_v21_core.sh        (Stage 1)
+      SFT/autotrain/run_sft_qwen25_32b_v21_plus_taa.sh    (Stage 2)
+      SFT/autotrain/run_sft_qwen25_32b_v21_final.sh       (Stage 3 = CSE)
+      SFT/autotrain/run_sft_qwen25_32b_v21_recalibrate.sh (Stage 4, 14B recipe verbatim)
+      SFT/autotrain/run_sft_qwen25_32b_v21_recal_32b.sh   (Stage 4, 32B-tuned recipe)
+      SFT/autotrain/run_sft_qwen25_32b_v21_chain.sh       (TAA -> CSE -> Recalibrate; Stage 4 uses
+                                                           the 14B-recipe variant for 14B-chain parity.
+                                                           The 32B-tuned _recal_32b variant is run
+                                                           standalone off v21-cse as the diagnostic
+                                                           A/B and is intentionally NOT on this chain path.)
+    Matching vLLM aliases registered in SFT/test/pipelines/models.py;
+    bench wrappers at
+      SFT/test/utils/serve_and_bench_qwen25_32b_v21_{cse,recalibrate,recal_32b}.sh
+    (each runs the full AthenaBench + CyberMetric 2K/10K + CSE suite
+    on 2xH100 under one warm vLLM session, ~11h wallclock per model).
+
+8.6 Ship recommendation -- PENDING Stage-4 bench.
+    If v21-recal-32b recovers VSP without sacrificing the cse-stage
+    gains (the 14B v21 ship pattern), it becomes the 32B ship
+    candidate. If it does not, asg-ai/athena-cti-sft-qwen25-32b-v21-
+    cse remains the 32B headline (Total 65.8 / Weighted 64.9). Either
+    outcome is informative: a recovery vindicates the LR+mix retune
+    as the right scaling lever for the Stage-4 touch-up at >14B; a
+    failure suggests the Stage-4 catalog-recovery dynamics are
+    structurally tied to the 14B optimizer / scale envelope and the
+    32B ship path should drop Stage 4 entirely.

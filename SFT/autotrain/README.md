@@ -61,7 +61,36 @@ for the replication recipe.
 |---|---|---|
 | `run_sft_qwen25_14b_v21_core.sh` | 1+2 (Phase A re-anchor + Phase B catalog drill) | `Qwen/Qwen2.5-14B-Instruct` → `…/athena-cti-sft-qwen25-14b-v21-core` |
 | `run_sft_qwen25_14b_v21_plus_taa.sh` | 3 (TAA Classic refresher) | `…/v21-core` → `…/athena-cti-sft-qwen25-14b-v21-taa` |
-| `run_sft_qwen25_14b_v21_final.sh` | 4 (CSE letter-set drill, **headline**) | `…/v21-taa` → `…/athena-cti-sft-qwen25-14b-v21-cse` |
+| `run_sft_qwen25_14b_v21_final.sh` | 4 (CSE letter-set drill) | `…/v21-taa` → `…/athena-cti-sft-qwen25-14b-v21-cse` |
+| `run_sft_qwen25_14b_v21_recalibrate.sh` | 5 (3-shard interleaved replay; off-plan touch-up) | `…/v21-cse` → `…/athena-cti-sft-qwen25-14b-v21-recalibrate` (**headline**) |
+| `run_sft_qwen25_14b_v21_chain.sh` | **3 → 4 → 5 wrapper** (sequential TAA → CSE → Recalibrate; `--include-core` to also run 1+2 first) | gates each stage on the prior stage's HF push being readable |
+
+### v21 chain (Qwen-2.5-32B port — recipe scaling test)
+
+The v21 chain is also ported to `Qwen/Qwen2.5-32B-Instruct` to test
+recipe scaling. Stages 1-3 use the 14B recipe verbatim (same datasets,
+same `lr`/`cutoff`/`packing`/`max-samples`; only the base model,
+`--optim adamw_8bit`, and ZeRO-3 with CPU offload-on change to fit
+32B on the 8xH200 / 8xH100 SXM footprint). v21-cse on Qwen2.5-32B
+posted Total 65.8 / Weighted 64.9 (2026-05-20 bench sweep).
+
+Stage 4 (Recalibrate) is the **only** stage where the 14B recipe does
+not carry over cleanly: the byte-identical port drifts VSP the wrong
+way at 32B (post-CSE 78.9 → post-recal 75.7). To isolate the recipe
+variable, both Stage-4 variants are kept on disk as parallel branches
+off the same `v21-cse` parent, named by **recipe provenance** (not
+chain position). See
+[`../../tmpl_gen/templates/05182026/v21_plan.txt`](../../tmpl_gen/templates/05182026/v21_plan.txt)
+§8 for the rationale and the LR / mix / max-samples deltas.
+
+| File | Stage | Base → push target |
+|---|---|---|
+| `run_sft_qwen25_32b_v21_core.sh` | 1+2 (Phase A re-anchor + Phase B catalog drill) | `Qwen/Qwen2.5-32B-Instruct` → `…/athena-cti-sft-qwen25-32b-v21-core` |
+| `run_sft_qwen25_32b_v21_plus_taa.sh` | 3 (TAA Classic refresher) | `…/v21-core` → `…/athena-cti-sft-qwen25-32b-v21-taa` |
+| `run_sft_qwen25_32b_v21_final.sh` | 4 (CSE letter-set drill) | `…/v21-taa` → `…/athena-cti-sft-qwen25-32b-v21-cse` (**32B headline; recal branches off this**) |
+| `run_sft_qwen25_32b_v21_recalibrate.sh` | 5 (3-shard interleave, **14B recipe verbatim** — `lr 1e-6`, mix 0.25/0.40/0.35, `--max-samples 2400`) | `…/v21-cse` → `…/athena-cti-sft-qwen25-32b-v21-recalibrate` (benched; fails VSP recovery at 32B scale; on default chain path for 14B parity) |
+| `run_sft_qwen25_32b_v21_recal_32b.sh` | 5 (3-shard interleave, **32B-tuned recipe** — `lr 3e-6`, mix 0.15/0.60/0.25, `--max-samples 3600`) | `…/v21-cse` → `…/athena-cti-sft-qwen25-32b-v21-recal-32b` (trained 2026-05-21; **bench pending**; diagnostic A/B vs the 14B-recipe port; run standalone, not chained) |
+| `run_sft_qwen25_32b_v21_chain.sh` | **3 → 4 → 5 wrapper** (sequential TAA → CSE → Recalibrate; uses the 14B-recipe `…_recalibrate.sh` for Stage 5; `--include-core` to also run 1+2 first; `--stop-stage cse` to mirror the v18.1 three-stage ship topology) | gates each stage on the prior stage's HF push being readable; the `_recal_32b` variant is intentionally **not** on this path — run it standalone as the recipe A/B |
 
 ### Legacy 14B launchers (Qwen-2.5-14B, retained for regression)
 
