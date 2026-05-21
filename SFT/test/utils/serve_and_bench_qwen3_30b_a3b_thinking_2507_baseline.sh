@@ -22,14 +22,17 @@
 #     trace before the final answer; no enable_thinking switch.
 #
 # Server-side reasoning parser:
-#   The serve cmd passes `--reasoning-parser deepseek_r1` via EXTRA_SERVE_FLAGS
+#   The serve cmd passes `--reasoning-parser qwen3` via EXTRA_SERVE_FLAGS
 #   so vLLM splits the response: thinking trace -> reasoning_content,
 #   final answer -> content. The bench client reads content only, so it
 #   sees clean short-answer output (no <think> wrapping the regex match).
-#   On vllm>=0.10 the dedicated `qwen3` parser also works and routes
-#   identically -- swap if you see the trace leak into content on serve
-#   logs (Qwen/Qwen3-30B-A3B-Thinking-2507 HF discussion #2 documents
-#   the version-dependent behaviour).
+#   The `qwen3` parser is the canonical choice for Qwen3-family thinking
+#   models on vllm>=0.10; the older `deepseek_r1` parser routes identically
+#   for this model family and is the documented fallback for vllm<0.10.
+#   The legacy `--enable-reasoning` flag was REMOVED in modern vllm (it
+#   used to be required on vllm<0.10 then silently accepted; current
+#   builds reject it as an unrecognized argument), so it is intentionally
+#   NOT passed here.
 #
 # Client-side max_tokens floor:
 #   pipelines/models.py VLLMModel detects the 'thinking' substring in
@@ -46,8 +49,10 @@
 #   identical, ~60 GB bf16 resident, leaves ~50 GB/rank for KV cache.
 #
 # vLLM version requirement:
-#   vllm>=0.8.5 for Qwen3-MoE support and the deepseek_r1 reasoning
-#   parser. vllm>=0.10 if switching to --reasoning-parser qwen3.
+#   vllm>=0.10 for the dedicated `qwen3` reasoning parser used here.
+#   On vllm>=0.8.5 and <0.10, override at launch:
+#     EXTRA_SERVE_FLAGS="--enable-reasoning --reasoning-parser deepseek_r1" \
+#       BENCH_CONDA_ENV=ctibench bash serve_and_bench_qwen3_30b_a3b_thinking_2507_baseline.sh
 #
 # Usage:
 #   conda activate vllm
@@ -80,12 +85,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # not in the 'vllm' env that typically launches this wrapper.
 export BENCH_CONDA_ENV="${BENCH_CONDA_ENV:-ctibench}"
 
-# Enable the deepseek_r1 reasoning parser so the <think> trace lands in
+# Enable the qwen3 reasoning parser so the <think> trace lands in
 # reasoning_content and the bench-visible `content` field is just the
-# final answer. --enable-reasoning is required on vllm<0.10; on >=0.10
-# the parser flag alone is enough but the legacy flag is silently
-# accepted, so we always pass both for portability.
-export EXTRA_SERVE_FLAGS="${EXTRA_SERVE_FLAGS:---enable-reasoning --reasoning-parser deepseek_r1}"
+# final answer. On vllm<0.10, override at launch to use the legacy
+# combo: EXTRA_SERVE_FLAGS="--enable-reasoning --reasoning-parser deepseek_r1"
+export EXTRA_SERVE_FLAGS="${EXTRA_SERVE_FLAGS:---reasoning-parser qwen3}"
 
 exec bash "${SCRIPT_DIR}/run_foundation_8b_baselines.sh" \
     --model qwen3-30b-a3b-thinking-2507-vllm \
