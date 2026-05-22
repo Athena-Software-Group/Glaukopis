@@ -444,6 +444,20 @@ install_stack() {
     fi
     conda activate "${env}"
 
+    # Clear any PIP_CONSTRAINT / PIP_EXTRA_INDEX_URL exported by a previous
+    # install_stack invocation in this shell (--split-envs / MODE=all calls
+    # us twice: train first, then test). The train stack sets PIP_CONSTRAINT
+    # to torch==<FA_MAX_TORCH_MINOR>.x+cu128 so flash-attn's prebuilt wheel
+    # is satisfied; without this reset the test stack inherits that pin,
+    # then tries to install the cu sub-index's current max torch (typically
+    # one or two minors newer) and dies with ResolutionImpossible:
+    #   "The user requested torch==2.11.0+cu128
+    #    The user requested (constraint) torch==2.8.0+cu128"
+    # The constraint is recomputed below per-stack so the train cap is
+    # reapplied for train and dropped for test/vllm (where flash-attn is
+    # not installed).
+    unset PIP_CONSTRAINT PIP_EXTRA_INDEX_URL
+
     python -m pip install --upgrade pip wheel setuptools
 
     # vllm ships its own torch pin; installing torch first causes pip to
