@@ -452,19 +452,21 @@ model_mapping = {
     # without sacrificing the cse-stage gains, this becomes the 32B ship
     # candidate; otherwise v21-cse stays the headline.
     'athena-cti-sft-qwen25-32b-v21-recal-32b-vllm':            'asg-ai/athena-cti-sft-qwen25-32b-v21-recal-32b',
-    # v21 recal-32b recipe ported standalone (NOT chained off a v21-cse
-    # Qwen3 checkpoint -- no such checkpoint exists) to Qwen3-30B-A3B-
-    # Thinking-2507. First Qwen3-family SFT in the codebase; same 3-shard
-    # Phase-B-heavy mix (0.15/0.60/0.25), lr 3e-6, --max-samples 3600,
-    # cutoff 16384, packing off, eff_bs 8, adamw_8bit, Liger as the
-    # 32B recal recipe held byte-identical. Template: qwen3 (native);
-    # run_train.sh defaults --enable_thinking to True so the reasoning
-    # template injects <think>\n\n</think> into the loss/response_ids on
-    # every sample without a <think> block (i.e. all our CTI rows). The
-    # model is trained to autonomously emit an empty 6-token thought
-    # followed by the answer for CTI prompts -- the thinking apparatus
-    # stays alive as a generation path so OOD (non-CTI) reasoning
-    # behaviour can still resurface. Pushed by
+    # v21 recal-32b: 32B-recipe variant of the off-plan Stage 4
+    # Recalibrate touch-up off asg-ai/athena-cti-sft-qwen3-30b-a3b-
+    # thinking-2507-v21-cse. Parallel A/B branch alongside the 14B-recipe
+    # v21-recalibrate alias below off the same v21-cse parent, matching
+    # the qwen25-32b chain layout (split by RECIPE PROVENANCE, not chain
+    # position). Same 3-shard Phase-B-heavy mix (0.15/0.60/0.25), lr
+    # 3e-6, --max-samples 3600, cutoff 16384, packing off, eff_bs 8,
+    # adamw_8bit, Liger as the 32B recal recipe held byte-identical.
+    # Template: qwen3 (native); run_train.sh defaults --enable_thinking
+    # to True so the reasoning template injects <think>\n\n</think> into
+    # the loss/response_ids on every sample without a <think> block (i.e.
+    # all our CTI rows). The model is trained to autonomously emit an
+    # empty 6-token thought followed by the answer for CTI prompts -- the
+    # thinking apparatus stays alive as a generation path so OOD (non-
+    # CTI) reasoning behaviour can still resurface. Pushed by
     # SFT/autotrain/run_sft_qwen3_30b_a3b_thinking_v21_recal_32b.sh on
     # 8xB300 (no offload). The '-no-think' alias suffix forwards
     # chat_template_kwargs.enable_thinking=False at serve time as belt-
@@ -472,10 +474,10 @@ model_mapping = {
     # pattern) and -- more importantly -- suppresses VLLMModel's
     # '-thinking' 8192-token floor so the per-task caps in
     # TASK_MAX_NEW_TOKENS (MCQ=128, RCM/RMS/TAA=256) apply correctly.
-    # First-pass diagnostic: does the MoE architecture absorb the same
-    # recipe shape that produced the Qwen2.5-32B v21-recal-32b headline
-    # (Total 66.3, Weighted 65.3); if yes the follow-up is the full
-    # chain port (aliases below).
+    # Bench question: does the 32B-tuned recipe shape (lifted LR, Phase-
+    # B-heavy mix) reproduce the qwen25-32b-v21-recal-32b headline
+    # (Total 66.3, Weighted 65.3) on the Qwen3-MoE v21-cse parent, or
+    # does the 14B-recipe v21-recalibrate alias remain the ship choice.
     'athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-recal-32b-no-think-vllm': 'asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-recal-32b',
     # Qwen3-30B-A3B-Thinking-2507 full v21 chain (Core -> TAA -> CSE ->
     # Recalibrate), MoE port of the Qwen2.5-32B v21 chain above. Same

@@ -10,13 +10,15 @@
 #   The Qwen2.5-32B v21 chain shipped at 65.8 Total (v21-cse) and 66.3
 #   (v21-recal-32b). The Qwen3-30B-A3B-Thinking-2507 base provides
 #   comparable param scale (30.5B vs 32B) with sparse compute (3.3B
-#   active) and native thinking template. The diagnostic run_sft_qwen3_30b_
-#   a3b_thinking_v21_recal_32b.sh applies only the recal-32b touch-up
-#   directly to the bare base; this chain runs the full Core->TAA->CSE
-#   ->Recalibrate stack to test whether the sparse architecture absorbs
-#   the v21 catalog under the same recipe shape that produced the 32B
-#   headline. README-21.md §"Scale-up to Qwen2.5-32B-Instruct" applies
-#   verbatim to template/dataset/LR; only the base + memory math change.
+#   active) and native thinking template. This chain runs the full
+#   Core->TAA->CSE->Recalibrate stack to test whether the sparse
+#   architecture absorbs the v21 catalog under the same recipe shape
+#   that produced the 32B headline; the 32B-tuned recal-32b recipe is
+#   then run off v21-cse as a parallel Stage-4 branch via
+#   run_sft_qwen3_30b_a3b_thinking_v21_recal_32b.sh (matching the
+#   qwen25-32b chain layout). README-21.md §"Scale-up to Qwen2.5-32B-
+#   Instruct" applies verbatim to template/dataset/LR; only the base
+#   + memory math change.
 #
 # Recipe parity with run_sft_qwen25_32b_v21_core.sh:
 #   - Identical Phase A / Phase B cutoff, packing, lr, max-samples,

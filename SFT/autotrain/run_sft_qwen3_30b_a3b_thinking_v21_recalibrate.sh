@@ -11,11 +11,12 @@
 #
 # NOTE: this is distinct from run_sft_qwen3_30b_a3b_thinking_v21_recal_32b.sh
 # (which applies the 32B-RECIPE recal-32b touch-up -- lr 3e-6, probs
-# 0.15/0.60/0.25, max-samples 3600 -- to the BARE Qwen3 base as a
-# standalone diagnostic). This launcher uses the STANDARD 14B/32B recal
-# recipe (lr 1e-6, probs 0.25/0.40/0.35, max-samples 2400) chained off
-# the Qwen3-MoE v21-cse checkpoint and is the on-chain ship-candidate
-# touch-up. Naming reflects RECIPE PROVENANCE, not chain position.
+# 0.15/0.60/0.25, max-samples 3600 -- off the SAME Qwen3-MoE v21-cse
+# parent as a parallel A/B branch, matching the qwen25-32b sibling).
+# This launcher uses the STANDARD 14B/32B recal recipe (lr 1e-6, probs
+# 0.25/0.40/0.35, max-samples 2400) and is the on-chain ship-candidate
+# touch-up. Naming reflects RECIPE PROVENANCE, not chain position --
+# both Stage-4 variants share v21-cse as their parent checkpoint.
 #
 # Recipe parity with run_sft_qwen25_32b_v21_recalibrate.sh:
 #   - Identical datasets, interleave probs (0.25/0.40/0.35), lr (1e-6),

@@ -1,21 +1,27 @@
 #!/bin/bash
 
-# v21 recal-32b recipe ported to Qwen/Qwen3-30B-A3B-Thinking-2507. First
-# Qwen3-family SFT in the codebase; standalone (NOT chained off a v21-cse
-# Qwen3 checkpoint -- no such checkpoint exists). Applies the recal-32b
-# 3-shard Phase-B-heavy touch-up recipe directly to the bare Qwen3-MoE
-# thinking-2507 base to measure how the architecture absorbs our CTI
-# corpus under the same recipe that produced the 32B headline
-# (athena-cti-sft-qwen25-32b-v21-recal-32b: Total 66.3 / Weighted 65.3).
+# v21 recal-32b: 32B-recipe variant of the off-plan Stage 4 Recalibrate
+# touch-up of the Qwen3-MoE v21 chain. Parallel branch off
+# asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-cse alongside
+# run_sft_qwen3_30b_a3b_thinking_v21_recalibrate.sh (which uses the 14B
+# recal recipe verbatim). Naming reflects RECIPE PROVENANCE, not chain
+# position -- both Stage-4 variants share v21-cse as their parent
+# checkpoint. Held byte-identical to run_sft_qwen25_32b_v21_recal_32b.sh
+# so the Qwen3-MoE outcome can be compared directly against the dense
+# 32B headline (athena-cti-sft-qwen25-32b-v21-recal-32b: Total 66.3 /
+# Weighted 65.3).
 #
-# Why this is informative:
-#   The 32B recal-32b run tested whether a 3x-lifted LR + Phase-B-heavy
-#   mix could lift VSP at the 32B dense scale. It didn't recover VSP
-#   (predicted mechanism wrong) but it did re-anchor the CKT/ATE/CSE-TI
-#   axes for a net +0.5 Total over v21-cse. This Qwen3-MoE port re-uses
-#   the same recipe SHAPE on a different architecture family (sparse MoE,
-#   3.3B active per token, pure-thinking post-training) to isolate
-#   architecture x recipe interaction from chain-position effects.
+# Why a 32B-recipe variant exists alongside the 14B-recipe Recalibrate:
+#   At the dense 32B scale the 14B recal recipe (lr 1e-6, mix 0.25/
+#   0.40/0.35, max-samples 2400) failed to recover VSP after Stage 3
+#   CSE drilling. The 32B recal-32b recipe (3x LR, Phase-B-heavy mix,
+#   max-samples 3600) was developed to test whether a lifted LR plus
+#   Phase-B-heavy interleave could lift VSP at that scale. It did not
+#   recover VSP (predicted mechanism wrong) but did re-anchor the CKT/
+#   ATE/CSE-TI axes for a net +0.5 Total over v21-cse. Re-running the
+#   same recipe SHAPE on the Qwen3-MoE v21-cse parent isolates
+#   architecture x recipe interaction from chain-position effects: both
+#   branches share the same upstream Core/TAA/CSE stages.
 #
 # Architectural notes (vs Qwen2.5-32B-Instruct):
 #   - 30.5B total params, 3.3B active per token (128 experts, top-8).
@@ -72,15 +78,19 @@
 #     can be disabled via --extra "--gradient_checkpointing False" for a
 #     ~20-30% throughput win on B300 if HBM headroom is confirmed.
 #
-# Base checkpoint: Qwen/Qwen3-30B-A3B-Thinking-2507 (HF; overridable
-# via --base-model). NOT a v21-cse derivative -- there is no Qwen3 v21
-# chain. This is a standalone application of the recal-32b recipe.
+# Base checkpoint: asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-cse
+# (HF; overridable via --base-model -- e.g. Qwen/Qwen3-30B-A3B-Thinking-2507
+# for the standalone-off-bare-base diagnostic that pre-dated the Qwen3
+# chain). Pushes to athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-recal-32b
+# under HF_USERNAME, matching the qwen25-32b-v21-recal-32b naming.
 #
-# Status: diagnostic / off-plan / first Qwen3-family SFT. If the result
-# is in the ballpark of the Qwen2.5-32B headline (Total >= 60), the
-# follow-up is a full v21 chain port (Core -> TAA -> CSE -> Recalibrate)
-# on Qwen3-MoE. If it collapses (e.g. CKT well below Qwen2.5-32B's 52.9
-# baseline floor), the sparse-architecture-x-CTI question is answered.
+# Status: off-plan Stage 4 (v21_plan.txt §3 defines only Core/TAA/CSE);
+# parallel A/B against run_sft_qwen3_30b_a3b_thinking_v21_recalibrate.sh
+# off the same v21-cse parent. Intentionally NOT on the default chain
+# orchestrator path (run_sft_qwen3_30b_a3b_thinking_v21_chain.sh) for
+# the same reason as the qwen25-32b sibling: the chain ships the 14B-
+# recipe Recalibrate variant for cross-architecture parity, and the
+# 32B-tuned variant is run standalone as the diagnostic A/B.
 #
 # Estimated wall-time on 8xB300 (no offload, FA2 on Blackwell):
 #   ~1.5-2 h for the 3-shard ~1500-step run. 8xB300's HBM bandwidth
@@ -137,7 +147,7 @@ if [[ -z "${REPO_ID}" ]]; then
     REPO_ID="${HF_USERNAME}/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-recal-32b"
 fi
 
-[[ -z "${BASE_MODEL}" ]] && BASE_MODEL="Qwen/Qwen3-30B-A3B-Thinking-2507"
+[[ -z "${BASE_MODEL}" ]] && BASE_MODEL="asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-cse"
 
 TIMESTAMP="$(date +"%Y-%m-%d-%H-%M-%S")"
 SAFE_MODEL="Qwen_Qwen3-30B-A3B-Thinking-2507"
@@ -210,7 +220,7 @@ fi
 DRY_FLAG=(); [[ ${DRY_RUN} -eq 1 ]] && DRY_FLAG=( --dry-run )
 
 run_qwen3_v21_recal_32b() {
-    echo "=== v21 recal-32b (Qwen3-30B-A3B-Thinking-2507): standalone 3-shard interleave from bare base (cutoff=16384, packing=off, lr=${LR}, eff_bs=$(( R_BATCH * R_GA * EFFECTIVE_GPUS )), max-samples=${MAX_SAMPLES}, probs=${PROBS}, enable_thinking=True) ==="
+    echo "=== v21 recal-32b (Qwen3-30B-A3B-Thinking-2507): 3-shard interleave touch-up off v21-cse (cutoff=16384, packing=off, lr=${LR}, eff_bs=$(( R_BATCH * R_GA * EFFECTIVE_GPUS )), max-samples=${MAX_SAMPLES}, probs=${PROBS}, enable_thinking=True) ==="
     bash "${SFT_DIR}/utils/run_train.sh" \
         --model "${BASE_MODEL}" \
         --dataset "${DATASETS}" --template qwen3 --finetuning full \

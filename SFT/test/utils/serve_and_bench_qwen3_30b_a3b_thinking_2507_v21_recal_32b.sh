@@ -6,14 +6,18 @@
 # warm vLLM session. Tears the server down on exit.
 #
 # Model lineage:
-#   Base : Qwen/Qwen3-30B-A3B-Thinking-2507 (MoE, 30.5B total / 3.3B
-#          active per token, pure-thinking July 2025 split).
-#   SFT  : v21 recal-32b recipe held byte-identical to the Qwen2.5-32B
-#          headline (athena-cti-sft-qwen25-32b-v21-recal-32b: Total 66.3,
-#          Weighted 65.3). 3-shard Phase-B-heavy interleave (0.15/0.60/
-#          0.25), lr 3e-6, cutoff 16384, packing off, eff_bs 8, 1 epoch,
-#          adamw_8bit, Liger. First Qwen3-family SFT in the codebase.
-#          See SFT/autotrain/run_sft_qwen3_30b_a3b_thinking_v21_recal_32b.sh.
+#   Upstream base : Qwen/Qwen3-30B-A3B-Thinking-2507 (MoE, 30.5B total /
+#                   3.3B active per token, pure-thinking July 2025 split).
+#   Stage-4 parent: asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-cse
+#                   (Qwen3-MoE v21 chain Core -> TAA -> CSE).
+#   SFT           : v21 recal-32b recipe held byte-identical to the
+#                   Qwen2.5-32B headline (athena-cti-sft-qwen25-32b-v21-
+#                   recal-32b: Total 66.3, Weighted 65.3). 3-shard Phase-
+#                   B-heavy interleave (0.15/0.60/0.25), lr 3e-6, cutoff
+#                   16384, packing off, eff_bs 8, 1 epoch, adamw_8bit,
+#                   Liger. Parallel Stage-4 A/B against the 14B-recipe
+#                   v21-recalibrate variant off the same v21-cse parent.
+#                   See SFT/autotrain/run_sft_qwen3_30b_a3b_thinking_v21_recal_32b.sh.
 #
 # Inference semantic ('-no-think' alias suffix):
 #   The base model is pure-thinking (always emits <think>...</think>).
