@@ -463,46 +463,11 @@ SFT/test/responses/fdtn-ai_Foundation-Sec-8B-Reasoning
 # tracked under _v*_build/ has been removed from history-going-forward.
 _v*_build/
 
-# v19 reproducibility-first vintage exception: the build infrastructure
-# (watchers, generators, gates, val/train splitters) ships in-repo so a clean
-# checkout regenerates the SFT shards deterministically. Runtime artifacts
-# (logs, reports, *.pid, triples/, *_seed.json, *_status.json) stay ignored.
-!_v19_core_build/
-_v19_core_build/*
-!_v19_core_build/_neo4j_check.py
-!_v19_core_build/watcher.sh
-!_v19_core_build/build_val_slice.py
-!_v19_core_build/validate_corpus.py
-!_v19_taa_build/
-_v19_taa_build/*
-!_v19_taa_build/watcher.sh
-!_v19_taa_build/build_val_slice.py
-!_v19_cse_build/
-_v19_cse_build/*
-!_v19_cse_build/watcher.sh
-!_v19_cse_build/build_val_slice.py
-!_v19_cse_build/letter_balance_gate.py
-
-# v20 vintage (same in-repo build-infra carve-out as v19; per
-# tmpl_gen/templates/05162026/v20_plan.txt §1.3).
-!_v20_core_build/
-_v20_core_build/*
-!_v20_core_build/_neo4j_check.py
-!_v20_core_build/watcher.sh
-!_v20_core_build/build_val_slice.py
-!_v20_core_build/validate_corpus.py
-!_v20_taa_build/
-_v20_taa_build/*
-!_v20_taa_build/watcher.sh
-!_v20_taa_build/build_val_slice.py
-!_v20_cse_build/
-_v20_cse_build/*
-!_v20_cse_build/watcher.sh
-!_v20_cse_build/build_val_slice.py
-!_v20_cse_build/letter_balance_gate.py
-
-# v21 strict-reproducibility replay of v18.1 (same in-repo build-infra
-# carve-out as v19 / v20; per tmpl_gen/templates/05182026/v21_plan.txt).
+# v21 strict-reproducibility replay of v18.1 (in-repo build-infra
+# carve-out; per tmpl_gen/templates/05182026/v21_plan.txt). Prior
+# vintages (_v19_*_build/, _v20_*_build/) were retired with the
+# Qwen3-MoE v21 chain pivot and fall through to the generic _v*_build/
+# ignore above.
 !_v21_core_build/
 _v21_core_build/*
 !_v21_core_build/_neo4j_check.py
