@@ -99,6 +99,15 @@ strongest ship candidate.
 | `v21-cse`         | per-stage; VSP 72.9 (was 82.5)  | VSP -9.6pp at CSE (chain trade-off) | n/a (Stage 3, downstream of Core) |
 | `v21-recalibrate` | **62.3 (best of chain)**        | VSP recovered to 83.1       | n/a (off-plan; see below) |
 
+Totals in this table are reported under the §5.1 sign-off-gate
+weighting (per-axis combined with TAA-Classic only) for continuity
+with the v18.1 reproducibility narrative. Under the later 50/50 TAA
+blend (Classic + Canonical combined; introduced 2026-05-22 for
+cross-architecture ranking) the same `v21-recalibrate` checkpoint
+posts Total 61.0 / Weighted 59.6, still the best 14B chain stage.
+See the leaderboard in §"Qwen3-30B-A3B-Thinking-2507 MoE port" for
+the 50/50 ranking applied across all v21 ports.
+
 ### Interpretation
 
 1. **The v18.1 recipe is not bit-reproducible at the per-axis level**
@@ -158,10 +167,10 @@ the post-CSE residual. To isolate the recipe variable cleanly, the v21
 Qwen2.5-32B port keeps both Stage 4 variants on disk as **parallel
 branches off v21-cse** (not stacked):
 
-| Branch (Stage 4)   | HF target                                              | LR    | Probs (A / B / TAA) | `--max-samples` | Status                                                                                |
-|--------------------|--------------------------------------------------------|-------|---------------------|-----------------|---------------------------------------------------------------------------------------|
-| `v21-recalibrate`  | `asg-ai/athena-cti-sft-qwen25-32b-v21-recalibrate`     | 1e-6  | 0.25 / 0.40 / 0.35  | 2400            | 14B-recipe verbatim port. Benched; **fails** VSP recovery (78.9 -> 75.7).             |
-| `v21-recal-32b`    | `asg-ai/athena-cti-sft-qwen25-32b-v21-recal-32b`       | 3e-6  | 0.15 / 0.60 / 0.25  | 3600            | 32B-tuned recipe (3x LR, Phase-B-heavy mix). Trained 2026-05-21. **Bench pending.**   |
+| Branch (Stage 4)   | HF target                                              | LR    | Probs (A / B / TAA) | `--max-samples` | Status                                                                                                       |
+|--------------------|--------------------------------------------------------|-------|---------------------|-----------------|--------------------------------------------------------------------------------------------------------------|
+| `v21-recalibrate`  | `asg-ai/athena-cti-sft-qwen25-32b-v21-recalibrate`     | 1e-6  | 0.25 / 0.40 / 0.35  | 2400            | 14B-recipe verbatim port. Benched; **fails** VSP recovery (78.9 -> 75.7).                                    |
+| `v21-recal-32b`    | `asg-ai/athena-cti-sft-qwen25-32b-v21-recal-32b`       | 3e-6  | 0.15 / 0.60 / 0.25  | 3600            | 32B-tuned recipe (3x LR, Phase-B-heavy mix). Benched 2026-05-21; **Total 65.0 / Weighted 62.9** -- ship.     |
 
 Naming reflects **recipe provenance, not chain position** -- both
 branches share `v21-cse` as their parent checkpoint, so the bench
@@ -189,16 +198,25 @@ identical to the 14B-recipe port. Launchers:
 * `SFT/autotrain/run_sft_qwen25_32b_v21_recal_32b.sh`   (Stage 4, 32B-tuned recipe)
 * `SFT/autotrain/run_sft_qwen25_32b_v21_chain.sh`       (TAA -> CSE -> Recalibrate; Stage 4 uses the 14B-recipe variant for 14B-chain parity. The 32B-tuned `_recal_32b` variant is run standalone off `v21-cse` as the diagnostic A/B and is intentionally **not** on this chain path.)
 
-**Ship recommendation pending Stage-4 bench.** If `v21-recal-32b`
-recovers VSP without sacrificing the cse-stage gains (the 14B v21
-ship pattern), it becomes the 32B ship candidate. If it does not,
-`asg-ai/athena-cti-sft-qwen25-32b-v21-cse` remains the 32B headline
-(Total 65.8 / Weighted 64.9). The bench wrapper at
-`SFT/test/utils/serve_and_bench_qwen25_32b_v21_recal_32b.sh` runs
-the full AthenaBench + CyberMetric 2K/10K + CyberSOCEval suite on
+**Ship recommendation: `asg-ai/athena-cti-sft-qwen25-32b-v21-recal-32b`.**
+The 32B-tuned Stage-4 recipe puts the dense Qwen2.5-32B port at
+Total 65.0 / Weighted 62.9 under the 50/50 TAA blend (Classic +
+Canonical combined). **This is the v21 vintage's optimal ship
+checkpoint across all SFT rows in the leaderboard** -- it tops the
+14B v21-recalibrate (Total 61.0), the 8B Foundation-Sec and
+Llama-3.1 v21-recalibrate ports (Totals 53.5 / 49.8), and every
+Qwen3-MoE chain stage (best MoE checkpoint `v21-cse` at 63.4 /
+60.9; see §"Qwen3-30B-A3B-Thinking-2507 MoE port" below). The
+recal-32b shape is **CKT/RMS/AB-heavy** (CKT
+75.5, RMS combined-f1 62.5, AB Avg II 62.6) and intentionally does
+*not* attempt a Canonical-TAA lift on the dense-32B base (Canonical
+combined 3.4, comparable to cse); the Stage-4 recipe at this scale
+is tuned for VSP / catalog recovery, not alias->canonical migration.
+The bench wrapper at `SFT/test/utils/serve_and_bench_qwen25_32b_v21_recal_32b.sh`
+runs the full AthenaBench + CyberMetric 2K/10K + CyberSOCEval suite on
 2xH100 under one warm vLLM session (~11 h wallclock).
 
-## Qwen3-30B-A3B-Thinking-2507 MoE port (off-plan; chain ships recal-32b at Stage 4)
+## Qwen3-30B-A3B-Thinking-2507 MoE port (off-plan; ship at v21-cse, Stage 4 closed)
 
 The v21 chain is also ported to `Qwen/Qwen3-30B-A3B-Thinking-2507`,
 the pure-thinking July 2025 split of the Qwen3-30B-A3B MoE base
@@ -218,25 +236,22 @@ byte-identical: same datasets, same `lr` / `cutoff` / `packing` /
 `--max-samples` / `eff_bs` / `save-steps`. Only the base model,
 `--template` (`qwen` -> `qwen3`), and HF push targets change.
 
-**Stage 4 ships the 32B-tuned `recal-32b` recipe** (lr 3e-6, probs
-0.15 / 0.60 / 0.25, `--max-samples` 3600) rather than the 14B-recipe
-Recalibrate. The dense Qwen2.5-32B port (§"Qwen2.5-32B port" above)
-established that the 14B recipe drifts VSP the wrong way at 32B+
-parameter scale under `adamw_8bit` (78.9 -> 75.7) instead of
-recovering it the way it does at 14B (72.9 -> 83.1). The Qwen3-MoE
-parent is peer-scale and uses the same optimiser, so the on-chain
-default at Stage 4 is the 32B-tuned recipe. The 14B-recipe
-Recalibrate launcher is retained off-chain for A/B work against the
-on-chain `recal-32b` ship-candidate.
+**Stage 4 was run twice (32B-tuned `recal-32b` and 14B-recipe
+`recalibrate`) and neither beat `v21-cse` on the 50/50 TAA blend
+on this architecture.** Both Stage-4 launchers and HF targets are
+retained for reproducibility, but the on-chain ship checkpoint for
+the Qwen3-MoE port is `v21-cse`. See "Ship recommendation" below
+for the per-variant numbers and the MoE-specific failure mode.
 
-| Stage         | HF target                                                            | Recipe source            | Wall-time (8xB300) |
-|---------------|----------------------------------------------------------------------|--------------------------|--------------------|
-| `v21-core`    | `asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-core`         | 14B/32B Core (Phase A+B) | ~14-18 h           |
-| `v21-taa`     | `asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-taa`          | 14B/32B TAA              | ~7-10 h            |
-| `v21-cse`     | `asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-cse`          | 14B/32B CSE              | ~5-7 h             |
-| `v21-recal-32b` | `asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-recal-32b`  | 32B-tuned recal-32b      | ~1.5-2 h           |
+| Stage              | HF target                                                              | Recipe source            | Wall-time (8xB300) |
+|--------------------|------------------------------------------------------------------------|--------------------------|--------------------|
+| `v21-core`         | `asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-core`           | 14B/32B Core (Phase A+B) | ~14-18 h           |
+| `v21-taa`          | `asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-taa`            | 14B/32B TAA              | ~7-10 h            |
+| **`v21-cse`** (ship) | `asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-cse`          | 14B/32B CSE              | ~5-7 h             |
+| `v21-recal-32b`    | `asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-recal-32b`      | 32B-tuned recal-32b      | ~1.5-2 h           |
+| `v21-recalibrate`  | `asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-recalibrate`    | 14B recalibrate          | ~1-1.5 h           |
 
-Total ~28-37 h end-to-end Core -> Recal-32b on 8xB300, vs ~55-75 h
+Total ~28-37 h end-to-end Core -> Stage 4 on 8xB300, vs ~55-75 h
 on the 8xH100 80GB SXM fallback.
 
 ### Training semantic (`enable_thinking=True`)
@@ -271,7 +286,9 @@ bash SFT/autotrain/run_sft_qwen3_30b_a3b_thinking_v21_core.sh
 
 # Stages 2-4 (TAA -> CSE -> Recal-32b) chained behind it. The chain
 # waits for each prior HF push to be readable before launching the
-# next stage; default --stop-stage is recal_32b.
+# next stage; default --stop-stage is recal_32b. To stop at the
+# ship checkpoint and skip the (closed) Stage-4 sweep, pass
+# `--stop-stage cse`.
 bash SFT/autotrain/run_sft_qwen3_30b_a3b_thinking_v21_chain.sh
 # ... or SSH-resilient under nohup setsid:
 bash SFT/autotrain/run_sft_qwen3_30b_a3b_thinking_v21_chain.nohup.sh
@@ -286,12 +303,49 @@ under one warm vLLM session.
 
 ### Ship recommendation
 
-Pending Stage-4 bench. If `v21-recal-32b` reproduces the dense
-Qwen2.5-32B `v21-recal-32b` headline shape (Total 66.3 / Weighted
-65.3) on the MoE active-path, it becomes the Qwen3-MoE v21 ship
-candidate. If the sparse architecture's CSE -> Recalibrate
-sensitivity differs from dense, the off-chain `v21-recalibrate`
-(14B-recipe) variant becomes the A/B fallback.
+**Ship: `asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-cse`.**
+Both Stage-4 variants were benched (2026-05-22) and neither beat
+`v21-cse` on the 50/50 TAA blend (Classic + Canonical) used as the
+v21 ranking metric. Per-variant numbers off the same `v21-cse`
+parent:
+
+| Stage (50/50 TAA blend) | CKT  | RCM  | ATE  | VSP  | RMS  | TAA Classic | TAA Canonical | CM avg | Total  | Weighted |
+|-------------------------|-----:|-----:|-----:|-----:|-----:|------------:|--------------:|-------:|-------:|---------:|
+| **`v21-cse`** (ship)    | 74.5 | 68.5 | 58.6 | 85.0 | 50.1 | 47.0        | 4.9           | 88.6   | **63.4** | **60.9** |
+| `v21-recalibrate` (14B) | 63.3 | 63.0 | 52.8 | 83.6 | 50.9 | 49.0        | 12.8          | 88.8   | 62.3   | 59.0     |
+| `v21-recal-32b`         | 61.1 | 67.3 | 54.8 | 84.2 | 50.6 | 45.5        | 34.2          | 79.2   | 59.5   | 58.1     |
+
+The two Stage-4 attempts trace a Pareto frontier between Canonical
+TAA lift and broad-knowledge preservation:
+
+* `v21-recal-32b` delivers a **+29.3pp Canonical-TAA lift** over cse
+  (4.9 -> 34.2) -- the only checkpoint in the v21 vintage that moves
+  this axis meaningfully -- but **crashes CyberMetric by 9.4pp**
+  (88.6 -> 79.2). The dense Qwen2.5-32B port under the same recipe
+  does *not* exhibit either effect (Canonical stays at 3.4, CM
+  holds at 89.8), so both the lift and the CM crash are
+  MoE-specific.
+* `v21-recalibrate` (14B-recipe) preserves CM cleanly (88.8) but
+  drifts CKT / RCM / ATE 5-11pp below cse and delivers only a
+  +7.9pp Canonical lift -- the gentler recipe is signal-starved for
+  Canonical migration at this scale.
+
+Mechanism: on Qwen3-MoE (128 experts, top-8 routing), any
+second-pass SFT off `v21-cse` perturbs expert routing for narrow
+analytical axes regardless of LR or Phase-A/B mix -- a failure mode
+absent from the dense-32B port at peer parameter scale. The
+recipe-knob axis (LR, interleave probs, sample count) is not the
+dominant variable here; the architecture is. The Qwen3-MoE chain is
+therefore closed at `v21-cse` for the v21 vintage.
+
+**Cross-architecture optimal: `asg-ai/athena-cti-sft-qwen25-32b-v21-recal-32b`**
+(dense Qwen2.5-32B + 32B-tuned recal recipe; Total 65.0 / Weighted
+62.9) remains the v21 vintage's recommended ship checkpoint across
+all ported architectures -- see §"Qwen2.5-32B port" above. The
+Qwen3-MoE `v21-cse` ship is the recommendation **conditional on the
+MoE architecture** (for consumers who specifically need the
+sparse-30B / 3.3B-active inference footprint); on absolute v21
+leaderboard ranking, dense-32B + recal-32b wins by ~1.6 Total.
 
 ## Provenance
 
