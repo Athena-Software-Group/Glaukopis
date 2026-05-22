@@ -15,26 +15,31 @@
 # train + silent push failure that would otherwise burn ~5-10 h of GPU
 # time at the Qwen3-MoE scale.
 #
-# Why Stage 4 is the 32B-tuned recal-32b recipe (not the 14B-recipe
-# recalibrate): the 14B-recipe Recalibrate (lr 1e-6, probs 0.25/0.40/
-# 0.35, max-samples 2400) sits at the adamw_8bit optimizer noise floor
-# at 32B+ parameter scale -- the dense Qwen2.5-32B port (README-21.md
-# §"Qwen2.5-32B port") confirmed that the 14B recipe drifts VSP the
-# wrong way (78.9 -> 75.7) instead of recovering it. The Qwen3-MoE
-# parent is peer-scale (30.5B total / 3.3B active per token) and uses
-# the same adamw_8bit + Liger + ZeRO-3 footprint, so this chain ships
-# the 32B-tuned recipe (lr 3e-6, probs 0.15/0.60/0.25, max-samples
-# 3600) at Stage 4 by default. The 14B-recipe variant remains
-# available as a standalone launcher
-# (run_sft_qwen3_30b_a3b_thinking_v21_recalibrate.sh) for off-chain
-# A/B work but is no longer on the default chain path. Pass
-# --start-stage taa --stop-stage cse to mirror the v18.1 three-stage
-# ship topology.
+# Stage 4 (closed for the v21 vintage on Qwen3-MoE): both the 14B-recipe
+# Recalibrate (lr 1e-6, probs 0.25/0.40/0.35, max-samples 2400) and the
+# 32B-tuned recal_32b (lr 3e-6, probs 0.15/0.60/0.25, max-samples 3600)
+# were benched 2026-05-22 and neither beat v21-cse on the 50/50 TAA
+# blend (Classic + Canonical combined) used as the v21 ranking metric.
+# recal_32b is the only checkpoint that lifts Canonical TAA meaningfully
+# (+29.3pp over cse) but crashes CyberMetric by 9.4pp; the 14B-recipe
+# variant preserves CM but drifts CKT/RCM/ATE 5-11pp below cse. The
+# failure mechanism is MoE expert routing being perturbed by any
+# second-pass SFT off cse regardless of LR or interleave mix -- absent
+# from the dense Qwen2.5-32B port at peer parameter scale. See
+# README-21.md §"Qwen3-30B-A3B-Thinking-2507 MoE port" for the
+# per-axis bench table and Pareto-frontier interpretation.
+#
+# Default --stop-stage is therefore cse on this chain. Both Stage-4
+# launchers (run_sft_qwen3_30b_a3b_thinking_v21_recal_32b.sh and
+# run_sft_qwen3_30b_a3b_thinking_v21_recalibrate.sh) remain on disk for
+# reproducibility and can still be invoked here with
+# --stop-stage recal_32b (the recal_32b stage on this chain is the
+# 32B-tuned variant; the 14B-recipe variant is standalone only).
 #
 # Usage:
 #   ./run_sft_qwen3_30b_a3b_thinking_v21_chain.sh
 #       [--start-stage taa|cse|recal_32b]    # default: taa
-#       [--stop-stage  taa|cse|recal_32b]    # default: recal_32b
+#       [--stop-stage  taa|cse|recal_32b]    # default: cse  (recal_32b is off-plan; see header)
 #       [--include-core]                     # also run Stage 1 first
 #       [--report-to wandb|none]             # forwarded to every stage
 #       [--offload | --no-offload]           # forwarded to every stage
@@ -48,11 +53,11 @@
 # Estimated wall-time (8xB300 288GB SXM target; sparse 3.3B-active MoE
 # fwd path + Liger + adamw_8bit, no offload):
 #   TAA       ~7-10 h  -> athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-taa
-#   CSE       ~5-7  h  -> athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-cse
-#   Recal-32b ~1.5-2 h -> athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-recal-32b
-#   Total ~14-19 h sequential (Stages 2 -> 3 -> 4).
-#   With --include-core add Stage 1 ~14-18 h (Phase A+B) for ~28-37 h
-#   end-to-end Core -> Recal-32b.
+#   CSE       ~5-7  h  -> athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-cse  (default ship)
+#   Recal-32b ~1.5-2 h -> athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-recal-32b  (off-plan; --stop-stage recal_32b)
+#   Total ~12-17 h sequential (default Stages 2 -> 3; ~14-19 h with Stage 4).
+#   With --include-core add Stage 1 ~14-18 h (Phase A+B) for ~26-35 h
+#   end-to-end Core -> CSE (or ~28-37 h Core -> Recal-32b).
 #
 # Estimated wall-time (8xH100 80GB SXM fallback; --offload may be needed
 # for Phase B and Recal-32b at cutoff=16384 packing=off):
@@ -67,7 +72,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SFT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 START_STAGE="taa"
-STOP_STAGE="recal_32b"
+STOP_STAGE="cse"
 INCLUDE_CORE=0
 REPORT_TO="wandb"
 OFFLOAD=""
