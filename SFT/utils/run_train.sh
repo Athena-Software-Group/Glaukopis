@@ -359,9 +359,59 @@ if ! command -v llamafactory-cli >/dev/null 2>&1; then
     exit 127
 fi
 
+# Blackwell Ultra (B300 / GB300, compute capability 10.3) emits PTX with the
+# sm_103a target. CUDA 12.8 ptxas does not recognise it (added in 12.9), and
+# torch 2.8+cu128 bundles Triton 3.4 which in turn bundles a CUDA 12.8 ptxas.
+# Result: the first Triton JIT call (Liger RMSNorm, fused CE, etc.) dies with
+#   ptxas fatal : Value 'sm_103a' is not defined for option 'gpu-name'
+# Upstream tracking: triton-lang/triton#7964, pytorch/pytorch#163801.
+# Fix is to point Triton at a CUDA 12.9+ ptxas via TRITON_PTXAS_PATH; the
+# cubin produced loads fine via the B300 driver. No-op on every other arch
+# (the cc check below short-circuits, so H100/H200/B200 are untouched).
+maybe_export_blackwell_ptxas() {
+    [[ -n "${TRITON_PTXAS_PATH:-}" ]] && return 0
+    command -v nvidia-smi >/dev/null 2>&1 || return 0
+    local cc
+    cc="$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader 2>/dev/null \
+          | head -1 | tr -d ' ')"
+    [[ "${cc}" != "10.3" ]] && return 0
+    echo "=== Blackwell B300 detected (cc=${cc}); locating CUDA 12.9+ ptxas for Triton ==="
+    local triton_dir nvcc_pkg_dir
+    triton_dir="$(python -c 'import os, triton; print(os.path.dirname(triton.__file__))' 2>/dev/null || true)"
+    nvcc_pkg_dir="$(python -c 'import os, nvidia.cuda_nvcc as m; print(os.path.dirname(m.__file__))' 2>/dev/null || true)"
+    local candidates=(
+        "${nvcc_pkg_dir:+${nvcc_pkg_dir}/bin/ptxas}"
+        "${triton_dir:+${triton_dir}/backends/nvidia/bin/ptxas-blackwell}"
+        "/usr/local/cuda-13.0/bin/ptxas"
+        "/usr/local/cuda-12.9/bin/ptxas"
+        "${CONDA_PREFIX:+${CONDA_PREFIX}/bin/ptxas}"
+    )
+    local p ver_major ver_minor
+    for p in "${candidates[@]}"; do
+        [[ -z "${p}" || ! -x "${p}" ]] && continue
+        read -r ver_major ver_minor < <("${p}" --version 2>/dev/null \
+            | grep -oE 'release [0-9]+\.[0-9]+' \
+            | head -1 \
+            | sed -E 's/release ([0-9]+)\.([0-9]+)/\1 \2/')
+        [[ -z "${ver_major}" ]] && continue
+        if (( ver_major > 12 )) || (( ver_major == 12 && ver_minor >= 9 )); then
+            export TRITON_PTXAS_PATH="${p}"
+            echo "  using TRITON_PTXAS_PATH=${p} (release ${ver_major}.${ver_minor})"
+            return 0
+        fi
+    done
+    echo "[FAIL] no CUDA 12.9+ ptxas found on this host. Triton JIT will die" >&2
+    echo "       with 'sm_103a not defined' on the first Liger / fused kernel." >&2
+    echo "       Fix (in this env, no system changes):" >&2
+    echo "         pip install nvidia-cuda-nvcc-cu12" >&2
+    echo "       then re-run; this script will auto-pick the new ptxas." >&2
+    return 1
+}
+
 {
     print_banner
     cd "${SFT_DIR}"
+    maybe_export_blackwell_ptxas || exit 1
     set +e
     llamafactory-cli train "${BASE_ARGS[@]}" \
         ${LORA_ARGS[@]+"${LORA_ARGS[@]}"} \
