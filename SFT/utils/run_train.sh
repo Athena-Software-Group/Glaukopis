@@ -387,14 +387,30 @@ fi
 # Fix is to point Triton at a CUDA 12.9+ ptxas via TRITON_PTXAS_PATH; the
 # cubin produced loads fine via the B300 driver. No-op on every other arch
 # (the cc check below short-circuits, so H100/H200/B200 are untouched).
+# Returns release as "MAJOR MINOR" on stdout, empty on failure.
+_ptxas_release() {
+    "$1" --version 2>/dev/null \
+        | grep -oE 'release [0-9]+\.[0-9]+' \
+        | head -1 \
+        | sed -E 's/release ([0-9]+)\.([0-9]+)/\1 \2/'
+}
+
 maybe_export_blackwell_ptxas() {
-    [[ -n "${TRITON_PTXAS_PATH:-}" ]] && return 0
-    command -v nvidia-smi >/dev/null 2>&1 || return 0
+    echo "=== Blackwell ptxas resolver ==="
+    if ! command -v nvidia-smi >/dev/null 2>&1; then
+        echo "  nvidia-smi not on PATH; skipping (assuming non-GPU host)"
+        return 0
+    fi
     local cc
     cc="$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader 2>/dev/null \
-          | head -1 | tr -d ' ')"
-    [[ "${cc}" != "10.3" ]] && return 0
-    echo "=== Blackwell B300 detected (cc=${cc}); locating CUDA 12.9+ ptxas for Triton ==="
+          | head -1 | tr -d ' \n\r\t')"
+    echo "  detected compute_cap=${cc:-<unknown>}"
+    case "${cc}" in
+        10.*) : ;;  # Blackwell (B100/B200/B300, cc 10.0/10.1/10.3)
+        *)
+            echo "  non-Blackwell architecture; leaving ptxas resolution to Triton defaults"
+            return 0 ;;
+    esac
     # nvidia.cuda_nvcc is a PEP 420 namespace package (no __file__), so resolve
     # the install location via sysconfig's purelib site-packages dir; ptxas
     # lands at <purelib>/nvidia/cuda_nvcc/bin/ptxas. triton.__file__ is a real
@@ -409,17 +425,41 @@ maybe_export_blackwell_ptxas() {
         "/usr/local/cuda-12.9/bin/ptxas"
         "${CONDA_PREFIX:+${CONDA_PREFIX}/bin/ptxas}"
     )
+    # If TRITON_PTXAS_PATH is already set, validate it; replace if too old.
+    local preset_ok=0
+    if [[ -n "${TRITON_PTXAS_PATH:-}" ]]; then
+        echo "  preset TRITON_PTXAS_PATH=${TRITON_PTXAS_PATH}"
+        if [[ -x "${TRITON_PTXAS_PATH}" ]]; then
+            local pmaj pmin
+            read -r pmaj pmin < <(_ptxas_release "${TRITON_PTXAS_PATH}")
+            if [[ -n "${pmaj}" ]]; then
+                echo "    preset release ${pmaj}.${pmin}"
+                if (( pmaj > 12 )) || (( pmaj == 12 && pmin >= 9 )); then
+                    preset_ok=1
+                fi
+            else
+                echo "    preset ptxas did not report a release; treating as invalid"
+            fi
+        else
+            echo "    preset path is not executable; treating as invalid"
+        fi
+        if (( preset_ok == 0 )); then
+            echo "    OVERRIDING preset TRITON_PTXAS_PATH (does not satisfy >= 12.9 for sm_10x)"
+            unset TRITON_PTXAS_PATH
+        else
+            echo "  preset satisfies >= 12.9; keeping"
+            return 0
+        fi
+    fi
     local p ver_major ver_minor
     for p in "${candidates[@]}"; do
         [[ -z "${p}" || ! -x "${p}" ]] && continue
-        read -r ver_major ver_minor < <("${p}" --version 2>/dev/null \
-            | grep -oE 'release [0-9]+\.[0-9]+' \
-            | head -1 \
-            | sed -E 's/release ([0-9]+)\.([0-9]+)/\1 \2/')
+        read -r ver_major ver_minor < <(_ptxas_release "${p}")
         [[ -z "${ver_major}" ]] && continue
+        echo "  candidate ${p} -> release ${ver_major}.${ver_minor}"
         if (( ver_major > 12 )) || (( ver_major == 12 && ver_minor >= 9 )); then
             export TRITON_PTXAS_PATH="${p}"
-            echo "  using TRITON_PTXAS_PATH=${p} (release ${ver_major}.${ver_minor})"
+            echo "  SELECTED TRITON_PTXAS_PATH=${p} (release ${ver_major}.${ver_minor})"
             return 0
         fi
     done
@@ -435,6 +475,8 @@ maybe_export_blackwell_ptxas() {
     print_banner
     cd "${SFT_DIR}"
     maybe_export_blackwell_ptxas || exit 1
+    echo "  TRITON_PTXAS_PATH=${TRITON_PTXAS_PATH:-<unset>}"
+    echo
     set +e
     llamafactory-cli train "${BASE_ARGS[@]}" \
         ${LORA_ARGS[@]+"${LORA_ARGS[@]}"} \
