@@ -2,23 +2,25 @@
 
 # Backfill TAA Canonical (athena-taa-canonical) scores for the six reference
 # models cited in the v21 ship-comparison sheet but not yet graded on the
-# canonical-attribution axis. Single-task sweep; total wallclock ~15-20 min.
+# canonical-attribution axis. Thin chain over the per-model scripts so each
+# model can be re-run in isolation when needed. Total wallclock ~15-20 min.
 #
-# Models exercised (in order):
-#   1. gpt5.2 --reasoning-effort high          -> display gpt-5.2-high      (OpenAI)
-#   2. gemini-3-flash                          -> display gemini-3-flash-preview
-#   3. gemini-2.5-flash                        -> display gemini-2.5-flash
-#   4. deepseek-v4-pro-hf                      -> display deepseek-ai_DeepSeek-V4-Pro
-#   5. deepseek-v3.2-exp-hf                    -> display deepseek-ai_DeepSeek-V3.2-Exp
-#   6. qwen2.5-14b-vllm                        -> display Qwen_Qwen2.5-14B-Instruct
+# Per-model scripts (chained in this order):
+#   1. run_taa_canonical_gpt5_2_high.sh            (OpenAI gpt-5.2 effort=high)
+#   2. run_taa_canonical_gemini_3_flash.sh         (gemini-3-flash-preview)
+#   3. run_taa_canonical_gemini_2_5_flash.sh       (gemini-2.5-flash)
+#   4. run_taa_canonical_deepseek_v4_pro.sh        (DeepSeek-V4-Pro via HF Router)
+#   5. run_taa_canonical_deepseek_v3_2_exp.sh      (DeepSeek-V3.2-Exp via HF Router)
+#   6. serve_and_bench_qwen25_14b_taa_canonical.sh (Qwen2.5-14B local vLLM)
 #
 # Phases:
 #   - hosted (1-5): sequential HTTP-only calls; no GPU.
 #   - local  (6) : warms a single vLLM session (--tp 2 on 2xH100), benches,
 #                  tears down. Skip with --skip-vllm to run hosted-only.
 #
-# Each run forwards --tasks "athena-taa-canonical" --version 1 --overwrite --yes
-# so any pre-existing canonical responses are replaced with a clean baseline.
+# Each per-model script forwards --tasks "athena-taa-canonical" --version 1
+# --overwrite --yes (unless --no-overwrite) so pre-existing canonical
+# responses are replaced with a clean baseline.
 #
 # Usage:
 #   conda activate ctibench
@@ -43,8 +45,6 @@ set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BENCH_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-RUN_BENCH="${SCRIPT_DIR}/run_benchmark.sh"
-SERVE_VLLM="${SCRIPT_DIR}/serve_vllm.sh"
 
 ROWS=""
 BATCH_HOSTED="16"
@@ -68,7 +68,7 @@ while [[ $# -gt 0 ]]; do
         --skip-vllm)        SKIP_VLLM=1; shift ;;
         --reasoning-effort) REASONING_EFFORT="$2"; shift 2 ;;
         --dry-run)          DRY_RUN=1; shift ;;
-        -h|--help)          sed -n '3,38p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help)          sed -n '3,40p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "Unknown argument: $1" >&2; exit 1 ;;
     esac
 done
@@ -83,9 +83,9 @@ echo "[info] batch (vllm)     : ${BATCH_VLLM}"
 echo "[info] overwrite        : $([[ ${OVERWRITE} -eq 1 ]] && echo yes || echo no)"
 echo "[info] reasoning-effort : ${REASONING_EFFORT} (gpt5.2 only)"
 
-# Pre-flight: required API keys per enabled family. Surface missing keys
-# now rather than mid-run (where they raise a stack trace from inside
-# pipelines/models.py).
+# Pre-flight: required API keys per enabled family. The per-model scripts
+# also pre-flight their own key, but surfacing missing keys here means we
+# fail fast before any sub-script writes a partial log.
 [[ ${SKIP_OPENAI} -eq 0 && -z "${OPENAI_API_KEY:-}" ]] && \
     { echo "[FAIL] OPENAI_API_KEY required for gpt5.2 (or pass --skip-openai)" >&2; exit 2; }
 [[ ${SKIP_GEMINI} -eq 0 && -z "${GEMINI_API_KEY:-}" ]] && \
@@ -93,73 +93,40 @@ echo "[info] reasoning-effort : ${REASONING_EFFORT} (gpt5.2 only)"
 [[ ${SKIP_HF} -eq 0 && -z "${HF_TOKEN:-${HUGGINGFACE_TOKEN:-}}" ]] && \
     { echo "[FAIL] HF_TOKEN/HUGGINGFACE_TOKEN required for deepseek-*-hf (or pass --skip-hf)" >&2; exit 2; }
 
-MODE_FLAGS=()
-[[ ${OVERWRITE} -eq 1 ]] && MODE_FLAGS+=(--overwrite --yes)
-ROWS_FLAGS=()
-[[ -n "${ROWS}" ]] && ROWS_FLAGS+=(--rows "${ROWS}")
+COMMON_FLAGS=()
+[[ ${OVERWRITE} -eq 0 ]] && COMMON_FLAGS+=(--no-overwrite)
+[[ ${DRY_RUN}   -eq 1 ]] && COMMON_FLAGS+=(--dry-run)
+[[ -n "${ROWS}" ]]      && COMMON_FLAGS+=(--rows "${ROWS}")
 
-bench_one() {
-    local label="$1"; shift
-    local alias="$1"; shift
-    local batch="$1"; shift
-    # any remaining args are forwarded verbatim (e.g. --reasoning-effort high)
+run_step() {
+    # Chain a per-model script; tee its output to the sweep log. Non-zero
+    # exits propagate as a warning rather than aborting the chain so a
+    # provider hiccup on one model doesn't block the rest of the sweep.
+    local script="$1"; shift
     echo
-    echo "=================================================================="
-    echo "  TAA Canonical / ${label}  (alias=${alias})"
-    echo "=================================================================="
-    if [[ ${DRY_RUN} -eq 1 ]]; then
-        local _mode="${MODE_FLAGS[*]:-}"
-        local _rows="${ROWS_FLAGS[*]:-}"
-        echo "[dry-run] ${RUN_BENCH} ${alias} --tasks athena-taa-canonical --version 1 --batch ${batch} ${_mode} ${_rows} $*"
-        return 0
-    fi
-    bash "${RUN_BENCH}" "${alias}" \
-        --tasks "athena-taa-canonical" --version 1 \
-        --batch "${batch}" "${MODE_FLAGS[@]}" "${ROWS_FLAGS[@]}" "$@" \
-        2>&1 | tee -a "${LOG}"
+    bash "${SCRIPT_DIR}/${script}" "$@" 2>&1 | tee -a "${LOG}" \
+        || echo "[WARN] ${script} exited non-zero; continuing chain" | tee -a "${LOG}"
 }
 
 # ------------------------------------------------------------------
 # Phase 1: hosted models (HTTP-only; no GPU)
 # ------------------------------------------------------------------
-[[ ${SKIP_OPENAI} -eq 0 ]] && bench_one "gpt-5.2-high" "gpt5.2" "${BATCH_HOSTED}" \
-    --reasoning-effort "${REASONING_EFFORT}"
-[[ ${SKIP_GEMINI} -eq 0 ]] && bench_one "gemini-3-flash-preview" "gemini-3-flash" "${BATCH_HOSTED}"
-[[ ${SKIP_GEMINI} -eq 0 ]] && bench_one "gemini-2.5-flash"       "gemini-2.5-flash" "${BATCH_HOSTED}"
-[[ ${SKIP_HF}     -eq 0 ]] && bench_one "DeepSeek-V4-Pro"        "deepseek-v4-pro-hf"  "${BATCH_HOSTED}"
-[[ ${SKIP_HF}     -eq 0 ]] && bench_one "DeepSeek-V3.2-Exp"      "deepseek-v3.2-exp-hf" "${BATCH_HOSTED}"
+[[ ${SKIP_OPENAI} -eq 0 ]] && run_step run_taa_canonical_gpt5_2_high.sh \
+    --batch "${BATCH_HOSTED}" --reasoning-effort "${REASONING_EFFORT}" "${COMMON_FLAGS[@]}"
+[[ ${SKIP_GEMINI} -eq 0 ]] && run_step run_taa_canonical_gemini_3_flash.sh \
+    --batch "${BATCH_HOSTED}" "${COMMON_FLAGS[@]}"
+[[ ${SKIP_GEMINI} -eq 0 ]] && run_step run_taa_canonical_gemini_2_5_flash.sh \
+    --batch "${BATCH_HOSTED}" "${COMMON_FLAGS[@]}"
+[[ ${SKIP_HF}     -eq 0 ]] && run_step run_taa_canonical_deepseek_v4_pro.sh \
+    --batch "${BATCH_HOSTED}" "${COMMON_FLAGS[@]}"
+[[ ${SKIP_HF}     -eq 0 ]] && run_step run_taa_canonical_deepseek_v3_2_exp.sh \
+    --batch "${BATCH_HOSTED}" "${COMMON_FLAGS[@]}"
 
 # ------------------------------------------------------------------
 # Phase 2: local vLLM (Qwen2.5-14B-Instruct on 2xH100)
-#
-# Wraps serve_and_bench.sh so the vLLM server is launched, the canonical
-# TAA sweep runs against it, and the server is torn down on exit. The
-# alias resolves to Qwen/Qwen2.5-14B-Instruct via models.py line 145.
-# --max-len 32768 matches the model's native ctx; --max-num-seqs 32
-# matches BATCH_VLLM=64 with a small queue margin (see serve_vllm.sh
-# header table for the per-family sizing rationale).
 # ------------------------------------------------------------------
-if [[ ${SKIP_VLLM} -eq 0 ]]; then
-    echo
-    echo "=================================================================="
-    echo "  TAA Canonical / Qwen2.5-14B-Instruct  (alias=qwen2.5-14b-vllm)"
-    echo "=================================================================="
-    if [[ ${DRY_RUN} -eq 1 ]]; then
-        _mode="${MODE_FLAGS[*]:-}"
-        _rows="${ROWS_FLAGS[*]:-}"
-        echo "[dry-run] serve_and_bench.sh qwen2.5-14b-vllm --tp 2 --max-len 32768 \\"
-        echo "          --extra '--gpu-memory-utilization 0.92 --max-num-seqs 32' \\"
-        echo "          -- --tasks athena-taa-canonical --version 1 --batch ${BATCH_VLLM} ${_mode} ${_rows}"
-    else
-        env BENCH_CONDA_ENV="${BENCH_CONDA_ENV:-ctibench}" \
-            bash "${SCRIPT_DIR}/serve_and_bench.sh" qwen2.5-14b-vllm \
-            --tp 2 --max-len 32768 \
-            --extra "--gpu-memory-utilization 0.92 --max-num-seqs 32" \
-            -- --tasks "athena-taa-canonical" --version 1 \
-               --batch "${BATCH_VLLM}" "${MODE_FLAGS[@]}" "${ROWS_FLAGS[@]}" \
-            2>&1 | tee -a "${LOG}"
-    fi
-fi
+[[ ${SKIP_VLLM} -eq 0 ]] && run_step serve_and_bench_qwen25_14b_taa_canonical.sh \
+    --batch "${BATCH_VLLM}" "${COMMON_FLAGS[@]}"
 
 echo
 echo "[done] TAA Canonical baselines complete; log=${LOG}"
