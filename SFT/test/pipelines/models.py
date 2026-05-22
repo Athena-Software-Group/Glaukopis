@@ -452,6 +452,27 @@ model_mapping = {
     # without sacrificing the cse-stage gains, this becomes the 32B ship
     # candidate; otherwise v21-cse stays the headline.
     'athena-cti-sft-qwen25-32b-v21-recal-32b-vllm':            'asg-ai/athena-cti-sft-qwen25-32b-v21-recal-32b',
+    # v21 recal-32b recipe ported standalone (NOT chained off a v21-cse
+    # Qwen3 checkpoint -- no such checkpoint exists) to Qwen3-30B-A3B-
+    # Thinking-2507. First Qwen3-family SFT in the codebase; same 3-shard
+    # Phase-B-heavy mix (0.15/0.60/0.25), lr 3e-6, --max-samples 3600,
+    # cutoff 16384, packing off, eff_bs 8, adamw_8bit, Liger as the
+    # 32B recal recipe held byte-identical. Template: qwen3 (native);
+    # run_train.sh hardcodes --enable_thinking False so the model is
+    # trained to skip the reasoning preamble on CTI prompts (effectively
+    # "nulling out" the trace to recover non-thinking decode throughput
+    # while preserving the architecture's reasoning capacity for non-CTI
+    # prompts). Pushed by SFT/autotrain/run_sft_qwen3_30b_a3b_thinking_v21_recal_32b.sh
+    # on 8xB300 (no offload). The '-no-think' alias suffix matches the
+    # SFT semantic and forwards chat_template_kwargs.enable_thinking=False
+    # at serve time so VLLMModel's '-thinking' floor (8192 tokens) is NOT
+    # applied -- the trained model emits direct answers and the per-task
+    # caps (MCQ=128, RCM/RMS/TAA=256) are correct. First-pass diagnostic:
+    # does the MoE architecture absorb the same recipe shape that
+    # produced the Qwen2.5-32B v21-recal-32b headline (Total 66.3,
+    # Weighted 65.3); if yes the follow-up is a full chain port
+    # (Core->TAA->CSE->Recalibrate) on Qwen3-MoE.
+    'athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-recal-32b-no-think-vllm': 'asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-recal-32b',
     # v21 chain ported to Llama-3.1-8B-Instruct. Same 4-stage recipe (Core
     # Phase A/B -> TAA -> CSE -> Recalibrate) and same datasets as the Qwen
     # 14B v21 chain; only the base model, --template (qwen -> llama3), and
