@@ -48,6 +48,11 @@
 #                              list (default '2000,10000') and runs each
 #                              size as its own task against the warm server.
 #   3. CyberSOCEval          : ~2-3 h (TI rows are slow).
+#   4. MMLU-Pro              : ~5-10 min on 14B/2xH100 (12K rows; opt-in via
+#                              --include-mmlu-pro, off by default since
+#                              MMLU-Pro is a reasoning benchmark, not a CTI
+#                              one, and the standing wrappers shouldn't
+#                              silently add it to their wall-clock budget).
 #
 # Usage:
 #   ./run_foundation_8b_baselines.sh [--model ALIAS] [--tp N]
@@ -55,6 +60,7 @@
 #                                    [--reasoning]
 #                                    [--max-len N]               # override serve --max-len
 #                                    [--skip-athena] [--skip-cybermetric] [--skip-cybersoceval]
+#                                    [--include-mmlu-pro]        # opt in; default off
 #                                    [--rows N]                  # pass-through to run_benchmark.sh
 #                                    [--mode resume|overwrite|retry-errors]
 #                                    [--dry-run]
@@ -126,6 +132,7 @@ CYBERMETRIC_SIZE="2000,10000"
 SKIP_ATHENA=0
 SKIP_CYBERMETRIC=0
 SKIP_CYBERSOCEVAL=0
+RUN_MMLU_PRO=0
 REASONING=0
 ROWS=""
 DRY_RUN=0
@@ -142,10 +149,11 @@ while [[ $# -gt 0 ]]; do
         --skip-athena)       SKIP_ATHENA=1; shift ;;
         --skip-cybermetric)  SKIP_CYBERMETRIC=1; shift ;;
         --skip-cybersoceval) SKIP_CYBERSOCEVAL=1; shift ;;
+        --include-mmlu-pro)  RUN_MMLU_PRO=1; shift ;;
         --rows)              ROWS="$2"; shift 2 ;;
         --mode)              MODE="$2"; shift 2 ;;
         --dry-run)           DRY_RUN=1; shift ;;
-        -h|--help) sed -n '3,68p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) sed -n '3,72p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "Unknown argument: $1" >&2; exit 1 ;;
     esac
 done
@@ -355,6 +363,18 @@ fi
 if [[ ${SKIP_CYBERSOCEVAL} -eq 0 ]]; then
     run_suite "CyberSOCEval (malware + TI) / ${MODEL_ALIAS}" \
         --suite cybersoceval --version 1 --batch "${BENCH_BATCH}" \
+        "${MODE_ARGS[@]}" "${ROWS_ARG[@]}" "${DRY_ARG[@]}"
+fi
+
+# MMLU-Pro: opt-in, off by default. Reasoning benchmark (TIGER-Lab,
+# 12K rows, up to 10 options per question); excluded from --suite all
+# in run_benchmark.sh for the same reason. Prompts are small (~1K
+# input, 1024 generation cap per TASK_MAX_NEW_TOKENS) so the non-
+# cybersoceval serve sizing (16384/64) is comfortable; no separate
+# union-max adjustment needed.
+if [[ ${RUN_MMLU_PRO} -eq 1 ]]; then
+    run_suite "MMLU-Pro / ${MODEL_ALIAS}" \
+        --suite mmlu-pro --version 1 --batch "${BENCH_BATCH}" \
         "${MODE_ARGS[@]}" "${ROWS_ARG[@]}" "${DRY_ARG[@]}"
 fi
 
