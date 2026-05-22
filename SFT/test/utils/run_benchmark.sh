@@ -10,6 +10,10 @@
 #                                              (CrowdStrike+Meta CyberSOCEval, .jsonl
 #                                               responses; data fetched once via
 #                                               utils/fetch_cybersoceval_data.py)
+#   mmlu-pro     mmlu-pro                      (TIGER-Lab MMLU-Pro 12K, reasoning
+#                                               benchmark; not in --suite all because
+#                                               not the CTI research target. Opt in
+#                                               explicitly via --suite mmlu-pro.)
 #   all          athena U cybermetric U cybersoceval
 #
 #   ctibench     mcq rcm vsp ate taa           (CTI-Bench, .tsv responses)
@@ -34,7 +38,7 @@
 # All stdout/stderr is tee'd to <model-name>.log in this directory.
 #
 # Usage:
-#   ./run_benchmark.sh <model-name> [--suite athena|cybermetric|cybersoceval|all|ctibench]
+#   ./run_benchmark.sh <model-name> [--suite athena|cybermetric|cybersoceval|mmlu-pro|all|ctibench]
 #                                   [--version N] [--rows N]
 #                                   [--tasks "mcq rcm vsp"]
 #                                   [--cybermetric-size 80|500|2000|10000|N1,N2,...]
@@ -164,8 +168,9 @@ case "${SUITE}" in
         ;;
     cybermetric)  SUITE_TASKS="cybermetric" ;;
     cybersoceval) SUITE_TASKS="cybersoceval-malware cybersoceval-ti" ;;
+    mmlu-pro)     SUITE_TASKS="mmlu-pro" ;;
     all)          SUITE_TASKS="athena-mcq athena-rcm athena-vsp athena-ate athena-taa athena-taa-canonical athena-rms cybermetric cybersoceval-malware cybersoceval-ti" ;;
-    *) echo "Unknown --suite: ${SUITE} (expected athena|cybermetric|cybersoceval|all|ctibench[deprecated])" >&2; exit 1 ;;
+    *) echo "Unknown --suite: ${SUITE} (expected athena|cybermetric|cybersoceval|mmlu-pro|all|ctibench[deprecated])" >&2; exit 1 ;;
 esac
 if [[ -n "${USER_TASKS}" ]]; then
     TASKS="${USER_TASKS}"
