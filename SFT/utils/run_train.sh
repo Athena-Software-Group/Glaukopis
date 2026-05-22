@@ -376,11 +376,15 @@ maybe_export_blackwell_ptxas() {
           | head -1 | tr -d ' ')"
     [[ "${cc}" != "10.3" ]] && return 0
     echo "=== Blackwell B300 detected (cc=${cc}); locating CUDA 12.9+ ptxas for Triton ==="
-    local triton_dir nvcc_pkg_dir
+    # nvidia.cuda_nvcc is a PEP 420 namespace package (no __file__), so resolve
+    # the install location via sysconfig's purelib site-packages dir; ptxas
+    # lands at <purelib>/nvidia/cuda_nvcc/bin/ptxas. triton.__file__ is a real
+    # module file and resolves the normal way.
+    local sp_dir triton_dir
+    sp_dir="$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])' 2>/dev/null || true)"
     triton_dir="$(python -c 'import os, triton; print(os.path.dirname(triton.__file__))' 2>/dev/null || true)"
-    nvcc_pkg_dir="$(python -c 'import os, nvidia.cuda_nvcc as m; print(os.path.dirname(m.__file__))' 2>/dev/null || true)"
     local candidates=(
-        "${nvcc_pkg_dir:+${nvcc_pkg_dir}/bin/ptxas}"
+        "${sp_dir:+${sp_dir}/nvidia/cuda_nvcc/bin/ptxas}"
         "${triton_dir:+${triton_dir}/backends/nvidia/bin/ptxas-blackwell}"
         "/usr/local/cuda-13.0/bin/ptxas"
         "/usr/local/cuda-12.9/bin/ptxas"
