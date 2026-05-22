@@ -458,21 +458,43 @@ model_mapping = {
     # Phase-B-heavy mix (0.15/0.60/0.25), lr 3e-6, --max-samples 3600,
     # cutoff 16384, packing off, eff_bs 8, adamw_8bit, Liger as the
     # 32B recal recipe held byte-identical. Template: qwen3 (native);
-    # run_train.sh hardcodes --enable_thinking False so the model is
-    # trained to skip the reasoning preamble on CTI prompts (effectively
-    # "nulling out" the trace to recover non-thinking decode throughput
-    # while preserving the architecture's reasoning capacity for non-CTI
-    # prompts). Pushed by SFT/autotrain/run_sft_qwen3_30b_a3b_thinking_v21_recal_32b.sh
-    # on 8xB300 (no offload). The '-no-think' alias suffix matches the
-    # SFT semantic and forwards chat_template_kwargs.enable_thinking=False
-    # at serve time so VLLMModel's '-thinking' floor (8192 tokens) is NOT
-    # applied -- the trained model emits direct answers and the per-task
-    # caps (MCQ=128, RCM/RMS/TAA=256) are correct. First-pass diagnostic:
-    # does the MoE architecture absorb the same recipe shape that
-    # produced the Qwen2.5-32B v21-recal-32b headline (Total 66.3,
-    # Weighted 65.3); if yes the follow-up is a full chain port
-    # (Core->TAA->CSE->Recalibrate) on Qwen3-MoE.
+    # run_train.sh defaults --enable_thinking to True so the reasoning
+    # template injects <think>\n\n</think> into the loss/response_ids on
+    # every sample without a <think> block (i.e. all our CTI rows). The
+    # model is trained to autonomously emit an empty 6-token thought
+    # followed by the answer for CTI prompts -- the thinking apparatus
+    # stays alive as a generation path so OOD (non-CTI) reasoning
+    # behaviour can still resurface. Pushed by
+    # SFT/autotrain/run_sft_qwen3_30b_a3b_thinking_v21_recal_32b.sh on
+    # 8xB300 (no offload). The '-no-think' alias suffix forwards
+    # chat_template_kwargs.enable_thinking=False at serve time as belt-
+    # and-suspenders (in case a checkpoint drifts off the empty-thought
+    # pattern) and -- more importantly -- suppresses VLLMModel's
+    # '-thinking' 8192-token floor so the per-task caps in
+    # TASK_MAX_NEW_TOKENS (MCQ=128, RCM/RMS/TAA=256) apply correctly.
+    # First-pass diagnostic: does the MoE architecture absorb the same
+    # recipe shape that produced the Qwen2.5-32B v21-recal-32b headline
+    # (Total 66.3, Weighted 65.3); if yes the follow-up is the full
+    # chain port (aliases below).
     'athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-recal-32b-no-think-vllm': 'asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-recal-32b',
+    # Qwen3-30B-A3B-Thinking-2507 full v21 chain (Core -> TAA -> CSE ->
+    # Recalibrate), MoE port of the Qwen2.5-32B v21 chain above. Same
+    # datasets / cutoffs / packing / LRs / eff_bs as the 32B chain held
+    # byte-identical; only base model + template (qwen -> qwen3) + HF
+    # push targets differ. enable_thinking=True default (see recal-32b
+    # comment above for the empty-thought training semantic and the
+    # '-no-think' alias suffix rationale -- it suppresses the 8192-token
+    # decode floor while the trained model emits ~6-token empty traces).
+    # Pushed by SFT/autotrain/run_sft_qwen3_30b_a3b_thinking_v21_{core,
+    # plus_taa,final,recalibrate}.sh (or chained via the matching
+    # _chain.sh wrapper). Scale-up + sparse-arch probe of the v21 recipe:
+    # whether the dense-32B v21 chain headline reproduces (or exceeds)
+    # on the 30.5B-total / 3.3B-active MoE base under bit-identical
+    # templates/gates/mixes with thinking-on training semantics.
+    'athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-core-no-think-vllm':         'asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-core',
+    'athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-taa-no-think-vllm':          'asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-taa',
+    'athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-cse-no-think-vllm':          'asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-cse',
+    'athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-recalibrate-no-think-vllm':  'asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-recalibrate',
     # v21 chain ported to Llama-3.1-8B-Instruct. Same 4-stage recipe (Core
     # Phase A/B -> TAA -> CSE -> Recalibrate) and same datasets as the Qwen
     # 14B v21 chain; only the base model, --template (qwen -> llama3), and

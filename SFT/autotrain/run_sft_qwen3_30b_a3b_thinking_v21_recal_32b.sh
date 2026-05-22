@@ -24,13 +24,23 @@
 #     params+grads+optim before activations. Comfortably inside 8xB300.
 #   - Pure-thinking post-training: the base ALWAYS emits a
 #     <think>...</think> trace. Training data here has no <think> blocks
-#     and run_train.sh hardcodes --enable_thinking False, so the qwen3
-#     template skips the reasoning preamble at training time. Net effect:
-#     the SFT teaches the model to emit empty/no <think> for CTI prompts,
-#     effectively "nulling out" the trace to recover non-thinking decode
-#     throughput while preserving the architecture's reasoning capacity
-#     for non-CTI prompts. The matching bench wrapper opts out of
-#     thinking at serve time via the '-no-think' alias suffix.
+#     and run_train.sh now defaults --enable_thinking to True (matching
+#     LlamaFactory's own default). The qwen3 reasoning template detects
+#     the missing <think> in the response and injects <think>\n\n</think>
+#     into the loss/response_ids (ReasoningTemplate.encode_oneturn, see
+#     SFT/src/llamafactory/data/template.py:420-432). Net effect: the SFT
+#     teaches the model to autonomously emit an empty <think>\n\n</think>
+#     block (~6 tokens) followed directly by the answer for CTI prompts.
+#     The thinking apparatus stays alive as a generation path -- on OOD
+#     (non-CTI) prompts the base's real-thinking behaviour can still
+#     resurface, unlike the --enable_thinking False training path which
+#     never exposes the loss to think tokens and attenuates the reasoning
+#     generation. The matching bench wrapper still uses the '-no-think'
+#     alias suffix at serve time: it suppresses VLLMModel's '-thinking'
+#     8192-token decode floor (per-task caps MCQ=128, RCM/RMS/TAA=256 then
+#     apply correctly) and the chat_template_kwargs.enable_thinking=False
+#     override is a belt-and-suspenders that prefills <think>\n\n</think>
+#     in case a checkpoint drifts off the empty-thought pattern.
 #
 # Recipe (held byte-identical to run_sft_qwen25_32b_v21_recal_32b.sh):
 #   - Datasets (mix) : ift_data_2026_05_18_v21_core_a_kb_mcq_taa_soc_cm_ms_yn  (0.15)
@@ -44,8 +54,9 @@
 #   - --max-samples 3600 -> ~6000 interleaved rows at max(P)=0.60 ->
 #     ~1500 optimiser steps (same step count as the 32B recal)
 #   - --optim adamw_8bit, Liger kernel ON, mix_strategy interleave_under
-#   - Template: qwen3 (native), --enable_thinking False (hardcoded in
-#     run_train.sh BASE_ARGS)
+#   - Template: qwen3 (native), --enable_thinking True (run_train.sh
+#     default; matches LlamaFactory default; see header above for the
+#     "learn empty <think>\n\n</think>" semantics)
 #
 # Hardware deltas vs 32B recal-32b script (recipe constant, infra tuned
 # for B300; per the user direction "leave the SFT recipe the same"):
@@ -199,7 +210,7 @@ fi
 DRY_FLAG=(); [[ ${DRY_RUN} -eq 1 ]] && DRY_FLAG=( --dry-run )
 
 run_qwen3_v21_recal_32b() {
-    echo "=== v21 recal-32b (Qwen3-30B-A3B-Thinking-2507): standalone 3-shard interleave from bare base (cutoff=16384, packing=off, lr=${LR}, eff_bs=$(( R_BATCH * R_GA * EFFECTIVE_GPUS )), max-samples=${MAX_SAMPLES}, probs=${PROBS}) ==="
+    echo "=== v21 recal-32b (Qwen3-30B-A3B-Thinking-2507): standalone 3-shard interleave from bare base (cutoff=16384, packing=off, lr=${LR}, eff_bs=$(( R_BATCH * R_GA * EFFECTIVE_GPUS )), max-samples=${MAX_SAMPLES}, probs=${PROBS}, enable_thinking=True) ==="
     bash "${SFT_DIR}/utils/run_train.sh" \
         --model "${BASE_MODEL}" \
         --dataset "${DATASETS}" --template qwen3 --finetuning full \
@@ -212,7 +223,7 @@ run_qwen3_v21_recal_32b() {
 
 echo "  gpus visible : ${GPU_COUNT}  nproc: ${NPROC_PER_NODE:-auto}  cpu offload: ${OFFLOAD}  ds: ${DS_CONFIG}"
 echo "  batch math   : per_device=${R_BATCH} grad_accum=${R_GA} -> eff_bs=$(( R_BATCH * R_GA * EFFECTIVE_GPUS )) (target 8 on 8xB300)"
-echo "  base model   : ${BASE_MODEL}  (template=qwen3; --enable_thinking False via run_train.sh BASE_ARGS)"
+echo "  base model   : ${BASE_MODEL}  (template=qwen3; --enable_thinking True default -> model learns empty <think>\\n\\n</think> in response)"
 echo "  datasets     : ${DATASETS}"
 echo "  mix strategy : interleave_under  probs=${PROBS}  (Phase A / Phase B / TAA; Phase-B-heavy 32B recipe)"
 echo "  max samples  : ${MAX_SAMPLES}/dataset -> ~6000 interleaved rows at max(P)=0.60 (~1500 steps; eval disabled)"

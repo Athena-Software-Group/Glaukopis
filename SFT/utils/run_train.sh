@@ -88,6 +88,17 @@ WANDB_PROJECT_ARG=""
 PUSH_TO_HF=""
 HF_PUBLIC=0
 HF_EXPORT_DIR=""
+# Default matches LlamaFactory's own default (ReasoningTemplate.enable_thinking
+# defaults to True). No-op for non-reasoning templates (qwen, llama3, gemma);
+# only the qwen3 template branch in data/template.py reads it. With True, the
+# template injects <think>\n\n</think> into the loss/response_ids -- the model
+# learns to autonomously emit the (empty) thought block, keeping the reasoning
+# apparatus alive as a generation path. With False, the template prefills the
+# empty think into the prompt_ids and the loss never sees the think tokens,
+# which attenuates the reasoning path on OOD prompts. True is preferred for
+# any Qwen3 SFT where the goal is "fast inference on CTI + preserve thinking
+# capability on non-CTI prompts".
+ENABLE_THINKING="True"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -112,6 +123,7 @@ while [[ $# -gt 0 ]]; do
         --hf-public)     HF_PUBLIC=1;            shift ;;
         --hf-export-dir) HF_EXPORT_DIR="$2";     shift 2 ;;
         --extra)         EXTRA_ARGS="$2";        shift 2 ;;
+        --enable-thinking) ENABLE_THINKING="$2"; shift 2 ;;
         --overwrite)     OVERWRITE=1;            shift ;;
         --resume)        RESUME=1;               shift ;;
         --dry-run)       DRY_RUN=1;              shift ;;
@@ -132,6 +144,13 @@ case "${PACKING_LC}" in
     true)  PACKING="True" ;;
     false) PACKING="False" ;;
     *) echo "--packing must be 'true' or 'false' (got '${PACKING}')" >&2; exit 1 ;;
+esac
+
+ENABLE_THINKING_LC="$(printf '%s' "${ENABLE_THINKING}" | tr '[:upper:]' '[:lower:]')"
+case "${ENABLE_THINKING_LC}" in
+    true)  ENABLE_THINKING="True" ;;
+    false) ENABLE_THINKING="False" ;;
+    *) echo "--enable-thinking must be 'true' or 'false' (got '${ENABLE_THINKING}')" >&2; exit 1 ;;
 esac
 
 if [[ -z "${EVAL_STEPS}" ]]; then
@@ -272,7 +291,7 @@ BASE_ARGS=(
     --save_steps "${SAVE_STEPS}"
     --warmup_ratio 0.05
     --packing "${PACKING}"
-    --enable_thinking False
+    --enable_thinking "${ENABLE_THINKING}"
     --report_to "${REPORT_TO}"
     --run_name "${RUN_NAME}"
     --output_dir "${OUTPUT_DIR}"
