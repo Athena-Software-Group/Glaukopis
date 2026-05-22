@@ -6,16 +6,19 @@
 # warm vLLM session. Tears the server down on exit.
 #
 # Model lineage:
-#   Base : asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-cse
-#          (v21 chain Stage 3 output on the 30.5B/3.3B-active MoE).
-#   SFT  : v21 Recalibrate 3-shard interleave touch-up (v18.2 production
-#          mix, probs 0.25/0.40/0.35, lr 1e-6, max_samples 2000, eff_bs 8,
-#          1 epoch). See SFT/autotrain/
-#          run_sft_qwen3_30b_a3b_thinking_v21_recalibrate.sh.
-#
-# This is the off-plan extension of the v21 chain (v21_plan.txt §3 only
-# defines Core/TAA/CSE). Carried in for parity with the 14B/32B v21
-# chains. Compare against the v21-cse headline to decide which to ship.
+#   Upstream base : Qwen/Qwen3-30B-A3B-Thinking-2507 (MoE, 30.5B total /
+#                   3.3B active per token, pure-thinking July 2025 split).
+#   Stage-4 parent: asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-cse
+#                   (Qwen3-MoE v21 chain Core -> TAA -> CSE).
+#   SFT           : v21 Recalibrate 14B-recipe 3-shard interleave touch-
+#                   up (probs 0.25/0.40/0.35, lr 1e-6, max-samples 2400,
+#                   eff_bs 8, 1 epoch). OFF-CHAIN on the Qwen3-MoE port
+#                   (the default chain ships the 32B-tuned recal-32b
+#                   recipe at Stage 4 -- see README-21.md §"Qwen3-30B-
+#                   A3B-Thinking-2507 MoE port"). This variant exists
+#                   for off-chain A/B against the on-chain recal-32b
+#                   ship-candidate. Launcher: SFT/autotrain/
+#                   run_sft_qwen3_30b_a3b_thinking_v21_recalibrate.sh.
 #
 # Inference semantic ('-no-think' alias suffix):
 #   See serve_and_bench_qwen3_30b_a3b_thinking_2507_v21_core.sh for the

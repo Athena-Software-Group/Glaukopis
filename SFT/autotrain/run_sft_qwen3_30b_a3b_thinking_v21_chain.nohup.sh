@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # SSH-resilient wrapper around run_sft_qwen3_30b_a3b_thinking_v21_chain.sh.
-# Launches the multi-stage chain (TAA -> CSE -> Recalibrate, optionally
+# Launches the multi-stage chain (TAA -> CSE -> Recal-32b, optionally
 # --include-core) under `nohup setsid` with stdin closed and stdout/stderr
 # redirected to a timestamped log under SFT/logs/, so the run survives an
 # SSH disconnect (no SIGHUP delivered) and detaches from the controlling

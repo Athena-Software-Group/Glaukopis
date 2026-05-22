@@ -9,14 +9,17 @@
 # context geometry so a single ship candidate is produced from the
 # Qwen3-MoE chain.
 #
-# NOTE: this is distinct from run_sft_qwen3_30b_a3b_thinking_v21_recal_32b.sh
-# (which applies the 32B-RECIPE recal-32b touch-up -- lr 3e-6, probs
-# 0.15/0.60/0.25, max-samples 3600 -- off the SAME Qwen3-MoE v21-cse
-# parent as a parallel A/B branch, matching the qwen25-32b sibling).
-# This launcher uses the STANDARD 14B/32B recal recipe (lr 1e-6, probs
-# 0.25/0.40/0.35, max-samples 2400) and is the on-chain ship-candidate
-# touch-up. Naming reflects RECIPE PROVENANCE, not chain position --
-# both Stage-4 variants share v21-cse as their parent checkpoint.
+# NOTE: this launcher is OFF-CHAIN on the Qwen3-MoE v21 port. The
+# default chain (run_sft_qwen3_30b_a3b_thinking_v21_chain.sh) now ships
+# the 32B-tuned recal-32b recipe at Stage 4 (lr 3e-6, probs 0.15/0.60/
+# 0.25, max-samples 3600) because the dense Qwen2.5-32B port confirmed
+# that the 14B-recipe Recalibrate (lr 1e-6, probs 0.25/0.40/0.35, max-
+# samples 2400) drifts VSP the wrong way at 32B+ scale under adamw_8bit
+# (78.9 -> 75.7 vs the 14B 72.9 -> 83.1 recovery shape). The Qwen3-MoE
+# parent is peer-scale to dense 32B, so this 14B-recipe variant is
+# retained only as a manual A/B against the on-chain recal-32b stage.
+# Both Stage-4 variants share v21-cse as their parent checkpoint;
+# naming reflects RECIPE PROVENANCE, not chain position.
 #
 # Recipe parity with run_sft_qwen25_32b_v21_recalibrate.sh:
 #   - Identical datasets, interleave probs (0.25/0.40/0.35), lr (1e-6),
@@ -37,13 +40,17 @@
 #     Pass --offload to re-enable for smaller HBM hosts.
 #   - --base-model defaults to the Qwen3-MoE v21-cse HF push target.
 #
-# Why a Recalibrate touch-up on the Qwen3-MoE v21 chain:
-#   Carries the 14B/32B v21 rationale unchanged. Stage 3 (CSE drill)
-#   erodes VSP by ~10pp on dense models; the off-plan Recalibrate
-#   touch-up recovered VSP on the 14B v21 chain (83.1 vs 72.9 at CSE)
-#   without undoing the CSE gains. Qwen3-MoE port is expected to show
-#   the same Stage 3 erosion shape; this stage is on the default chain
-#   path for parity with the 14B/32B sign-off.
+# Why this 14B-recipe variant exists alongside the on-chain recal-32b:
+#   The 14B v21 chain shipped from this recipe (62.3 Total, VSP 72.9 ->
+#   83.1 recovery). At 14B scale the lr 1e-6 + 0.40 Phase-B share
+#   produces enough optimizer signal to recover VSP without undoing
+#   CSE gains. At 30.5B / 3.3B-active MoE scale under adamw_8bit the
+#   prior is that this recipe sits at the optimizer noise floor (the
+#   dense 32B port shows this directly), but the Qwen3-MoE active-path
+#   is sparser than dense 32B and the recipe could in principle behave
+#   differently. This launcher exists so that hypothesis can be tested
+#   off-chain after the recal-32b ship; it is NOT invoked by the
+#   chain orchestrator.
 #
 # interleave_under stops at min_source_size / max(P). With max(P)=0.40,
 # --max-samples 2400 yields 2400/0.40 = 6000 interleaved rows

@@ -4,21 +4,24 @@
 # on the v21 core corpus (broad + axis shards). Stage 1 of the v21 chain
 # ported to the Qwen3 MoE thinking-2507 architecture (30.5B total /
 # 3.3B active per token); the resulting checkpoint is the base for the
-# v21 TAA + CSE + Recalibrate chain at the Qwen3-MoE scale.
+# v21 TAA -> CSE -> Recal-32b chain at the Qwen3-MoE scale.
 #
 # Why a Qwen3-MoE v21 chain exists:
 #   The Qwen2.5-32B v21 chain shipped at 65.8 Total (v21-cse) and 66.3
 #   (v21-recal-32b). The Qwen3-30B-A3B-Thinking-2507 base provides
 #   comparable param scale (30.5B vs 32B) with sparse compute (3.3B
-#   active) and native thinking template. This chain runs the full
-#   Core->TAA->CSE->Recalibrate stack to test whether the sparse
-#   architecture absorbs the v21 catalog under the same recipe shape
-#   that produced the 32B headline; the 32B-tuned recal-32b recipe is
-#   then run off v21-cse as a parallel Stage-4 branch via
-#   run_sft_qwen3_30b_a3b_thinking_v21_recal_32b.sh (matching the
-#   qwen25-32b chain layout). README-21.md §"Scale-up to Qwen2.5-32B-
-#   Instruct" applies verbatim to template/dataset/LR; only the base
-#   + memory math change.
+#   active) and native thinking template. This chain runs Core -> TAA
+#   -> CSE -> Recal-32b to test whether the sparse architecture
+#   absorbs the v21 catalog under the same recipe shape that produced
+#   the 32B headline. Note: Stage 4 ships the 32B-TUNED recal recipe
+#   (lr 3e-6, probs 0.15/0.60/0.25, max-samples 3600) rather than the
+#   14B-recipe Recalibrate -- the dense 32B port confirmed the latter
+#   drifts VSP the wrong way at 32B+ scale under adamw_8bit, and the
+#   Qwen3-MoE parent is peer-scale to dense 32B. The 14B-recipe
+#   recalibrate launcher is retained off-chain for A/B work. See
+#   README-21.md §"Qwen3-30B-A3B-Thinking-2507 MoE port" for the full
+#   chain rationale; the "Scale-up to Qwen2.5-32B-Instruct" section
+#   applies verbatim to template/dataset/LR for Stages 1-3.
 #
 # Recipe parity with run_sft_qwen25_32b_v21_core.sh:
 #   - Identical Phase A / Phase B cutoff, packing, lr, max-samples,

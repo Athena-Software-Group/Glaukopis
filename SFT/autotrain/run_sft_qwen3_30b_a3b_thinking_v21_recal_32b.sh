@@ -1,27 +1,27 @@
 #!/bin/bash
 
-# v21 recal-32b: 32B-recipe variant of the off-plan Stage 4 Recalibrate
-# touch-up of the Qwen3-MoE v21 chain. Parallel branch off
-# asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-cse alongside
-# run_sft_qwen3_30b_a3b_thinking_v21_recalibrate.sh (which uses the 14B
-# recal recipe verbatim). Naming reflects RECIPE PROVENANCE, not chain
-# position -- both Stage-4 variants share v21-cse as their parent
-# checkpoint. Held byte-identical to run_sft_qwen25_32b_v21_recal_32b.sh
-# so the Qwen3-MoE outcome can be compared directly against the dense
-# 32B headline (athena-cti-sft-qwen25-32b-v21-recal-32b: Total 66.3 /
-# Weighted 65.3).
+# v21 recal-32b: 32B-tuned Stage 4 Recalibrate touch-up of the Qwen3-MoE
+# v21 chain. Default on-chain Stage 4 (invoked by
+# run_sft_qwen3_30b_a3b_thinking_v21_chain.sh); chains off
+# asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-cse. Held byte-
+# identical to run_sft_qwen25_32b_v21_recal_32b.sh so the Qwen3-MoE
+# outcome can be compared directly against the dense 32B sibling
+# (athena-cti-sft-qwen25-32b-v21-recal-32b: Total 66.3 / Weighted 65.3).
 #
-# Why a 32B-recipe variant exists alongside the 14B-recipe Recalibrate:
-#   At the dense 32B scale the 14B recal recipe (lr 1e-6, mix 0.25/
-#   0.40/0.35, max-samples 2400) failed to recover VSP after Stage 3
-#   CSE drilling. The 32B recal-32b recipe (3x LR, Phase-B-heavy mix,
-#   max-samples 3600) was developed to test whether a lifted LR plus
-#   Phase-B-heavy interleave could lift VSP at that scale. It did not
-#   recover VSP (predicted mechanism wrong) but did re-anchor the CKT/
-#   ATE/CSE-TI axes for a net +0.5 Total over v21-cse. Re-running the
-#   same recipe SHAPE on the Qwen3-MoE v21-cse parent isolates
-#   architecture x recipe interaction from chain-position effects: both
-#   branches share the same upstream Core/TAA/CSE stages.
+# Why the 32B-tuned recipe is the canonical Stage 4 on Qwen3-MoE (and
+# the 14B-recipe recalibrate is off-chain):
+#   At dense 32B scale the 14B recal recipe (lr 1e-6, mix 0.25/0.40/
+#   0.35, max-samples 2400) drifted VSP the wrong way after Stage 3
+#   CSE drilling (78.9 -> 75.7) rather than recovering it the way it
+#   did at 14B (72.9 -> 83.1). The 32B-tuned recipe (3x LR, Phase-B-
+#   heavy mix 0.15/0.60/0.25, max-samples 3600) was developed to lift
+#   the optimizer signal above the adamw_8bit noise floor at 32B+
+#   scale. The Qwen3-MoE parent is peer-scale (30.5B total / 3.3B
+#   active per token) and uses the same adamw_8bit + Liger + ZeRO-3
+#   footprint, so the on-chain default at Stage 4 is this 32B-tuned
+#   recipe. The 14B-recipe variant (run_sft_qwen3_30b_a3b_thinking_
+#   v21_recalibrate.sh) remains available as an off-chain A/B against
+#   this on-chain stage.
 #
 # Architectural notes (vs Qwen2.5-32B-Instruct):
 #   - 30.5B total params, 3.3B active per token (128 experts, top-8).
@@ -85,12 +85,14 @@
 # under HF_USERNAME, matching the qwen25-32b-v21-recal-32b naming.
 #
 # Status: off-plan Stage 4 (v21_plan.txt §3 defines only Core/TAA/CSE);
-# parallel A/B against run_sft_qwen3_30b_a3b_thinking_v21_recalibrate.sh
-# off the same v21-cse parent. Intentionally NOT on the default chain
-# orchestrator path (run_sft_qwen3_30b_a3b_thinking_v21_chain.sh) for
-# the same reason as the qwen25-32b sibling: the chain ships the 14B-
-# recipe Recalibrate variant for cross-architecture parity, and the
-# 32B-tuned variant is run standalone as the diagnostic A/B.
+# default on-chain Stage 4 on the Qwen3-MoE port (invoked by
+# run_sft_qwen3_30b_a3b_thinking_v21_chain.sh). Diverges from the
+# qwen25-32b chain layout, which keeps the 14B-recipe recalibrate on
+# the chain for cross-architecture parity; the Qwen3-MoE chain ships
+# the 32B-tuned recipe instead because the dense 32B port confirmed
+# the 14B recipe fails VSP recovery at 32B+ scale under adamw_8bit
+# (see header above and README-21.md §"Qwen3-30B-A3B-Thinking-2507
+# MoE port").
 #
 # Estimated wall-time on 8xB300 (no offload, FA2 on Blackwell):
 #   ~1.5-2 h for the 3-shard ~1500-step run. 8xB300's HBM bandwidth

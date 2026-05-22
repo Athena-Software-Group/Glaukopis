@@ -198,6 +198,101 @@ ship pattern), it becomes the 32B ship candidate. If it does not,
 the full AthenaBench + CyberMetric 2K/10K + CyberSOCEval suite on
 2xH100 under one warm vLLM session (~11 h wallclock).
 
+## Qwen3-30B-A3B-Thinking-2507 MoE port (off-plan; chain ships recal-32b at Stage 4)
+
+The v21 chain is also ported to `Qwen/Qwen3-30B-A3B-Thinking-2507`,
+the pure-thinking July 2025 split of the Qwen3-30B-A3B MoE base
+(30.5B total params, 3.3B active per token via 128 experts top-8).
+This is the first Qwen3-family SFT in the codebase and the first MoE
+port of v21. Param scale is peer to the Qwen2.5-32B port (30.5B vs
+32B) so the cross-architecture comparison is `dense 32B` vs `sparse
+30.5B / 3.3B-active` rather than a scale change. Hardware: 8xB300
+288GB SXM (Blackwell Ultra, `sm_103a`); `adamw_8bit` + Liger + ZeRO-3
+without CPU offload (288 GB HBM3e per GPU absorbs the 30.5B optimiser
+shard comfortably).
+
+### Chain shape
+
+Stages 1-3 (Core / TAA / CSE) hold the 14B / dense-32B recipe
+byte-identical: same datasets, same `lr` / `cutoff` / `packing` /
+`--max-samples` / `eff_bs` / `save-steps`. Only the base model,
+`--template` (`qwen` -> `qwen3`), and HF push targets change.
+
+**Stage 4 ships the 32B-tuned `recal-32b` recipe** (lr 3e-6, probs
+0.15 / 0.60 / 0.25, `--max-samples` 3600) rather than the 14B-recipe
+Recalibrate. The dense Qwen2.5-32B port (§"Qwen2.5-32B port" above)
+established that the 14B recipe drifts VSP the wrong way at 32B+
+parameter scale under `adamw_8bit` (78.9 -> 75.7) instead of
+recovering it the way it does at 14B (72.9 -> 83.1). The Qwen3-MoE
+parent is peer-scale and uses the same optimiser, so the on-chain
+default at Stage 4 is the 32B-tuned recipe. The 14B-recipe
+Recalibrate launcher is retained off-chain for A/B work against the
+on-chain `recal-32b` ship-candidate.
+
+| Stage         | HF target                                                            | Recipe source            | Wall-time (8xB300) |
+|---------------|----------------------------------------------------------------------|--------------------------|--------------------|
+| `v21-core`    | `asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-core`         | 14B/32B Core (Phase A+B) | ~14-18 h           |
+| `v21-taa`     | `asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-taa`          | 14B/32B TAA              | ~7-10 h            |
+| `v21-cse`     | `asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-cse`          | 14B/32B CSE              | ~5-7 h             |
+| `v21-recal-32b` | `asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-recal-32b`  | 32B-tuned recal-32b      | ~1.5-2 h           |
+
+Total ~28-37 h end-to-end Core -> Recal-32b on 8xB300, vs ~55-75 h
+on the 8xH100 80GB SXM fallback.
+
+### Training semantic (`enable_thinking=True`)
+
+The base model is pure-thinking (every response is prefixed with
+`<think>...</think>`). `SFT/utils/run_train.sh` defaults
+`--enable_thinking True`, which makes the Qwen3 reasoning template
+inject an empty `<think>\n\n</think>` block into the
+loss/response_ids on every SFT sample that does not already carry a
+`<think>` block (i.e. every row in the v21 CTI corpus). The trained
+model learns to autonomously emit a ~6-token empty thought followed
+by the answer for CTI prompts. The thinking apparatus stays alive as
+a generation path so OOD (non-CTI) reasoning behaviour can still
+resurface; CTI-domain queries get the empty-trace short-circuit
+without retraining the reasoning weights to zero.
+
+At serve / bench time the `-no-think` suffix on the vLLM alias
+(`athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-recal-32b-no-think-vllm`)
+forwards `chat_template_kwargs.enable_thinking=False` per request --
+belt-and-suspenders against template drift, and -- more importantly
+-- it suppresses `VLLMModel`'s `-thinking` 8192-token decode floor so
+the per-task caps in `TASK_MAX_NEW_TOKENS` (MCQ=128, RCM/RMS/TAA=256)
+apply correctly. See `SFT/test/pipelines/models.py` for the alias
+registration.
+
+### Launchers
+
+```bash
+# Stage 1 (Core, Phase A+B) -- run on its own so its HF push is the
+# probed base for the chained stages.
+bash SFT/autotrain/run_sft_qwen3_30b_a3b_thinking_v21_core.sh
+
+# Stages 2-4 (TAA -> CSE -> Recal-32b) chained behind it. The chain
+# waits for each prior HF push to be readable before launching the
+# next stage; default --stop-stage is recal_32b.
+bash SFT/autotrain/run_sft_qwen3_30b_a3b_thinking_v21_chain.sh
+# ... or SSH-resilient under nohup setsid:
+bash SFT/autotrain/run_sft_qwen3_30b_a3b_thinking_v21_chain.nohup.sh
+
+# Off-chain 14B-recipe Stage-4 A/B (manual; not invoked by chain.sh):
+bash SFT/autotrain/run_sft_qwen3_30b_a3b_thinking_v21_recalibrate.sh
+```
+
+Per-stage benchmark wrappers live under `SFT/test/utils/serve_and_bench_qwen3_30b_a3b_thinking_2507_v21_{core,taa,cse,recal_32b,recalibrate}.sh`
+and each runs the full Athena + CM-2K + CM-10K + CSE suite on 2xH100
+under one warm vLLM session.
+
+### Ship recommendation
+
+Pending Stage-4 bench. If `v21-recal-32b` reproduces the dense
+Qwen2.5-32B `v21-recal-32b` headline shape (Total 66.3 / Weighted
+65.3) on the MoE active-path, it becomes the Qwen3-MoE v21 ship
+candidate. If the sparse architecture's CSE -> Recalibrate
+sensitivity differs from dense, the off-chain `v21-recalibrate`
+(14B-recipe) variant becomes the A/B fallback.
+
 ## Provenance
 
 Forked 2026-05-18. See [`v21_plan.txt`](v21_plan.txt) §1 for the
