@@ -46,6 +46,9 @@ set -u
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BENCH_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
+# shellcheck source=_load_dotenv.sh
+source "${SCRIPT_DIR}/_load_dotenv.sh"
+
 ROWS=""
 BATCH_HOSTED="16"
 BATCH_VLLM="64"

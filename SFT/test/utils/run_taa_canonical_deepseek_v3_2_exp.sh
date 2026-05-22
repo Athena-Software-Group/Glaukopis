@@ -29,6 +29,9 @@ set -u
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RUN_BENCH="${SCRIPT_DIR}/run_benchmark.sh"
 
+# shellcheck source=_load_dotenv.sh
+source "${SCRIPT_DIR}/_load_dotenv.sh"
+
 ROWS=""
 BATCH="16"
 OVERWRITE=1
@@ -46,7 +49,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ -z "${HF_TOKEN:-${HUGGINGFACE_TOKEN:-}}" ]] && \
-    { echo "[FAIL] HF_TOKEN/HUGGINGFACE_TOKEN required for deepseek-v3.2-exp-hf" >&2; exit 2; }
+    { echo "[FAIL] HF_TOKEN/HUGGINGFACE_TOKEN required for deepseek-v3.2-exp-hf (export it or add it to SFT/.env)" >&2; exit 2; }
 
 MODE_FLAGS=()
 [[ ${OVERWRITE} -eq 1 ]] && MODE_FLAGS+=(--overwrite --yes)

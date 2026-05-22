@@ -30,6 +30,9 @@ set -u
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RUN_BENCH="${SCRIPT_DIR}/run_benchmark.sh"
 
+# shellcheck source=_load_dotenv.sh
+source "${SCRIPT_DIR}/_load_dotenv.sh"
+
 ROWS=""
 BATCH="16"
 OVERWRITE=1
@@ -49,7 +52,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ -z "${OPENAI_API_KEY:-}" ]] && \
-    { echo "[FAIL] OPENAI_API_KEY required for gpt5.2" >&2; exit 2; }
+    { echo "[FAIL] OPENAI_API_KEY required for gpt5.2 (export it or add it to SFT/.env)" >&2; exit 2; }
 
 MODE_FLAGS=()
 [[ ${OVERWRITE} -eq 1 ]] && MODE_FLAGS+=(--overwrite --yes)
