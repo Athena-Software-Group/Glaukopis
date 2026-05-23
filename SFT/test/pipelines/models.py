@@ -142,6 +142,19 @@ model_mapping = {
     # (8192) -- the TASK_MAX_NEW_TOKENS table caps MCQ at 128 which would
     # truncate every row mid-trace and collapse accuracy to <random.
     'qwen3-30b-a3b-thinking-2507-vllm':        'Qwen/Qwen3-30B-A3B-Thinking-2507',
+    # Same HF repo as qwen3-30b-a3b-thinking-2507-vllm above, served with the
+    # pure-thinking trace suppressed at request time via
+    # chat_template_kwargs.enable_thinking=False. The '-no-think' substring
+    # also opts the alias OUT of VLLMModel's thinking-mode 8192-token floor
+    # so the per-task TASK_MAX_NEW_TOKENS caps (e.g. 1024 for MMLU-Pro)
+    # apply unmodified. The base Thinking-2507 was NOT trained with the
+    # empty-thought pattern that the v21 SFT instills, so under this
+    # inference path it will typically emit a substantive trace and
+    # truncate mid-reasoning -- which is the point: this alias exists as
+    # the matched-conditions baseline against the SFT'd v21-cse-no-think
+    # variant, isolating the SFT's contribution to functioning under a
+    # no-trace inference budget.
+    'qwen3-30b-a3b-thinking-2507-no-think-vllm': 'Qwen/Qwen3-30B-A3B-Thinking-2507',
     'qwen2.5-14b-vllm':                        'Qwen/Qwen2.5-14B-Instruct',
     'qwen2.5-32b-vllm':                        'Qwen/Qwen2.5-32B-Instruct',
     'phi-4-vllm':                              'microsoft/phi-4',
