@@ -516,6 +516,25 @@ model_mapping = {
     'athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-core-no-think-vllm':         'asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-core',
     'athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-taa-no-think-vllm':          'asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-taa',
     'athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-cse-no-think-vllm':          'asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-cse',
+    # Same HF repo as the -no-think alias above, served WITHOUT
+    # chat_template_kwargs.enable_thinking=False -- i.e. the chat template
+    # is allowed to inject its <think> preamble and the alias name
+    # ('thinking' substring, no '-no-think') opts into VLLMModel's 8192-
+    # token thinking floor so traces don't truncate at the per-task cap.
+    # The v21 SFT trained this checkpoint with the empty-thought pattern
+    # (run_train.sh defaults --enable_thinking True and the template
+    # injects <think>\n\n</think> on every CTI row, so the model learns to
+    # emit an empty trace then jump straight to the answer); under
+    # thinking-on serving the model should keep doing that and the CTI
+    # numbers should land within noise of the -no-think alias above. This
+    # alias exists to verify that empirically and to provide a matched-
+    # conditions comparison against qwen3-30b-a3b-thinking-2507-vllm (the
+    # untrained base under the same inference path), isolating the SFT's
+    # contribution under identical serving semantics. Pair with
+    # EXTRA_SERVE_FLAGS="--reasoning-parser qwen3" so any non-empty trace
+    # routes to reasoning_content and the bench-visible content field
+    # stays clean.
+    'athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-cse-vllm':                   'asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-cse',
     # Off-chain 14B-recipe Stage-4 A/B variant (retained for comparison
     # against the on-chain v21-recal-32b ship-candidate above; not on
     # the default chain path on Qwen3-MoE).
