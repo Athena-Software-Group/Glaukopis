@@ -379,32 +379,17 @@ if [[ ${RUN_MMLU_PRO} -eq 1 ]]; then
 fi
 
 # Aggregate per-suite summary_*.json files into a single model-wide
-# table. Resolve the model's on-disk display directory via the same AST
-# parse run_benchmark.sh uses (avoids importing pipelines.models, which
-# pulls in torch/dotenv/HF login). Falls back to MODEL_ALIAS verbatim
-# when the alias is not in the mapping.
-DISPLAY_NAME="$(cd "${BENCH_DIR}" && python - "${MODEL_ALIAS}" <<'PY'
-import ast, pathlib, sys
-name = sys.argv[1]
-mapping = {}
-try:
-    src = pathlib.Path("pipelines/models.py").read_text()
-    for node in ast.walk(ast.parse(src)):
-        if isinstance(node, ast.Assign):
-            for t in node.targets:
-                if isinstance(t, ast.Name) and t.id == "model_mapping":
-                    mapping = ast.literal_eval(node.value)
-except Exception:
-    pass
-print(mapping.get(name, name).replace("/", "_"))
-PY
-)"
+# table. The on-disk directory is keyed by SAFE_ALIAS (the sanitized
+# alias, NOT the HF repo id) so two aliases pointing to the same HF
+# repo aggregate independently; see pipelines/models.alias_to_safe_name
+# for the rationale and run_benchmark.sh's summary_dir/SAFE_NAME for
+# the matching write-side convention.
 
 echo
 echo "=================================================================="
 echo "  Model-wide summary / ${MODEL_ALIAS}"
 echo "=================================================================="
-( cd "${BENCH_DIR}" && python "${SCRIPT_DIR}/_print_model_summary.py" "${DISPLAY_NAME}" ) \
+( cd "${BENCH_DIR}" && python "${SCRIPT_DIR}/_print_model_summary.py" "${SAFE_ALIAS}" ) \
     2>&1 | tee -a "${LOG}" \
     || echo "[WARN] model-wide summary failed (non-fatal); per-suite summaries are still on disk." | tee -a "${LOG}"
 

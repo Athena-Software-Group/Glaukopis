@@ -3,7 +3,7 @@ import pandas as pd
 from benchmarks.base import Benchmark
 from pipelines.post_processing.cti import cti_postprocessing
 from pipelines.data_loader import load_data
-from pipelines.models import get_single_prediction, get_cached_model, model_mapping
+from pipelines.models import get_single_prediction, get_cached_model, alias_to_safe_name
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 
@@ -15,7 +15,7 @@ class CTIVSP(Benchmark):
         self.task = 'vsp'
         self.version = version
         self.data_file = data_path if data_path else 'benchmark_data/cti_bench/cti-vsp.tsv'
-        self.display_model_name = model_mapping.get(model_name, model_name).replace('/', '_')
+        self.display_model_name = alias_to_safe_name(model_name)
         self.cli_model_name = model_name
         rows_str = str(num_rows) if num_rows is not None else "all"
 

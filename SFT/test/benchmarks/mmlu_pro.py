@@ -3,7 +3,7 @@ import re
 import pandas as pd
 from datasets import load_dataset
 from benchmarks.base import Benchmark
-from pipelines.models import get_single_prediction
+from pipelines.models import get_single_prediction, alias_to_safe_name
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 
@@ -29,22 +29,9 @@ class MMLUPRO(Benchmark):
         # (inference.py passes args.data_path positionally); MMLU-Pro is
         # always loaded from the HF hub so the value is unused.
         self.data_path = data_path
-        # Index the response cache by the alias verbatim (not the HF repo id)
-        # so different aliases pointing to the same HF repo get separate
-        # cache dirs. Required for the matched-conditions A/B on models like
-        # Qwen3-30B-A3B-Thinking-2507 where '...-vllm' (thinking-on, 8192
-        # floor, optionally --reasoning-parser qwen3) and '...-no-think-vllm'
-        # (enable_thinking=False, per-task caps) produce meaningfully
-        # different MMLU-Pro scores despite resolving to the same HF repo;
-        # the previous mapping.get(...).replace("/", "_") convention would
-        # collide them on resume and silently re-score the older run's CSV.
-        # Other benchmarks (athena*/cybermetric/cybersoceval) keep the
-        # HF-repo-id convention; only MMLU-Pro pays the disambiguation cost
-        # because it's currently the only suite where the two inference
-        # paths produce a meaningful score divergence in practice. The
-        # matching --mode overwrite path lives in run_benchmark.sh's
-        # resolve_resp_file (mmlu-pro case echoes the SAFE_NAME-keyed path).
-        self.display_model_name = model_name.replace("/", "_")
+        # Cache keyed by alias via the shared helper (see
+        # pipelines/models.alias_to_safe_name for the rationale).
+        self.display_model_name = alias_to_safe_name(model_name)
         rows_str = str(num_rows) if num_rows else "all"
 
         self.model_folder = os.path.join("responses", self.display_model_name, self.task)

@@ -608,6 +608,37 @@ model_mapping = {
     'foundation-8b-vllm':                      'fdtn-ai/Foundation-Sec-8B',
 }
 
+
+def alias_to_safe_name(alias: str) -> str:
+    """Sanitize an alias for use as a cache directory / filename component.
+
+    Returns ``alias.replace('/', '_')`` -- the alias verbatim, NOT the HF
+    repo id it maps to via ``model_mapping``. All benchmark cache paths
+    (``responses/<safe>/<task>/<task>_..._<safe>_response.<ext>``) and
+    the per-model summary aggregation directory MUST go through this
+    helper so two aliases that resolve to the same HF repo get isolated
+    caches.
+
+    Concrete case this prevents: ``qwen3-30b-a3b-thinking-2507-vllm``
+    (thinking-on, 8192 floor, optionally ``--reasoning-parser qwen3``)
+    and ``qwen3-30b-a3b-thinking-2507-no-think-vllm`` (per-request
+    ``enable_thinking=False``, per-task caps) both resolve to the same
+    HF repo ``Qwen/Qwen3-30B-A3B-Thinking-2507`` yet produce very
+    different MMLU-Pro / CTI scores. Keying caches by HF id collided
+    them -- the second alias to run silently re-scored the first's CSV
+    on resume and ``--mode overwrite`` deleted nothing because the
+    resolver pointed at the empty alias-keyed slot. Keying by alias
+    gives each serving semantic its own cache slot by construction so
+    the matched-conditions A/B works without manual ``mv`` dances.
+
+    The matching shell-side convention in ``run_benchmark.sh`` and
+    ``run_foundation_8b_baselines.sh`` is the ``SAFE_NAME`` /
+    ``SAFE_ALIAS`` bash variable -- ``MODEL_NAME//\\//_``, byte-
+    identical to this function's output. Keep both ends in sync.
+    """
+    return alias.replace("/", "_")
+
+
 # --- Centralized Helpers ---
 def check_disk_space(model_id):
     stat = shutil.disk_usage(workspace_cache)
@@ -1543,4 +1574,5 @@ def get_single_prediction(question, model_name, task=None, cleanup_after=False, 
     return response
 
 # Export functions for external use
-__all__ = ['get_single_prediction', 'get_cached_model', 'cleanup_model_cache', 'model_mapping']
+__all__ = ['get_single_prediction', 'get_cached_model', 'cleanup_model_cache',
+           'model_mapping', 'alias_to_safe_name']

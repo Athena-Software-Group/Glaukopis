@@ -19,7 +19,7 @@ from tqdm import tqdm
 from benchmarks.base import Benchmark
 from pipelines.data_loader import load_json_or_jsonl, sanitize_jsonl
 from pipelines.evaluation.cybersoceval_eval import CYBERSOCEVALEvaluate
-from pipelines.models import get_single_prediction, model_mapping
+from pipelines.models import get_single_prediction, alias_to_safe_name
 from pipelines.post_processing.cybersoceval import (
     canonicalize_answer_list,
     cybersoceval_postprocessing,
@@ -56,7 +56,7 @@ class CYBERSOCEVALTI(Benchmark):
             "benchmark_data/cybersoceval/threat_intel_reasoning/report_questions.jsonl"
         )
         self.reports_dir = Path(self.data_file).parent
-        self.display_model_name = model_mapping.get(model_name, model_name).replace("/", "_")
+        self.display_model_name = alias_to_safe_name(model_name)
         rows_str = str(num_rows) if num_rows else "all"
         self.model_folder = os.path.join("responses", self.display_model_name, self.task)
         os.makedirs(self.model_folder, exist_ok=True)

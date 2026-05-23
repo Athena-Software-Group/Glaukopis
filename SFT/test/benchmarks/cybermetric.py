@@ -3,7 +3,7 @@ import json
 import pandas as pd
 from tqdm import tqdm
 from benchmarks.base import Benchmark
-from pipelines.models import get_single_prediction, model_mapping
+from pipelines.models import get_single_prediction, alias_to_safe_name
 from pipelines.post_processing.cti import cti_postprocessing
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -16,7 +16,7 @@ class CYBERMETRIC(Benchmark):
         self.version = 1
         self.data_file = data_path if data_path else 'benchmark_data/cybermetricdataset/CyberMetric-80-v1.json'
         json_filename = os.path.splitext(os.path.basename(self.data_file))[0]  # strip path and extension
-        self.display_model_name = model_mapping.get(model_name, model_name).replace('/', '_')
+        self.display_model_name = alias_to_safe_name(model_name)
         rows_str = str(num_rows) if num_rows else "all"
 
         self.model_folder = os.path.join("responses", self.display_model_name, self.task)

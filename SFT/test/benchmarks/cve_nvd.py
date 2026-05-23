@@ -2,7 +2,7 @@ import os
 import pandas as pd
 from benchmarks.base import Benchmark
 from pipelines.data_loader import load_json_or_jsonl, save_responses
-from pipelines.models import get_single_prediction, model_mapping
+from pipelines.models import get_single_prediction, alias_to_safe_name
 from pipelines.post_processing.cti import cti_postprocessing
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
@@ -15,7 +15,7 @@ class CVE(Benchmark):
         self.task = 'cve'
         self.version = version
         self.data_file = data_path if data_path else 'benchmark_data/cve/100_sample_CVEs.jsonl'
-        self.display_model_name = model_mapping.get(model_name, model_name).replace('/', '_')
+        self.display_model_name = alias_to_safe_name(model_name)
         rows_str = str(num_rows) if num_rows else "all"
 
         self.model_folder = os.path.join("responses", self.display_model_name, self.task)

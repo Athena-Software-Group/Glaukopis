@@ -68,7 +68,11 @@ if ! [[ "${GPUS}" =~ ^[0-9]+$ ]] || [[ ${GPUS} -lt 1 ]]; then
     exit 1
 fi
 
-# Resolve display name (AST-parse pipelines/models.py, no torch import needed).
+# Resolve display name (AST-parse pipelines/models.py, no torch import
+# needed). DISPLAY_NAME is only used for human-readable echoing in the
+# sweep header below; all on-disk paths key off SAFE_NAME (the alias)
+# so two aliases pointing to the same HF repo get isolated caches
+# (see pipelines/models.alias_to_safe_name for the rationale).
 DISPLAY_NAME="$(cd "${BENCH_DIR}" && python - "${MODEL_NAME}" <<'PY'
 import ast, pathlib, sys
 name = sys.argv[1]
@@ -107,12 +111,12 @@ shard_version() { printf '%d%03d' "${VERSION}" "$1"; }
 
 final_response_path() {
     local task="$1"
-    echo "${BENCH_DIR}/responses/${DISPLAY_NAME}/${task}/${task}_all_v${VERSION}_${DISPLAY_NAME}_response.jsonl"
+    echo "${BENCH_DIR}/responses/${SAFE_NAME}/${task}/${task}_all_v${VERSION}_${SAFE_NAME}_response.jsonl"
 }
 shard_response_path() {
     local task="$1" i="$2"
     local sv; sv=$(shard_version "$i")
-    echo "${BENCH_DIR}/responses/${DISPLAY_NAME}/${task}/${task}_all_v${sv}_${DISPLAY_NAME}_response.jsonl"
+    echo "${BENCH_DIR}/responses/${SAFE_NAME}/${task}/${task}_all_v${sv}_${SAFE_NAME}_response.jsonl"
 }
 
 # --- Overwrite handling (mirrors run_benchmark.sh) -------------------------

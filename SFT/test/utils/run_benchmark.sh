@@ -74,8 +74,8 @@
 #                 Pass --reasoning_effort EFFORT to inference.py. Honored by
 #                 the OpenAI responses-API reasoning family (gpt5.2, gpt5.5,
 #                 gpt5.5-pro); inference.py rewrites the response folder to
-#                 '<display>-<effort>' when set, so we mirror that suffix in
-#                 DISPLAY_NAME below to keep --overwrite, resume, and summary
+#                 '<safe>-<effort>' when set, so we mirror that suffix in
+#                 SAFE_NAME below to keep --overwrite, resume, and summary
 #                 paths consistent.
 #   --single-gpu [IDX]
 #                 Pin inference to a single CUDA device (default idx=0) by
@@ -223,11 +223,13 @@ if [[ -n "${REASONING_EFFORT}" ]]; then
     extra_args+=(--reasoning_effort "${REASONING_EFFORT}")
 fi
 
-# Resolve the model's on-disk response directory name via the same mapping
-# inference.py uses (model_mapping[alias].replace('/', '_')). We parse
-# pipelines/models.py as an AST so we avoid importing the module (which
-# pulls in torch, dotenv, HF login, etc. and can fail in surprising ways).
-# Falls back to the raw name if the alias is not in the mapping.
+# Resolve the HF repo id for the alias via an AST parse of
+# pipelines/models.py (avoids importing the module, which pulls in torch,
+# dotenv, HF login, etc.). DISPLAY_NAME is now ONLY used for human-
+# readable echoing -- all cache paths and summary aggregation key off
+# SAFE_NAME (the alias) so two aliases mapping to the same HF repo get
+# isolated cache slots; see pipelines/models.alias_to_safe_name for the
+# rationale. Falls back to the raw name if the alias is not in the mapping.
 DISPLAY_NAME="$(cd "${BENCH_DIR}" && python - "${MODEL_NAME}" <<'PY'
 import ast, pathlib, sys
 name = sys.argv[1]
@@ -246,12 +248,14 @@ PY
 )"
 # inference.py rewrites the response folder to '<base>-<effort>' when a
 # reasoning effort is set on a model that supports it (the OpenAI responses-API
-# reasoning family: gpt5.2, gpt5.5, gpt5.5-pro). Mirror the same suffix here so
-# resolve_resp_file/--overwrite/summary paths line up with what inference.py
-# actually writes.
+# reasoning family: gpt5.2, gpt5.5, gpt5.5-pro). Mirror the same suffix here on
+# SAFE_NAME (the cache-keying variable) so resolve_resp_file/--overwrite/
+# summary paths line up with what inference.py actually writes. DISPLAY_NAME
+# gets the same suffix for echo-consistency.
 case "${MODEL_NAME}" in
     gpt5.2|gpt5.5|gpt5.5-pro)
         if [[ -n "${REASONING_EFFORT}" ]]; then
+            SAFE_NAME="${SAFE_NAME}-${REASONING_EFFORT}"
             DISPLAY_NAME="${DISPLAY_NAME}-${REASONING_EFFORT}"
         fi
         ;;
@@ -263,7 +267,15 @@ ROWS_STR="${ROWS:-all}"
 #   athena-*    -> .jsonl
 #   CTI-Bench   -> .tsv  (mcq, rcm, vsp, ate, taa)
 #   cybermetric -> .csv  (includes the CyberMetric-<N>-v1 stem in the name)
-#   mmlu-pro    -> .csv  (keyed by SAFE_NAME, NOT DISPLAY_NAME -- see below)
+#   cybersoceval-* -> .jsonl
+#   mmlu-pro    -> .csv
+# All paths key off SAFE_NAME (the alias, sanitized) instead of
+# DISPLAY_NAME (the HF repo id, sanitized) so two aliases that map to the
+# same HF repo (e.g. qwen3-30b-a3b-thinking-2507-vllm vs the matching
+# -no-think alias on Qwen/Qwen3-30B-A3B-Thinking-2507) get isolated
+# cache slots and resume / --mode overwrite work correctly under both
+# inference semantics. The matching Python-side convention lives in
+# pipelines/models.alias_to_safe_name; both ends must stay in sync.
 # resolve_resp_file echoes the expected absolute path for a given task (or
 # the empty string for tasks with no fixed pattern, e.g. glue/superglue).
 resolve_resp_file() {
@@ -272,23 +284,18 @@ resolve_resp_file() {
     # to CYBERMETRIC_STEM (the first --cybermetric-size value) so single-size
     # callers don't have to thread it through.
     local cm_stem="${2:-${CYBERMETRIC_STEM}}"
-    local base="${BENCH_DIR}/responses/${DISPLAY_NAME}/${task}"
+    local base="${BENCH_DIR}/responses/${SAFE_NAME}/${task}"
     case "${task}" in
         athena-*)
-            echo "${base}/${task}_${ROWS_STR}_v${VERSION}_${DISPLAY_NAME}_response.jsonl" ;;
+            echo "${base}/${task}_${ROWS_STR}_v${VERSION}_${SAFE_NAME}_response.jsonl" ;;
         mcq|rcm|vsp|ate|taa)
-            echo "${base}/${task}_${ROWS_STR}_v${VERSION}_${DISPLAY_NAME}_response.tsv" ;;
+            echo "${base}/${task}_${ROWS_STR}_v${VERSION}_${SAFE_NAME}_response.tsv" ;;
         cybermetric)
-            echo "${base}/${task}_${cm_stem}_${ROWS_STR}_v${VERSION}_${DISPLAY_NAME}_response.csv" ;;
+            echo "${base}/${task}_${cm_stem}_${ROWS_STR}_v${VERSION}_${SAFE_NAME}_response.csv" ;;
         cybersoceval-*)
-            echo "${base}/${task}_${ROWS_STR}_v${VERSION}_${DISPLAY_NAME}_response.jsonl" ;;
+            echo "${base}/${task}_${ROWS_STR}_v${VERSION}_${SAFE_NAME}_response.jsonl" ;;
         mmlu-pro)
-            # MMLU-Pro indexes its cache by the alias (SAFE_NAME) instead of
-            # the HF repo id (DISPLAY_NAME) so different aliases pointing to
-            # the same HF repo get separate caches. Matches the path
-            # convention in benchmarks/mmlu_pro.py; both must move together.
-            local mmlu_base="${BENCH_DIR}/responses/${SAFE_NAME}/${task}"
-            echo "${mmlu_base}/${task}_${ROWS_STR}_v${VERSION}_${SAFE_NAME}_response.csv" ;;
+            echo "${base}/${task}_${ROWS_STR}_v${VERSION}_${SAFE_NAME}_response.csv" ;;
         *)
             echo "" ;;
     esac
@@ -607,7 +614,7 @@ fi
     # additionally namespaces by size so running e.g. --cybermetric-size
     # 2000 then 10000 produces two distinct summary files instead of the
     # second clobbering the first.
-    summary_dir="${BENCH_DIR}/responses/${DISPLAY_NAME}"
+    summary_dir="${BENCH_DIR}/responses/${SAFE_NAME}"
     mkdir -p "${summary_dir}"
     summary_stem="${SUITE}"
     if [[ "${SUITE}" == "cybermetric" ]]; then
@@ -621,6 +628,9 @@ fi
 
     # Hand data to Python via environment (bash arrays -> newline-joined strings).
     export RB_MODEL="${MODEL_NAME}"
+    # RB_DISPLAY is what the summary header shows ("# Model summary:
+    # <RB_DISPLAY>") so it stays the HF repo id for human readability;
+    # the actual on-disk path is summary_dir above, keyed by SAFE_NAME.
     export RB_DISPLAY="${DISPLAY_NAME}"
     export RB_SUITE="${SUITE}"
     export RB_VERSION="${VERSION}"

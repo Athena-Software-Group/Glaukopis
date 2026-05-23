@@ -467,7 +467,9 @@ context window) must match the prompt size.
 
 ## Evaluation
 
-Results are automatically evaluated after inference and saved in the responses/<model_name>/<task_name>/ directory. The framework calculates task-specific metrics:
+Results are automatically evaluated after inference and saved in the `responses/<alias_sanitized>/<task>/` directory, where `<alias_sanitized>` is the benchmark alias (the key in `model_mapping`) with `/` replaced by `_` — see `pipelines/models.alias_to_safe_name`. Two aliases that point to the same HF repo (e.g. `qwen3-30b-a3b-thinking-2507-vllm` and `qwen3-30b-a3b-thinking-2507-no-think-vllm`, both on `Qwen/Qwen3-30B-A3B-Thinking-2507`) therefore get isolated cache slots so a matched-conditions A/B works without manual cache-dir surgery. A one-shot migration script — `SFT/test/utils/migrate_response_cache_to_alias_keyed.py` — converts pre-existing HF-id-keyed caches to the alias-keyed convention.
+
+The framework calculates task-specific metrics:
 
 - ATHENA-MCQ, MCQ, ATHENA-RCM, RCM, CYBERMETRIC, URLHAUS, MMLU: Accuracy
 - ATHENA-VSP, VSP: Mean Absolute Deviation (MAD)

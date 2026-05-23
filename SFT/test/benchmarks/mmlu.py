@@ -4,7 +4,7 @@ import pandas as pd
 from datasets import load_dataset
 from benchmarks.base import Benchmark
 from pipelines.data_loader import save_responses
-from pipelines.models import get_single_prediction, model_mapping
+from pipelines.models import get_single_prediction, alias_to_safe_name
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 #from pipelines.evaluation.mmlu_acc import compute_mmlu_accuracy
@@ -17,7 +17,7 @@ class MMLU(Benchmark):
     def __init__(self, model_name, num_rows=None, data_path=None, version=1):
         super().__init__(model_name, num_rows)
         self.task = "mmlu"
-        self.display_model_name = model_mapping.get(model_name, model_name).replace("/", "_")
+        self.display_model_name = alias_to_safe_name(model_name)
         rows_str = str(num_rows) if num_rows else "all"
 
         # Save responses under responses/<model_name>/mmlu

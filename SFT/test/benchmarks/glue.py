@@ -4,7 +4,7 @@ from tqdm import tqdm
 from datasets import load_dataset
 from evaluate import load
 from benchmarks.base import Benchmark
-from pipelines.models import get_single_prediction, model_mapping
+from pipelines.models import get_single_prediction, alias_to_safe_name
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -90,7 +90,7 @@ class GLUE(Benchmark):
     def __init__(self, model_name, num_rows=None, data_path=None, version=1):
         super().__init__(model_name, num_rows)
         self.tasks = self.TASKS
-        self.display_model_name = model_mapping.get(model_name, model_name).replace("/", "_")
+        self.display_model_name = alias_to_safe_name(model_name)
 
         # Main model folder
         self.model_folder = os.path.join("responses", self.display_model_name)

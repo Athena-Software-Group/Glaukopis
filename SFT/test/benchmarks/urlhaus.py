@@ -2,7 +2,7 @@ import os
 import pandas as pd
 from benchmarks.base import Benchmark
 from pipelines.data_loader import load_csv, save_responses
-from pipelines.models import get_single_prediction, model_mapping
+from pipelines.models import get_single_prediction, alias_to_safe_name
 from concurrent.futures import ThreadPoolExecutor, as_completed # Added as_completed
 from pathlib import Path
 #from pipelines.evaluation.urlhaus_acc_f1 import compute_accuracy_f1
@@ -17,7 +17,7 @@ class URLHAUS(Benchmark):
         self.task = 'urlhaus'
         self.version = version
         self.data_file = data_path if data_path else 'benchmark_data/urlhaus/urls_benchmark2.csv'
-        self.display_model_name = model_mapping.get(model_name, model_name).replace('/', '_')
+        self.display_model_name = alias_to_safe_name(model_name)
         rows_str = str(num_rows) if num_rows else "all"
         
         # --- Create model-specific folder ---

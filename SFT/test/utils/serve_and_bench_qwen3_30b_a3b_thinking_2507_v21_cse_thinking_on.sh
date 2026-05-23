@@ -9,6 +9,12 @@
 # wrappers together form the matched-conditions A/B on the v21-cse SFT
 # checkpoint under thinking-on vs no-think serving.
 #
+# Cache isolation: the two wrappers use distinct aliases that resolve to
+# the same HF repo. Caches key off the alias (see
+# pipelines/models.alias_to_safe_name) so the two runs land in separate
+# responses/<alias-sanitized>/ slots by construction -- no manual
+# isolation needed before launching.
+#
 # Inference semantic (no '-no-think' alias suffix):
 #   The athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-cse-vllm alias
 #   omits the '-no-think' substring so VLLMModel:
