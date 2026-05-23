@@ -338,6 +338,38 @@ recipe-knob axis (LR, interleave probs, sample count) is not the
 dominant variable here; the architecture is. The Qwen3-MoE chain is
 therefore closed at `v21-cse` for the v21 vintage.
 
+### Matched-conditions base baseline (no-think A/B)
+
+The per-stage table above reports v21 SFT checkpoints served under the
+`-no-think-vllm` alias scheme (`enable_thinking=False` at request time,
+per-task `TASK_MAX_NEW_TOKENS` caps applied without the thinking-mode
+8192-token floor). The original
+`serve_and_bench_qwen3_30b_a3b_thinking_2507_baseline.sh` wrapper benched
+the base `Qwen/Qwen3-30B-A3B-Thinking-2507` on its fair footing instead
+-- thinking-on with the 8192 floor and the `qwen3` reasoning parser --
+which is a useful capability ceiling but is **not directly comparable**
+to the v21 SFT numbers above. To close the A/B, the base is also benched
+under the matched no-think inference path via
+`serve_and_bench_qwen3_30b_a3b_thinking_2507_baseline_no_think.sh`
+(alias: `qwen3-30b-a3b-thinking-2507-no-think-vllm`; same HF repo as the
+thinking-on alias, `-no-think` substring triggers the same VLLMModel
+detection used by the v21 SFT bench wrappers).
+
+Expected signature: the base under matched no-think conditions should
+collapse relative to its thinking-on baseline because Thinking-2507 was
+not trained on the empty-thought pattern that the v21 SFT instills. The
+expected collapse vs the SFT'd `v21-cse` numbers IS the signal -- it
+isolates the SFT's contribution to functioning under a no-trace
+inference budget, separate from any general-knowledge or reasoning gain
+the SFT may also deliver. MMLU-Pro is benched in a separate session via
+the generic `serve_and_bench_mmlu_pro.sh <alias>` wrapper so suite
+scope stays decoupled from the CTI baselines.
+
+| Row (matched no-think) | CKT  | RCM  | ATE  | VSP  | RMS  | TAA Classic | TAA Canonical | CM avg | Total  | Weighted | MMLU-Pro |
+|------------------------|-----:|-----:|-----:|-----:|-----:|------------:|--------------:|-------:|-------:|---------:|---------:|
+| Base (no-think)        | _pending sweep 2026-05-23_ | | | | | | | | | | |
+| **`v21-cse`** (ship)   | 74.5 | 68.5 | 58.6 | 85.0 | 50.1 | 47.0        | 4.9           | 88.6   | **63.4** | **60.9** | _pending_ |
+
 **Cross-architecture optimal: `asg-ai/athena-cti-sft-qwen25-32b-v21-recal-32b`**
 (dense Qwen2.5-32B + 32B-tuned recal recipe; Total 65.0 / Weighted
 62.9) remains the v21 vintage's recommended ship checkpoint across
