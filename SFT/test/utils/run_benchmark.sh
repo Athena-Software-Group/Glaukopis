@@ -263,6 +263,7 @@ ROWS_STR="${ROWS:-all}"
 #   athena-*    -> .jsonl
 #   CTI-Bench   -> .tsv  (mcq, rcm, vsp, ate, taa)
 #   cybermetric -> .csv  (includes the CyberMetric-<N>-v1 stem in the name)
+#   mmlu-pro    -> .csv  (keyed by SAFE_NAME, NOT DISPLAY_NAME -- see below)
 # resolve_resp_file echoes the expected absolute path for a given task (or
 # the empty string for tasks with no fixed pattern, e.g. glue/superglue).
 resolve_resp_file() {
@@ -281,6 +282,13 @@ resolve_resp_file() {
             echo "${base}/${task}_${cm_stem}_${ROWS_STR}_v${VERSION}_${DISPLAY_NAME}_response.csv" ;;
         cybersoceval-*)
             echo "${base}/${task}_${ROWS_STR}_v${VERSION}_${DISPLAY_NAME}_response.jsonl" ;;
+        mmlu-pro)
+            # MMLU-Pro indexes its cache by the alias (SAFE_NAME) instead of
+            # the HF repo id (DISPLAY_NAME) so different aliases pointing to
+            # the same HF repo get separate caches. Matches the path
+            # convention in benchmarks/mmlu_pro.py; both must move together.
+            local mmlu_base="${BENCH_DIR}/responses/${SAFE_NAME}/${task}"
+            echo "${mmlu_base}/${task}_${ROWS_STR}_v${VERSION}_${SAFE_NAME}_response.csv" ;;
         *)
             echo "" ;;
     esac
