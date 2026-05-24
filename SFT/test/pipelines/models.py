@@ -1599,6 +1599,10 @@ def get_single_prediction(question, model_name, task=None, cleanup_after=False, 
         # a traceback for debugging.
         if getattr(e, "_vllm_ctx_overflow", False):
             response = f"Error generating response: ctx-overflow ({e.__class__.__name__})"
+        elif getattr(e, "code", None) == "cyber_policy":
+            # OpenAI flagged the question for cybersecurity content; log tersely and skip.
+            print(f" [cyber_policy] {model_name}: question filtered by OpenAI content policy")
+            response = f"Error generating response: cyber_policy"
         else:
             print(f" Error generating response from {model_name}: {e}")
             traceback.print_exc()
