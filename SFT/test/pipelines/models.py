@@ -795,11 +795,19 @@ except ImportError:
     types = None
 
 class GeminiModel(BaseModel):
+    # 5xx classes that warrant a retry. The google.genai SDK has its own
+    # tenacity-based retry layer for these, but it surrenders quickly under
+    # sustained Vertex AI incidents (multi-minute 503 UNAVAILABLE windows
+    # observed during MMLU-Pro sweeps). The outer loop in generate() adds
+    # a longer-horizon catch on top so transient outages don't leak terminal
+    # errors into response files (which then get skipped by resume logic).
+    _TRANSIENT_STATUSES = {500, 502, 503, 504}
+
     def __init__(self, model_name, api_key=None):
         super().__init__(model_name)
         if genai is None or types is None:
             raise ImportError("google-genai package required")
-        
+
         # Ensure API key is provided
         api_key = api_key or os.getenv("GEMINI_API_KEY")
         if not api_key:
@@ -810,6 +818,7 @@ class GeminiModel(BaseModel):
         self.model_name = model_mapping[model_name]
 
     def generate(self, question, task=None, cleanup_after=False, use_web_search=False, temperature=0, **kwargs):
+        import time
         sys_prompt = get_system_prompt(task)
         full_prompt = f"{sys_prompt}\n\n{question}" if sys_prompt else question
 
@@ -831,12 +840,40 @@ class GeminiModel(BaseModel):
                 #max_output_tokens=2048,
             )
 
-        # Generate response
-        response = self.client.models.generate_content(
-            model=self.model_name,
-            contents=full_prompt,
-            config=config,
-        )
+        # Outer retry layer: 5 attempts, exponential backoff capped at 30s.
+        # google.genai raises errors.ServerError(code=5xx) for transient
+        # failures; we also accept matches on the message text so 503s
+        # surfaced via wrapped exceptions still trigger backoff. On the
+        # last attempt the exception is re-raised so get_single_prediction
+        # writes the canonical "Error generating response: ..." string,
+        # which the refetch utility uses to identify rows for re-run.
+        last_err = None
+        response = None
+        for attempt in range(5):
+            try:
+                response = self.client.models.generate_content(
+                    model=self.model_name,
+                    contents=full_prompt,
+                    config=config,
+                )
+                break
+            except Exception as e:
+                last_err = e
+                status = getattr(e, "code", None) or getattr(e, "status_code", None) \
+                    or getattr(getattr(e, "response", None), "status_code", None)
+                msg = str(e)
+                retriable = status in self._TRANSIENT_STATUSES or any(
+                    s in msg.lower() for s in ("503", "502", "504", "unavailable", "timeout", "rate limit"))
+                if not retriable or attempt == 4:
+                    raise
+                backoff = min(2 ** attempt, 30)
+                print(f"Gemini transient error ({status or 'err'}) on "
+                      f"{self.model_name}, retry {attempt+1}/5 in {backoff}s: {msg[:200]}")
+                time.sleep(backoff)
+        if response is None:
+            # Defensive: the loop either breaks on success or raises; this
+            # arm only fires on a logic bug in the loop above.
+            raise last_err if last_err else RuntimeError("Gemini: unknown failure")
 
         if hasattr(response, "usage_metadata"):
             input_tokens = getattr(response.usage_metadata, "prompt_token_count", 0) or 0
