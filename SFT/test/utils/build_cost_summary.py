@@ -54,6 +54,18 @@ DEFAULT_INCLUDE = (
 )
 DEFAULT_EXCLUDE = r""
 
+# Reasoning level used per API model_name for the runs captured in
+# api_usage_checkpoint.json. The checkpoint records the alias but NOT
+# the reasoning_effort flag, so this table is the authoritative source
+# for that column. Add a new entry when a new reasoning-mode sweep is
+# committed; leave a model out to display blank.
+REASONING_EFFORT = {
+    "gpt5.2":         "medium",   # default; token ratio 0.53 out:in
+    "gpt5.5":         "medium",   # default; token ratio 0.69 out:in
+    "gemini-3-flash": "default",  # 32x out:in -- thinking tokens billed
+                                  # at output rate, level not exposed
+}
+
 
 def family(task: str) -> str | None:
     if task.startswith("cybermetric"):
@@ -143,7 +155,7 @@ def main() -> int:
     hdr = ["model"] + [f"{f}_cost_usd" for f in FAMS] + [
         "total_input_tok", "total_output_tok", "usd_per_1k_tok",
         "wallclock_hours", "gpu_hours_billed", "billing_basis",
-        "total_cost_usd",
+        "reasoning_effort", "total_cost_usd",
     ]
     # (total_cost_float, row) pairs so we can sort by cost desc across both
     # API and SFT rows before serialising.
@@ -159,7 +171,7 @@ def main() -> int:
                 r.append("")
         tok = ti + to
         r += [ti, to, f"{tc/tok*1000:.6f}" if tok else "",
-              "", "", basis_api, f"{tc:.4f}"]
+              "", "", basis_api, REASONING_EFFORT.get(m, ""), f"{tc:.4f}"]
         scored.append((tc, r))
     for m in sorted({k[0] for k in sft}):
         r = [m]; tc = 0.0; total_sec = 0
@@ -174,7 +186,7 @@ def main() -> int:
                 r.append("")
         wh = total_sec / 3600.0
         r += ["", "", "",
-              f"{wh:.3f}", f"{wh*gpu_count:.3f}", basis_sft, f"{tc:.4f}"]
+              f"{wh:.3f}", f"{wh*gpu_count:.3f}", basis_sft, "", f"{tc:.4f}"]
         scored.append((tc, r))
     rows = [r for _, r in sorted(scored, key=lambda x: x[0], reverse=True)]
 
