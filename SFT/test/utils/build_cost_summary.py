@@ -11,10 +11,11 @@ Two cost bases combined in one table:
 
 Override the GPU billing via env vars: GPU_RATE_USD_PER_HR, GPU_COUNT.
 
-SFT row selection: --include regex (default ``-v21(-|$)``) is matched
-against each SFT alias and only matches are kept; --exclude (default
-empty) drops further matches after that. Pass ``--include .`` to keep
-every SFT row.
+Local row selection: --include regex (default keeps v21 SFT stages +
+five named upstream base models) is matched against each response
+directory basename; only matches are kept. --exclude (default empty)
+drops further matches after that. Pass ``--include .`` to keep every
+local row that has at least one summary_*.json.
 
 Run from SFT/test/ so the relative paths resolve.
 """
@@ -38,11 +39,19 @@ FAMILY_OF_TASK = {
 }
 FAMS = ["athena", "cybersoceval", "cybermetric", "mmlu_pro"]
 
-# Match anything under the SFT response tree; the alias is the dir name.
-SFT_DIR_RE = re.compile(r"(athena-cti-sft-|asg-ai_athena-cti-sft-)")
-
-# Default: keep only v21 stages (any model family, any sub-stage suffix).
-DEFAULT_INCLUDE = r"-v21(-|$)"
+# Default keeps the v21 SFT chain (any model family, any sub-stage
+# suffix) plus the five upstream base-model response dirs we explicitly
+# track for the cost-comparison baseline. Add to this list by passing
+# --include with an alternation; pass --include '.' to keep everything
+# that has a summary_*.json file under responses/.
+DEFAULT_INCLUDE = (
+    r"-v21(-|$)"
+    r"|Foundation-Sec-8B-Instruct"
+    r"|Meta-Llama-3\.1-8B-Instruct"
+    r"|Qwen2\.5-14B-Instruct"
+    r"|Qwen3-30B-A3B-Thinking-2507"
+    r"|Qwen2\.5-32B-Instruct"
+)
 DEFAULT_EXCLUDE = r""
 
 
@@ -73,17 +82,25 @@ def aggregate_api(ckpt_path: str) -> dict:
 
 
 def aggregate_sft(responses_dir: str, include_re: re.Pattern,
-                  exclude_re: re.Pattern | None) -> dict:
+                  exclude_re: re.Pattern | None,
+                  api_model_names: set[str]) -> dict:
     agg: dict = defaultdict(lambda: {"sec": 0})
     for model_dir in sorted(glob.glob(os.path.join(responses_dir, "*"))):
+        if not os.path.isdir(model_dir):
+            continue
         safe = os.path.basename(model_dir)
-        if not SFT_DIR_RE.search(safe):
+        summaries = glob.glob(os.path.join(model_dir, "summary_*.json"))
+        if not summaries:
+            continue
+        # Guard against double-counting: if the same key is already
+        # billed via the API checkpoint, skip the local summary path.
+        if safe in api_model_names:
             continue
         if not include_re.search(safe):
             continue
         if exclude_re is not None and exclude_re.search(safe):
             continue
-        for sj in glob.glob(os.path.join(model_dir, "summary_*.json")):
+        for sj in summaries:
             try:
                 s = json.load(open(sj))
             except (OSError, ValueError):
@@ -120,7 +137,8 @@ def main() -> int:
     exclude_re = re.compile(args.exclude) if args.exclude else None
 
     api = aggregate_api(os.path.join(args.responses_dir, "api_usage_checkpoint.json"))
-    sft = aggregate_sft(args.responses_dir, include_re, exclude_re)
+    api_model_names = {k[0] for k in api}
+    sft = aggregate_sft(args.responses_dir, include_re, exclude_re, api_model_names)
 
     hdr = ["model"] + [f"{f}_cost_usd" for f in FAMS] + [
         "total_input_tok", "total_output_tok", "usd_per_1k_tok",
