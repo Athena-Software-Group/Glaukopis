@@ -123,12 +123,15 @@ def main() -> int:
     sft = aggregate_sft(args.responses_dir, include_re, exclude_re)
 
     hdr = ["model"] + [f"{f}_cost_usd" for f in FAMS] + [
-        "total_cost_usd", "total_input_tok", "total_output_tok",
-        "usd_per_1k_tok", "wallclock_hours", "gpu_hours_billed", "billing_basis"
+        "total_input_tok", "total_output_tok", "usd_per_1k_tok",
+        "wallclock_hours", "gpu_hours_billed", "billing_basis",
+        "total_cost_usd",
     ]
-    rows = []
+    # (total_cost_float, row) pairs so we can sort by cost desc across both
+    # API and SFT rows before serialising.
+    scored: list[tuple[float, list]] = []
     for m in sorted({k[0] for k in api}):
-        r = [m]; tc = ti = to = 0
+        r = [m]; tc = 0.0; ti = to = 0
         for f in FAMS:
             k = (m, f)
             if k in api:
@@ -137,9 +140,9 @@ def main() -> int:
             else:
                 r.append("")
         tok = ti + to
-        r += [f"{tc:.4f}", ti, to,
-              f"{tc/tok*1000:.6f}" if tok else "", "", "", basis_api]
-        rows.append(r)
+        r += [ti, to, f"{tc/tok*1000:.6f}" if tok else "",
+              "", "", basis_api, f"{tc:.4f}"]
+        scored.append((tc, r))
     for m in sorted({k[0] for k in sft}):
         r = [m]; tc = 0.0; total_sec = 0
         for f in FAMS:
@@ -152,9 +155,10 @@ def main() -> int:
             else:
                 r.append("")
         wh = total_sec / 3600.0
-        r += [f"{tc:.4f}", "", "", "",
-              f"{wh:.3f}", f"{wh*gpu_count:.3f}", basis_sft]
-        rows.append(r)
+        r += ["", "", "",
+              f"{wh:.3f}", f"{wh*gpu_count:.3f}", basis_sft, f"{tc:.4f}"]
+        scored.append((tc, r))
+    rows = [r for _, r in sorted(scored, key=lambda x: x[0], reverse=True)]
 
     for path, delim in [(args.out_tsv, "\t"), (args.out_csv, ",")]:
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
