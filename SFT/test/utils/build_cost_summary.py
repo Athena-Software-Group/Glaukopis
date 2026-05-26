@@ -11,10 +11,10 @@ Two cost bases combined in one table:
 
 Override the GPU billing via env vars: GPU_RATE_USD_PER_HR, GPU_COUNT.
 
-Override the SFT exclusion regex with --exclude. Defaults to dropping the
-two bare-v12 rows (asg-ai_athena-cti-sft-qwen25-14b-v12 and the -vllm
-twin) which only ever held incomplete probe data; v12-plus-taa and other
-v12-derived stages are kept.
+SFT row selection: --include regex (default ``-v21(-|$)``) is matched
+against each SFT alias and only matches are kept; --exclude (default
+empty) drops further matches after that. Pass ``--include .`` to keep
+every SFT row.
 
 Run from SFT/test/ so the relative paths resolve.
 """
@@ -41,8 +41,9 @@ FAMS = ["athena", "cybersoceval", "cybermetric", "mmlu_pro"]
 # Match anything under the SFT response tree; the alias is the dir name.
 SFT_DIR_RE = re.compile(r"(athena-cti-sft-|asg-ai_athena-cti-sft-)")
 
-# Default: only the two bare-v12 rows; keep v12-plus-taa and other derivatives.
-DEFAULT_EXCLUDE = r"^(asg-ai_)?athena-cti-sft-qwen25-14b-v12(-vllm)?$"
+# Default: keep only v21 stages (any model family, any sub-stage suffix).
+DEFAULT_INCLUDE = r"-v21(-|$)"
+DEFAULT_EXCLUDE = r""
 
 
 def family(task: str) -> str | None:
@@ -71,11 +72,16 @@ def aggregate_api(ckpt_path: str) -> dict:
     return agg
 
 
-def aggregate_sft(responses_dir: str, exclude_re: re.Pattern) -> dict:
+def aggregate_sft(responses_dir: str, include_re: re.Pattern,
+                  exclude_re: re.Pattern | None) -> dict:
     agg: dict = defaultdict(lambda: {"sec": 0})
     for model_dir in sorted(glob.glob(os.path.join(responses_dir, "*"))):
         safe = os.path.basename(model_dir)
-        if not SFT_DIR_RE.search(safe) or exclude_re.match(safe):
+        if not SFT_DIR_RE.search(safe):
+            continue
+        if not include_re.search(safe):
+            continue
+        if exclude_re is not None and exclude_re.search(safe):
             continue
         for sj in glob.glob(os.path.join(model_dir, "summary_*.json")):
             try:
@@ -97,19 +103,24 @@ def main() -> int:
     p.add_argument("--responses-dir", default="responses")
     p.add_argument("--out-csv", default="responses/cost_summary.csv")
     p.add_argument("--out-tsv", default="responses/cost_summary.tsv")
+    p.add_argument("--include", default=DEFAULT_INCLUDE,
+                   help=f"Regex (re.search) SFT aliases must match to be "
+                        f"kept. Default: {DEFAULT_INCLUDE!r} (v21 stages "
+                        f"only). Use '.' to keep every SFT row.")
     p.add_argument("--exclude", default=DEFAULT_EXCLUDE,
-                   help=f"Regex matched against SFT model safe-names to drop. "
-                        f"Default: {DEFAULT_EXCLUDE}")
+                   help="Regex (re.search) applied after --include to drop "
+                        "further SFT rows. Default: empty (no extra drops).")
     args = p.parse_args()
 
     gpu_rate = float(os.environ.get("GPU_RATE_USD_PER_HR", "2.50"))
     gpu_count = int(os.environ.get("GPU_COUNT", "2"))
     basis_sft = f"{gpu_count}xH100 @ ${gpu_rate:.2f}/hr"
     basis_api = "API tokens"
-    exclude_re = re.compile(args.exclude)
+    include_re = re.compile(args.include)
+    exclude_re = re.compile(args.exclude) if args.exclude else None
 
     api = aggregate_api(os.path.join(args.responses_dir, "api_usage_checkpoint.json"))
-    sft = aggregate_sft(args.responses_dir, exclude_re)
+    sft = aggregate_sft(args.responses_dir, include_re, exclude_re)
 
     hdr = ["model"] + [f"{f}_cost_usd" for f in FAMS] + [
         "total_cost_usd", "total_input_tok", "total_output_tok",
