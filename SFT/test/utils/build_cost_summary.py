@@ -40,19 +40,44 @@ FAMILY_OF_TASK = {
 FAMS = ["athena", "cybersoceval", "cybermetric", "mmlu_pro"]
 
 # Default keeps the v21 SFT chain (any model family, any sub-stage
-# suffix) plus the five upstream base-model response dirs we explicitly
-# track for the cost-comparison baseline. Add to this list by passing
-# --include with an alternation; pass --include '.' to keep everything
-# that has a summary_*.json file under responses/.
+# suffix) plus the upstream base-model response dirs explicitly tracked
+# for cost-comparison baselines. Matched case-insensitively (re.I) so
+# both HF-id-form safe dirs (e.g. ``Qwen_Qwen2.5-14B-Instruct``, written
+# when the bench was invoked with the raw HF id) and alias-form safe
+# dirs (e.g. ``qwen2.5-14b-vllm``, written by the cost-revalidation
+# chain via the ``-vllm`` aliases in pipelines/models.py) land in the
+# summary. Add to this list by passing --include with an alternation;
+# pass --include '.' to keep every dir with a summary_*.json file.
 DEFAULT_INCLUDE = (
+    # v21 SFT chain (any model family, any sub-stage suffix)
     r"-v21(-|$)"
+    # HF-id-form baseline safe dirs ('<org>_<repo>')
     r"|Foundation-Sec-8B-Instruct"
     r"|Meta-Llama-3\.1-8B-Instruct"
     r"|Qwen2\.5-14B-Instruct"
-    r"|Qwen3-30B-A3B-Thinking-2507"
     r"|Qwen2\.5-32B-Instruct"
+    r"|Qwen3-30B-A3B-Thinking-2507"
+    r"|Qwen3-30B-A3B-Instruct-2507"
+    # Alias-form baseline safe dirs ('<alias>-vllm')
+    r"|^foundation-8b-instruct-vllm$"
+    r"|^llama-3-8b-vllm$"
+    r"|^qwen2\.5-14b-vllm$"
+    r"|^qwen2\.5-32b-vllm$"
+    r"|^qwen3-30b-a3b-thinking-2507(-no-think)?-vllm$"
+    r"|^qwen3-30b-a3b-instruct-2507-vllm$"
+    r"|^qwen3-32b(-no-think)?-vllm$"
+    r"|^mistral-small-3\.2-24b-instruct-2506-vllm$"
 )
-DEFAULT_EXCLUDE = r""
+DEFAULT_INCLUDE_FLAGS = re.IGNORECASE
+# Default drops the short alias-form ('<alias>-vllm') copy of the
+# Qwen3-30B-A3B-Thinking-2507 v21-cse run -- the HF-id-form safe dir
+# 'asg-ai_athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-cse' is the
+# legitimate full run (longer wallclock, higher cost) and both dirs
+# resolve to the same canonical model_key. Override with --exclude '' to
+# keep both rows for an A/B inspection of the partial vs full run.
+DEFAULT_EXCLUDE = (
+    r"^athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-cse-vllm$"
+)
 
 # Reasoning level used per API model_name for the runs captured in
 # api_usage_checkpoint.json. The checkpoint records the alias but NOT
@@ -65,6 +90,67 @@ REASONING_EFFORT = {
     "gemini-3-flash": "default",  # 32x out:in -- thinking tokens billed
                                   # at output rate, level not exposed
 }
+
+# Canonical display name (HF repo id or vendor model id) per API
+# model_name. The checkpoint records the bench-internal alias (e.g.
+# 'gpt5.2', 'deepseek-v4-pro-hf'); this table maps it back to the name
+# used in vendor pricing pages / HF model cards for the leaderboard.
+# Local vLLM rows derive their key by rule (see derive_model_key); add
+# entries here only for API aliases or for SFT aliases whose canonical
+# name doesn't follow the default '-vllm'/'-no-think-vllm' strip rule.
+API_MODEL_KEY = {
+    "gpt4":                       "gpt-4-turbo-2024-04-09",
+    "gpt5":                       "gpt-5",
+    "gpt5.2":                     "gpt-5.2",
+    "gpt5.5":                     "gpt-5.5",
+    "gpt5.5-pro":                 "gpt-5.5-pro",
+    "gemini-2.5-flash":           "gemini-2.5-flash",
+    "gemini-2.5-pro":             "gemini-2.5-pro",
+    "gemini-3-pro":               "gemini-3-pro-preview",
+    "gemini-3-flash":             "gemini-3-flash-preview",
+    "gemini-3.1-pro":             "gemini-3.1-pro-preview",
+    "deepseek-v3.1-terminus-hf":  "deepseek-ai/DeepSeek-V3.1-Terminus",
+    "deepseek-v3.2-exp-hf":       "deepseek-ai/DeepSeek-V3.2-Exp",
+    "deepseek-v4-pro-hf":         "deepseek-ai/DeepSeek-V4-Pro",
+    "deepseek-v4-flash-hf":       "deepseek-ai/DeepSeek-V4-Flash",
+}
+
+# Override table for safe-dir basenames whose canonical name cannot be
+# derived from the default rules below. Empty by design; add an entry
+# only if a new alias breaks the rule (e.g. a vendor whose alias prefix
+# is not 'athena-cti-' and whose safe-dir doesn't contain '_').
+SFT_MODEL_KEY_OVERRIDES: dict[str, str] = {}
+
+
+def derive_model_key(name: str, basis: str) -> str:
+    """Return canonical HF-repo / vendor-id display name for a row.
+
+    API rows: look up the bench-internal alias in API_MODEL_KEY.
+    Local vLLM rows: strip '-no-think-vllm' or '-vllm' suffix, then
+        - 'athena-cti-*'       -> 'asg-ai/<stripped>'
+        - 'asg-ai_X' (from a HF-id-as-alias run, no '-vllm' suffix)
+                              -> 'asg-ai/X'
+        - 'X_Y' (HF-id-safe: '<org>_<repo>' with no '-vllm')
+                              -> 'X/Y'
+        - everything else      -> '' (blank; add to SFT_MODEL_KEY_OVERRIDES)
+    """
+    if name in SFT_MODEL_KEY_OVERRIDES:
+        return SFT_MODEL_KEY_OVERRIDES[name]
+    if basis == "API tokens":
+        return API_MODEL_KEY.get(name, "")
+    a = name
+    if a.endswith("-no-think-vllm"):
+        a = a[: -len("-no-think-vllm")]
+    elif a.endswith("-vllm"):
+        a = a[: -len("-vllm")]
+    if a.startswith("athena-cti-"):
+        return "asg-ai/" + a
+    if a.startswith("asg-ai_"):
+        return "asg-ai/" + a[len("asg-ai_"):]
+    if "_" in a:
+        head, _, tail = a.partition("_")
+        return f"{head}/{tail}"
+    return ""
 
 
 def family(task: str) -> str | None:
@@ -145,14 +231,20 @@ def main() -> int:
     gpu_count = int(os.environ.get("GPU_COUNT", "2"))
     basis_sft = f"{gpu_count}xH100 @ ${gpu_rate:.2f}/hr"
     basis_api = "API tokens"
-    include_re = re.compile(args.include)
+    # Default include uses DEFAULT_INCLUDE_FLAGS (re.IGNORECASE) so the
+    # alias-form ('qwen2.5-14b-vllm') and HF-id-form ('Qwen_Qwen2.5-14B-
+    # Instruct') safe dirs both match the same baseline patterns. A
+    # user-supplied --include is honoured verbatim with no flags so
+    # explicit case-sensitive overrides remain possible.
+    inc_flags = DEFAULT_INCLUDE_FLAGS if args.include == DEFAULT_INCLUDE else 0
+    include_re = re.compile(args.include, inc_flags)
     exclude_re = re.compile(args.exclude) if args.exclude else None
 
     api = aggregate_api(os.path.join(args.responses_dir, "api_usage_checkpoint.json"))
     api_model_names = {k[0] for k in api}
     sft = aggregate_sft(args.responses_dir, include_re, exclude_re, api_model_names)
 
-    hdr = ["model"] + [f"{f}_cost_usd" for f in FAMS] + [
+    hdr = ["model_key", "model"] + [f"{f}_cost_usd" for f in FAMS] + [
         "total_input_tok", "total_output_tok", "usd_per_1k_tok",
         "wallclock_hours", "gpu_hours_billed", "billing_basis",
         "reasoning_effort", "total_cost_usd",
@@ -161,7 +253,7 @@ def main() -> int:
     # API and SFT rows before serialising.
     scored: list[tuple[float, list]] = []
     for m in sorted({k[0] for k in api}):
-        r = [m]; tc = 0.0; ti = to = 0
+        r = [derive_model_key(m, basis_api), m]; tc = 0.0; ti = to = 0
         for f in FAMS:
             k = (m, f)
             if k in api:
@@ -174,7 +266,7 @@ def main() -> int:
               "", "", basis_api, REASONING_EFFORT.get(m, ""), f"{tc:.4f}"]
         scored.append((tc, r))
     for m in sorted({k[0] for k in sft}):
-        r = [m]; tc = 0.0; total_sec = 0
+        r = [derive_model_key(m, basis_sft), m]; tc = 0.0; total_sec = 0
         for f in FAMS:
             k = (m, f)
             if k in sft:
