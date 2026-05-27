@@ -57,14 +57,17 @@ DEFAULT_INCLUDE = (
     r"|Qwen2\.5-14B-Instruct"
     r"|Qwen2\.5-32B-Instruct"
     r"|Qwen3-30B-A3B-Thinking-2507"
-    r"|Qwen3-30B-A3B-Instruct-2507"
+    # Qwen3-30B-A3B-Instruct-2507 (pure-instruct MoE) intentionally
+    # omitted: the only on-disk row for it is a partial run (3/4 task
+    # costs, missing MMLU-Pro). Re-add the HF-id anchor and the
+    # '^qwen3-30b-a3b-instruct-2507-vllm$' alias-form anchor below
+    # once a complete baseline sweep lands.
     # Alias-form baseline safe dirs ('<alias>-vllm')
     r"|^foundation-8b-instruct-vllm$"
     r"|^llama-3-8b-vllm$"
     r"|^qwen2\.5-14b-vllm$"
     r"|^qwen2\.5-32b-vllm$"
     r"|^qwen3-30b-a3b-thinking-2507(-no-think)?-vllm$"
-    r"|^qwen3-30b-a3b-instruct-2507-vllm$"
     r"|^qwen3-32b(-no-think)?-vllm$"
 )
 DEFAULT_INCLUDE_FLAGS = re.IGNORECASE
@@ -97,7 +100,7 @@ REASONING_EFFORT = {
 API_MODEL_KEY = {
     "gpt4":                       "gpt-4-turbo-2024-04-09",
     "gpt5":                       "gpt-5",
-    "gpt5.2":                     "gpt-5.2",
+    "gpt5.2":                     "gpt-5.2(reasoning=default[medium])",
     "gpt5.5":                     "gpt-5.5",
     "gpt5.5-pro":                 "gpt-5.5-pro",
     "gemini-2.5-flash":           "gemini-2.5-flash",
