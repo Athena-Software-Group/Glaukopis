@@ -6,10 +6,32 @@ Dr. Ionut Cardei and Mamoon Khan
 
 `tmpl_gen` is a Python module and command-line tool for generating structured text from graph-based templates. It supports template expressions that reference nodes, edges, and node properties stored in a graph database such as Neo4j.
 
-Its primary objective is to generate Instruction Fine Tuning (IFT) triples for the ASG CTI LLM.
-It includes a text generation pipeline driven by Sophia CTI templates and supports multiple CTI data sources including MITRE ATT&CK, CAPEC, CWE, CVE, CISA KEV, FIRST EPSS, and MITRE ENGAGE, integrated in a Neo4j graph database.
+Its primary objective is to generate Instruction Fine-Tuning (IFT) triples for the Athena CTI LLM. The pipeline is driven by Sophia CTI templates and consumes the **12-source CTI graph** built by [`athena_cti_db`](../athena_cti_db/) — MITRE ATT&CK, MITRE ENGAGE, CAPEC, CWE, MITRE D3FEND, CVE Project, NVD CPE/CVSS, CISA KEV, FIRST EPSS, Sigma, ExploitDB, and PoC-in-GitHub — integrated in a Neo4j graph database.
 
-The primary command-line entry point is `iftgen.py` in [`scripts/`](scripts/), which provides end-to-end text generation, DB population, and schema extraction.
+The primary command-line entry point is `iftgen.py` in [`scripts/`](scripts/); the single-script wrapper that runs the full docx→triples→Alpaca pipeline is [`data_generation/make_dataset.sh`](data_generation/make_dataset.sh).
+
+## Pipeline Position
+
+```mermaid
+graph LR
+  classDef db    fill:#d6eaf8,stroke:#1f618d,color:#2c3e50
+  classDef gen   fill:#fcf3cf,stroke:#9a7d0a,color:#2c3e50
+  classDef sft   fill:#d4efdf,stroke:#196f3d,color:#2c3e50
+
+  N[("athena_cti_db<br/>(Neo4j)")]:::db
+  D["templates/05182026/<br/>(v21 vintage)"]:::gen
+  M["data_generation/<br/>make_dataset.sh"]:::gen
+  A["Alpaca IFT JSON<br/>(SFT/data/ift_data_*_v21_*.raw.json)"]:::gen
+  F["SFT v21 chain<br/>(Qwen2.5-32B-Instruct)"]:::sft
+
+  N --> M
+  D --> M
+  M --> A --> F
+```
+
+**Upstream dependency.** `tmpl_gen` requires a populated `athena_cti_db` Neo4j instance to run — every template placeholder resolves to a graph query, and unpopulated nodes produce zero triples. Set up the database first (`athena_cti_db/utils/setup.sh`) before running any pipeline step here. See [`athena_cti_db/README.md`](../athena_cti_db/README.md) and [`athena_cti_db/FUNCTIONAL_SCOPE.md`](../athena_cti_db/FUNCTIONAL_SCOPE.md) for the substrate schema.
+
+**Active vintage.** The current template set is **v21** under [`templates/05182026/`](templates/05182026/), feeding the v21 SFT chain (Core → +TAA → Final → Recalibrate) that targets `Qwen2.5-32B-Instruct` as the ship model. See [`templates/05182026/README-21.md`](templates/05182026/README-21.md) for the build recipe and [`SFT/SFT_FLOW.md`](../SFT/SFT_FLOW.md) for the downstream chain.
 
 ---
 

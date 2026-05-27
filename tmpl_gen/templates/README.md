@@ -1,9 +1,8 @@
-# March 2026 CTI Template Sets
+# Sophia CTI Template Vintages
 
-This directory contains:
+This directory holds the historical succession of Sophia CTI template sets used to build the Athena IFT corpus. Vintages are organised by date-stamped subdirectories (e.g. `05182026/` for the v21 build); the root-level `Sophia-CTI-Templates-03222026*.txt` files are the original hand-crafted and schema-aligned starting points the vintages were derived from.
 
-- `Sophia-CTI-Templates-03222026.txt` (original hand-crafted set)
-- `Sophia-CTI-Templates-03222026-expanded.txt` (expanded, schema-aligned set)
+The current shipping vintage is **v21** under [`05182026/`](05182026/) — a strict-reproducibility fork of v18.1 that also carries the Qwen2.5-32B port and the 32B-tuned Stage-4 Recalibrate recipe (`v21-recal-32b`, Total 65.0 / Weighted 62.9). See [`05182026/README-21.md`](05182026/README-21.md) for the full build recipe (per-stage `count_limit` / `count_max`, byte-identical inputs vs. v18.1, the off-plan Recalibrate stage that ships, and the Qwen3-30B-A3B-Thinking-2507 MoE port).
 
 The expanded set is grouped by template IDs (`M`, `A`, `W`, `V`, `S`, `P`, `E`, `X`) and designed to align with the IFT syntax and graph traversal behavior implemented in this repository.
 
@@ -43,4 +42,4 @@ These files were used to keep category coverage, node/relationship naming, and t
 
 ## Pinned Benchmark Notes
 
-`MASTER_RESULTS.md` (this directory) holds the most recent AthenaBench / CyberSOCEval / CyberMetric numbers across the v7..v18 vintages and the authoritative v18 architecture summary. Read it first when restoring context.
+`MASTER_RESULTS.md` (this directory) holds the most recent AthenaBench / CyberSOCEval / CyberMetric / MMLU-Pro numbers across the v7..v21 vintages and the authoritative architecture summary. Read it first when restoring context. The most recent ship checkpoint (`v21-recal-32b`, Qwen2.5-32B-Instruct) and the 32B-tuned Stage-4 recipe rationale are documented in [`05182026/README-21.md`](05182026/README-21.md).

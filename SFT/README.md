@@ -8,17 +8,37 @@ from Sophia CTI templates via [`tmpl_gen`](../tmpl_gen/README.md),
 continued pre-training (CPT) and supervised fine-tuning (SFT) runs are
 launched from [`cpt/`](../cpt/README.md) and
 [`autotrain/`](autotrain/README.md), and evaluation is driven from
-[`test/`](test/README.md) against the AthenaBench, CyberMetric, and
-CyberSOCEval suites. The current canonical SFT target is
-**Qwen-2.5-14B-Instruct** under the **v20** chain (four sequential
-launchers producing the cumulative `v20-core → v20-taa → v20-cse →
-v20-recalibrate` checkpoints; `v20-recalibrate` is the headline
-release). The earlier **Llama-3.1-8B-Instruct + v7** recipe remains a
-fully documented 8B baseline (62.64 % strict F1 on `athena-rms`). CPT
-continues to target **Llama-3.1-8B** (base) for corpus-level adaptation.
+[`test/`](test/README.md) against the AthenaBench, CyberSOCEval, and
+CyberMetric suites (with MMLU-Pro included as a general-intelligence
+reference).
 
-For the full v20 chain — template manifests, dataset shards, launchers,
-recipes, and sign-off gates — see [`SFT_FLOW.md`](SFT_FLOW.md).
+The current canonical SFT target is **Qwen-2.5-32B-Instruct** under the
+**v21** chain — four sequential launchers producing the cumulative
+`v21-core → v21-taa → v21-cse → v21-recal-32b` checkpoints. The
+**`v21-recal-32b`** Stage 4 variant (32B-tuned LR / Phase-B-heavy
+interleave) is the headline ship checkpoint (Total 65.0 / Weighted 62.9
+on the 50/50 TAA blend, top of the v21 leaderboard across all ported
+architectures). The same v21 recipe is ported byte-identically to
+**Qwen-2.5-14B-Instruct** (ship: `v21-recalibrate`, Total 61.0),
+**Foundation-Sec-8B** and **Llama-3.1-8B-Instruct** (8B baselines),
+and **Qwen3-30B-A3B-Thinking-2507** (sparse MoE; ship at `v21-cse`
+since both Stage-4 variants regress on MoE routing). CPT continues to
+target **Llama-3.1-8B** (base) for corpus-level adaptation.
+
+```mermaid
+flowchart LR
+    A["tmpl_gen<br/>Sophia CTI templates<br/>+ Neo4j CTI graph<br/>(05182026 vintage)"]
+    B["SFT/<br/>LlamaFactory full-param SFT<br/>Qwen-2.5-32B-Instruct<br/>v21 4-stage chain"]
+    C["HF Hub<br/>asg-ai/athena-cti-sft-<br/>qwen25-32b-v21-recal-32b"]
+    D["SFT/test/<br/>vLLM / HF Router sweeps<br/>AthenaBench · CyberSOCEval ·<br/>CyberMetric · MMLU-Pro"]
+    A -- "IFT JSON shards" --> B
+    B -- "push (per stage)" --> C
+    C -- "serve via vLLM" --> D
+```
+
+For the full v21 chain — template manifests, dataset shards, launchers,
+recipes, sign-off gates, and stage-by-stage parameter tables — see
+[`SFT_FLOW.md`](SFT_FLOW.md).
 
 ---
 
@@ -73,57 +93,79 @@ Full flag reference: `./utils/setup.sh --help`.
 
 ### b) Train an SFT model
 
-The canonical pipeline is the **v20 chain** — full-parameter SFT of
-`Qwen-2.5-14B-Instruct` across four sequential launchers, each
-consuming the prior stage's pushed HF checkpoint as its base. The
-template manifests, row-count gates, build watchers, and master plan
-all live under [`tmpl_gen/templates/05162026/`](../tmpl_gen/templates/05162026/);
-see [`SFT_FLOW.md`](SFT_FLOW.md) for the full description.
+The canonical pipeline is the **v21 chain on Qwen-2.5-32B-Instruct** —
+full-parameter SFT across four sequential launchers, each consuming
+the prior stage's pushed HF checkpoint as its base. The template
+manifests, row-count gates, build watchers, and master plan all live
+under [`tmpl_gen/templates/05182026/`](../tmpl_gen/templates/05182026/)
+(see [`README-21.md`](../tmpl_gen/templates/05182026/README-21.md));
+[`SFT_FLOW.md`](SFT_FLOW.md) carries the full per-stage parameter
+tables and visual flow.
 
 ```bash
-# Confirm the seven v20 JSON shards are on-host (gitignored; rsync from workstation,
+# Confirm the v21 JSON shards are on-host (gitignored; rsync from workstation,
 # or build via tmpl_gen/data_generation/make_dataset.sh -- see SFT_FLOW.md §2).
-ls -lh SFT/data/ift_data_2026_05_16_v20_{core_a_kb_mcq_taa_soc_cm_ms_yn,core_b_rms_ate_vsp_rcm,core_val,taa,taa_val,cse,cse_val}.json
+ls -lh SFT/data/ift_data_2026_05_18_v21_{core_a_kb_mcq_taa_soc_cm_ms_yn,core_b_rms_ate_vsp_rcm,core_val,taa,taa_val,cse,cse_val}.json
 
 conda activate llm-sft
 cd SFT/autotrain
 
-# Stage 1+2: broad re-anchor (Phase A) + AthenaBench catalog drill (Phase B).
-./run_sft_qwen25_14b_v20_core.sh         # ~13 h on 8xH100, ~26 h on 4xH100 -> v20-core
+# Stage 1 (Core, Phase A + Phase B back-to-back). 8xH100 80GB SXM only at 32B.
+./run_sft_qwen25_32b_v21_core.sh         # ~26-30 h on 8xH100 SXM   -> v21-core
 
-# Stage 3: TAA Classic narrow drill on top of v20-core.
-./run_sft_qwen25_14b_v20_taa.sh          # ~6-8 h on 8xH100              -> v20-taa
+# Stages 2 -> 3 -> 4 chained (TAA -> CSE -> Recal-32b ship variant).
+./run_sft_qwen25_32b_v21_chain.sh        # ~25-34 h sequential on 8xH100 SXM
 
-# Stage 4: CyberSOCEval letter-set narrow drill on top of v20-taa.
-./run_sft_qwen25_14b_v20_cse.sh          # ~4-6 h on 8xH100              -> v20-cse
-
-# Stage 5: 3-shard interleaved low-LR recalibration on top of v20-cse.
-./run_sft_qwen25_14b_v20_recalibrate.sh  # ~95-115 min on 4xH100         -> v20-recalibrate
+# Or run the stages standalone:
+./run_sft_qwen25_32b_v21_plus_taa.sh     # ~13-17 h on 8xH100 SXM   -> v21-taa
+./run_sft_qwen25_32b_v21_final.sh        # ~9-13  h on 8xH100 SXM   -> v21-cse
+./run_sft_qwen25_32b_v21_recal_32b.sh    # ~3-4   h on 8xH100 SXM   -> v21-recal-32b  (ship)
 ```
 
 Each launcher pushes its merged full-weight checkpoint to
-`hf://${HF_USERNAME}/athena-cti-sft-qwen25-14b-v20-{core,taa,cse,recalibrate}`
-on exit 0. ZeRO-3 CPU offload is auto-enabled at < 4 GPUs (Core / TAA /
-CSE) and < 8 GPUs (Recalibrate); override with `--offload` /
-`--no-offload`. All four accept `--dry-run` to print the
+`hf://${HF_USERNAME}/athena-cti-sft-qwen25-32b-v21-{core,taa,cse,recal-32b}`
+on exit 0. At 32B, ZeRO-3 CPU offload is **on by default** for all
+stages (mandatory at cutoff 16384 packing-off on 8×H100 80GB SXM with
+`adamw_8bit` + Liger + GC); pass `--no-offload` only when FA2 is
+confirmed loaded and headroom is verified (e.g. 8×H200 141GB).
+Gradient checkpointing is forced on at 32B; the `--gc auto` knob
+reproduces the 14B "off on 8xH100" branch only when explicitly
+requested. All launchers accept `--dry-run` to print the
 `llamafactory-cli` invocation without executing.
 
-**Legacy 8B baseline** — full-parameter SFT of `Llama-3.1-8B-Instruct`
-on the consolidated v7 dataset (~181 k rows). First Llama-3.1-8B run
-to land above the v0 baseline on every athena task; in particular
-`athena-rms` recovered from 5.88 % (v0) / 0.00 % (v6) to
-**62.64 % strict F1**. Full recipe details, hyperparameter rationale,
-validated benchmark scores, and troubleshooting are in
-[`autotrain/README.md`](autotrain/README.md) (*v7 recipe and results*
-section).
+**Stage 4 variants.** The off-plan Recalibrate stage exists as two
+parallel branches off `v21-cse`, distinguished by recipe provenance:
+
+| Branch | LR | Probs (A/B/TAA) | `--max-samples` | Status |
+|---|---:|---:|---:|---|
+| `v21-recal-32b` | 3e-6 | 0.15 / 0.60 / 0.25 | 3600 | **Ship.** 32B-tuned (3× LR, Phase-B-heavy); recovers VSP and tops the v21 leaderboard. |
+| `v21-recalibrate` | 1e-6 | 0.25 / 0.40 / 0.35 | 2400 | 14B-recipe verbatim port; **fails** VSP recovery on 32B (78.9 → 75.7). Retained for the diagnostic A/B. |
+
+The `_chain.sh` wrapper invokes `v21-recalibrate` (14B-recipe) by
+default for parity with the 14B chain; the `v21-recal-32b` branch is
+run standalone off `v21-cse` and is the headline release.
+
+**Ported variants** — the v21 recipe is applied byte-identically
+(template-baked, architecture-independent) to four other bases:
+
+| Architecture | Ship checkpoint | Launchers |
+|---|---|---|
+| **Qwen-2.5-14B-Instruct** | `v21-recalibrate` (Total 61.0) | `run_sft_qwen25_14b_v21_{core,plus_taa,final,recalibrate,chain}.sh` |
+| **Foundation-Sec-8B** | `v21-recalibrate` (Total 53.5) | `run_sft_foundation_8b_v21_{core,plus_taa,final,recalibrate,chain}.sh` |
+| **Llama-3.1-8B-Instruct** | `v21-recalibrate` (Total 49.8) | `run_sft_llama31_8b_v21_{core,plus_taa,final,recalibrate,chain}.sh` |
+| **Qwen3-30B-A3B-Thinking-2507** (MoE) | `v21-cse` (Total 63.4; Stage 4 closed — both variants regress on MoE expert routing) | `run_sft_qwen3_30b_a3b_thinking_v21_{core,plus_taa,final,recal_32b,recalibrate,chain}.sh` |
+
+**Legacy 8B baseline (v7)** — the consolidated v7 dataset on
+`Llama-3.1-8B-Instruct` (~181 k rows, 62.64 % strict F1 on
+`athena-rms`) is retained as the documented pre-v21 baseline:
 
 ```bash
 ./run_abaligned_sft_v7.sh                # Llama-3.1-8B, v7, 3 epochs, lr=1e-5, cutoff 4096
 ```
 
-Older Llama-3.1-8B launchers (`run_abaligned_sft.sh`,
-`run_abaligned_sft_v4.sh`, etc.) are retained for provenance; see the
-table in [`autotrain/README.md`](autotrain/README.md).
+Pre-v21 lineage launchers (v3 / v4 / v7 / v8.x / v9 / v10–v20) are
+retained for provenance; the index is in
+[`autotrain/README.md`](autotrain/README.md).
 
 ### c) Train a CPT (continued pre-training) model
 
@@ -365,37 +407,50 @@ documented in [`tmpl_gen/README.md`](../tmpl_gen/README.md).
 
 ### Train — SFT and CPT launchers
 
-The canonical SFT pipeline is the four-stage v20 chain on
-Qwen-2.5-14B-Instruct. Each stage consumes the prior stage's pushed
-HF checkpoint as its base model; only the final stage's checkpoint is
-the headline release. CPT lives at the repo root and targets the
-Llama-3.1-8B base. Older Llama-3.1-8B and Qwen-2.5-14B SFT launchers
-(v3 / v4 / v7 / v8.x / v9 / v10–v19) are retained for provenance.
+The canonical SFT pipeline is the **four-stage v21 chain on
+Qwen-2.5-32B-Instruct**. Each stage consumes the prior stage's pushed
+HF checkpoint as its base model; the headline release is the Stage-4
+`v21-recal-32b` variant (32B-tuned recipe). The same v21 recipe is
+ported to Qwen-2.5-14B, Foundation-Sec-8B, Llama-3.1-8B, and
+Qwen3-30B-A3B-Thinking-2507 MoE (see the *Ported variants* table in
+§b above). CPT lives at the repo root and targets the Llama-3.1-8B
+base. Pre-v21 launchers (v3 / v4 / v7 / v8.x / v9 / v10–v20) are
+retained for provenance.
 
 | Stage | Launcher | Base model | Push target |
 |---|---|---|---|
-| **v20 / 1+2 Core** | [`autotrain/run_sft_qwen25_14b_v20_core.sh`](autotrain/run_sft_qwen25_14b_v20_core.sh) | `Qwen/Qwen2.5-14B-Instruct` | `…/athena-cti-sft-qwen25-14b-v20-core` |
-| **v20 / 3 TAA** | [`autotrain/run_sft_qwen25_14b_v20_taa.sh`](autotrain/run_sft_qwen25_14b_v20_taa.sh) | `asg-ai/athena-cti-sft-qwen25-14b-v20-core` | `…/athena-cti-sft-qwen25-14b-v20-taa` |
-| **v20 / 4 CSE** | [`autotrain/run_sft_qwen25_14b_v20_cse.sh`](autotrain/run_sft_qwen25_14b_v20_cse.sh) | `asg-ai/athena-cti-sft-qwen25-14b-v20-taa` | `…/athena-cti-sft-qwen25-14b-v20-cse` |
-| **v20 / 5 Recalibrate** | [`autotrain/run_sft_qwen25_14b_v20_recalibrate.sh`](autotrain/run_sft_qwen25_14b_v20_recalibrate.sh) | `asg-ai/athena-cti-sft-qwen25-14b-v20-cse` | `…/athena-cti-sft-qwen25-14b-v20-recalibrate` |
-| **8B baseline (v7)** | [`autotrain/run_abaligned_sft_v7.sh`](autotrain/run_abaligned_sft_v7.sh) | `meta-llama/Llama-3.1-8B-Instruct` | `…/athena-cti-sft-llama31-8b-abaligned-v7` |
+| **v21 / 1 Core** (Phase A + B) | [`autotrain/run_sft_qwen25_32b_v21_core.sh`](autotrain/run_sft_qwen25_32b_v21_core.sh) | `Qwen/Qwen2.5-32B-Instruct` | `…/athena-cti-sft-qwen25-32b-v21-core` |
+| **v21 / 2 +TAA** | [`autotrain/run_sft_qwen25_32b_v21_plus_taa.sh`](autotrain/run_sft_qwen25_32b_v21_plus_taa.sh) | `asg-ai/athena-cti-sft-qwen25-32b-v21-core` | `…/athena-cti-sft-qwen25-32b-v21-taa` |
+| **v21 / 3 CSE (Final)** | [`autotrain/run_sft_qwen25_32b_v21_final.sh`](autotrain/run_sft_qwen25_32b_v21_final.sh) | `asg-ai/athena-cti-sft-qwen25-32b-v21-taa` | `…/athena-cti-sft-qwen25-32b-v21-cse` |
+| **v21 / 4 Recal-32b** (ship) | [`autotrain/run_sft_qwen25_32b_v21_recal_32b.sh`](autotrain/run_sft_qwen25_32b_v21_recal_32b.sh) | `asg-ai/athena-cti-sft-qwen25-32b-v21-cse` | `…/athena-cti-sft-qwen25-32b-v21-recal-32b` |
+| v21 / 4 Recalibrate (14B-recipe A/B) | [`autotrain/run_sft_qwen25_32b_v21_recalibrate.sh`](autotrain/run_sft_qwen25_32b_v21_recalibrate.sh) | `asg-ai/athena-cti-sft-qwen25-32b-v21-cse` | `…/athena-cti-sft-qwen25-32b-v21-recalibrate` |
+| v21 / chain wrapper (Stages 2→3→4) | [`autotrain/run_sft_qwen25_32b_v21_chain.sh`](autotrain/run_sft_qwen25_32b_v21_chain.sh) | (auto) | (auto, per stage) |
+| 14B v21 port (ship: `v21-recalibrate`) | `autotrain/run_sft_qwen25_14b_v21_*.sh` | `Qwen/Qwen2.5-14B-Instruct` | `…/athena-cti-sft-qwen25-14b-v21-*` |
+| 8B v7 baseline (legacy) | [`autotrain/run_abaligned_sft_v7.sh`](autotrain/run_abaligned_sft_v7.sh) | `meta-llama/Llama-3.1-8B-Instruct` | `…/athena-cti-sft-llama31-8b-abaligned-v7` |
 | **CPT** | [`cpt/train_cpt.sh`](../cpt/train_cpt.sh) | `meta-llama/Llama-3.1-8B` (base) | `…/athena-cti-cpt-llama31-8b-<run-id>` |
 
 Every launcher accepts `--dry-run` (print the `llamafactory-cli`
-command and exit) and auto-configures DeepSpeed offload based on
-visible GPU count. On exit 0 the merged full-weight checkpoint is
-pushed to `hf://${HF_USERNAME}/<repo-id>`. Per-stage recipe details
-(cutoff, packing, eff_bs, LR schedule, sign-off gates) are in
-[`SFT_FLOW.md`](SFT_FLOW.md); flag-reference, checkpoint layout, and
-historical-launcher index are in
-[`autotrain/README.md`](autotrain/README.md) and
+command and exit). On exit 0 the merged full-weight checkpoint is
+pushed to `hf://${HF_USERNAME}/<repo-id>`. At 32B, ZeRO-3 CPU offload
+defaults to **on** and gradient checkpointing is forced on
+(`adamw_8bit` + Liger keep the per-rank footprint inside 80 GB on
+8×H100 SXM). Per-stage recipe details (cutoff, packing, eff_bs, LR
+schedule, sign-off gates) are in [`SFT_FLOW.md`](SFT_FLOW.md);
+flag-reference, checkpoint layout, and historical-launcher index are
+in [`autotrain/README.md`](autotrain/README.md) and
 [`cpt/README.md`](../cpt/README.md).
 
-### Test — AthenaBench evaluation
+### Test — benchmark evaluation
 
 Benchmark sweeps are launched from
-[`test/utils/run_benchmark.sh`](test/utils/run_benchmark.sh). The
-transport is selected by the suffix on the model alias registered in
+[`test/utils/run_benchmark.sh`](test/utils/run_benchmark.sh) and
+score across four suites: **AthenaBench** (MCQ / RCM / VSP / ATE / TAA
+Classic + Canonical / RMS), **CyberSOCEval** (Malware-analysis,
+Threat-intel-reasoning), **CyberMetric** (2K / 10K), and **MMLU-Pro**
+(general-intelligence reference, served via the generic
+`serve_and_bench_mmlu_pro.sh <alias>` wrapper to keep suite scope
+decoupled from the CTI baselines). The transport is selected by the
+suffix on the model alias registered in
 [`test/pipelines/models.py`](test/pipelines/models.py):
 
 | Alias suffix | Transport | Use when |
@@ -404,26 +459,38 @@ transport is selected by the suffix on the model alias registered in
 | `-hf` | HuggingFace Inference Providers (hosted API) | Large public models where hosted tok/s beats local compute |
 | *(none)* | Local transformers, `device_map="auto"` | Transport-parity checks; no batching |
 
-All three transports share the same prompt templates, scoring code,
-and response-cache directory layout under `test/responses/<model>/`.
-The transformers path is sequential (no `--batch`); the `-vllm` and
-`-hf` paths accept `--batch N` for N concurrent requests. Alias
-tables, cost estimates, per-task row counts, and response-diff
-tooling (`test/utils/diff_hf_vllm_responses.py`) are documented in
+Per-stage `serve_and_bench_qwen25_32b_v21_{core,taa,cse,recal_32b,recalibrate}.sh`
+wrappers run the full Athena + CSE + CM-2K + CM-10K sweep under one
+warm vLLM session on 2×H100 (~11 h end-to-end for the ship
+`v21-recal-32b`). Per-task token / GPU-hour cost is aggregated via
+`SFT/test/utils/build_cost_summary.py` into
+`SFT/test/responses/cost_summary.csv` (API rows priced from
+`pipelines/api_usage.py::PRICING_PER_1K`; vLLM rows priced from
+wall-clock × $2.50/GPU-hr on 2×H100). All three transports share the
+same prompt templates, scoring code, and response-cache directory
+layout under `test/responses/<model>/`. The transformers path is
+sequential (no `--batch`); `-vllm` and `-hf` accept `--batch N` for N
+concurrent requests. Alias tables, cost estimates, per-task row
+counts, and response-diff tooling
+(`test/utils/diff_hf_vllm_responses.py`) are documented in
 [`test/README.md`](test/README.md).
 
 ---
 
 ## Notes
 
-- **GPU requirements**: The v20 Qwen-2.5-14B chain is sized for
-  8×H100 80 GB (Phase A / Phase B / TAA / CSE) and 4×H100 80 GB
-  (Recalibrate); Phase B (cutoff 16384, packing off) is the
-  memory-tight stage. The v20 launchers auto-flip ZeRO-3 CPU offload
-  on at < 4 GPUs (Core / TAA / CSE) and < 8 GPUs (Recalibrate);
-  override with `--offload` / `--no-offload`. The legacy 8B v7
-  full-parameter recipe runs on a single A100 80 GB with ZeRO-3 + CPU
-  offload, or on ≥ 2× 80 GB without offload. See
+- **GPU requirements**: The v21 Qwen-2.5-32B chain is sized for
+  **8×H100 80 GB SXM** (every stage); 4×H100 OOMs at Stages 2/3
+  (cutoff 4096 packing-on) and Stage 4 (cutoff 16384 packing-off)
+  because the ZeRO-3 weight shard doubles to ~16 GB/rank at 32B and
+  exceeds the per-rank activation budget. ZeRO-3 CPU offload is on
+  by default at 32B (mandatory under `adamw_8bit` + GC + Liger for
+  Stage 4; advisable for Stages 1–3 to absorb sequence-length
+  spikes); pass `--no-offload` only on 8×H200 141GB SXM where the
+  full ZeRO-3 footprint fits HBM with FA2 loaded. The 14B v21 port
+  still runs on 4×H100 with offload at the Recalibrate stage; the
+  legacy 8B v7 full-parameter recipe runs on a single A100 80 GB
+  with ZeRO-3 + CPU offload, or on ≥ 2× 80 GB without offload. See
   [`autotrain/README.md`](autotrain/README.md) and
   [`SFT_FLOW.md`](SFT_FLOW.md) for per-stage memory budgets.
 - **CUDA compatibility**: Verify that your PyTorch CUDA version

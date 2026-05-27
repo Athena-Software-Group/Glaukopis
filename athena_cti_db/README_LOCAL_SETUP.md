@@ -11,10 +11,11 @@ The primary entry point is [`threat_framework/populate_neo4j_complete.py`](threa
 - **[`threat_framework/`](threat_framework/)** — Population script and data pipeline.
   - `populate_neo4j_complete.py` — downloads all CTI sources and populates the Neo4j graph
 
-### Scripts
+### Scripts (all under `utils/`)
 
-- **[`install.sh`](install.sh)** — installs all Python dependencies from `requirements.txt`. Run with your target environment active.
-- **[`populate.sh`](populate.sh)** — runs the full database population pipeline. Reads Neo4j connection parameters from environment variables.
+- **[`utils/setup.sh`](utils/setup.sh)** — end-to-end orchestrator: TCP-preflights Neo4j, creates a venv, installs dependencies, verifies auth + target DB is online, then runs `populate.sh`. Honours `utils/.env` for `NEO4J_*` settings.
+- **[`utils/install.sh`](utils/install.sh)** — installs Python dependencies from `requirements.txt` into the active environment.
+- **[`utils/populate.sh`](utils/populate.sh)** — populate-only wrapper. Safe to run from cron / launchd to refresh the always-refresh sources (EPSS + NVD current year).
 
 ---
 
@@ -22,30 +23,35 @@ The primary entry point is [`threat_framework/populate_neo4j_complete.py`](threa
 
 ```
 athena_cti_db/
-├── install.sh
-├── populate.sh
-├── requirements.txt
+├── README.md
 ├── README_LOCAL_SETUP.md
+├── FUNCTIONAL_SCOPE.md
+├── requirements.txt
+├── utils/
+│   ├── setup.sh
+│   ├── install.sh
+│   ├── populate.sh
+│   └── threat_data/                      # cached source data (created on first run)
 └── threat_framework/
     └── populate_neo4j_complete.py
 ```
 
-After running the population script, downloaded data is cached under `threat_data/`:
+After running the population script, downloaded data is cached under `utils/threat_data/`:
 
 ```
-threat_data/
-├── cti/                                  # MITRE ATT&CK STIX JSON files
-├── engage/                               # MITRE ENGAGE JSON files
-├── cve/cves/                             # CVE JSON files (organized by year, 2024+)
-├── nvd/                                  # NVD CVE 2.0 bulk feeds (per-year ndjson batches)
+utils/threat_data/
+├── cti/                                  # MITRE ATT&CK STIX JSON files (git clone)
+├── engage/                               # MITRE ENGAGE JSON files (git clone)
+├── cve/cves/                             # CVE 5.0 JSON files, by year (sparse clone, 2024+)
+├── nvd/                                  # NVD CVE 2.0 bulk feeds (per-year ndjson batches; current year auto-refreshed)
 ├── cwe/                                  # CWE XML data
 ├── capec_latest.xml                      # CAPEC XML
 ├── known_exploited_vulnerabilities.json  # CISA KEV
-├── epss_scores_data.csv                  # EPSS scores (yesterday's snapshot)
-├── d3fend/                               # MITRE D3FEND ontology + ATT&CK mappings (v1.4.0)
-├── sigma/                                # SigmaHQ detection rules (git clone)
+├── epss_scores_data.csv                  # EPSS scores (yesterday's snapshot; auto-refreshed every run)
+├── d3fend/                               # MITRE D3FEND ontology + ATT&CK mappings (pinned v1.4.0)
+├── sigma/                                # SigmaHQ detection rules (sparse clone of rules/)
 ├── exploitdb/                            # ExploitDB files_exploits.csv (sparse clone)
-└── poc_github/                           # nomi-sec/PoC-in-GitHub year folders (2024+)
+└── poc_github/                           # nomi-sec/PoC-in-GitHub year folders (sparse clone, 2024+)
 ```
 
 > The full functional inventory (sources, schema, axes) lives in [`FUNCTIONAL_SCOPE.md`](./FUNCTIONAL_SCOPE.md). Source of truth for source URLs is `populate_neo4j_complete.py::DATA_SOURCES`.
@@ -94,7 +100,7 @@ cd athena_cti_db/
 python3 -m venv venv
 source venv/bin/activate          # Windows: venv\Scripts\activate
 
-./install.sh
+./utils/install.sh
 ```
 
 Or install directly with pip:
@@ -137,41 +143,41 @@ $env:NEO4J_DB="neo4j"
 
 ### Quick Start
 
+End-to-end (preflight + install + populate):
+
 ```bash
 cd athena_cti_db/
-./populate.sh
+./utils/setup.sh
 ```
 
-Or run the script directly:
+Populate only (assumes deps and Neo4j are ready):
 
 ```bash
-cd threat_framework/
-python populate_neo4j_complete.py
+./utils/populate.sh
+```
+
+Or run the populator script directly:
+
+```bash
+python threat_framework/populate_neo4j_complete.py
 ```
 
 ### What the Script Does
 
-1. **Downloads CTI data** (skipped automatically if already cached in `threat_data/`):
-   - MITRE ATT&CK (git clone, STIX2 JSON)
-   - MITRE ENGAGE (git clone, JSON)
-   - CAPEC (XML)
-   - CWE (ZIP / XML)
-   - MITRE D3FEND ontology + ATT&CK mappings (HTTPS, JSON-LD / SPARQL-JSON, pinned v1.4.0)
-   - CVE (git sparse-checkout, 2024 onwards)
-   - NVD CVE 2.0 bulk feeds (HTTPS, gzip per year, 2024 onwards)
-   - CISA KEV (JSON feed)
-   - EPSS scores (gzipped CSV, yesterday's date)
-   - Sigma rules (git clone of `SigmaHQ/sigma`)
-   - ExploitDB (sparse-clone of `files_exploits.csv`)
-   - PoC-in-GitHub (sparse-clone of 2024+ year folders)
+1. **Downloads CTI data** into `utils/threat_data/`. Refresh policy varies by source (see [`README.md`](README.md#auto-sync--refresh-semantics) §Auto-Sync for the full table):
+   - **Always-refresh**: FIRST EPSS (yesterday's snapshot, overwritten), NVD current year (gzip feed, re-downloaded)
+   - **Skip-if-cached (HTTPS)**: CAPEC, CWE, CISA KEV, MITRE D3FEND (pinned v1.4.0)
+   - **Skip-if-cached (Git)**: MITRE ATT&CK (git clone, STIX2 JSON), MITRE ENGAGE, CVE Project (sparse, 2024+), Sigma (sparse `rules/`), ExploitDB (sparse `files_exploits.csv`), PoC-in-GitHub (sparse, 2024+ year folders)
 
-2. **Parses and transforms** each source into nodes and relationships
+2. **Parses and transforms** each source into Cypher MERGE statements
 
 3. **Populates Neo4j**:
-   - Creates constraints
+   - Creates uniqueness constraints (`stix_id` and natural-key `id`/`d3fend_id` per label)
    - Inserts nodes: Tactics, Techniques, CAPEC, CWE, CVE, KEV, Engage, EPSS,
      D3FENDTactic, D3FENDTechnique, SigmaRule, ExploitDBEntry, GithubPoC
-   - Creates all intra- and cross-framework relationships
+   - Creates all intra- and cross-framework relationships (see [`FUNCTIONAL_SCOPE.md`](FUNCTIONAL_SCOPE.md) §5)
+
+The populator is idempotent — every write is a `MERGE` against the per-label uniqueness constraints, so re-runs are safe and only the changed sources actually affect the graph.
 
 ### Expected Output
 

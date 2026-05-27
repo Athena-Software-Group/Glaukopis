@@ -1,9 +1,22 @@
-# Directory with revised scripts as of 4/02/2026 #
+# `tmpl_gen/data_generation/` — IFT Dataset Build Pipeline
 
 
 ## Author
 Dr. Ionut Cardei and Mamoon Khan
 
+## Upstream Dependency
+
+This pipeline reads from the Neo4j graph populated by [`athena_cti_db`](../../athena_cti_db/). Stand up that database first (`athena_cti_db/utils/setup.sh`) and point `neo4j-local-config.json` at it before running any step here. The active template vintage is **v21** (`../templates/05182026/`), which feeds the v21 SFT chain targeting `Qwen2.5-32B-Instruct` — see [`../templates/05182026/README-21.md`](../templates/05182026/README-21.md) for the full build recipe (per-stage `count_limit` / `count_max` and build-dir conventions `_v21_{core,taa,cse}_build/`).
+
+## Recommended entry point — `make_dataset.sh`
+
+For all routine builds (including v21), use the single-script wrapper that runs steps 1–3 in sequence and accepts either `.docx` or `.json` input:
+
+```bash
+./make_dataset.sh <tmpl.docx|tmpl.json> <results_dir> <alpaca_out.json> [count_limit] [count_max]
+```
+
+The three step scripts below remain available for piecewise / debugging use.
 
 ## Run script files in this order: ##
 
@@ -21,11 +34,11 @@ to a JSON file in the current directory with the same name as the Word file.
 Example usage:
 
 ```bash
-./docx2json.sh ../templates/Sophia-CTI-Templates-04022026.docx
+./docx2json.sh ../templates/05182026/Sophia-CTI-Templates-v21.txt
 ```
 
 This will extract all templates from file
-`../templates/Sophia-CTI-Templates-04022026.docx` to a file `./Sophia-CTI-Templates-04022026.json`.
+`../templates/05182026/Sophia-CTI-Templates-v21.txt` to a file `./Sophia-CTI-Templates-v21.json`.
 
 
 ### 2. `tmpl2triples.sh` ###
@@ -41,7 +54,7 @@ the same template. Default is 2000.
 Example usage:
 
 ```bash
-./tmpl2triples.sh Sophia-CTI-Templates-04022026.json results_dir 1000
+./tmpl2triples.sh Sophia-CTI-Templates-v21.json results_dir 1500
 ```
 
 ### 3. `triples2alpaca.sh` ###
