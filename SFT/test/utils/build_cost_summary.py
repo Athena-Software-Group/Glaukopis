@@ -66,18 +66,14 @@ DEFAULT_INCLUDE = (
     r"|^qwen3-30b-a3b-thinking-2507(-no-think)?-vllm$"
     r"|^qwen3-30b-a3b-instruct-2507-vllm$"
     r"|^qwen3-32b(-no-think)?-vllm$"
-    r"|^mistral-small-3\.2-24b-instruct-2506-vllm$"
 )
 DEFAULT_INCLUDE_FLAGS = re.IGNORECASE
-# Default drops the short alias-form ('<alias>-vllm') copy of the
-# Qwen3-30B-A3B-Thinking-2507 v21-cse run -- the HF-id-form safe dir
-# 'asg-ai_athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-cse' is the
-# legitimate full run (longer wallclock, higher cost) and both dirs
-# resolve to the same canonical model_key. Override with --exclude '' to
-# keep both rows for an A/B inspection of the partial vs full run.
-DEFAULT_EXCLUDE = (
-    r"^athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-cse-vllm$"
-)
+# Same-model_key collisions (e.g. alias-form 'qwen2.5-32b-vllm' vs HF-
+# id-form 'Qwen_Qwen2.5-32B-Instruct', or HF-id-as-alias 'asg-ai_...'
+# vs '-vllm' alias for the same SFT checkpoint) are resolved by the
+# dedup-by-max-cost pass in main(), so no per-dir exclude is needed
+# here by default.
+DEFAULT_EXCLUDE = r""
 
 # Reasoning level used per API model_name for the runs captured in
 # api_usage_checkpoint.json. The checkpoint records the alias but NOT
@@ -121,12 +117,32 @@ API_MODEL_KEY = {
 # is not 'athena-cti-' and whose safe-dir doesn't contain '_').
 SFT_MODEL_KEY_OVERRIDES: dict[str, str] = {}
 
+# Maps an alias-form baseline safe dir (after '-vllm' / '-no-think-vllm'
+# suffix strip) to the canonical HF repo id. The same HF id is also the
+# model_key resolved from the HF-id-form safe dir of the same baseline
+# (e.g. 'Qwen_Qwen2.5-32B-Instruct' -> 'Qwen/Qwen2.5-32B-Instruct'), so
+# both safe-dir flavours collide on a single model_key and the dedup
+# pass in main() keeps the higher-cost row. Mirrors model_mapping in
+# pipelines/models.py; add a new entry when a new '-vllm' baseline alias
+# is added there.
+BASELINE_ALIAS_KEY = {
+    "qwen2.5-14b":                    "Qwen/Qwen2.5-14B-Instruct",
+    "qwen2.5-32b":                    "Qwen/Qwen2.5-32B-Instruct",
+    "qwen3-30b-a3b-thinking-2507":    "Qwen/Qwen3-30B-A3B-Thinking-2507",
+    "qwen3-30b-a3b-instruct-2507":    "Qwen/Qwen3-30B-A3B-Instruct-2507",
+    "qwen3-32b":                      "Qwen/Qwen3-32B",
+    "llama-3-8b":                     "meta-llama/Meta-Llama-3.1-8B-Instruct",
+    "foundation-8b-instruct":         "fdtn-ai/Foundation-Sec-8B-Instruct",
+    "foundation-8b":                  "fdtn-ai/Foundation-Sec-8B",
+}
+
 
 def derive_model_key(name: str, basis: str) -> str:
     """Return canonical HF-repo / vendor-id display name for a row.
 
     API rows: look up the bench-internal alias in API_MODEL_KEY.
     Local vLLM rows: strip '-no-think-vllm' or '-vllm' suffix, then
+        - lookup in BASELINE_ALIAS_KEY (covers the upstream baselines)
         - 'athena-cti-*'       -> 'asg-ai/<stripped>'
         - 'asg-ai_X' (from a HF-id-as-alias run, no '-vllm' suffix)
                               -> 'asg-ai/X'
@@ -143,6 +159,8 @@ def derive_model_key(name: str, basis: str) -> str:
         a = a[: -len("-no-think-vllm")]
     elif a.endswith("-vllm"):
         a = a[: -len("-vllm")]
+    if a in BASELINE_ALIAS_KEY:
+        return BASELINE_ALIAS_KEY[a]
     if a.startswith("athena-cti-"):
         return "asg-ai/" + a
     if a.startswith("asg-ai_"):
@@ -280,7 +298,26 @@ def main() -> int:
         r += ["", "", "",
               f"{wh:.3f}", f"{wh*gpu_count:.3f}", basis_sft, "", f"{tc:.4f}"]
         scored.append((tc, r))
-    rows = [r for _, r in sorted(scored, key=lambda x: x[0], reverse=True)]
+    # Dedup by model_key (column 0): when an upstream baseline lands
+    # twice -- once via the alias-form safe dir ('qwen2.5-32b-vllm')
+    # and once via the HF-id-form safe dir ('Qwen_Qwen2.5-32B-Instruct')
+    # -- both rows now collide on the same model_key (via
+    # BASELINE_ALIAS_KEY) and the higher-cost entry is kept on the
+    # assumption it reflects the more complete / fresher sweep. Rows
+    # with an empty model_key are passed through untouched so unknown-
+    # canonical-name rows never get silently merged with each other.
+    by_key: dict[str, tuple[float, list]] = {}
+    passthrough: list[tuple[float, list]] = []
+    for tc, r in scored:
+        mk = r[0]
+        if not mk:
+            passthrough.append((tc, r))
+            continue
+        prev = by_key.get(mk)
+        if prev is None or tc > prev[0]:
+            by_key[mk] = (tc, r)
+    deduped = list(by_key.values()) + passthrough
+    rows = [r for _, r in sorted(deduped, key=lambda x: x[0], reverse=True)]
 
     for path, delim in [(args.out_tsv, "\t"), (args.out_csv, ",")]:
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
