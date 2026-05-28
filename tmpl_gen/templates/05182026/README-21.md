@@ -379,6 +379,357 @@ MoE architecture** (for consumers who specifically need the
 sparse-30B / 3.3B-active inference footprint); on absolute v21
 leaderboard ranking, dense-32B + recal-32b wins by ~1.6 Total.
 
+## Contamination posture
+
+This section is the v21-specific audit trail for the contamination
+question ("does the v21 SFT corpus -- across its Core / TAA / CSE
+shards -- leak the AthenaBench / CTIBench / CyberMetric / CyberSOCEval
+evaluation signal into training?"). v21 is a SHA-verified byte-clone of
+v18.1 / v16 / v17.1 templates and gates (see §"What is byte-identical
+vs v18.1" above), so the posture is mechanically inherited from those
+vintages and ultimately from v8, where the framework was first
+articulated in [`tmpl_gen/templates/04292026/README.md`](../04292026/README.md)
+§2. This section reproduces the full posture in self-contained form so a
+reader auditing v21 alone does not need to traverse the carry chain.
+
+We separate the two failure modes the research community distinguishes:
+
+  * **Verbatim contamination** -- a literal eval prompt, eval answer
+    string, or eval-row n-gram appearing in a training row. This is the
+    failure mode that matters for benchmark validity, because the model
+    can solve the eval row by memorisation rather than by reasoning.
+  * **Structural contamination** -- the training data and the eval data
+    sharing the same underlying knowledge base (the MITRE STIX bundles
+    for ATT&CK / CAPEC / CWE, the NVD CVE feed, the CISA KEV catalog,
+    the FIRST EPSS feed, the D3FEND v1.4.0 matrix). The model trained on
+    the graph can answer a benchmark item drawn from the same graph
+    because the underlying fact is identical, not because the eval row
+    was memorised.
+
+v21 treats these two failure modes asymmetrically:
+
+  * Verbatim contamination is **blocked / audited by tooling at corpus
+    build time** -- each of the three v21 shard watchers runs
+    `tmpl_gen/scripts/dedup_against_evals.py` as its Phase 5 step
+    (mechanism in §"Verbatim contamination guard" below), and the
+    shard's clean dataset only lands in `SFT/data/` if Phase 5 exits
+    cleanly. The launcher cannot find an input to consume otherwise
+    (`run_sft_qwen25_14b_v21_core.sh:154-166` exits 2 with
+    `[FAIL] v21-core dataset missing` if the file is absent).
+  * Structural contamination is **accepted by design**, with the
+    rationale documented per benchmark in §"Per-benchmark contamination
+    matrix" below. This is the established posture in the published
+    CTI-LLM literature: SecKnowledge / CyberPal.AI (Levi et al. 2024,
+    arXiv:2408.09304), the CTIBench paper, and the AthenaBench technical
+    report all build training corpora from the same MITRE / NIST / FIRST
+    bundles the benchmarks score against, on the grounds that there is
+    no "held-out ATT&CK matrix" and pretending otherwise would defeat
+    the purpose of training a CTI model.
+
+The remainder of this section makes both positions explicit and verifies
+that nothing in the v21 chain shape (three independent shards, off-plan
+Recalibrate stage, five architecture ports) has weakened the audit.
+
+### Why the v8 / v18.1 posture transfers cleanly to v21
+
+Because every `Sophia-CTI-Templates-v21*.txt` body and every
+`v21*_row_count_gate.json` is `shasum`-identical to its v18.1 / v16 /
+v17.1 predecessor, the v21 corpus shares exactly the same **template-
+side** contamination surface as the v18.1 chain. The only v21-side data
+deltas vs v18.1 are date-stamps, dataset file names, build-dir names,
+and HF push targets (§"What changes vs v18.1"); none touch the verbatim
+or structural surface. The audit chain is:
+
+  * **Verbatim:** the same `dedup_against_evals.py` invocation that
+    cleared the v18.1 / v16 / v17.1 corpora is re-executed
+    independently on each v21 shard at build time. Because the template
+    bodies are byte-identical and the row generation consumes the same
+    Neo4j substrate, the expected dedup-drop counts land within the
+    v18.1 envelope; the per-shard `dedup_report.json` files are the
+    audit artefact.
+  * **Structural:** unchanged from v8. The v21 Core shard reads from
+    the same MITRE / NVD / CISA / FIRST / D3FEND graph the eval suites
+    score against; the v21 CSE shard reads from the same
+    Qwen2.5-7B-generated CyberSOCEval-shape substrate v17.1 introduced
+    (see [`Sophia-CTI-Templates-v21_cse.txt`](Sophia-CTI-Templates-v21_cse.txt)
+    header, which is byte-identical to v17.1 and re-states the
+    `Shuffle: mcq_multi` fix that broke the `JS.CSE.*` letter-set
+    mode-collapse without changing the underlying substrate or the
+    structural overlap with CyberSOCEval).
+
+### Verbatim contamination guard: `dedup_against_evals.py`
+
+**Tool:** `tmpl_gen/scripts/dedup_against_evals.py` (unchanged since v8).
+
+**Invocation in v21** (verbatim from each watcher's Phase 5 block;
+source `_v21_core_build/watcher.sh:301-307` and the equivalent blocks
+in `_v21_taa_build/watcher.sh:124-130` and `_v21_cse_build/watcher.sh:123-129`):
+
+```
+python tmpl_gen/scripts/dedup_against_evals.py \
+    --input          ${BALANCED_JSON} \
+    --filter-output  ${CLEAN_JSON} \
+    --drop-threshold 50 \
+    --hit-threshold  1 \
+    --max-fail       999999 \
+    --report         ${DEDUP_REPORT}
+```
+
+The `DEDUP_HIT_THRESHOLD=1` and `DEDUP_DROP_THRESHOLD=50` tunables are
+set at the top of each watcher (`_v21_core_build/watcher.sh:81-82`) at
+the v18 / v8 defaults.
+
+**Mechanism** (step-by-step):
+
+  1. Tokenise every eval record's user-visible text (`question`,
+     `prompt`, `report`, `context`, `input`, `instruction`, plus
+     `answers`) into lowercase `[A-Za-z0-9]+` word tokens
+     (`tmpl_gen/scripts/dedup_against_evals.py:30-55`).
+  2. Build the union set of distinct **n=13 word-grams** (default,
+     overridable via `--n`) across every eval file under
+     `--eval-dir SFT/test/benchmark_data/` -- which currently covers:
+       * `athena_bench/` (`athena-cti-{ate,mcq,mcq-3k,mcq-updated,rcm,rms,vsp}.jsonl`,
+         `athena_rms/`, `athena_taa/`, `mcq-patch.tsv`)
+       * `cti_bench/` (`cti-{ate,mcq,rcm,rcm-2021,vsp}.tsv`, `cti_taa/`)
+       * `cybermetricdataset/` (`CyberMetric-{80,500,2000,10000}-v1.json`)
+       * `cybersoceval/` (`malware_analysis/*.jsonl`,
+         `threat_intel_reasoning/*.jsonl`)
+       * `cve/`, `urlhaus/` (operational data sources)
+  3. Index every n-gram to its source `eval_file:row_idx`.
+  4. For every candidate Alpaca SFT row, tokenise the concatenation of
+     `instruction`, `input`, `output`; emit any n-gram that appears in
+     the eval index; flag the row when its hit count against any
+     **single** eval row reaches `--hit-threshold` (set to 1 in v21).
+  5. Two thresholds gate behaviour:
+       * `--hit-threshold 1` is the **flag** threshold -- a single shared
+         13-gram is enough to log the row to `--report`.
+       * `--drop-threshold 50` is the **filter** threshold -- a row is
+         removed from `--filter-output` when its hit count against a
+         single eval row reaches 50. v21 sets `--max-fail 999999` so the
+         build does not abort on flagged-but-not-dropped rows; the
+         report file is the human audit surface and the filtered output
+         is the trainable artefact.
+
+**Threshold rationale.** n=13 word tokens is the same window used by
+the OLMo, Pythia, and Llama families' MMLU / HellaSwag / BIG-bench
+decontamination passes: short enough to catch verbatim leakage while
+long enough that incidental matches on common stock phrases (e.g. "you
+are a cybersecurity expert that has been trained") do not trigger.
+`hit-threshold=1` is the strict audit setting; one shared 13-gram
+between an SFT row and an eval row is, in practice, never incidental
+for technical CTI text and almost always indicates the eval row's
+question or answer string was inadvertently included.
+`drop-threshold=50` is the v10-onward soft setting (vs the v8 hard
+abort) that distinguishes verbatim row inclusion (>=50 shared 13-grams,
+filtered out) from incidental shared CVE / MITRE description vocabulary
+(<50 shared 13-grams, kept on the rationale that training and eval
+share the same Neo4j knowledge base and graph-derived vocabulary
+overlap is the structural-contamination case, not verbatim leakage).
+
+**What this catches:** any SFT row that quotes an eval row's question,
+answer, multiple-choice option text, threat-report excerpt, or
+explanatory paragraph at >=13 contiguous tokens of overlap.
+
+**What this does not catch:** semantically equivalent paraphrases (e.g.
+an SFT row asking "Which CWE underlies CVE-2024-NNNN?" when an eval row
+asks "What is the root-cause weakness for CVE-2024-NNNN?"). Catching
+paraphrastic leakage requires embedding-similarity dedup, which is not
+in the v21 pipeline; v21 addresses paraphrase risk **structurally** by
+building templates off the underlying knowledge graph rather than off
+eval text, so paraphrastic overlap is only possible when both the SFT
+row and the eval row independently describe the same graph fact --
+which is the structural-contamination case addressed below.
+
+### Per-shard v21 enforcement
+
+Each of the three v21 build watchers runs the Phase 5 invocation
+independently, producing an independent report:
+
+| Shard | Watcher                       | Clean JSON (only written if dedup OK)              | Dedup report                          |
+|-------|-------------------------------|-----------------------------------------------------|---------------------------------------|
+| Core  | `_v21_core_build/watcher.sh`  | `SFT/data/ift_data_2026_05_18_v21_core.json`        | `_v21_core_build/dedup_report.json`   |
+| TAA   | `_v21_taa_build/watcher.sh`   | `SFT/data/ift_data_2026_05_18_v21_taa.json`         | `_v21_taa_build/dedup_report.json`    |
+| CSE   | `_v21_cse_build/watcher.sh`   | `SFT/data/ift_data_2026_05_18_v21_cse.json`         | `_v21_cse_build/dedup_report.json`    |
+
+A non-zero exit from `dedup_against_evals.py` triggers the watcher's
+`fail "dedup"` helper (`_v21_core_build/watcher.sh:315`, and the
+equivalent lines in `_v21_taa_build/watcher.sh:139` and
+`_v21_cse_build/watcher.sh:138`), which writes the failure to
+`_v21_{core,taa,cse}_build/watcher_status.json` and skips Phase 6
+through Phase 9; no `CLEAN_JSON` is written and no Phase 9 per-axis
+shard files are produced.
+
+The v21 stage launchers do not call `dedup_against_evals.py` directly;
+they enforce the dedup gate **indirectly** by asserting the existence
+of the dedup-output dataset file. For example, the Core launcher:
+
+```
+SFT/autotrain/run_sft_qwen25_14b_v21_core.sh:154-166
+  for ds in ift_data_2026_05_18_v21_core_a_kb_mcq_taa_soc_cm_ms_yn \
+            ift_data_2026_05_18_v21_core_b_rms_ate_vsp_rcm \
+            "${VAL_NAME}"; do
+      if [[ ! -f "${SFT_DIR}/data/${ds}.json" ]]; then
+          echo "[FAIL] v21-core dataset missing: ..." >&2
+          exit 2
+      fi
+  done
+```
+
+Because the watcher only writes the Phase 9 per-phase shards (and
+therefore the launcher-visible dataset files above) **after** Phase 5
+dedup has produced `CLEAN_JSON` successfully, the launcher's
+`[[ ! -f ... ]]` guard is structurally a dedup gate -- the trainable
+artefact cannot exist on disk unless dedup passed -- without the
+launcher needing to re-implement the dedup contract. The same
+indirection applies to the TAA-stage launcher
+(`run_sft_qwen25_14b_v21_plus_taa.sh`) and the CSE-stage launcher
+(`run_sft_qwen25_14b_v21_final.sh`), each gated on its respective
+shard's `ift_data_2026_05_18_v21_{taa,cse}*.json`, and to every
+cross-architecture port of the v21 chain
+(`run_sft_{foundation_8b,gemma4_31b,llama31_8b,qwen25_32b,qwen3_30b_a3b_thinking}_v21_*.sh`),
+all of which consume the same three shard files.
+
+### Per-benchmark contamination matrix
+
+The v21 benchmark portfolio is **AthenaBench + CTIBench + CyberMetric +
+CyberSOCEval** (the full eval index in `dedup_against_evals.py`); the
+v21 chain ports also bench MMLU-Pro for general-knowledge regression
+tracking (`SFT/test/utils/serve_and_bench_mmlu_pro.sh`), which is run
+out of the loop and is not in the contamination index because the v21
+SFT corpus does not include any MMLU-Pro adjacent material.
+
+| Benchmark | Held out from training? | What v21 SFT shares with it | Verbatim guard in v21 | Structural notes |
+|---|---|---|---|---|
+| **AthenaBench** (`athena-cti-{ate,mcq,rcm,rms,vsp,taa}.jsonl`) | No -- structural overlap accepted (catalog-recall framing). | The underlying ATT&CK / CWE / CVE / KEV / EPSS / D3FEND graph. The benchmark prompts are GPT-{4,5}-rewritten incident narratives produced at benchmark generation time and are NOT in the v21 corpus. | All three shard watchers' Phase 5 indexes `athena_bench/*.jsonl` and the `athena_rms/`, `athena_taa/` subdirs at n=13. Any >=50 shared 13-grams filters the row from the trainable artefact and logs it to the shard's `dedup_report.json`. | The catalog-recall framing is the published AthenaBench position. v21's `AB.RMS.{3a..3h,4,5,6}` templates (carried byte-identical from v18.1) target the catalog-coverage and cardinality gaps the v5 baseline exposed; they do not encode any benchmark prompt. |
+| **CTIBench** (`cti-{ate,mcq,rcm,rcm-2021,vsp}.tsv`, `cti_taa/`) | No -- structural overlap accepted (same graph). | Same MITRE / NIST graph as the SFT corpus. CTIBench prompts are paraphrastic transformations of the underlying records. | Same n=13 fingerprint as above; `cti_bench/*.tsv` is in the index for all three v21 shards. | The CTIBench paper explicitly anticipates this overlap and grades models on the paraphrastic surface form. v21 templates do not import CTIBench-specific phrasings. |
+| **CyberMetric** (`CyberMetric-{80,500,2000,10000}-v1.json`; v21 ports bench the 2K and 10K slices) | No -- structural overlap with general CTI knowledge accepted; the benchmark is partly a general-knowledge MCQ over public security material that overlaps the base model's pretrain. | Domain knowledge (concepts, definitions, CVE descriptions). The MCQ phrasings themselves are NOT in the v21 corpus. | All four CyberMetric files in the n=13 index; verbatim leakage of any MCQ stem or option string is filtered out and logged. | The `tulu_3_sft_mixture` + `alpaca_en_demo` catastrophic-forgetting guards in v21-Core Phase A preserve general instruction-following so that CyberMetric scores reflect CTI-narrowing impact rather than instruction collapse, not so that the model can solve specific CyberMetric items. |
+| **CyberSOCEval** (Meta; `malware_analysis/*.jsonl`, `threat_intel_reasoning/*.jsonl`) | No -- structural overlap with the public CTI corpus accepted. | The JSON envelope shapes (e.g. `{"correct_answers": [...]}`, `{"behaviors": [...]}`) are matched in the `JS.*` and `JS.CSE.*` template families. The specific eval prompts and ground-truth answers are NOT in the v21 corpus. | The CyberSOCEval source files under `SFT/test/benchmark_data/cybersoceval/` are picked up by the same n=13 glob and any >=50-overlap row is filtered. | The `JS.CSE.*` family in the v21 CSE shard is byte-identical to v17.1, which itself reset the v17 letter-set mode-collapse via a `Shuffle: mcq_multi` directive without altering the underlying CyberSOCEval-shape substrate. The family teaches the **shape** of a JSON-wrapped multi-select response over graph-derived facts; CyberSOCEval grades the same shape over its held-out facts. |
+
+### Adjacent corpus-hygiene gates (not contamination, but co-resident)
+
+Phase 6b runs `tmpl_gen/scripts/check_corpus_licences.py` immediately
+downstream of Phase 5 dedup, against the `CLEAN_JSON` artefact, to
+verify every row's `source` field is in the commercial-use allowlist
+(per-shard report at `_v21_{core,taa,cse}_build/licence_gate_report.json`).
+Phase 6 is the orthogonal **floor** check that the post-dedup corpus
+still meets the per-axis row-count contract the chain was tuned against,
+specified in `tmpl_gen/templates/05182026/v21_row_count_gate.json`
+(Core), `v21_taa_row_count_gate.json` (TAA), and
+`v21_cse_row_count_gate.json` (CSE). Neither is part of the
+contamination posture as such, but both are reported alongside the
+dedup report in the watcher's final `watcher_status.json` so the full
+corpus-hygiene chain is auditable from a single artefact per shard.
+
+### What v21 explicitly does **not** do
+
+To keep the v8 falsifiability list intact, v21 inherits the same
+exclusions verbatim and adds no new ones:
+
+  * **No eval-row text in any template.** No template's `Instruction:`,
+    `Question:`, or `Answer:` body in `Sophia-CTI-Templates-v21*.txt`
+    contains a verbatim phrase from any eval row. The n=13 guard would
+    flag the row if a future edit ever introduced one.
+  * **No benchmark answer keys in the graph.** The Neo4j build
+    (`tmpl_gen/scripts/iftgen.py` -> `create_ATTACK_db`) ingests the
+    upstream MITRE / NIST / FIRST / CISA / D3FEND bundles only. The
+    graph does not contain AthenaBench's GPT-rewritten narratives,
+    CyberSOCEval's question JSON, CTIBench's paraphrases, or
+    CyberMetric's MCQ stems.
+  * **No fine-tuning on benchmark dev/validation splits.** AthenaBench
+    and CTIBench publish small validation slices intended for prompt
+    engineering. v21 does not consume any of these splits as training
+    data; they are only used downstream by the eval harness under
+    `SFT/test/`.
+  * **No cross-pollination from the eval harness.** The eval harness in
+    `SFT/test/pipelines/` reads from `SFT/test/benchmark_data/` only
+    and never writes back into `SFT/data/`. Training datasets live in
+    `SFT/data/`, benchmarks live in `SFT/test/benchmark_data/`, and
+    the v21 build pipeline scripts in `tmpl_gen/scripts/` write only
+    to the former.
+  * **No per-token contamination check on `tulu_3_sft_mixture` or
+    `alpaca_en_demo`.** These two HF mixtures are general
+    instruction-following data and are unlikely to overlap CTI
+    benchmarks at n=13; v21 does not run `dedup_against_evals.py`
+    against them as a matter of routine. Same posture as v8.
+  * **No embedding-similarity dedup.** Out of scope for v21;
+    paraphrastic risk is addressed structurally (templates are
+    generated from the knowledge graph, not from eval-row text), so
+    paraphrastic overlap with an eval row is only possible when both
+    the SFT row and the eval row independently describe the same graph
+    fact -- the structural-contamination case, which is accepted.
+  * **No relaxation of dedup thresholds across the v21 chain.** All
+    three shards and all six architecture ports (Qwen2.5-14B,
+    Qwen2.5-32B, Qwen3-30B-A3B-Thinking-2507, Foundation-Sec-8B,
+    Llama-3.1-8B-Instruct, Gemma-4-31B) consume the same three shard
+    files produced by the same n=13 / hit=1 / drop=50 dedup pass;
+    there is no per-architecture dedup recipe.
+
+### Reproducing the contamination check
+
+The three v21 shard reports are written by the build pipeline and live
+under each shard's build dir. To regenerate any one of them locally:
+
+```bash
+# Re-run dedup against the v21 Core shard's balanced corpus
+python tmpl_gen/scripts/dedup_against_evals.py \
+    --input           SFT/data/ift_data_2026_05_18_v21_core.balanced.json \
+    --filter-output   /tmp/v21_core_clean.json \
+    --eval-dir        SFT/test/benchmark_data \
+    --n 13 \
+    --hit-threshold   1 \
+    --drop-threshold  50 \
+    --max-fail        999999 \
+    --report          /tmp/v21_core_dedup_report.json
+
+# Same for TAA and CSE
+python tmpl_gen/scripts/dedup_against_evals.py \
+    --input           SFT/data/ift_data_2026_05_18_v21_taa.balanced.json \
+    --filter-output   /tmp/v21_taa_clean.json \
+    --eval-dir        SFT/test/benchmark_data \
+    --n 13 --hit-threshold 1 --drop-threshold 50 --max-fail 999999 \
+    --report          /tmp/v21_taa_dedup_report.json
+
+python tmpl_gen/scripts/dedup_against_evals.py \
+    --input           SFT/data/ift_data_2026_05_18_v21_cse.balanced.json \
+    --filter-output   /tmp/v21_cse_clean.json \
+    --eval-dir        SFT/test/benchmark_data \
+    --n 13 --hit-threshold 1 --drop-threshold 50 --max-fail 999999 \
+    --report          /tmp/v21_cse_dedup_report.json
+```
+
+A clean shard prints `scanned N corpus rows -> 0 dropped` and exits 0.
+Flagged-but-not-dropped rows (hit count between 1 and 49 inclusive) are
+written to the report file as the human audit surface but are retained
+in `--filter-output` per the structural-overlap rationale. A non-zero
+drop count writes the offending rows to the report and filters them
+out; the build is expected to inspect the report and reword the
+offending template(s) before re-launching the chain.
+
+### Scope and limitations
+
+  * **The audit is per-shard, not per-architecture.** All v21 ports
+    (Qwen2.5-14B / 32B, Qwen3-30B-A3B-Thinking-2507, Foundation-Sec-8B,
+    Llama-3.1-8B, Gemma-4-31B) consume the same three shard files
+    after dedup; the per-architecture variation is in optimiser /
+    `--template` / HF push target only, not in dataset content. One
+    pass of the contamination check per shard therefore certifies all
+    six architecture ports of that shard.
+  * **The audit covers the v21 SFT corpus, not the base models.**
+    Every base model on which v21 is fine-tuned has its own pretrain
+    contamination surface that is out of scope for this section. The
+    structural-overlap framing assumes the base model has already seen
+    the public MITRE / NIST / FIRST / CISA bundles via pretrain and
+    therefore that the held-out-vs-training-graph question is moot.
+  * **The audit covers the SFT path only, not the CPT (continued
+    pretraining) path** documented separately in `cpt/`. CPT has its
+    own leak protections; see 04292026 README §2.6 for the CPT-side
+    posture (carried forward unchanged to v21).
+  * **The audit is generation-time, not run-time.** Dedup runs once,
+    when each shard is built (Phase 5 of each watcher), and again on
+    demand via the snippet above. The trainer does not re-dedup at
+    every epoch -- the contract is that the dataset file on disk is
+    already clean when the trainer reads it.
+
 ## Provenance
 
 Forked 2026-05-18. See [`v21_plan.txt`](v21_plan.txt) §1 for the

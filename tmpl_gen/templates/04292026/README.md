@@ -93,6 +93,29 @@ would 4x-8x the total compute for negligible signal gain.
 
 ## 2. Contamination posture
 
+> **Carried forward to subsequent vintages.** The contamination
+> framework introduced here for v8 (verbatim-vs-structural taxonomy,
+> `dedup_against_evals.py` at n=13 word-grams, accepted structural
+> overlap on shared knowledge bases) is the project-wide posture and
+> is inherited unchanged by every vintage built after v8:
+> [v8.1](../04302026/README.md) (operational re-run on the v8.1
+> corpus); [v10](../05012026/README.md) and
+> [v11](../05032026/README.md) (soft-drop variant introduced:
+> `--drop-threshold 50` filters verbatim leakage while preserving
+> incidental shared CVE / MITRE vocabulary); [v14](../05082026/README.md)
+> and [v17](../05102026/README.md) (carry; v17 adds the synthetic
+> CrowdStrike substrate note); [v18 / v18.1](../05112026/);
+> [v19](../05152026/) and [v20](../05162026/README.md) (carry); and
+> [v21 (05182026)](../05182026/README-21.md#contamination-posture)
+> which contains the most exhaustive self-contained restatement of
+> the posture, scoped to the three-shard Core / TAA / CSE pipeline
+> and to all six v21 architecture ports. **For an audit scoped to a
+> single vintage, prefer that vintage's own README contamination
+> section; this v8 writeup is the canonical conceptual reference and
+> the per-benchmark structural-overlap matrix is reproduced (and
+> adapted where the benchmark portfolio shifted) in each downstream
+> vintage's section.**
+
 This section is the audit trail for the contamination question
 ("are the v8 SFT corpora leaking the AthenaBench / CyberMetric /
 CyberSOCEval / CTIBench evaluation signal into training?").
