@@ -421,6 +421,15 @@ __pycache__/
 SFT/test/responses
 SFT/test/responses/
 SFT/test/responses/*
+# Aggregated cost report (built by SFT/test/utils/build_cost_summary.py):
+# tracked so the leaderboard / report consumers always see the latest
+# numbers without needing access to the per-model response trees.
+!SFT/test/responses/cost_summary.tsv
+!SFT/test/responses/cost_summary.csv
+
+# Excel lock files (created while a workbook is open).
+~$*.xlsx
+~$*.xls
 
 # Athena Bench scrape / processing outputs.
 # These were previously tracked as Git LFS pointer files but most of the
