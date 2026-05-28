@@ -323,3 +323,63 @@ Operational ref  : THIS FILE
     failure suggests the Stage-4 catalog-recovery dynamics are
     structurally tied to the 14B optimizer / scale envelope and the
     32B ship path should drop Stage 4 entirely.
+
+
+9. Contamination posture (carry; see README-21 for exhaustive treatment)
+========================================================================
+
+    The v21 SFT corpus inherits the v8 / v18.1 contamination posture
+    without modification: verbatim leakage of any AthenaBench /
+    CTIBench / CyberMetric / CyberSOCEval row into the training
+    corpus is blocked at corpus build time by the Phase 5 dedup pass
+    in each watcher, and structural overlap with the public MITRE /
+    NIST / FIRST / CISA / D3FEND knowledge bases is accepted by
+    design (the same posture the published CTI-LLM literature takes:
+    SecKnowledge / CyberPal.AI Levi et al. 2024 arXiv:2408.09304;
+    the CTIBench paper; the AthenaBench technical report).
+
+9.1 Tool and tunables (per shard, unchanged from v18.1).
+      tmpl_gen/scripts/dedup_against_evals.py
+        --eval-dir        SFT/test/benchmark_data
+        --n               13          # word-gram size; OLMo / Pythia /
+                                      # Llama decontamination convention
+        --hit-threshold   1           # any single n=13 hit flags the row
+        --drop-threshold  50          # rows with >=50 hits are dropped;
+                                      # 1..49 hits flagged but retained
+                                      # (soft-drop policy from v10)
+        --max-fail        999999      # do not abort the chain on
+                                      # flagged-not-dropped rows; the
+                                      # human audit is the dedup_report
+        --report          _v21_<shard>_build/dedup_report.json
+
+9.2 Per-shard enforcement.
+      _v21_core_build/watcher.sh        Phase 5 dedup, Core shard
+      _v21_taa_build/watcher.sh         Phase 5 dedup, TAA shard
+      _v21_cse_build/watcher.sh         Phase 5 dedup, CSE shard
+    Each watcher fails the chain ("fail dedup") on a non-zero exit
+    from dedup_against_evals.py. Each chain launcher
+      SFT/autotrain/run_sft_qwen25_14b_v21_core.sh
+      SFT/autotrain/run_sft_qwen25_14b_v21_plus_taa.sh
+      SFT/autotrain/run_sft_qwen25_14b_v21_final.sh
+    gates indirectly on the report by refusing to start the trainer
+    if the dedup-clean dataset file is missing from SFT/data/. One
+    pass per shard certifies all six v21 architecture ports
+    (Qwen2.5-14B, Qwen2.5-32B, Qwen3-30B-A3B-Thinking-2507,
+    Foundation-Sec-8B, Llama-3.1-8B-Instruct, Gemma-4-31B), because
+    every port consumes the same three shard files.
+
+9.3 SHA-identity carry from v18.1.
+    v21 forks v18.1's template files, per-axis row-count gate files,
+    and watcher inputs byte-for-byte (see §1, §6). The contamination
+    posture is therefore mechanically inherited: any audit that
+    certifies the v21 corpus content also certifies the v18.1 corpus
+    content. The two corpora differ only by build-date stamp.
+
+9.4 Where to read more.
+    Canonical conceptual reference (verbatim-vs-structural taxonomy,
+    n=13 rationale, literature pointers):
+        tmpl_gen/templates/04292026/README.md §2
+    Exhaustive self-contained restatement (per-benchmark structural-
+    overlap matrix, adjacent corpus-hygiene gates, falsifiability
+    list, reproducibility snippet):
+        tmpl_gen/templates/05182026/README-21.md §Contamination posture

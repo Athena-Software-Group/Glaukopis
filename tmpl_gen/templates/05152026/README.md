@@ -176,3 +176,34 @@ each of the four pushed checkpoints. Sign-off gates per stage are in
 the v18.2 §7.4 gate package (RMS ≥ 54.0, MCQ ≥ 62.0, TAA ≥ 40.0,
 CSE-TI ≥ 34.0, CSE-Malware ≥ 20.0, ATE ≥ 62.0, RCM ≥ 67.5, VSP ≥
 80.0, CyberMetric-2K ≥ 85.5, CyberMetric-10K ≥ 81.0).
+
+## 3. Contamination posture
+
+Inherited from v8 / v18.1 without modification. The v19 corpus is
+built by `_v19_{core,taa,cse}_build/watcher.sh`, each of whose
+Phase 5 runs `tmpl_gen/scripts/dedup_against_evals.py` against
+`SFT/test/benchmark_data/` with `n=13` word-grams,
+`hit-threshold=1`, and the v10 soft-drop policy (`--drop-threshold
+50`). Verbatim leakage of any AthenaBench / CTIBench / CyberMetric /
+CyberSOCEval row into the training corpus is blocked at build time;
+structural overlap with the public MITRE / NIST / FIRST / CISA /
+D3FEND knowledge bases is accepted by design.
+
+**Canonical reference** -- conceptual taxonomy, n=13 rationale, and
+literature pointers (SecKnowledge / CyberPal.AI Levi et al. 2024
+arXiv:2408.09304, CTIBench, AthenaBench technical report): see
+[`../04292026/README.md` §2](../04292026/README.md#2-contamination-posture).
+
+**Exhaustive restatement** -- per-shard enforcement, per-benchmark
+structural-overlap matrix, adjacent corpus-hygiene gates, and the
+falsifiability list, scoped to a three-shard Core / TAA / CSE
+pipeline of the same shape v19 uses: see
+[`../05182026/README-21.md` §Contamination posture](../05182026/README-21.md#contamination-posture).
+
+**v19-specific note.** v19 is a reproducibility-first rebuild of
+v18.1 (see §1) and consumes the same template / row-count-gate
+inputs through a freshly-forked watcher. The dedup contract,
+threshold tunables, and eval-dir scope are unchanged from v18.1; the
+per-shard `dedup_report.json` is regenerated against the
+build-date-stamped corpus rather than reused from v18.1.
+

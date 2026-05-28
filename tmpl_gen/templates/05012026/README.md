@@ -270,3 +270,37 @@ slices, the manifest needs more multi-select coverage in v11.
 The dataset JSON itself is gitignored (227 MB); rsync the build
 artefact to the training host alongside `git pull origin main` to pick
 up the launcher and dataset registration.
+
+## 10. Contamination posture
+
+Inherited from v8 (`../04292026/README.md` §2) without modification.
+The v10 corpus is built by `_v10_build/watcher.sh`, whose Phase 5
+runs `tmpl_gen/scripts/dedup_against_evals.py` against
+`SFT/test/benchmark_data/` with `n=13` word-grams and
+`hit-threshold=1` -- verbatim leakage of any AthenaBench / CTIBench /
+CyberMetric / CyberSOCEval row into the training corpus is blocked at
+build time, and structural overlap with the public MITRE / NIST /
+FIRST / CISA / D3FEND knowledge bases is accepted by design.
+
+**Canonical reference** -- conceptual taxonomy (verbatim vs.
+structural), n=13 rationale anchored to the OLMo / Pythia / Llama
+MMLU / HellaSwag / BIG-bench decontamination passes, and literature
+pointers (SecKnowledge / CyberPal.AI Levi et al. 2024
+arXiv:2408.09304, the CTIBench paper, the AthenaBench technical
+report): see
+[`../04292026/README.md` §2](../04292026/README.md#2-contamination-posture).
+
+**Exhaustive restatement** -- per-shard enforcement, per-benchmark
+structural-overlap matrix, adjacent corpus-hygiene gates, and the
+falsifiability list, scoped to the v21 three-shard pipeline: see
+[`../05182026/README-21.md` §Contamination posture](../05182026/README-21.md#contamination-posture).
+
+**v10-specific note.** v10 introduces the **soft-drop** variant of
+the dedup pass: `--drop-threshold 50` retains rows with 1--49
+incidental n=13 hits (so the corpus is not stripped of common CVE /
+MITRE vocabulary that would otherwise legitimately co-occur with eval
+prompts) while still hard-filtering and reporting rows with >=50 hits.
+The n=13 / `hit-threshold=1` knobs themselves are unchanged from v8;
+the soft-drop is purely an audit-classification policy. Same posture
+carries forward to v11 and to every vintage built after.
+

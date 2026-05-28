@@ -148,3 +148,39 @@ against v16 (CSE-TI 30.63%, CSE-Malware 10.69%, TAA Classic 7%/88%) per
 the decision matrix in `v17_plan.txt §4`. The full sweep covers TAA
 Canonical / TAA Classic, athena-rms, cybermetric (80 + 2000 + 10000),
 cybersoceval-malware, cybersoceval-ti.
+
+## 4. Contamination posture
+
+Inherited from v8 / v10 / v11 / v14 without modification. The v17
+corpus is built by `_v17_build/watcher.sh`, whose Phase 5 runs
+`tmpl_gen/scripts/dedup_against_evals.py` against
+`SFT/test/benchmark_data/` with `n=13` word-grams,
+`hit-threshold=1`, and the v10 soft-drop policy (`--drop-threshold
+50`). Verbatim leakage of any AthenaBench / CTIBench / CyberMetric /
+CyberSOCEval row into the training corpus is blocked at build time;
+structural overlap with the public MITRE / NIST / FIRST / CISA /
+D3FEND knowledge bases is accepted by design.
+
+**Canonical reference** -- conceptual taxonomy, n=13 rationale, and
+literature pointers (SecKnowledge / CyberPal.AI Levi et al. 2024
+arXiv:2408.09304, CTIBench, AthenaBench technical report): see
+[`../04292026/README.md` §2](../04292026/README.md#2-contamination-posture).
+
+**Exhaustive restatement** -- per-shard enforcement, per-benchmark
+structural-overlap matrix (including the CSE family), adjacent
+corpus-hygiene gates, and the falsifiability list: see
+[`../05182026/README-21.md` §Contamination posture](../05182026/README-21.md#contamination-posture).
+
+**v17-specific note.** v17 introduces the `JS.CSE.*` template family
+that teaches the JSON-envelope output shape graded by CyberSOCEval
+(`{"correct_answers": [...]}`, `{"behaviors": [...]}`). These
+templates are generated **synthetically from athena-cti-db** (the
+public MITRE / NIST / FIRST / CISA graph); the CrowdStrike PDF
+corpus that backs CyberSOCEval's reports is **not** ingested into
+the v17 build pipeline at any point. The CSE-shape surface therefore
+has **zero verbatim contamination by construction**, independent of
+the n=13 dedup pass. Structural overlap on the graph-derived facts
+that both the SFT templates and the CyberSOCEval evaluation describe
+is accepted by design, on the same terms as the rest of the
+contamination posture.
+

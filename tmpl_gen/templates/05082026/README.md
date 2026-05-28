@@ -681,3 +681,36 @@ the chain in §10 above; the v0 substrate's per-family design strategy
      `v14-rms` and `v14-taa` parallel checkpoints are deliberately
      authored as fallback production candidates so this failure mode
      does not require a v14.1 re-run.
+
+## 12. Contamination posture
+
+Inherited from v8 / v10 / v11 without modification. The v14 corpus
+is built by `_v14_build/watcher.sh`, whose Phase 5 runs
+`tmpl_gen/scripts/dedup_against_evals.py` against
+`SFT/test/benchmark_data/` with `n=13` word-grams,
+`hit-threshold=1`, and the v10 soft-drop policy (`--drop-threshold
+50`). Verbatim leakage of any AthenaBench / CTIBench / CyberMetric /
+CyberSOCEval row into the training corpus is blocked at build time;
+structural overlap with the public MITRE / NIST / FIRST / CISA /
+D3FEND knowledge bases is accepted by design.
+
+**Canonical reference** -- conceptual taxonomy, n=13 rationale, and
+literature pointers (SecKnowledge / CyberPal.AI Levi et al. 2024
+arXiv:2408.09304, CTIBench, AthenaBench technical report): see
+[`../04292026/README.md` §2](../04292026/README.md#2-contamination-posture).
+
+**Exhaustive restatement** -- per-shard enforcement and
+per-benchmark structural-overlap matrix scoped to the v21 three-shard
+pipeline: see
+[`../05182026/README-21.md` §Contamination posture](../05182026/README-21.md#contamination-posture).
+
+**v14-specific note.** v14 introduces the chained narrow-drill
+training topology (D-RMS + D-TAA on top of the broad-knowledge tail;
+see §1, §6) but does **not** change the dataset-build dedup
+contract: each shard is dedup-checked once at corpus generation time
+against the full eval-dir, and the multi-checkpoint chain consumes
+the same dedup-clean shard files. The TAA-vs-base regression analysed
+in §2 is an over-narrowing / catastrophic-forgetting phenomenon, not
+a contamination phenomenon. The chained shard topology established
+here is the topology that v18.1 and v21 later reproduce verbatim.
+

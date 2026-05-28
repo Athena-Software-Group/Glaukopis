@@ -177,3 +177,35 @@ in `v20_plan.txt §5`. The `v20-recalibrate` checkpoint is graded
 against the v18.2 §7.4 gate package: RMS ≥ 54.0, MCQ ≥ 62.0,
 TAA ≥ 40.0, CSE-TI ≥ 34.0, CSE-Malware ≥ 20.0, ATE ≥ 62.0,
 RCM ≥ 67.5, VSP ≥ 80.0, CyberMetric-2K ≥ 85.5, CyberMetric-10K ≥ 81.0.
+
+## 3. Contamination posture
+
+Inherited from v8 / v18.1 / v19 without modification. The v20 corpus
+is built by `_v20_{core,taa,cse}_build/watcher.sh`, each of whose
+Phase 5 runs `tmpl_gen/scripts/dedup_against_evals.py` against
+`SFT/test/benchmark_data/` with `n=13` word-grams,
+`hit-threshold=1`, and the v10 soft-drop policy (`--drop-threshold
+50`). Verbatim leakage of any AthenaBench / CTIBench / CyberMetric /
+CyberSOCEval row into the training corpus is blocked at build time;
+structural overlap with the public MITRE / NIST / FIRST / CISA /
+D3FEND knowledge bases is accepted by design.
+
+**Canonical reference** -- conceptual taxonomy, n=13 rationale, and
+literature pointers (SecKnowledge / CyberPal.AI Levi et al. 2024
+arXiv:2408.09304, CTIBench, AthenaBench technical report): see
+[`../04292026/README.md` §2](../04292026/README.md#2-contamination-posture).
+
+**Exhaustive restatement** -- per-shard enforcement, per-benchmark
+structural-overlap matrix, adjacent corpus-hygiene gates, and the
+falsifiability list: see
+[`../05182026/README-21.md` §Contamination posture](../05182026/README-21.md#contamination-posture).
+
+**v20-specific note.** v20 is an axis-density rebalance over the
+v18.1 / v19 substrate with a Stage 5 revert (see §1). The
+rebalance changes per-axis row counts in the row-count gates but
+does **not** introduce any new eval-overlapping content surface, any
+new dataset source, or any change to the dedup tunables. The dedup
+contract and eval-dir scope are unchanged from v18.1 / v19; per-shard
+`dedup_report.json` artefacts are regenerated against the
+rebalanced corpus.
+

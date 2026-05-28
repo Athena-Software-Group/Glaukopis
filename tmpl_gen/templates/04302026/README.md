@@ -137,6 +137,19 @@ audit actually checks.
 
 ## 2. Contamination posture
 
+> **Inherited from v8 (canonical) and carried forward to v21
+> (exhaustive).** The verbatim-vs-structural taxonomy, the n=13
+> word-gram threshold rationale, and the literature anchors
+> (SecKnowledge / CyberPal.AI, CTIBench, AthenaBench) are documented
+> in full at
+> [`../04292026/README.md` §2](../04292026/README.md#2-contamination-posture).
+> The most exhaustive self-contained restatement -- scoped to the
+> three-shard Core / TAA / CSE pipeline and to all six architecture
+> ports -- is at
+> [`../05182026/README-21.md` §Contamination posture](../05182026/README-21.md#contamination-posture).
+> The subsections below restate the v8 posture with the v8.1-specific
+> numbers.
+
 This section is the v8.1 audit trail for the contamination question
 ("is the v8.1 SFT corpus leaking the AthenaBench / CTIBench /
 CyberMetric / CyberSOCEval evaluation signal into training?").

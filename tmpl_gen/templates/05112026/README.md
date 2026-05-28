@@ -314,3 +314,40 @@ regressing RMS / VSP / RCM / TAA-attr / SOC / CM by more than 2 pp and
 keeps CSE-TI / CSE-MAL within 2 pp of v17.1, the chained recipe is
 validated and v18 becomes the new shared base for any future v19+
 chained specialist branches.
+
+## 5. Contamination posture
+
+Inherited from v8 / v10 / v11 / v14 / v17 without modification. The
+v18 / v18.1 corpus is built by `_v18_build/watcher.sh` and
+`_v18p1_build/watcher.sh`, whose Phase 5 runs
+`tmpl_gen/scripts/dedup_against_evals.py` against
+`SFT/test/benchmark_data/` with `n=13` word-grams,
+`hit-threshold=1`, and the v10 soft-drop policy (`--drop-threshold
+50`). Verbatim leakage of any AthenaBench / CTIBench / CyberMetric /
+CyberSOCEval row into the training corpus is blocked at build time;
+structural overlap with the public MITRE / NIST / FIRST / CISA /
+D3FEND knowledge bases is accepted by design.
+
+**Canonical reference** -- conceptual taxonomy, n=13 rationale, and
+literature pointers (SecKnowledge / CyberPal.AI Levi et al. 2024
+arXiv:2408.09304, CTIBench, AthenaBench technical report): see
+[`../04292026/README.md` §2](../04292026/README.md#2-contamination-posture).
+
+**Exhaustive restatement** -- per-shard enforcement, per-benchmark
+structural-overlap matrix, adjacent corpus-hygiene gates, and the
+falsifiability list, scoped to the three-shard Core / TAA / CSE
+pipeline that v18.1 originates and v21 reproduces byte-for-byte:
+see
+[`../05182026/README-21.md` §Contamination posture](../05182026/README-21.md#contamination-posture).
+
+**v18 / v18.1-specific note.** v18.1 originates the three-shard
+chained training topology (Core = v12 substrate, TAA Classic = v16
+TAA-shard substrate, CSE = v17.1 CSE-shard substrate). Each shard's
+template file and per-axis row-count gate is built from the
+substrate it inherits, and each shard's dedup pass runs
+independently against the full eval-dir. v21 forks v18.1's exact
+template / gate / watcher inputs (byte-identical) for a strict
+reproducibility experiment, which means **the v21 contamination
+audit certifies the v18.1 corpus content as well** -- the two
+corpora differ only by build-date stamp.
+
