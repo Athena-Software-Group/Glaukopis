@@ -1,0 +1,730 @@
+\documentclass[unnumsec,webpdf,contemporary,large]{oup-authoring-template}
+%% ---------------------------------------------------------------------------
+%% Glaukopis: Cyber Threat Intelligence Language Model Training:
+%% Optimizing Domain Specific LLM Performance
+%%
+%% Worth, Cardei, Alam. Formatted for the OUP contemporary
+%% author-year template. Compile with pdfLaTeX.
+%%
+%% NOTE: This template already loads amsmath, amssymb, hyperref, graphicx,
+%% url, natbib, etc. Do NOT re-load them.
+%% ---------------------------------------------------------------------------
+
+\graphicspath{{Fig/}}
+
+%% Theorem-style declarations (OUP-standard; kept for completeness even if unused)
+\theoremstyle{thmstyleone}
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}[theorem]{Proposition}
+\theoremstyle{thmstyletwo}
+\newtheorem{example}{Example}
+\newtheorem{remark}{Remark}
+\theoremstyle{thmstylethree}
+\newtheorem{definition}{Definition}
+
+\begin{document}
+
+\journaltitle{Journal of Cybersecurity}
+\DOI{DOI added during production}
+\copyrightyear{2026}
+\pubyear{2026}
+\vol{XX}
+\issue{x}
+\access{Published: Date added during production}
+\appnotes{Paper}
+
+\firstpage{1}
+
+\title[Glaukopis: CTI LLM Training]{Glaukopis: Cyber Threat Intelligence Language Model Training: Optimizing Domain Specific LLM Performance}
+
+\author[1,$\ast$]{Peter J. Worth Jr.}
+\author[1]{Ionut Cardei}
+\author[1]{Md Tanvirul Alam}
+
+\address[1]{\orgdiv{Department of Electrical Engineering and Computer Science}, \orgname{Florida Atlantic University}, \orgaddress{\street{777 Glades Road}, \postcode{33431}, \state{Boca Raton, FL}, \country{United States}}}
+
+\corresp[$\ast$]{Corresponding author. \href{mailto:pworth@athenasecuritygroup.com}{pworth@athenasecuritygroup.com}}
+
+\received{Date}{0}{Year}
+\revised{Date}{0}{Year}
+\accepted{Date}{0}{Year}
+
+\abstract{Large language models (LLMs) are increasingly applied to cybersecurity tasks ranging from vulnerability analysis to cyber threat intelligence (CTI) reporting. However, generic foundation models often lack the domain knowledge, calibration, and reasoning needed for high-stakes CTI workflows, while frontier models raise cost, latency, and privacy concerns. Recent work from IBM on CyberPal.AI and its follow-on line ``Toward Cybersecurity-Expert Small Language Models'' demonstrates that expert-curated instruction fine-tuning (IFT) can transform small language models (SLMs) into capable cybersecurity assistants when paired with high-quality, domain-specific instruction datasets such as SecKnowledge and SecKnowledge~2.0 \cite{levi2024cyberpal,levi2025toward}.
+In parallel, the CTI community has developed rich knowledge bases (MITRE ATT\&CK, CVE, CAPEC, CWE, ENGAGE) and domain-specific benchmarks such as CTIBench and, most recently, AthenaBench---a dynamic, multi-task CTI benchmark that integrates live data sources and emphasizes applied security reasoning \cite{strom2018mitreattck,mitreCVE,mitreCWE,mitreCAPEC,alam2024ctibench,alam2025athenabench}.
+This paper surveys the research foundations underlying an ongoing effort at Florida Atlantic University and Athena Labs (Athena Security Group) to build instruction-tuned cybersecurity SLMs using a template-based IFT data generation system grounded in a CTI knowledge graph. We (1) review instruction fine-tuning and SLMs with emphasis on CyberPal and SecKnowledge; (2) describe the role of CTI knowledge bases and knowledge graphs in structuring cyber reasoning tasks; (3) situate Athena's template-based IFT generator within this landscape; and (4) analyze the state of cybersecurity LLM benchmarking, with particular focus on AthenaBench as an emerging standard for CTI evaluation. We conclude by outlining research directions for aligning template-generated IFT corpora, cybersecurity SLMs, and dynamic CTI benchmarks.}
+
+\keywords{instruction fine-tuning; small language models; cyber threat intelligence; CTI knowledge graphs; CyberPal; AthenaBench; reinforcement learning with verifiable rewards}
+
+\keywords[Abbreviations]{ATT\&CK, CAPEC, CoT, CTI, CVE, CWE, GRPO, IFT, KEV, KG, LLM, MCQA, MDP, NVD, PPO, RL, RLHF, RLVR, SLM, SOC, TD, TTP}
+
+\maketitle
+
+\section{Introduction}
+
+LLMs have rapidly become integral to many security workflows: summarizing threat reports, mapping indicators to MITRE ATT\&CK, triaging vulnerabilities, and assisting with detection engineering. Surveys of LLMs for security show use cases spanning vulnerability detection, malware analysis, CTI, phishing detection, and SOC automation, but also highlight persistent issues: hallucinations, shallow pattern matching rather than causal reasoning, and limited ability to operate on up-to-date threat information \cite{levi2024cyberpal,liu2024cyberbench}.
+
+Two trends have emerged in response:
+
+\begin{itemize}
+  \item \textbf{Domain-specific models and datasets.} Models such as SecureBERT and CySecBERT pretrain or adapt transformers on cybersecurity corpora, improving representation quality for CTI and related tasks. Instruction-tuned cybersecurity assistants such as Lily-Cybersecurity-7B and IBM's CyberPal models further specialize LLMs for interactive security workflows using cyber-focused instruction--response pairs \cite{levi2024cyberpal}.
+  \item \textbf{Domain-specific benchmarks.} Benchmarks such as CyberMetric, CyberBench, SecEval, CTIBench, and SEvenLLM-Bench evaluate security knowledge, reasoning, and incident analysis in LLMs \cite{alam2024ctibench,ji2024sevenllm,liu2024cyberbench}.
+\end{itemize}
+
+However, many existing benchmarks are static and quickly fall out of sync with the evolving threat landscape. AthenaBench addresses this by introducing a \emph{dynamic CTI benchmark} that continuously draws from live sources (MITRE ATT\&CK, NVD, current APT reports) to construct tasks targeting CTI knowledge, vulnerability severity, root cause mapping, threat actor attribution, mitigation strategies, and attack technique extraction \cite{alam2025athenabench}.
+
+In parallel, the IFT design document by Cardei describes an \emph{IFT Dataset Generation System} that compiles high-level templates into (instruction, question, answer) triples grounded in an ASG Neo4j CTI graph built from MITRE and other CTI sources \cite{cardei2025ift}. This system is intended to produce large, structured, and incrementally refreshable cybersecurity IFT corpora for training SLMs specialized to CTI workflows.
+
+This paper positions that work in its research context:
+\begin{itemize}
+  \item Section~\ref{sec:ift-slm} reviews instruction fine-tuning and small language models, emphasizing IBM's CyberPal line.
+  \item Section~\ref{sec:cti-kg} discusses CTI, CTI knowledge bases, and the role of knowledge graphs and templates in generating IFT data.
+  \item Section~\ref{sec:benchmarks} surveys cybersecurity LLM benchmarks, highlighting AthenaBench and its relationship to CTIBench and other efforts.
+  \item Section~\ref{sec:athena-ift} connects these strands to the Athena IFT generator design and outlines research opportunities.
+\end{itemize}
+
+
+\section{Instruction Fine-Tuning: History and Context}
+\label{sec:ift-history}
+
+Instruction fine-tuning (IFT) has emerged as a foundational paradigm for aligning large language models (LLMs) with human intent and task-oriented usage. Rather than treating language modeling as an end in itself, IFT reframes downstream interaction as the problem of mapping natural-language instructions to correct, task-specific outputs. Although early work on task fine-tuning existed prior to large-scale transformers, the modern formulation of instruction fine-tuning coalesced through three seminal research efforts between 2021 and 2022. Together, these works established the empirical phenomenon, the alignment pipeline, and the scalability properties that underpin nearly all contemporary instruction-tuned models, including domain-specialized systems such as CyberPal.AI and the Athena CTI instruction framework.
+
+\subsection{FLAN: Instruction Tuning as a Generalization Paradigm}
+
+The first widely recognized formulation of instruction fine-tuning was introduced by Wei et al.\ in \emph{Finetuned Language Models Are Zero-Shot Learners} (FLAN) \cite{wei2022flan}. This work demonstrated that large pretrained language models, when fine-tuned on a sufficiently diverse collection of tasks expressed uniformly as natural-language instructions, exhibit strong zero-shot generalization to unseen tasks.
+
+FLAN unified dozens of existing NLP datasets by converting each task into multiple instruction templates (e.g., question answering, sentiment analysis, textual entailment, translation). The authors showed that instruction formatting itself---explicitly describing the task in natural language---was a critical factor in enabling generalization, often rivaling or surpassing few-shot prompting on much larger models.
+
+The central insight of FLAN is that \emph{instruction-following is a learnable capability} rather than an emergent property of scale alone. By training on heterogeneous instruction--response pairs, the model internalizes a latent task distribution that allows it to interpret novel instructions without task-specific fine-tuning. This result established instruction fine-tuning as a distinct and powerful paradigm, forming the conceptual foundation for subsequent work in alignment and domain adaptation.
+
+\subsection{InstructGPT: Instruction Following and Alignment with Human Feedback}
+
+While FLAN established the effectiveness of instruction fine-tuning for generalization, it did not directly address issues of safety, helpfulness, or alignment with human preferences. These concerns were tackled by Ouyang et al.\ in \emph{Training Language Models to Follow Instructions with Human Feedback} (InstructGPT) \cite{ouyang2022instructgpt}.
+
+InstructGPT introduced a three-stage training pipeline that remains the basis for many production LLMs:
+\begin{enumerate}
+  \item \textbf{Supervised instruction fine-tuning (SFT)} on human-written instruction--response pairs;
+  \item \textbf{Preference modeling} using human rankings of multiple model outputs;
+  \item \textbf{Reinforcement learning from human feedback (RLHF)} to optimize model behavior toward preferred responses.
+\end{enumerate}
+
+A key result of this work was that relatively small models, when instruction-tuned and aligned via RLHF, were preferred by human evaluators over much larger pretrained models. This demonstrated that alignment and instruction-following quality can outweigh raw model scale.
+
+From a historical perspective, InstructGPT complements FLAN by transforming instruction fine-tuning from a purely performance-driven technique into a broader alignment framework. Together, FLAN and InstructGPT established instruction fine-tuning as both a generalization mechanism and a control interface between humans and large language models.
+
+\subsection{FLAN-T5: Scaling Instruction Fine-Tuning}
+
+The third pillar of instruction fine-tuning was established by Chung et al.\ in \emph{Scaling Instruction-Finetuned Language Models} (FLAN-T5) \cite{chung2022flant5}. This work systematically explored how instruction fine-tuning behaves across model sizes, task mixtures, and dataset scales.
+
+FLAN-T5 expanded the instruction corpus to thousands of tasks and demonstrated that instruction fine-tuning consistently improves performance across a wide range of downstream benchmarks, including reasoning and knowledge-intensive tasks. Importantly, the authors showed that instruction fine-tuning benefits models of all sizes, from small to very large, and that gains persist even as base models scale.
+
+This result established instruction fine-tuning as a \emph{scalable and robust training paradigm}, rather than a technique limited to a narrow regime. It also reinforced the idea that the diversity and structure of instruction data are as important as parameter count---a conclusion that directly motivates modern domain-specialized instruction datasets.
+
+\subsection{Implications for Domain-Specialized Instruction Tuning}
+
+Together, FLAN, InstructGPT, and FLAN-T5 define the historical and conceptual foundations of instruction fine-tuning:
+\begin{itemize}
+  \item FLAN establishes that instruction-following can be learned and generalized;
+  \item InstructGPT integrates instruction fine-tuning with human alignment objectives;
+  \item FLAN-T5 demonstrates that instruction fine-tuning scales across model sizes and task mixtures.
+\end{itemize}
+
+Recent domain-specific efforts---such as CyberPal.AI and SecKnowledge \cite{levi2024cyberpal,levi2025toward}---extend these principles by grounding instruction data in structured cybersecurity knowledge bases. The Athena CTI instruction framework further advances this trajectory by combining symbolic, graph-based instruction templates with benchmark-driven iteration via AthenaBench. In this sense, modern CTI-focused instruction fine-tuning can be viewed as a third-generation evolution of the original FLAN paradigm: instruction learning grounded not only in natural language, but in explicit domain structure and formal knowledge representations.
+
+
+\section{Instruction Fine-Tuning and Small Language Models}
+\label{sec:ift-slm}
+
+\subsection{From Pretraining to Instruction-Following}
+
+Pretrained LLMs are optimized for next-token prediction on broad text corpora, not for following explicit user instructions. Instruction tuning---also called instruction fine-tuning (IFT)---fine-tunes such models on labeled datasets of instructions and target outputs, improving their ability to interpret prompts as tasks rather than mere text prefixes \cite{wei2022flan,ouyang2022instructgpt}.
+
+Key characteristics of instruction tuning include:
+
+\begin{itemize}
+  \item \textbf{Data format.} Each sample consists of an instruction, optional context, and a desired output.
+  \item \textbf{Supervised objective.} The model is trained to maximize log-likelihood of the reference output given the instruction and context, often combining a standard language modeling loss with an instruction-following loss.
+  \item \textbf{Generalization across tasks.} Instruction datasets deliberately mix many task types (QA, classification, summarization, transformation) so that the fine-tuned model can generalize to novel instructions, as shown by InstructGPT and FLAN \cite{wei2022flan,ouyang2022instructgpt}.
+\end{itemize}
+
+IFT is now routine in the model lifecycle: base models (e.g., LLaMA-like, Granite, Qwen) are first pretrained, then instruction-tuned, and often further refined via reinforcement learning from human feedback (RLHF) and safety fine-tunes \cite{ouyang2022instructgpt}.
+
+\subsection{Instruction Fine-Tuning for Cybersecurity}
+
+Cybersecurity introduces domain-specific challenges:
+
+\begin{itemize}
+  \item Technical jargon and heterogeneous schemas (CVE, CWE, CAPEC, ATT\&CK).
+  \item Need for structured, evidence-grounded outputs (e.g., CVSS vectors, CWE IDs, ATT\&CK mappings).
+  \item Rapid concept drift as new vulnerabilities and campaigns appear.
+\end{itemize}
+
+Several efforts address this via cyber-specific instruction data:
+
+\begin{itemize}
+  \item \textbf{SEvenLLM.} Ji et al.\ construct a bilingual cybersecurity instruction dataset and a CTI benchmark (SEvenLLM-Bench) from real incident reports, converting raw text into supervised QA, extraction, and reasoning tasks across many task types \cite{ji2024sevenllm}.
+  \item \textbf{CyberBench / CyberInstruct.} Liu et al.\ create CyberInstruct, a set of cyber-specific instruction tasks drawn from logs, alerts, and vulnerability descriptions, used to train models evaluated on CyberBench \cite{liu2024cyberbench}.
+  \item \textbf{Lily-Cybersecurity-7B.} Lily is a Mistral-7B fine-tune on hand-crafted cybersecurity and hacking instructions, later enriched by an LLM for style and consistency \cite{liu2024cyberbench}.
+\end{itemize}
+
+The \textbf{CyberPal.AI} line of work from IBM pushes this further by tightly integrating CTI knowledge bases and detection artifacts into an expert-driven instruction pipeline:
+
+\begin{itemize}
+  \item \textbf{SecKnowledge (CyberPal 1.0).} Levi et al.\ build an instruction dataset by mining MITRE ATT\&CK, Sigma rules, SIEM rules, adversary emulation plans, and threat reports, then using domain experts to define instruction schemas (e.g., mapping logs to ATT\&CK techniques, suggesting mitigations) and populate them semi-automatically \cite{levi2024cyberpal}.
+  \item \textbf{IFT results.} CyberPal models instruction-tuned on SecKnowledge (based on LLaMA-like and other open models) outperform base models by up to roughly 24\% on security tasks and show improved robustness on CTI benchmarks \cite{levi2024cyberpal}.
+\end{itemize}
+
+The follow-on \textbf{``Toward Cybersecurity-Expert Small Language Models''} paper extends this to SecKnowledge~2.0, enriching instructions with chain-of-thought (CoT) rationales and designing a pipeline with expert-in-the-loop validation and LLM-guided knowledge retrieval, then training cybersecurity-expert SLMs (4B--20B parameter models) that rival or surpass much larger general models on CTI tasks \cite{levi2025toward}.
+
+These works demonstrate that expert-designed, knowledge-grounded instruction datasets can transform general LLMs into specialized CTI assistants with strong reasoning and reduced hallucination---precisely the niche targeted by the Athena template-based IFT system.
+
+\subsection{Small Language Models for Cybersecurity}
+
+SLMs---roughly 2--20B parameters---are increasingly attractive for cybersecurity:
+
+\begin{itemize}
+  \item \textbf{Deployment constraints.} Many SOC and CTI environments require on-premises, air-gapped, or ``bring-your-own-model'' setups for regulatory and confidentiality reasons.
+  \item \textbf{Latency and cost.} Incident response and detection engineering often require low-latency responses and large volumes of queries; SLMs are simpler to host and scale.
+  \item \textbf{Specialization.} With strong domain IFT, SLMs can match or exceed larger general models on specialized tasks while being easier to retrain as CTI sources evolve \cite{levi2025toward}.
+\end{itemize}
+
+CyberPal~2.0 explicitly targets this: it compares cybersecurity-expert SLMs (4B--20B) against both larger open models and proprietary systems across CTI knowledge tasks, finding that well-instruction-tuned SLMs can achieve competitive or superior performance on several domains, especially when trained with CoT-enriched instructions and CTI-aware formatting \cite{levi2025toward}.
+
+The emerging picture is that \emph{IFT + SLM + domain knowledge} is a pragmatic recipe for CTI: the heavy lifting (linguistic knowledge) comes from pretraining; domain semantics and task formats come from IFT; runtime and deployment practicality come from SLM size. The Athena IFT dataset generation system is designed to feed this recipe by generating large quantities of high-fidelity instruction triples directly from CTI knowledge bases \cite{cardei2025ift}.
+
+
+% -------------------------------------------------------------------------
+% Reinforcement Learning Section
+% -------------------------------------------------------------------------
+
+\section{Reinforcement Learning: Historical Developments and Current State}
+\label{sec:rl-history}
+
+Reinforcement Learning (RL) is the study of how agents learn to select actions through interaction with an environment so as to maximize cumulative reward.
+Although the modern field is often associated with machine learning and deep neural networks, its intellectual roots span multiple disciplines: experimental psychology (trial-and-error learning), operations research (stochastic control), and computer science (adaptive algorithms).
+This section summarizes major research milestones in RL, emphasizing foundational concepts, canonical algorithmic breakthroughs, and key inflection points that shaped the modern landscape.
+
+\subsection{Origins: Trial-and-Error Learning and Early Decision Theory}
+
+One intellectual root of RL lies in early psychological theories of learning by consequences.
+Thorndike's \emph{Law of Effect} formalized the idea that behaviors followed by satisfying outcomes become more likely, providing a conceptual precursor to reward-driven adaptation \cite{thorndike1898animal}.
+Skinner's operant conditioning further advanced this framework by emphasizing reinforcement schedules and behavioral shaping, ideas that later influenced computational notions of reward and feedback \cite{skinner1938behavior}.
+
+In parallel, statistical decision theory developed formal treatments of sequential decision-making under uncertainty.
+A foundational example is the multi-armed bandit problem, introduced in a modern form by Robbins \cite{robbins1952sequential}.
+Bandits later became a central sub-area of RL and online learning, with influential developments such as Thompson sampling \cite{thompson1933likelihood},
+the Gittins index \cite{gittins1979bandit},
+and regret-minimizing algorithms such as UCB \cite{auer2002finite}.
+
+\subsection{Formal Foundations: Dynamic Programming and Markov Decision Processes}
+
+The mathematical foundations of RL crystallized through dynamic programming (DP) and Markov decision processes (MDPs).
+Bellman introduced DP and the principle of optimality, providing a general method for computing optimal value functions through recursive decomposition \cite{bellman1957dynamic}.
+Howard's monograph systematized MDPs and policy iteration, establishing a formal basis for optimal sequential decision-making in stochastic environments \cite{howard1960dynamic}.
+
+These works framed the core objects that remain central today: states, actions, transition dynamics, reward functions, value functions, and optimal policies.
+They also clarified the algorithmic blueprint for many RL methods: estimate (or learn) value functions and improve policies iteratively (policy iteration), or directly compute optimal value functions (value iteration) \cite{bellman1957dynamic,howard1960dynamic}.
+
+\subsection{Computational Reinforcement Learning: TD Learning, Actor--Critic, and Q-Learning}
+
+The modern computational RL era emerged as researchers sought methods that could learn from experience without a known model of the environment.
+A key breakthrough was temporal-difference (TD) learning, introduced by Sutton, which combined ideas from Monte Carlo evaluation and DP bootstrapping \cite{sutton1988td}.
+TD learning enabled agents to learn value functions online from partial episodes and noisy experience, becoming a cornerstone of RL.
+
+Around the same period, actor--critic architectures appeared as an approach to combine policy learning (the \emph{actor}) with value estimation (the \emph{critic}).
+Barto, Sutton, and Anderson showed that ``neuronlike adaptive elements'' could solve learning control problems via such interacting components, foreshadowing modern policy-gradient actor--critic methods \cite{barto1983neuronlike}.
+
+Another landmark was Q-learning, introduced by Watkins (and later formalized with Dayan), which provided an off-policy TD control method capable of learning optimal action-values without a model and without requiring on-policy sampling \cite{watkins1989thesis,watkins1992qlearning}.
+This was particularly influential because it separated learning about the optimal policy from the behavior policy used to explore, enabling flexible exploration strategies.
+
+\subsection{Function Approximation and ``Approximate Dynamic Programming''}
+
+As RL moved beyond small tabular problems, function approximation became essential.
+Least-squares and approximation methods improved sample efficiency and stability for value estimation, including least-squares temporal difference learning (LSTD) \cite{bradtke1996lstd}.
+Policy iteration combined with function approximation led to influential algorithms such as Least-Squares Policy Iteration (LSPI), which helped bridge RL and supervised regression methods \cite{lagoudakis2003lspi}.
+Batch RL and fitted methods (e.g., fitted Q iteration) further advanced the use of regression trees and other approximators for value learning \cite{ernst2005tree}.
+
+Policy-gradient methods developed as a complementary direction, directly optimizing parameterized policies.
+Williams' REINFORCE provided a widely cited policy-gradient estimator \cite{williams1992reinforce}.
+Later work clarified policy-gradient methods with function approximation and established theoretical foundations for actor--critic algorithms \cite{sutton2000policygradient,konda2000actorcritic}.
+
+\subsection{Model-Based RL and Planning: From Dyna to Modern Learned World Models}
+
+Model-based RL explores how learning a model of environment dynamics can reduce sample complexity by enabling planning and simulated experience.
+Sutton's Dyna architecture unified learning, planning, and acting: agents learn a model, generate simulated transitions, and update value/policy estimates using both real and imagined data \cite{sutton1990dyna}.
+This integration of learning and planning remains a recurring theme, especially in robotics and safety-critical settings.
+
+In continuous control and robotics, model-based policy search methods such as PILCO highlighted the potential for very data-efficient learning by combining probabilistic dynamics models with policy optimization \cite{deisenroth2011pilco}.
+More recent work revisits model-based RL at scale using neural latent dynamics (``world models'') and imagination-based rollouts \cite{hafner2020dreamer,janner2019mbpo}.
+
+\subsection{The Deep RL Inflection Point: DQN and Beyond}
+
+The modern deep RL era is often traced to Deep Q-Networks (DQN), which combined Q-learning with deep convolutional networks and introduced key stabilizing mechanisms such as experience replay and target networks \cite{mnih2015dqn}.
+DQN's Atari results demonstrated that a single architecture could learn control policies from high-dimensional sensory inputs across many tasks, catalyzing broad interest in RL as a general-purpose learning framework.
+
+Subsequent work addressed known instabilities and improved performance through algorithmic refinements such as Double DQN \cite{hasselt2016double},
+prioritized experience replay \cite{schaul2016prioritized},
+distributional RL \cite{bellemare2017distributional},
+and integrated combinations (e.g., Rainbow) \cite{hessel2018rainbow}.
+
+In parallel, policy-gradient methods became dominant for continuous control and high-dimensional action spaces.
+Trust Region Policy Optimization (TRPO) and Proximal Policy Optimization (PPO) became widely used due to favorable stability/performance tradeoffs \cite{schulman2015trpo,schulman2017ppo}.
+Actor--critic methods such as A3C and deterministic policy gradients (DDPG) further expanded the practical toolkit \cite{mnih2016a3c,lillicrap2016ddpg}.
+Entropy-regularized objectives (maximum-entropy RL) culminated in algorithms such as Soft Actor-Critic (SAC), which improved stability and exploration in continuous domains \cite{haarnoja2018sac}.
+
+\subsection{Game-Playing Milestones: AlphaGo, AlphaZero, and MuZero}
+
+A major public milestone was AlphaGo, which combined deep neural networks with Monte Carlo tree search (MCTS) to defeat top human Go players \cite{silver2016alphago}.
+AlphaZero simplified the approach by learning entirely from self-play without human expert data, demonstrating that general game-playing competence could emerge from a unified RL framework \cite{silver2017alphazero}.
+MuZero extended these ideas by learning a latent dynamics model sufficient for planning, enabling strong performance on Atari and board games without access to the true environment dynamics \cite{schrittwieser2020muzero}.
+
+These systems helped popularize several themes: scalable self-play, the synergy of planning and learning, and the value of strong inductive biases in model architecture and training regimes.
+
+\subsection{RL from Demonstrations, Inverse RL, and Preference-Based Feedback}
+
+Beyond reward engineering, several lines of work explore how to infer objectives or policies from behavior.
+Inverse RL (IRL) formalizes the problem of recovering a reward function consistent with expert demonstrations \cite{ng2000irl}.
+Apprenticeship learning and maximum-entropy IRL advanced practical IRL and structured probabilistic formulations \cite{abbeel2004apprenticeship,ziebart2008maxent}.
+
+Preference-based RL introduced a related paradigm: instead of demonstrations or explicit rewards, agents learn from human comparisons among trajectories \cite{christiano2017preferences}.
+This preference-learning thread later became central to post-training large language models via RLHF-style pipelines (supervised instruction tuning + preference models + RL optimization), a major milestone in aligning generative systems \cite{ouyang2022instructgpt}.
+
+\subsection{Offline RL and Data-Centric Learning}
+
+As RL deployments expanded, offline (batch) RL gained prominence: learning policies from fixed logged datasets without further environment interaction.
+Offline RL is attractive in domains where exploration is expensive or unsafe, but it introduces distribution-shift and extrapolation challenges.
+Modern algorithms such as BCQ and CQL exemplify the renewed focus on conservative value estimation and policy constraints under dataset support limitations \cite{fujimoto2019bcq,kumar2020cql}.
+
+\subsection{Current State and Open Challenges}
+
+Today, RL spans a spectrum from bandits and tabular MDPs to deep RL, model-based planning, multi-agent systems, and LLM post-training.
+Despite dramatic progress, several persistent challenges remain active research areas:
+
+\begin{itemize}
+  \item \textbf{Sample efficiency and generalization:} many RL systems still require large interaction budgets and can generalize poorly outside training distributions \cite{sutton2018book}.
+  \item \textbf{Stability with function approximation:} off-policy learning with nonlinear approximators can be unstable; practical success often relies on careful engineering and regularization \cite{mnih2015dqn}.
+  \item \textbf{Exploration and credit assignment:} sparse rewards and long horizons remain difficult, motivating intrinsic motivation, planning, and structured objectives \cite{sutton1990dyna}.
+  \item \textbf{Safety and constraints:} safe RL and constrained MDPs formalize safety requirements, but robustly enforcing them under uncertainty is challenging \cite{altman1999cmdp,garcia2015safe}.
+  \item \textbf{Evaluation methodology:} benchmarks can be sensitive to implementation details and environment stochasticity; reproducibility remains a concern \cite{henderson2018deep}.
+\end{itemize}
+
+A unifying perspective is that RL has repeatedly advanced through the co-evolution of (i) formal objectives (MDPs, constraints), (ii) algorithmic innovations (TD, Q-learning, policy gradients, planning), and (iii) enabling infrastructure (simulation platforms, scalable compute, differentiable function approximation).
+This historical pattern continues as RL concepts increasingly influence the training and alignment of large generative models.
+
+
+% ============================================================
+% RLVR SECTION (history)
+% ============================================================
+
+\section{Reinforcement Learning with Verifiable Rewards (RLVR): History, Milestones, and Open Challenges}
+\label{sec:rlvr_history}
+
+\subsection{Definition and Motivation}
+Reinforcement Learning with Verifiable Rewards (RLVR) is an increasingly prominent post-training paradigm for large language models (LLMs) in which the reward signal is computed by an automated \emph{verifier} rather than by a learned preference/reward model. In its most typical form, the verifier produces a binary signal (pass/fail) derived from \emph{objective checks} such as: (i) exact-match or normalized-match correctness against a known gold answer, (ii) execution-based verification (e.g., unit tests for generated code), or (iii) satisfaction of explicit output constraints (formatting constraints, structured outputs, or refusal constraints) \cite{lambert2024tulu3,mroueh2025grpo}.
+
+RLVR is often positioned as a complementary alternative to reinforcement learning from human feedback (RLHF), which relies on human preference data and a learned reward model as an intermediate supervisory signal \cite{ouyang2022training}. While RLHF has proven effective for instruction following and conversational helpfulness, learned reward models can be expensive to construct, difficult to generalize across tasks, and vulnerable to reward hacking and specification gaming \cite{ouyang2022training}. RLVR addresses part of this problem by replacing the reward model with a verifier whose signal is (in principle) grounded in externally checkable outcomes \cite{lambert2024tulu3,mroueh2025grpo}. However, the promise of ``objective'' rewards does not remove all alignment challenges: many tasks lack unambiguous gold standards, verification can be sparse, and even constraint-based verifiers can be gamed when optimization pressure is high \cite{mroueh2025grpo,shao2025spurious}.
+
+\subsection{Antecedents: RL for Text Generation and Program Synthesis}
+Although RLVR (as a named paradigm for LLM post-training) is recent, it builds on earlier work using policy-gradient reinforcement learning to optimize non-differentiable objectives in sequence generation. Early milestones include REINFORCE-style objectives for language generation \cite{williams1992simple} and sequence-level training that directly optimizes task metrics (e.g., BLEU/ROUGE) to reduce exposure bias \cite{ranzato2016sequence,paulus2018deep}. While these earlier approaches used automatically computed rewards, the rewards were typically \emph{proxy metrics} rather than correctness verifiers, and they often suffered from high-variance gradients and instability.
+
+A closer precursor to modern RLVR is reinforcement learning for code generation/program synthesis with \emph{execution-based} feedback. Here, unit tests provide a naturally verifiable reward, enabling learning loops in which candidate programs are generated, executed, and scored by pass/fail outcomes. CodeRL is an influential example that integrates pretrained code LMs with RL signals derived from functional correctness and unit tests \cite{le2022coderl}. This ``execute-to-verify'' idea later becomes a central pillar of RLVR for both code and reasoning tasks \cite{lambert2024tulu3,mroueh2025grpo}.
+
+\subsection{Reasoning Supervision and the Rise of Verifiers}
+The modern RLVR story is tightly coupled to the rapid growth of \emph{explicit reasoning} in LLMs (e.g., chain-of-thought prompting) and the corresponding need for more reliable supervision signals \cite{wei2022cot}. Reasoning benchmarks such as MATH provide structured problems with checkable answers and step-by-step solutions, making them fertile ground for correctness verification and for studying different forms of supervision \cite{hendrycks2021math}.
+
+A major milestone in ``verifier-centric'' training is \emph{process supervision}, which provides feedback at intermediate reasoning steps rather than only at the final answer. ``Let's Verify Step by Step'' demonstrates that step-level supervision can outperform outcome-only supervision on mathematical reasoning, and it released PRM800K, a large dataset of step-level labels for training process reward models \cite{lightman2023verify}. While process supervision is not identical to RLVR (it often involves learned reward models), it substantially influenced the field's emphasis on \emph{verifiers} and \emph{credit assignment} in multi-step reasoning.
+
+\subsection{RLVR as a Named Paradigm: 2024--2025}
+RLVR became explicitly formalized and popularized in open LLM post-training work during 2024--2025. The Tulu 3 report is a key reference point: it introduces RLVR as an open post-training recipe alongside supervised fine-tuning and preference optimization, and it articulates classes of verifiable rewards (correctness checks, execution checks, and verifiable constraints) \cite{lambert2024tulu3}.
+
+In parallel, DeepSeekMath introduced Group Relative Policy Optimization (GRPO), a PPO-variant designed to improve memory efficiency while optimizing verifiable rewards for mathematical reasoning \cite{shao2024deepseekmath}. DeepSeekMath is historically important because it helped establish GRPO-style training as a practical route to scaling RL on LLMs under sparse binary rewards.
+
+Another important development is the push toward denser and more faithful intermediate feedback. ``Rewarding Progress'' scales automated process verifiers for reasoning, explicitly targeting the sparse-reward/credit-assignment bottleneck in multi-step problems \cite{setlur2024rewardingprogress}. Collectively, these works set the stage for RLVR to become one of the principal mechanisms behind ``reasoning model'' post-training.
+
+\subsection{RLVR at Scale for Reasoning Models}
+A watershed moment for RLVR was DeepSeek-R1, which demonstrated that large-scale reasoning capabilities can be substantially incentivized through reinforcement learning using rule-based/verifiable signals, without requiring human-labeled reasoning trajectories as the primary driver \cite{deepseekr1nature2025}. DeepSeek-R1 also helped consolidate several practical conventions used in RLVR training loops (e.g., structured reasoning traces, strong KL constraints, and verifier-driven pass/fail rewards on tasks like math and code) \cite{deepseekr1nature2025}.
+
+Following this wave, several efforts aimed to scale and operationalize RL training for LLMs more broadly. Kimi k1.5 describes scaling reinforcement learning with LLMs, contributing additional evidence that RL-style post-training can be productively scaled beyond narrow demos \cite{kimi2025k1}. DAPO provides an open-source RL system at scale, with an emphasis on reproducible recipes and system-level engineering choices that make large-scale LLM RL more attainable for the research community \cite{yu2025dapo}. FastCuRL explores curriculum and context-scaling strategies to make training ``R1-like'' reasoning models more efficient \cite{song2025fastcurl}.
+
+\subsection{Theory, Optimization Stability, and Reward Shaping}
+As RLVR spread, the community rapidly confronted stability issues associated with sparse and discrete rewards. A key theoretical contribution is Mroueh's analysis of GRPO with verifiable rewards, interpreting GRPO as a KL-regularized contrastive loss and formally characterizing its ``success amplification'' dynamics under binary rewards \cite{mroueh2025grpo}. This line of work is important because it begins to connect empirical RLVR gains with tractable mathematical models of optimization dynamics.
+
+On the practical side, techniques for smoothing or reshaping discrete reward signals emerged. ReDit proposes ``reward dithering'' to mitigate gradient anomalies and convergence issues under discrete (0/1) reward functions \cite{wei2025redit}. More recently, VeRPO proposes verifiable \emph{dense} rewards for code generation, explicitly addressing the credit-assignment problem when the only naturally verifiable signal is final functional correctness \cite{wang2026verpo}.
+
+\subsection{Debate: Does RLVR Create New Reasoning?}
+A central scientific question is whether RLVR elicits fundamentally new reasoning strategies or primarily improves \emph{sampling efficiency} and calibration of behaviors already latent in the base model. Yue et al.\ argue that, under many current training setups, RLVR-trained models may outperform at small $k$ (e.g., pass@1) while the base model can dominate at sufficiently large $k$ (pass@$k$), suggesting RLVR may not reliably expand the model's intrinsic reasoning boundary \cite{yue2025limitrlvr}.
+
+In contrast, Wen et al.\ provide evidence that RLVR can extend reasoning boundaries for math and code, and they propose CoT-Pass@$K$ to capture success that depends on intermediate reasoning quality rather than only final-answer correctness \cite{wen2025rlvr}. These complementary findings highlight that evaluation methodology and the choice of success criteria (final answer vs.\ process correctness) materially affect conclusions about what RLVR is learning.
+
+Adding complexity, ``Spurious Rewards'' reports that improvements can occur even under counterintuitive or imperfect reward signals, challenging overly simple narratives about RLVR's mechanism and raising the possibility of shortcut learning or distributional effects \cite{shao2025spurious}. Subsequent mechanistic work (``Spurious Rewards Paradox'') studies how RLVR can activate memorization shortcuts, reinforcing the need to disentangle capability gains from dataset artifacts and optimization-induced shortcuts \cite{yan2026spuriousparadox}.
+
+\subsection{Beyond Strict Verifiability: Broad Domains and Open-ended Generation}
+A major limitation of classical RLVR is that many real tasks are not cleanly verifiable. ``Crossing the Reward Bridge'' investigates RLVR beyond math/code by leveraging expert reference answers and developing soft, model-based reward signals when binary verification is infeasible \cite{su2025crossing}. This work is historically significant because it articulates a practical pathway for extending RLVR to domains with ambiguity and partial correctness.
+
+Domain-specialized RLVR also began to appear. Med-RLVR demonstrates emergent medical reasoning from a 3B base model using RL, illustrating that verifier-like objectives can be adapted to specialized professional domains when appropriate references and scoring are available \cite{zhang2025medrlvr}. For more open-ended generation, RLVRR proposes ``verifiable reference-based reward chains'' as a structured approach to using reference material to build more informative training signals than a single binary check \cite{jiang2026rlvrr}.
+
+\subsection{Safety, Alignment Drift, and Verifiable Constraints}
+Another open question is how RLVR interacts with safety alignment. While RLVR is often assumed to be ``safer'' than reward-model-based RLHF (because the objective is externally checkable), the safety implications depend heavily on what is being verified and how the KL constraint is enforced. ``Breaking the Safety-Capability Tradeoff'' argues---both theoretically and empirically---that RLVR can improve reasoning while maintaining or even improving safety guardrails under certain KL-constrained regimes \cite{cho2025safetycapability}. At the same time, the broader literature emphasizes that verifiable constraints can still induce reward hacking or undesirable behavior if the constraint is misspecified or optimization pressure is too strong \cite{lambert2024tulu3,mroueh2025grpo}.
+
+\subsection{Current State and Open Challenges}
+Despite rapid progress, RLVR remains an active research frontier. Key challenges include:
+\begin{itemize}
+  \item \textbf{Verifier design and task coverage.} Many domains lack ground-truth answers or executable checks; building reliable verifiers (or reference-based reward chains) without collapsing to model-as-judge bias is unresolved \cite{su2025crossing,jiang2026rlvrr}.
+  \item \textbf{Sparse rewards and credit assignment.} Binary rewards are information-poor for long-horizon reasoning; process verifiers and dense shaping (where feasible) are essential but can introduce new failure modes \cite{lightman2023verify,setlur2024rewardingprogress,wang2026verpo}.
+  \item \textbf{Stability and efficiency at scale.} Discrete rewards and high-variance updates motivate algorithmic refinements (GRPO analyses, reward dithering, curricula, and system-level scaling recipes) \cite{mroueh2025grpo,wei2025redit,song2025fastcurl,yu2025dapo}.
+  \item \textbf{Scientific understanding of what improves.} Competing results on whether RLVR expands reasoning vs.\ reweights sampling underscore the need for stronger evaluations and mechanistic interpretability \cite{yue2025limitrlvr,wen2025rlvr,yan2026spuriousparadox}.
+  \item \textbf{Safety and alignment drift.} RLVR may mitigate some RLHF weaknesses, but it is not automatically aligned; safety depends on the verifier, the KL constraint, and the broader training recipe \cite{cho2025safetycapability,lambert2024tulu3}.
+\end{itemize}
+
+In summary, RLVR has evolved from early RL-for-text and execution-verified code training into a central paradigm for modern reasoning-oriented LLM post-training. Its future trajectory will likely depend on advances in verifier construction, process-level supervision, reward shaping, and rigorous evaluation methodologies that can distinguish genuine reasoning improvements from shortcut learning.
+
+
+% -------------------------------------------------------------------------
+% RLVR formal section
+% -------------------------------------------------------------------------
+
+\section{Reinforcement Learning with Verifiable Rewards (RLVR)}
+\label{sec:rlvr}
+
+Reinforcement Learning with Verifiable Rewards (RLVR) is an increasingly prominent post-training paradigm for large language models (LLMs) in which model outputs are optimized using reinforcement learning (RL) against rewards computed by an \emph{external verifier} rather than a learned reward model or direct human preference comparisons.
+In RLVR, correctness is \emph{objectively checkable} (or at least operationally checkable) via deterministic or programmatic criteria such as exact-match answers, unit-test execution, compilation, constrained formatting, or other machine-checkable validations \cite{guo2025deepseekr1,deepseekai2024deepseekmath,wen2025rlvr}.
+
+RLVR has become especially salient for \emph{reasoning-style language generation}---where the model produces a multi-step natural language (or mixed natural language + formal) solution---because many reasoning tasks admit reliable verifiers (e.g., math final answers, code execution, multiple-choice ground truth) \cite{guo2025deepseekr1,wen2025rlvr,zhang2025medrlvr}.
+At the same time, RLVR raises distinctive research questions around reward sparsity, exploration, generalization, and evaluation (e.g., when RLVR improves \emph{sampling efficiency} versus \emph{reasoning capacity}) \cite{wen2025rlvr,mroueh2025grpo}.
+
+\subsection{Motivation: From RLHF to RLVR}
+
+Much of modern LLM post-training can be viewed as choosing (i) a reward signal and (ii) an optimization procedure to shift a pretrained model toward desirable outputs.
+A canonical predecessor is RL from Human Feedback (RLHF), where a reward model is trained on human preference comparisons and then used to optimize the policy (the LLM) with an RL algorithm such as PPO \cite{christiano2017preferences,ziegler2019finetuning,stiennon2020summarize,ouyang2022instructgpt,schulman2017ppo}.
+RLHF is powerful for open-ended language quality and helpfulness, but it is costly (human labels), can be brittle (reward model misspecification), and is susceptible to reward hacking (policy exploits reward model artifacts).
+
+RLVR shifts the supervision burden from preference data to \emph{verification infrastructure}.
+When a task admits a robust automatic checker, RLVR can (a) reduce reliance on large-scale human labeling, (b) mitigate some forms of reward hacking by eliminating learned reward models, and (c) encourage exploration over solution strategies while still grounding optimization in correctness \cite{guo2025deepseekr1,wen2025rlvr,cho2025safetycapability}.
+However, RLVR is constrained by verifier availability and by the statistical and optimization challenges induced by sparse, discrete reward signals \cite{wei2025redit,wang2026verpo}.
+
+\subsection{What Counts as a ``Verifiable'' Reward?}
+
+In the RLVR literature, \emph{verifiable} typically means there exists an automated procedure that maps a model output to a reward with high reliability and low ambiguity.
+Common verifier types include:
+
+\begin{itemize}
+  \item \textbf{Exact-match / normalized-match checkers.}
+  Many math and QA datasets support rewards based on string/number matching after normalization (e.g., canonical numeric forms, symbolic simplification).
+  \item \textbf{Execution-based checkers for code.}
+  Rewards are derived by compiling/running generated code against unit tests (binary pass/fail or richer execution traces) \cite{le2022coderl,wang2026verpo}.
+  \item \textbf{Closed-form structured ground truth (e.g., MCQA).}
+  Multiple-choice tasks provide verifiable correctness labels and are frequently used as a ``bridge'' domain for RLVR beyond math/code \cite{zhang2025medrlvr}.
+  \item \textbf{Constraint and schema validation.}
+  Format compliance (valid JSON, regex patterns, type constraints, tool-call schemas) can provide partial, verifiable rewards; this is particularly relevant in agentic and tool-using LLM settings.
+\end{itemize}
+
+A practical nuance is that many ``real'' language tasks are only partially verifiable.
+Recent work explores hybrids that combine \emph{binary verification} where possible with softer scoring or model-based grading where ground truth is less structured, effectively expanding RLVR-style training to more domains \cite{su2025crossingrewardbridge}.
+
+\subsection{RLVR Formulation for Autoregressive Language Models}
+
+RLVR treats an autoregressive LLM as a stochastic policy $\pi_\theta$ that generates an output sequence $y = (y_1,\dots,y_T)$ conditioned on an input prompt $x$.
+A verifier computes a scalar reward $r(x,y)$, often only after the full sequence is generated (delayed reward), though variants incorporate intermediate or decomposed rewards when partial verification is feasible \cite{wang2026verpo}.
+
+A common post-training objective mirrors KL-regularized RLHF formulations, but with a verifiable reward:
+\begin{equation}
+\label{eq:rlvr_objective}
+\max_{\theta}\;
+\mathbb{E}_{x \sim \mathcal{D},\; y \sim \pi_\theta(\cdot \mid x)}
+\left[r(x,y)\right]
+\;-\;
+\beta\;\mathbb{E}_{x \sim \mathcal{D}}
+\left[\mathrm{KL}\!\left(\pi_\theta(\cdot\mid x)\,\|\,\pi_{\mathrm{ref}}(\cdot\mid x)\right)\right],
+\end{equation}
+where $\pi_{\mathrm{ref}}$ is a reference policy (often the pre-RL model) and $\beta$ controls the update magnitude.
+KL regularization is used to stabilize optimization and limit destructive drift, and it is also central to safety analyses of RLVR-style post-training \cite{cho2025safetycapability}.
+
+\subsection{Optimization Algorithms: PPO, GRPO, and Group-Based RL}
+
+Early work applying RL to sequence generation relied on policy-gradient estimators such as REINFORCE \cite{williams1992reinforce} and introduced sequence-level RL objectives to address exposure bias and metric mismatch (e.g., optimizing BLEU/ROUGE directly) \cite{ranzato2016sequence,paulus2018summarization}.
+In modern LLM post-training, PPO became a widely used workhorse due to its practical stability \cite{schulman2017ppo,ouyang2022instructgpt}.
+
+A key recent development in RLVR is \emph{group-based} policy optimization, especially Group Relative Policy Optimization (GRPO), introduced in the DeepSeekMath line and used prominently in DeepSeek-R1-style reasoning training \cite{deepseekai2024deepseekmath,guo2025deepseekr1}.
+Instead of learning a separate value function baseline, GRPO samples a \emph{group} of $K$ completions per prompt, computes rewards for each completion, and forms an advantage estimate via within-group normalization.
+This reduces memory overhead (no value network) and can scale well in large post-training regimes \cite{deepseekai2024deepseekmath,mroueh2025grpo}.
+
+Recent analyses connect GRPO-style updates to contrastive objectives and study how reward normalization (mean-only vs.\ mean+variance) and KL regularization choices influence convergence and ``success amplification'' \cite{mroueh2025grpo}.
+At the same time, empirical work highlights an important evaluation subtlety: improvements measured by Pass@1 may mask tradeoffs in Pass@K and reasoning diversity; refined metrics such as CoT-Pass@K have been proposed to better capture reasoning correctness beyond final-answer matching \cite{wen2025rlvr}.
+
+\subsection{Major Research Milestones and Timeline}
+
+From a research-history perspective, RLVR for language generation builds on several threads:
+
+\begin{itemize}
+  \item \textbf{Policy gradients and RL for sequence generation (1990s--2010s).}
+  REINFORCE provided foundational estimators \cite{williams1992reinforce}.
+  Sequence-level RL objectives for text generation were explored to address exposure bias and optimize non-differentiable metrics \cite{ranzato2016sequence,paulus2018summarization}.
+  \item \textbf{RL from preferences $\rightarrow$ RLHF for language (2017--2022).}
+  Preference-based reward learning \cite{christiano2017preferences} was adapted to language tasks \cite{ziegler2019finetuning,stiennon2020summarize} and then scaled into instruction-following RLHF pipelines (e.g., InstructGPT) \cite{ouyang2022instructgpt}.
+  \item \textbf{Execution/verifier feedback for code generation (2022--).}
+  Systems such as CodeRL operationalized verifiable, execution-based signals (unit tests) in RL fine-tuning for code generation \cite{le2022coderl}.
+  \item \textbf{Modern RLVR for reasoning and scalable group-based RL (2024--2025).}
+  DeepSeekMath introduced GRPO in the context of math reasoning \cite{deepseekai2024deepseekmath}.
+  DeepSeek-R1 popularized large-scale RLVR-style reasoning post-training and catalyzed a wave of replication/analysis work \cite{guo2025deepseekr1,wen2025rlvr,mroueh2025grpo}.
+  \item \textbf{Expanding RLVR beyond ``clean'' verifiable domains (2025--).}
+  Work such as ``Crossing the Reward Bridge'' studies extensions to domains where reference answers are less structured and explores hybrid verification + soft scoring approaches \cite{su2025crossingrewardbridge}.
+  Domain studies (e.g., medical MCQA) show RLVR-style training can generalize beyond math/code under verifiable labels \cite{zhang2025medrlvr}.
+  \item \textbf{Safety, stability, and reward-design advances (2025--2026).}
+  Safety analyses study how KL-constrained RLVR can maintain safety guardrails under certain conditions \cite{cho2025safetycapability}.
+  Methods such as reward dithering address optimization instabilities from discrete rewards \cite{wei2025redit}, and verifiable dense reward methods (e.g., weighted partial test success) aim to reduce reward sparsity without introducing learned reward models \cite{wang2026verpo}.
+\end{itemize}
+
+\subsection{Current State and Open Challenges (Formal View)}
+
+RLVR is now a central technique for producing strong reasoning-oriented LLMs in settings where correctness can be checked automatically \cite{guo2025deepseekr1,wen2025rlvr}.
+However, several challenges remain open and are active areas of research:
+
+\paragraph{Reward sparsity, variance, and credit assignment.}
+Many RLVR deployments rely on \emph{binary} outcome rewards (correct/incorrect), which can yield high-variance gradient estimates and stall training when sampled groups receive uniform rewards.
+Techniques such as reward perturbation (dithering) \cite{wei2025redit} and verifiable \emph{dense} reward construction from partial success \cite{wang2026verpo} aim to provide smoother learning signals while preserving objective grounding.
+
+\paragraph{Verifier reliability, brittleness, and exploitability.}
+A ``verifiable'' reward is only as good as the verifier.
+Execution-based rewards can be brittle (timeouts, nondeterminism, hidden tests), and format/constraint rewards can be gamed (the model optimizes superficial structure).
+Even with deterministic checkers, policies can exploit gaps between training-time verification and deployment-time desiderata (a form of reward hacking at the verifier boundary).
+
+\paragraph{Generalization beyond verifiable domains.}
+A core limitation of RLVR is that many real-world language tasks (summarization quality, helpfulness, harmlessness, nuanced correctness) are not fully verifiable.
+Recent research explores bridging strategies: using verifiable sub-tasks, combining verifiers with soft scoring, and leveraging cross-model agreement to approximate verification when ground truth is partially structured \cite{su2025crossingrewardbridge}.
+
+\paragraph{Evaluation: ``sampling efficiency'' vs.\ ``reasoning capacity.''}
+A recurring debate is whether RLVR creates genuinely new reasoning capabilities or primarily reallocates probability mass toward already-present solution trajectories.
+Empirical work suggests that naive Pass@K can be misleading when base models can ``guess'' correct short answers without coherent reasoning, motivating metrics that verify intermediate reasoning quality (e.g., CoT-Pass@K) \cite{wen2025rlvr}.
+
+\paragraph{Safety and alignment under RLVR.}
+RLVR can induce behavioral drift because it directly optimizes for task success.
+Recent work studies conditions (notably KL constraints and training methodology choices) under which RLVR can improve capability without degrading safety guardrails, but this remains a delicate and application-dependent design problem \cite{cho2025safetycapability}.
+
+\paragraph{Systems cost and scaling.}
+RLVR is inherently \emph{sampling-intensive}: it requires generating many trajectories per prompt, running verifiers (often expensive execution), and performing on-policy updates.
+As a result, practical RLVR pipelines must balance rollout budget, verifier cost, stability constraints (KL), and performance gains---and may benefit from group-based methods (e.g., GRPO) that reduce memory overhead \cite{deepseekai2024deepseekmath,mroueh2025grpo}.
+
+\subsection{Practical Takeaways for Language-Generation RLVR Pipelines}
+
+From an engineering and research-design standpoint, RLVR for language generation tends to work best when:
+(i) the task can be cast into a format with high-fidelity verification,
+(ii) reward sparsity is mitigated via group sampling, partial credit, or carefully designed dense-but-verifiable reward signals,
+(iii) KL regularization and evaluation protocols are chosen to avoid overfitting to the verifier and to preserve general language competence,
+and (iv) benchmarking explicitly distinguishes final-answer correctness from reasoning quality when the application requires faithful multi-step generation \cite{wen2025rlvr,wang2026verpo,cho2025safetycapability}.
+
+
+\section{Cyber Threat Intelligence and Knowledge Graphs}
+\label{sec:cti-kg}
+
+\subsection{CTI Concepts and Workflows}
+
+Cyber Threat Intelligence (CTI) is commonly defined as the collection, analysis, and dissemination of information about threats and adversaries to inform defensive decisions \cite{mcmillan2013gartner}. CTI workflows include:
+
+\begin{itemize}
+  \item Ingesting unstructured reports (vendor blogs, whitepapers, advisories).
+  \item Structuring them into entities and relations: vulnerabilities (CVEs), weaknesses (CWEs), attack patterns (CAPEC, ATT\&CK), threat actors, campaigns, malware, tools, TTPs.
+  \item Reasoning over this structure to answer questions such as:
+    \begin{itemize}
+      \item Which techniques does this malware implement?
+      \item Which mitigations cover these techniques on a given platform?
+      \item Which threat actor is most likely behind this cluster of activity?
+      \item How severe and exploitable is a new CVE in our environment?
+    \end{itemize}
+\end{itemize}
+
+CTI sharing and CTI knowledge graphs emphasize the importance of standardized schemas (e.g., STIX/TAXII), community knowledge bases (MITRE ATT\&CK, CAPEC, CWE), and APIs like NVD for building structured representations that can be consumed by automation \cite{strom2018mitreattck,mitreCVE,mitreCWE,mitreCAPEC}.
+
+\subsection{MITRE Ecosystem and Related Schemas}
+
+The MITRE ecosystem underpins much of modern CTI:
+
+\begin{itemize}
+  \item \textbf{MITRE ATT\&CK.} A globally accessible knowledge base of adversary tactics, techniques, and sub-techniques, originally released in 2013 and formally documented in ``MITRE ATT\&CK: Design and Philosophy'' \cite{strom2018mitreattck}. ATT\&CK represents adversary behavior as a graph where attack-pattern nodes (techniques) relate to software, groups (threat actors), data sources, and mitigations.
+  \item \textbf{CVE and NVD.} The Common Vulnerabilities and Exposures system and NIST's National Vulnerability Database provide machine-readable vulnerability records with descriptions, affected products, CVSS metrics, and links to related CWE and CAPEC entries \cite{mitreCVE}.
+  \item \textbf{CWE.} Common Weakness Enumeration captures abstract classes of software/hardware weaknesses, often linked from CVEs and CAPEC attack patterns \cite{mitreCWE}.
+  \item \textbf{CAPEC.} A catalog of attack patterns describing how adversaries exploit weaknesses and how those attacks can be mitigated, with explicit links to CWE and often implicitly to ATT\&CK techniques \cite{mitreCAPEC}.
+  \item \textbf{MITRE ENGAGE.} A framework for adversary engagement strategies, which can be integrated into CTI graphs as a defensive complement to ATT\&CK \cite{cardei2025ift}.
+\end{itemize}
+
+The IFT design document explicitly models these sources and their relationships in the ASG Neo4j CTI graph, extracting node types, properties, and cross-schema edges (CVE$\rightarrow$CWE, CVE$\rightarrow$CAPEC, CAPEC$\rightarrow$CWE, ATT\&CK techniques$\rightarrow$CAPEC, etc.) \cite{cardei2025ift}.
+
+\subsection{Athena's CTI Graph and Template Language}
+
+The \emph{Instruction Fine Tuning Dataset Design} document by Cardei defines an IFT Dataset Generation System built around an ASG CTI graph database and a rich template language \cite{cardei2025ift}. Key features include:
+
+\begin{itemize}
+  \item \textbf{CTI source support.} The system supports three categories of CTI documents: (1) structural/graph sources (MITRE ATT\&CK, CVE, CAPEC, CWE, MITRE ENGAGE, EPSS, CISA KEV); (2) LLM-assisted sources (SIGMA rules, MITRE CAR, Wazuh rules); and (3) proprietary sources (Flashpoint Ignite).
+  \item \textbf{IFT triple format.} Each generated data point is an (instruction, question, answer) triple: the instruction specifies the role and style (e.g., ``You are a CTI expert that gives precise and concise answers''), the question is the user-facing CTI query, and the answer is the ground-truth response derived from the CTI graph.
+  \item \textbf{Template language.} Templates provide a high-level, declarative way to bind CTI graph nodes and produce triples. They support aliases for CTI types; attribute access through nested properties; filters (using equality and inequality) applied to list properties with any/all semantics; local variables bound to nodes; random selection from lists; list-comprehension-like constructs to expand relationships into lists in the output; invisible sections that define bindings and constraints without appearing in text; and source disambiguation via a \verb|source#type| prefix (e.g., \verb|attck#attack-pattern| versus \verb|capec#attack-pattern|) \cite{cardei2025ift}.
+  \item \textbf{Positive and negative examples.} The template language explicitly supports negative constraints (e.g., mitigations that do \emph{not} mitigate this technique or data components that do \emph{not} detect a technique), enabling the generation of hard negatives that teach models what does \emph{not} follow from the CTI graph.
+  \item \textbf{Cross-source reasoning templates.} Example templates mimic complex reasoning chains, such as: given a CVE description, identify the corresponding CWE weakness, then find a CAPEC attack pattern with high likelihood of attack using that weakness, then find an ATT\&CK technique implementing that attack pattern.
+  \item \textbf{Incremental generation.} The generator allows version and date filters at both document and concept level. Users can specify version ranges and last-modified intervals per CTI source; relationships are only used if at least one endpoint and the relationship fall within those windows.
+  \item \textbf{Generation control and reporting.} A JSON job configuration file specifies CTI version ranges, template texts, per-template count limits and coverage fractions, output directories, and dataset versioning. The generation API produces both per-template triple files and a global report summarizing counts, coverage, and errors, which can be post-processed into human-readable formats \cite{cardei2025ift}.
+\end{itemize}
+
+Conceptually, this system is a symbolic counterpart to the LLM-assisted instruction pipelines used in CyberPal and SEvenLLM: where CyberPal uses LLMs and experts to synthesize security instructions from unstructured sources, the Athena system uses a declarative template language over a CTI graph to generate strongly grounded and precisely controllable instruction triples.
+
+\subsection{CTI Knowledge Graphs and LLMs}
+
+Recent work shows that LLMs and CTI knowledge graphs are synergistic. Various efforts use LLMs to extract triples from CTI text and populate knowledge graphs, then perform link prediction and reasoning over those graphs to produce actionable recommendations \cite{fieblinger2024kg,zhang2023cyberkg,wu2022opencykg,yu2024ctikg,zhao2024kctiaa}. Other systems build CTI-KGs directly from ATT\&CK, CVE, threat reports, and open sources, then query them using LLMs or hybrid systems for tasks such as threat hunting and reporting.
+
+The Athena IFT design follows a complementary pattern: \emph{knowledge graph $\rightarrow$ templates $\rightarrow$ IFT triples $\rightarrow$ SLM}, with AthenaBench serving as a \emph{knowledge graph $\rightarrow$ evaluation tasks} pipeline. This alignment is central to the next section.
+
+\section{Cybersecurity LLM Benchmarks and AthenaBench}
+\label{sec:benchmarks}
+
+\subsection{Why Cybersecurity-Specific Benchmarks?}
+
+General benchmarks like GLUE, MMLU, and BIG-Bench measure broad language understanding and world knowledge but are poorly aligned with security practitioners' needs. Key gaps include:
+
+\begin{itemize}
+  \item Lack of security-specific schemas (CVE, CWE, ATT\&CK).
+  \item Absence of tasks that test applied reasoning (e.g., mapping logs to techniques, linking vulnerabilities to mitigations, attributing campaigns).
+  \item Static datasets that quickly become outdated in a rapidly changing threat landscape.
+\end{itemize}
+
+Hence a wave of cybersecurity benchmarks has emerged:
+
+\begin{itemize}
+  \item \textbf{CyberMetric and SecEval.} Benchmarks focusing on security multiple-choice knowledge across domains, some derived from certification-style questions \cite{liu2024cyberbench,hu2024seceval}.
+  \item \textbf{CyberBench.} A multi-task benchmark for cybersecurity LLMs, including classification, QA, log and report analysis, accompanied by a CyberInstruct training corpus \cite{liu2024cyberbench}.
+  \item \textbf{CTIBench.} A NeurIPS 2024 benchmark for CTI that includes tasks like CTI knowledge questions, vulnerability assessment, and technique extraction based on curated CTI corpora \cite{alam2024ctibench}.
+  \item \textbf{SEvenLLM-Bench.} A bilingual CTI benchmark derived from real incident reports, designed alongside the SEvenLLM-Instruct dataset \cite{ji2024sevenllm}.
+\end{itemize}
+
+Collectively, these benchmarks shift focus from generic QA to security-aware reasoning, but most rely on static corpora, so their examples gradually lose relevance as new vulnerabilities and campaigns emerge. AthenaBench squarely targets this limitation.
+
+\subsection{AthenaBench: A Dynamic CTI Benchmark}
+
+AthenaBench is introduced as a dynamic benchmark suite for evaluating LLMs on realistic, knowledge-intensive CTI tasks and explicitly extends CTIBench \cite{alam2025athenabench,alam2024ctibench}. Its key innovations include:
+
+\begin{itemize}
+  \item \textbf{Dynamic data construction.} Instead of static corpora, AthenaBench connects to live CTI data sources and APIs (MITRE ATT\&CK, NVD, CISA advisories, threat reports) to continuously generate benchmark samples within configurable time windows. Tasks such as root cause mapping (CVE$\rightarrow$CWE) and severity prediction (CVSS) are drawn from recent CVEs and weaknesses, mitigating training-set leakage and static knowledge effects \cite{alam2025athenabench}.
+  \item \textbf{Six complementary tasks.} AthenaBench defines: CTI Knowledge Test (CKT), Root Cause Mapping (RCM), Vulnerability Severity Prediction (VSP), Threat Actor Attribution (TAA), Risk Mitigation Strategy (RMS), and Attack Technique Extraction (ATE). Together, they probe CTI knowledge, root cause reasoning, structured severity prediction, abductive attribution, defensive planning, and TTP extraction \cite{alam2025athenabench}.
+  \item \textbf{Enhanced metrics and aggregated score.} AthenaBench improves task-specific metrics and defines a unified aggregated score, making it easier to compare LLMs' CTI reasoning capabilities along different dimensions \cite{alam2025athenabench}.
+  \item \textbf{Model evaluation.} The authors evaluate 12 LLMs, including GPT-4, GPT-4o, GPT-5, Gemini-2.5 Flash/Pro, Qwen variants, Llama 3/3.1/3.3, and a Llama-Primus merged model. Proprietary models (GPT-5, Gemini-2.5 Pro) lead overall, but all models struggle on reasoning-intensive tasks such as TAA and RMS, especially open-source ones \cite{alam2025athenabench}.
+\end{itemize}
+
+By using live CTI sources and emphasizing reasoning over current threats, AthenaBench moves CTI benchmarking closer to real-world analyst workloads and provides a stringent target for cybersecurity-expert SLMs.
+
+\subsection{Relationship to Athena's IFT Dataset Generator}
+
+AthenaBench and the Athena IFT generator are complementary components of a full CTI LLM lifecycle:
+
+\begin{itemize}
+  \item \textbf{Training side (IFT generator).} Uses CTI graph data (ATT\&CK, CVE, CAPEC, CWE, ENGAGE, etc.) and a declarative template language to generate instruction triples that drill CTI knowledge, multi-hop reasoning, negative cases, and structured outputs \cite{cardei2025ift}.
+  \item \textbf{Evaluation side (AthenaBench).} Dynamically constructs CTI tasks from the same or similar underlying sources (ATT\&CK, NVD, CISA, threat reports) but with different pipelines and sampling strategies, providing independent, evolving test sets to evaluate model generalization \cite{alam2025athenabench}.
+\end{itemize}
+
+Many of the template patterns in the design document directly mirror AthenaBench tasks:
+\begin{itemize}
+  \item CVE$\rightarrow$CWE reasoning templates align with RCM.
+  \item Templates that traverse CVE$\rightarrow$CWE$\rightarrow$CAPEC$\rightarrow$ATT\&CK map onto knowledge and mitigation reasoning tested in CKT and RMS.
+  \item Templates involving malware, techniques, platforms, and data components parallel the kind of ``who uses what and how is it detected'' reasoning central to CTI analysis and attack technique extraction tasks \cite{cardei2025ift}.
+\end{itemize}
+
+The incremental generation features of the IFT system (version and timestamp filtering) make it possible to align the training data's recency with AthenaBench's dynamic evaluation horizon, mitigating data leakage while ensuring models are trained on approximately the same vintage of CTI as they are evaluated on \cite{cardei2025ift,alam2025athenabench}.
+
+This alignment positions the Athena IFT generator as a natural training counterpart to AthenaBench's evaluation pipeline, much as SecKnowledge and CyberPal models are paired with CTI benchmarks in IBM's work \cite{levi2024cyberpal,levi2025toward}.
+
+\section{Positioning Template-Based IFT for Cybersecurity SLMs}
+\label{sec:athena-ift}
+
+\subsection{Design Goals and Advantages}
+
+Compared to purely LLM-generated instruction datasets, a template-driven, knowledge-grounded approach offers several advantages:
+
+\begin{itemize}
+  \item \textbf{Ground-truth faithfulness.} Answers are computed directly from an authoritative CTI graph, reducing hallucinations and inconsistencies in training labels.
+  \item \textbf{Explicit coverage control.} Templates can be designed to cover specific combinations of entities (e.g., CAPEC patterns affecting memory resources and their detection methods) or relationships (e.g., malware using two techniques on Linux), and per-template coverage fractions and count limits control dataset size and diversity \cite{cardei2025ift}.
+  \item \textbf{Rich negative examples.} Inequality constraints and relationship filters enable systematic generation of negative examples such as mitigations that do not address a technique or data components that do not detect any technique used by a malware family.
+  \item \textbf{Explainability of templates.} Each template corresponds to a human-readable CTI reasoning pattern, making it easier for security experts to audit and refine the dataset.
+  \item \textbf{Incremental refresh.} Version and date filters allow periodic regeneration of updated IFT corpora as CTI sources evolve, paralleling AthenaBench's dynamic evaluation but on the training side \cite{cardei2025ift,alam2025athenabench}.
+\end{itemize}
+
+In combination with SLMs, this supports a training loop where:
+
+\begin{itemize}
+  \item New CTI sources or schema updates lead to a refreshed CTI graph.
+  \item CTI experts design or revise templates for new patterns and tasks.
+  \item The generator produces updated IFT triples for fine-tuning SLMs.
+  \item Models are evaluated on AthenaBench and other benchmarks.
+  \item Discrepancies and weaknesses inform template revisions and possibly benchmark extensions.
+\end{itemize}
+
+\subsection{Comparison with IBM's CyberPal and Other Instruction Pipelines}
+
+The Athena approach is conceptually closely related to SecKnowledge/CyberPal, but with different emphasis:
+
+\begin{itemize}
+  \item \textbf{CyberPal / SecKnowledge.} Use expert-defined schemas and a pipeline combining LLMs and scripts to synthesize instructions from CTI sources and detection artifacts (e.g., Sigma rules). Emphasize human-curated ``expert instruction patterns'' and LLM-assisted generation, including CoT answers in SecKnowledge~2.0 \cite{levi2024cyberpal,levi2025toward}.
+  \item \textbf{Athena IFT generator.} Uses a symbolic template language compiled into CTI graph queries, producing triples that are guaranteed to be consistent with the knowledge graph, with strong use of cross-schema constraints and negative examples, and built around incremental, configuration-driven generation \cite{cardei2025ift}.
+\end{itemize}
+
+Both approaches are complementary:
+
+\begin{itemize}
+  \item CyberPal demonstrates the effectiveness of expert instruction schemas and CoT enrichment in achieving high cybersecurity performance, especially in SLMs.
+  \item Athena's system provides precise and reproducible control over content generation aligned with CTI schemas and knowledge graph structure, potentially feeding into similar CoT-enriched pipelines (e.g., by later adding CoT rationales using LLMs on top of graph-derived answers).
+\end{itemize}
+
+\subsection{Toward Cybersecurity-Expert Small Language Models}
+
+Given these ingredients, an end-to-end cybersecurity-expert SLM pipeline could look like:
+
+\begin{enumerate}
+  \item \textbf{CTI graph construction.} Continuously ingest and normalize CTI sources (ATT\&CK, CVE, CAPEC, CWE, ENGAGE, ICS/OT sources, proprietary feeds) into a Neo4j or similar graph.
+  \item \textbf{Template authoring.} CTI experts encode important reasoning patterns (knowledge recall, root cause mapping, severity estimation, attribution clues, mitigation reasoning) as templates in the Athena language.
+  \item \textbf{IFT generation.} Run the generation tool with version and date constraints aligned to a training window, producing large, structured IFT datasets per task family \cite{cardei2025ift}.
+  \item \textbf{Model training.} Fine-tune SLMs (e.g., 4--14B open models) using these IFT datasets, optionally adding CoT rationales, conversation styles, and alignment methods similar to CyberPal SecKnowledge~2.0 \cite{levi2025toward}.
+  \item \textbf{Evaluation.} Benchmark models on AthenaBench and complementary suites (CTIBench, SecEval, CyberBench, SEvenLLM-Bench) to assess generalization and compare with larger proprietary models \cite{alam2024ctibench,alam2025athenabench,hu2024seceval,liu2024cyberbench,ji2024sevenllm}.
+  \item \textbf{Feedback and iteration.} Use benchmark error patterns to design new templates, adjust CTI graph coverage, or refine IFT data (e.g., adding more negative cases or multi-hop chains).
+\end{enumerate}
+
+This is closely aligned with IBM's vision of cybersecurity-expert SLMs but anchored in Athena's graph-driven IFT and dynamic CTI benchmarking.
+
+\section{Open Challenges and Research Directions}
+
+Despite rapid progress, several open questions remain:
+
+\begin{itemize}
+  \item \textbf{Data leakage and benchmark freshness.} Dynamic benchmarks like AthenaBench reduce, but do not eliminate, the risk that training data (e.g., from the same CTI sources) overlaps heavily with evaluation samples. Careful time-based splits and provenance tracking between the IFT generator and benchmarks will be crucial \cite{alam2025athenabench,cardei2025ift}.
+  \item \textbf{Balancing symbolic templates and LLM creativity.} Template-based generation offers precision and coverage, but LLM-generated paraphrases can increase linguistic diversity and realism (e.g., multiple phrasings of the same CTI scenario). Hybrid pipelines that use templates to define semantics and LLMs to diversify surface form---while preserving correctness---are a promising area.
+  \item \textbf{Incorporating chain-of-thought and explanations.} SecKnowledge~2.0 shows that CoT rationales significantly improve cyber reasoning \cite{levi2025toward}. Extending Athena templates to generate structured reasoning steps (via explicit graph traversal reasoning) and then augmenting them with LLM-generated natural language CoT could yield explainable CTI SLMs.
+  \item \textbf{Operational evaluation dimensions.} AthenaBench focuses on knowledge and reasoning quality. Security operations also care about robustness to prompt injection, misuse, adversarial CTI, latency, and integration with SIEM/SOAR systems. Benchmarks like SecEval and CyberBench partly address this; extending AthenaBench and complementary suites to cover these aspects remains an important direction \cite{hu2024seceval,liu2024cyberbench,alam2025athenabench}.
+  \item \textbf{Multilingual and cross-regional CTI.} SEvenLLM emphasizes bilingual corpora \cite{ji2024sevenllm}. Current CTI benchmarks primarily use English sources, omitting intelligence from other languages that often contain region-specific threats. Template-based IFT over multilingual CTI graphs and multilingual benchmark tasks could help close this gap.
+  \item \textbf{Human-in-the-loop and analyst trust.} For high-stakes CTI decisions, analysts need to understand why the model suggested a mapping or mitigation and how it connects to CTI sources. Template-driven data, CTI graph citations, and CoT rationales may enable verifiable, inspectable explanations.
+\end{itemize}
+
+\section{Conclusion}
+
+Instruction fine-tuning and small language models are emerging as a practical and powerful combination for cybersecurity, especially in CTI workflows that demand structured reasoning, up-to-date knowledge, and on-premises deployment. IBM's CyberPal and SecKnowledge series demonstrate that expert-curated, CTI-grounded instruction datasets can turn SLMs into strong cybersecurity assistants, while AthenaBench raises the bar for CTI evaluation by integrating live CTI sources and focusing on reasoning-intensive tasks \cite{levi2024cyberpal,levi2025toward,alam2025athenabench}.
+
+The Athena IFT Dataset Generation System designed by Cardei and collaborators provides a complementary training-time infrastructure: a template language over a CTI knowledge graph that can generate rich, grounded, and incrementally refreshable instruction triples across multiple CTI schemas and tasks \cite{cardei2025ift}. Together, these elements outline a coherent research program:
+
+\begin{itemize}
+  \item Build and maintain high-fidelity CTI graphs from authoritative sources.
+  \item Encode analyst reasoning patterns as templates that produce IFT data.
+  \item Train cybersecurity-expert SLMs using these datasets.
+  \item Evaluate them with dynamic CTI benchmarks like AthenaBench and iteratively refine both data and models.
+\end{itemize}
+
+The result is a principled pathway toward cybersecurity-expert small language models grounded simultaneously in CTI knowledge bases, instruction fine-tuning theory, and rigorous CTI benchmarking.
+
+
+\section{Conflicts of interest}
+None declared.
+
+\section{Funding}
+No external funding supported this manuscript.
+
+\section{Data availability}
+No datasets were generated or analyzed during the preparation of this survey paper.
+
+\section{Acknowledgments}
+The authors thank colleagues at Florida Atlantic University's Department of Electrical Engineering and Computer Science and at Athena Security Group for discussions that informed this work.
+
+
+\bibliographystyle{abbrvnat}
+\bibliography{glaukopis}
+
+\end{document}

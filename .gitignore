@@ -216,6 +216,9 @@ threat_data/
 _db_schema.json
 results_test_triples/
 
+# LaTeX build cache (Texpad / TeXShop intermediate outputs under doc/)
+.texpadtmp/
+
 # IDE files
 .vscode/
 .idea/

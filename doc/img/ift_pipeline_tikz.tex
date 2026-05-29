@@ -1,0 +1,61 @@
+
+% ---------- TikZ Figure: IFT + CTI Graph + AthenaBench Iteration ----------
+% Requires: \usepackage{tikz} \usetikzlibrary{arrows.meta,positioning,fit,backgrounds}
+\begin{figure*}[t]
+\centering
+\begin{tikzpicture}[
+  font=\small,
+  node distance=10mm and 14mm,
+  box/.style={draw, rounded corners=3pt, align=center, inner xsep=8pt, inner ysep=7pt},
+  sbox/.style={box, minimum width=34mm},
+  mbox/.style={box, minimum width=44mm},
+  lbox/.style={box, minimum width=58mm},
+  arrow/.style={-Latex, line width=0.8pt}
+]
+
+% Left: Ingestion -> Graph
+\node[lbox] (sources) {CTI Sources\\\footnotesize ATT\&CK, CVE/NVD, CWE, CAPEC, ENGAGE\\EPSS, CISA KEV, Sigma/CAR/Wazuh, Proprietary CTI};
+\node[mbox, below=of sources] (normalize) {Ingest \& Normalize\\\footnotesize STIX parsers, ETL, dedupe, version/time metadata};
+\node[lbox, below=of normalize] (graph) {CTI Knowledge Graph (Neo4j)\\\footnotesize Nodes: Technique, Malware, Tool, Actor, CVE/CWE/CAPEC, Mitigation, Data Component\\Edges: USES, MITIGATES, DETECTS, EXPLOITS, IMPLEMENTS, ATTRIBUTED\_TO};
+
+% Middle: Templates -> Engine -> JSON
+\node[lbox, right=24mm of normalize] (templates) {IFT Template Layer\\\footnotesize Variable binding, graph traversal, filters (any/all),\\negative constraints, cross-source joins, recency windows};
+\node[mbox, below=of templates] (engine) {Template Execution Engine\\\footnotesize Enumerate/samples bindings; enforce constraints;\\generate positives \& hard negatives};
+\node[mbox, below=of engine] (json) {IFT Dataset (JSON)\\\footnotesize \{instruction, question, answer, metadata\}\\template\_id, source\_versions, timestamps};
+
+% Right: Training -> Evaluation -> Feedback loop
+\node[mbox, right=24mm of engine] (train) {Instruction Fine-Tuning\\\footnotesize SFT on IFT JSON (SLM/LLM)\\optional: CoT, RLAIF/RLHF};
+\node[mbox, below=of train] (eval) {Evaluation on AthenaBench\\\footnotesize Dynamic CTI benchmark\\CKT, RCM, VSP, TAA, RMS, ATE\\metrics \& aggregate score};
+\node[mbox, below=of eval] (analyze) {Error Analysis \& Iteration\\\footnotesize failure modes $\rightarrow$ template updates,\\graph coverage fixes, new tasks, data refresh};
+
+% Arrows: main forward flow
+\draw[arrow] (sources) -> (normalize);
+\draw[arrow] (normalize) -> (graph);
+\draw[arrow] (graph.east) -- ++(8mm,0) |- (templates.west);
+\draw[arrow] (templates) -> (engine);
+\draw[arrow] (engine) -> (json);
+\draw[arrow] (json.east) -- ++(6mm,0) |- (train.west);
+\draw[arrow] (train) -> (eval);
+\draw[arrow] (eval) -> (analyze);
+
+% Feedback (iterative loop)
+\draw[arrow] (analyze.west) -- ++(-18mm,0) |- (templates.south);
+\draw[arrow] (analyze.west) -- ++(-46mm,0) |- (normalize.south);
+
+% Optional: highlight blocks
+\begin{pgfonlayer}{background}
+  \node[draw, rounded corners=6pt, fit=(sources)(graph), inner sep=6pt] (blk1) {};
+  \node[draw, rounded corners=6pt, fit=(templates)(json), inner sep=6pt] (blk2) {};
+  \node[draw, rounded corners=6pt, fit=(train)(analyze), inner sep=6pt] (blk3) {};
+\end{pgfonlayer}
+
+\node[above=2pt of blk1.north] {\footnotesize \textbf{CTI Data Layer}};
+\node[above=2pt of blk2.north] {\footnotesize \textbf{Template-to-Dataset Generation}};
+\node[above=2pt of blk3.north] {\footnotesize \textbf{Model Training + Benchmark-Driven Iteration}};
+
+\end{tikzpicture}
+\caption{\textbf{Iterative, template-driven IFT pipeline grounded in a CTI knowledge graph and benchmarked by AthenaBench.}
+CTI sources are ingested into a versioned Neo4j CTI graph. Expert-authored templates compile into graph queries that produce instruction--question--answer JSON triples.
+Models are instruction fine-tuned on these triples and evaluated on AthenaBench; benchmark failures drive template and data-layer updates, enabling continual refinement.}
+\label{fig:ift-cti-athenabench-pipeline}
+\end{figure*}

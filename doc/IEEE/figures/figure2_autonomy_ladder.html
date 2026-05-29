@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Figure 2</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: #ffffff; }
+body { font-family: Arial, sans-serif; padding: 36px 48px; }
+svg text { font-family: Arial, sans-serif; }
+.th { font-size: 14px; font-weight: 700; }
+.ts { font-size: 12px; font-weight: 400; }
+.c-teal   rect { fill: #E1F5EE; stroke: #0F6E56; stroke-width: 0.7; }
+.c-teal   text { fill: #085041; }
+.c-blue   rect { fill: #E6F1FB; stroke: #185FA5; stroke-width: 0.7; }
+.c-blue   text { fill: #0C447C; }
+.c-amber  rect { fill: #FAEEDA; stroke: #BA7517; stroke-width: 0.7; }
+.c-amber  text { fill: #633806; }
+.c-coral  rect { fill: #FAECE7; stroke: #993C1D; stroke-width: 0.7; }
+.c-coral  text { fill: #4A1B0C; }
+</style>
+</head>
+<body>
+<svg width="100%" viewBox="0 0 700 540" role="img" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+  <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+
+<!-- Subtitle -->
+<text class="ts" x="350" y="16" text-anchor="middle" fill="#888780">Automate what is narrow, reversible, and evidenced — require human approval where blast radius is broad or rollback is hard.</text>
+
+<!-- Vertical spine -->
+<line x1="54" y1="40" x2="54" y2="450" stroke="#D3D1C7" stroke-width="1" stroke-dasharray="4 3"/>
+
+<!-- LEVEL 1 — ENRICH -->
+<circle cx="54" cy="74" r="10" fill="#1D9E75"/>
+<text class="ts" x="54" y="74" text-anchor="middle" dominant-baseline="central" fill="#ffffff" font-weight="700">1</text>
+<g class="c-teal">
+<rect x="78" y="44" width="488" height="60" rx="8"/>
+<text class="th" x="94" y="64" dominant-baseline="central">Enrich</text>
+<text class="ts" x="94" y="83" dominant-baseline="central">Collect related alerts, identity history, endpoint context, cloud logs, WAF and NIDS evidence, and asset criticality.</text>
+</g>
+<g class="c-teal">
+<rect x="578" y="54" width="100" height="40" rx="6"/>
+<text class="th" x="628" y="74" text-anchor="middle" dominant-baseline="central">Auto</text>
+</g>
+
+<!-- LEVEL 2 — EXPLAIN -->
+<circle cx="54" cy="148" r="10" fill="#1D9E75"/>
+<text class="ts" x="54" y="148" text-anchor="middle" dominant-baseline="central" fill="#ffffff" font-weight="700">2</text>
+<g class="c-teal">
+<rect x="78" y="118" width="488" height="60" rx="8"/>
+<text class="th" x="94" y="138" dominant-baseline="central">Explain</text>
+<text class="ts" x="94" y="158" dominant-baseline="central">Translate detections into analyst-readable context, timeline, ATT&amp;CK reasoning, and explicit uncertainty.</text>
+</g>
+<g class="c-teal">
+<rect x="578" y="128" width="100" height="40" rx="6"/>
+<text class="th" x="628" y="148" text-anchor="middle" dominant-baseline="central">Auto</text>
+</g>
+
+<!-- LEVEL 3 — RECOMMEND -->
+<circle cx="54" cy="222" r="10" fill="#185FA5"/>
+<text class="ts" x="54" y="222" text-anchor="middle" dominant-baseline="central" fill="#ffffff" font-weight="700">3</text>
+<g class="c-blue">
+<rect x="78" y="192" width="488" height="60" rx="8"/>
+<text class="th" x="94" y="212" dominant-baseline="central">Recommend</text>
+<text class="ts" x="94" y="232" dominant-baseline="central">Propose next-best playbook actions, queries, and escalation choices — decision stays with the analyst.</text>
+</g>
+<g class="c-blue">
+<rect x="578" y="202" width="100" height="40" rx="6"/>
+<text class="th" x="628" y="222" text-anchor="middle" dominant-baseline="central">Auto</text>
+</g>
+
+<!-- LEVEL 4 — ACT WITHIN POLICY -->
+<circle cx="54" cy="296" r="10" fill="#BA7517"/>
+<text class="ts" x="54" y="296" text-anchor="middle" dominant-baseline="central" fill="#ffffff" font-weight="700">4</text>
+<g class="c-amber">
+<rect x="78" y="266" width="488" height="60" rx="8"/>
+<text class="th" x="94" y="286" dominant-baseline="central">Act within policy</text>
+<text class="ts" x="94" y="306" dominant-baseline="central">Execute preapproved, reversible actions: WAF deny entries, rate limits, step-up auth, session revocation, limited host isolation.</text>
+</g>
+<g class="c-amber">
+<rect x="578" y="276" width="100" height="40" rx="6"/>
+<text class="th" x="628" y="290" text-anchor="middle" dominant-baseline="central">Auto</text>
+<text class="th" x="628" y="308" text-anchor="middle" dominant-baseline="central">within policy</text>
+</g>
+
+<!-- LEVEL 5 — HUMAN-GOVERNED -->
+<circle cx="54" cy="370" r="10" fill="#993C1D"/>
+<text class="ts" x="54" y="370" text-anchor="middle" dominant-baseline="central" fill="#ffffff" font-weight="700">5</text>
+<g class="c-coral">
+<rect x="78" y="340" width="488" height="60" rx="8"/>
+<text class="th" x="94" y="360" dominant-baseline="central">Human-governed high impact</text>
+<text class="ts" x="94" y="380" dominant-baseline="central">Credential disable, broad WAF / firewall changes, production quarantine, policy rewrites, customer-impacting containment.</text>
+</g>
+<g class="c-coral">
+<rect x="578" y="350" width="100" height="40" rx="6"/>
+<text class="th" x="628" y="364" text-anchor="middle" dominant-baseline="central">Human</text>
+<text class="th" x="628" y="382" text-anchor="middle" dominant-baseline="central">approval</text>
+</g>
+
+<!-- Control principle box -->
+<rect x="20" y="422" width="660" height="50" rx="8" fill="none" stroke="#D3D1C7" stroke-width="0.8" stroke-dasharray="4 3"/>
+<text class="ts" x="350" y="447" text-anchor="middle" dominant-baseline="central" fill="#888780">Control principle: learning systems may tune thresholds and rank allowed actions, but they must optimize within policy — not silently rewrite it.</text>
+</svg>
+</body>
+</html>
