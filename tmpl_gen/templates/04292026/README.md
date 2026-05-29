@@ -160,7 +160,7 @@ which embeds the same gate).
      `answers`) into lowercase `[A-Za-z0-9]+` word tokens.
   2. Build the union set of distinct **n=13 word-grams** (default,
      overridable via `--n`) across every eval file under
-     `--eval-dir SFT/test/benchmark_data/` -- which currently covers:
+     `--eval-dir SFT/eval/benchmark_data/` -- which currently covers:
        * `athena_bench/` (`athena-cti-{ate,mcq,mcq-3k,mcq-updated,
          rcm,rms,vsp}.jsonl`, `athena_rms/`, `athena_taa/`,
          `mcq-patch.tsv`)
@@ -273,7 +273,7 @@ have no place in the SFT corpus.
 | **AthenaBench (`athena-rcm`, `athena-vsp`, `athena-ate`, `athena-taa`, `athena-rms`, `athena-mcq`)** | No -- structural overlap accepted (catalog-recall framing). | The underlying ATT&CK / CWE / CVE / KEV / EPSS graph. The benchmark prompts are GPT-{4,5}-rewritten incident narratives produced at benchmark generation time and are NOT in the SFT corpus. | `dedup_against_evals.py` indexes `athena_bench/*.jsonl` and the `athena_rms/`, `athena_taa/` subdirs at n=13. Any 13-gram overlap fails the build. | The catalog-recall framing is the published AthenaBench position. v8's RMS interventions (AB.RMS.{3a..3h,4,5,6}) target the catalog-coverage and cardinality gaps that the v5 baseline exposed; they do not encode any benchmark prompt. |
 | **CTIBench (`cti-mcq`, `cti-rcm`, `cti-rcm-2021`, `cti-vsp`, `cti-ate`, `cti_taa`)** | No -- structural overlap accepted (same graph). | Same MITRE/NIST graph as the SFT corpus. CTIBench prompts are paraphrastic transformations of the underlying records. | Same n=13 fingerprint as above; `cti_bench/*.tsv` is in the index. | The CTIBench paper explicitly anticipates this overlap and grades models on the paraphrastic surface form. v8 templates do not import CTIBench-specific phrasings. |
 | **CyberMetric (`CyberMetric-{80,500,2000,10000}-v1.json`)** | No -- structural overlap with general CTI knowledge accepted; the benchmark is partly a general-knowledge MCQ over public security material that overlaps the base model's pretrain. | Domain knowledge (concepts, definitions, CVE descriptions). The MCQ phrasings themselves are NOT in the SFT corpus. | All four CyberMetric files are in the n=13 index; verbatim leakage of any MCQ stem or option string fails the build. | The Tulu/Alpaca catastrophic-forgetting guards (Section 1) are part of the CyberMetric posture: they preserve general instruction-following so that CyberMetric scores reflect CTI-narrowing impact rather than instruction collapse, not so that the model can solve specific CyberMetric items. |
-| **CyberSOCEval (Meta, malware-TI / threat-investigation JSON tasks)** | No -- structural overlap with the public CTI corpus accepted. | The JSON envelope shapes (e.g. `{"correct_answers": [...]}`, `{"behaviors": [...]}`) are matched in the `JS.*` template family. The specific eval prompts and ground-truth answers are NOT in the SFT corpus. | The CyberSOCEval source files (when available locally under `SFT/test/benchmark_data/`) are picked up by the same n=13 glob and any overlap fails the build. | The `JS.*` family is the v8 response to the v7 format-collapse failure mode (see `Sophia-CTI-Templates-JSON-v8.txt` Section A). It teaches the **shape** of a JSON-wrapped response over the SFT corpus's own graph-derived facts; CyberSOCEval grades the same shape over its held-out facts. |
+| **CyberSOCEval (Meta, malware-TI / threat-investigation JSON tasks)** | No -- structural overlap with the public CTI corpus accepted. | The JSON envelope shapes (e.g. `{"correct_answers": [...]}`, `{"behaviors": [...]}`) are matched in the `JS.*` template family. The specific eval prompts and ground-truth answers are NOT in the SFT corpus. | The CyberSOCEval source files (when available locally under `SFT/eval/benchmark_data/`) are picked up by the same n=13 glob and any overlap fails the build. | The `JS.*` family is the v8 response to the v7 format-collapse failure mode (see `Sophia-CTI-Templates-JSON-v8.txt` Section A). It teaches the **shape** of a JSON-wrapped response over the SFT corpus's own graph-derived facts; CyberSOCEval grades the same shape over its held-out facts. |
 
 ### 2.4 What v8 explicitly does **not** do
 
@@ -295,12 +295,12 @@ list of practices we deliberately avoid and why:
     and CTIBench publish small validation slices intended for prompt
     engineering. v8 does not consume any of these splits as training
     data; they are only used downstream by the eval harness in
-    `SFT/test/`.
+    `SFT/eval/`.
   * **No cross-pollination from the eval harness.** The eval harness
-    in `SFT/test/pipelines/` reads from `SFT/test/benchmark_data/`
+    in `SFT/eval/pipelines/` reads from `SFT/eval/benchmark_data/`
     only and never writes back into `SFT/data/`. This is enforced by
     the directory layout: training datasets live in `SFT/data/`,
-    benchmarks live in `SFT/test/benchmark_data/`, and the build
+    benchmarks live in `SFT/eval/benchmark_data/`, and the build
     pipeline scripts in `tmpl_gen/scripts/` write only to the former.
   * **No per-token contamination check on `tulu_3_sft_mixture` or
     `alpaca_en_demo`.** These two HF mixtures are general
@@ -316,13 +316,13 @@ list of practices we deliberately avoid and why:
 # Run from the repo root with the tmpl_gen virtualenv active.
 python tmpl_gen/scripts/dedup_against_evals.py \
     --input    SFT/data/ift_data_2026_04_29_json_v8.json \
-    --eval-dir SFT/test/benchmark_data \
+    --eval-dir SFT/eval/benchmark_data \
     --n 13 --hit-threshold 1 \
     --report   SFT/data/ift_data_2026_04_29_json_v8.dedup.json
 
 python tmpl_gen/scripts/dedup_against_evals.py \
     --input    SFT/data/ift_data_2026_04_29_longctx_v8.json \
-    --eval-dir SFT/test/benchmark_data \
+    --eval-dir SFT/eval/benchmark_data \
     --n 13 --hit-threshold 1 \
     --report   SFT/data/ift_data_2026_04_29_longctx_v8.dedup.json
 
@@ -330,7 +330,7 @@ python tmpl_gen/scripts/dedup_against_evals.py \
 # combined v8-small file is dedup-clean by transitivity. To verify:
 python tmpl_gen/scripts/dedup_against_evals.py \
     --input    SFT/data/ift_data_2026_04_29_combined_v8small.json \
-    --eval-dir SFT/test/benchmark_data \
+    --eval-dir SFT/eval/benchmark_data \
     --n 13 --hit-threshold 1 \
     --report   SFT/data/ift_data_2026_04_29_combined_v8small.dedup.json
 ```
@@ -347,7 +347,7 @@ from the SFT corpus documented here) uses a stronger leak filter
 (`cpt/process.py` `leak_filter`) because CPT documents are
 free-form web text rather than graph-derived templates and so the
 risk surface is larger. CPT runs MinHashLSH at Jaccard 0.30 over
-13-grams against the same `SFT/test/benchmark_data/` corpora plus
+13-grams against the same `SFT/eval/benchmark_data/` corpora plus
 optional per-source exact-CVE-id dropping (opt-in via
 `drop_on_exact_id` in `cpt/sources.yaml`, default off for structural
 taxonomies, on for NVD where the CVE record embeds the literal

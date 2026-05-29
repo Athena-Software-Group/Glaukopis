@@ -29,7 +29,7 @@
 #         --out SFT/data/ift_data_2026_04_30_v81.json --cap 170
 #       tmpl_gen/venv/bin/python tmpl_gen/scripts/dedup_against_evals.py \
 #         --input SFT/data/ift_data_2026_04_30_v81.json \
-#         --eval-dir SFT/test/benchmark_data --n 13 --hit-threshold 1 \
+#         --eval-dir SFT/eval/benchmark_data --n 13 --hit-threshold 1 \
 #         --report SFT/data/ift_data_2026_04_30_v81.dedup.json
 #     The cap=170 subsample preserves AB.RMS.* / JS.RMS.* in full to protect
 #     RMS catalog recall (regression seen in v8-large 14B).

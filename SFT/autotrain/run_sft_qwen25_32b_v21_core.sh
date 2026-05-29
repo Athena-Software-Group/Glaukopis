@@ -100,7 +100,7 @@
 # prevents _maybe_log_save_evaluate from ever entering the prediction
 # loop. Eval-time arguments (eval_dataset/val_size) are dropped because
 # they're irrelevant when eval_strategy=no. Bench evaluation (AthenaBench
-# etc.) runs out-of-band via SFT/test/utils/serve_and_bench_v21_*.sh and
+# etc.) runs out-of-band via SFT/eval/utils/serve_and_bench_v21_*.sh and
 # is unaffected.
 #
 # --resume keeps the existing --phase-{a,b}-dir and asks Trainer to pick

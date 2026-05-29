@@ -11,7 +11,7 @@ generation pipeline aborts before training contaminates the eval signal.
 Usage:
   python dedup_against_evals.py \\
       --input  SFT/data/ift_data_2026_04_29_json_v8.json \\
-      --eval-dir SFT/test/benchmark_data \\
+      --eval-dir SFT/eval/benchmark_data \\
       --n 13 --hit-threshold 1 \\
       --report SFT/data/ift_data_2026_04_29_json_v8.dedup.json
 
@@ -105,7 +105,7 @@ def main():
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--input", "-i", help="Candidate Alpaca JSON to scan.")
-    p.add_argument("--eval-dir", default="SFT/test/benchmark_data")
+    p.add_argument("--eval-dir", default="SFT/eval/benchmark_data")
     p.add_argument("--eval-glob", action="append", default=None,
                    help="Glob (relative to --eval-dir) restricting eval files. Repeatable.")
     p.add_argument("--n", type=int, default=13)

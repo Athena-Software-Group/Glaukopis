@@ -75,7 +75,7 @@ cd SFT/autotrain
 ./run_sft_qwen25_14b_v21_core.sh --gc on           # 8xRTX PRO 6000 96GB (Verda)
 ./run_sft_qwen25_14b_v21_chain.sh                  # TAA -> CSE -> Recalibrate
 
-# 3. Benchmark (vLLM aliases registered in SFT/test/pipelines/models.py)
+# 3. Benchmark (vLLM aliases registered in SFT/eval/pipelines/models.py)
 cd ../test
 utils/run_benchmark.sh athena-cti-sft-qwen25-14b-v21-core-vllm \
     --suite athena --version 1
@@ -212,7 +212,7 @@ recal-32b shape is **CKT/RMS/AB-heavy** (CKT
 *not* attempt a Canonical-TAA lift on the dense-32B base (Canonical
 combined 3.4, comparable to cse); the Stage-4 recipe at this scale
 is tuned for VSP / catalog recovery, not alias->canonical migration.
-The bench wrapper at `SFT/test/utils/serve_and_bench_qwen25_32b_v21_recal_32b.sh`
+The bench wrapper at `SFT/eval/utils/serve_and_bench_qwen25_32b_v21_recal_32b.sh`
 runs the full AthenaBench + CyberMetric 2K/10K + CyberSOCEval suite on
 2xH100 under one warm vLLM session (~11 h wallclock).
 
@@ -274,7 +274,7 @@ forwards `chat_template_kwargs.enable_thinking=False` per request --
 belt-and-suspenders against template drift, and -- more importantly
 -- it suppresses `VLLMModel`'s `-thinking` 8192-token decode floor so
 the per-task caps in `TASK_MAX_NEW_TOKENS` (MCQ=128, RCM/RMS/TAA=256)
-apply correctly. See `SFT/test/pipelines/models.py` for the alias
+apply correctly. See `SFT/eval/pipelines/models.py` for the alias
 registration.
 
 ### Launchers
@@ -297,7 +297,7 @@ bash SFT/autotrain/run_sft_qwen3_30b_a3b_thinking_v21_chain.nohup.sh
 bash SFT/autotrain/run_sft_qwen3_30b_a3b_thinking_v21_recalibrate.sh
 ```
 
-Per-stage benchmark wrappers live under `SFT/test/utils/serve_and_bench_qwen3_30b_a3b_thinking_2507_v21_{core,taa,cse,recal_32b,recalibrate}.sh`
+Per-stage benchmark wrappers live under `SFT/eval/utils/serve_and_bench_qwen3_30b_a3b_thinking_2507_v21_{core,taa,cse,recal_32b,recalibrate}.sh`
 and each runs the full Athena + CM-2K + CM-10K + CSE suite on 2xH100
 under one warm vLLM session.
 
@@ -487,7 +487,7 @@ the v18 / v8 defaults.
      (`tmpl_gen/scripts/dedup_against_evals.py:30-55`).
   2. Build the union set of distinct **n=13 word-grams** (default,
      overridable via `--n`) across every eval file under
-     `--eval-dir SFT/test/benchmark_data/` -- which currently covers:
+     `--eval-dir SFT/eval/benchmark_data/` -- which currently covers:
        * `athena_bench/` (`athena-cti-{ate,mcq,mcq-3k,mcq-updated,rcm,rms,vsp}.jsonl`,
          `athena_rms/`, `athena_taa/`, `mcq-patch.tsv`)
        * `cti_bench/` (`cti-{ate,mcq,rcm,rcm-2021,vsp}.tsv`, `cti_taa/`)
@@ -594,7 +594,7 @@ all of which consume the same three shard files.
 The v21 benchmark portfolio is **AthenaBench + CTIBench + CyberMetric +
 CyberSOCEval** (the full eval index in `dedup_against_evals.py`); the
 v21 chain ports also bench MMLU-Pro for general-knowledge regression
-tracking (`SFT/test/utils/serve_and_bench_mmlu_pro.sh`), which is run
+tracking (`SFT/eval/utils/serve_and_bench_mmlu_pro.sh`), which is run
 out of the loop and is not in the contamination index because the v21
 SFT corpus does not include any MMLU-Pro adjacent material.
 
@@ -603,7 +603,7 @@ SFT corpus does not include any MMLU-Pro adjacent material.
 | **AthenaBench** (`athena-cti-{ate,mcq,rcm,rms,vsp,taa}.jsonl`) | No -- structural overlap accepted (catalog-recall framing). | The underlying ATT&CK / CWE / CVE / KEV / EPSS / D3FEND graph. The benchmark prompts are GPT-{4,5}-rewritten incident narratives produced at benchmark generation time and are NOT in the v21 corpus. | All three shard watchers' Phase 5 indexes `athena_bench/*.jsonl` and the `athena_rms/`, `athena_taa/` subdirs at n=13. Any >=50 shared 13-grams filters the row from the trainable artefact and logs it to the shard's `dedup_report.json`. | The catalog-recall framing is the published AthenaBench position. v21's `AB.RMS.{3a..3h,4,5,6}` templates (carried byte-identical from v18.1) target the catalog-coverage and cardinality gaps the v5 baseline exposed; they do not encode any benchmark prompt. |
 | **CTIBench** (`cti-{ate,mcq,rcm,rcm-2021,vsp}.tsv`, `cti_taa/`) | No -- structural overlap accepted (same graph). | Same MITRE / NIST graph as the SFT corpus. CTIBench prompts are paraphrastic transformations of the underlying records. | Same n=13 fingerprint as above; `cti_bench/*.tsv` is in the index for all three v21 shards. | The CTIBench paper explicitly anticipates this overlap and grades models on the paraphrastic surface form. v21 templates do not import CTIBench-specific phrasings. |
 | **CyberMetric** (`CyberMetric-{80,500,2000,10000}-v1.json`; v21 ports bench the 2K and 10K slices) | No -- structural overlap with general CTI knowledge accepted; the benchmark is partly a general-knowledge MCQ over public security material that overlaps the base model's pretrain. | Domain knowledge (concepts, definitions, CVE descriptions). The MCQ phrasings themselves are NOT in the v21 corpus. | All four CyberMetric files in the n=13 index; verbatim leakage of any MCQ stem or option string is filtered out and logged. | The `tulu_3_sft_mixture` + `alpaca_en_demo` catastrophic-forgetting guards in v21-Core Phase A preserve general instruction-following so that CyberMetric scores reflect CTI-narrowing impact rather than instruction collapse, not so that the model can solve specific CyberMetric items. |
-| **CyberSOCEval** (Meta; `malware_analysis/*.jsonl`, `threat_intel_reasoning/*.jsonl`) | No -- structural overlap with the public CTI corpus accepted. | The JSON envelope shapes (e.g. `{"correct_answers": [...]}`, `{"behaviors": [...]}`) are matched in the `JS.*` and `JS.CSE.*` template families. The specific eval prompts and ground-truth answers are NOT in the v21 corpus. | The CyberSOCEval source files under `SFT/test/benchmark_data/cybersoceval/` are picked up by the same n=13 glob and any >=50-overlap row is filtered. | The `JS.CSE.*` family in the v21 CSE shard is byte-identical to v17.1, which itself reset the v17 letter-set mode-collapse via a `Shuffle: mcq_multi` directive without altering the underlying CyberSOCEval-shape substrate. The family teaches the **shape** of a JSON-wrapped multi-select response over graph-derived facts; CyberSOCEval grades the same shape over its held-out facts. |
+| **CyberSOCEval** (Meta; `malware_analysis/*.jsonl`, `threat_intel_reasoning/*.jsonl`) | No -- structural overlap with the public CTI corpus accepted. | The JSON envelope shapes (e.g. `{"correct_answers": [...]}`, `{"behaviors": [...]}`) are matched in the `JS.*` and `JS.CSE.*` template families. The specific eval prompts and ground-truth answers are NOT in the v21 corpus. | The CyberSOCEval source files under `SFT/eval/benchmark_data/cybersoceval/` are picked up by the same n=13 glob and any >=50-overlap row is filtered. | The `JS.CSE.*` family in the v21 CSE shard is byte-identical to v17.1, which itself reset the v17 letter-set mode-collapse via a `Shuffle: mcq_multi` directive without altering the underlying CyberSOCEval-shape substrate. The family teaches the **shape** of a JSON-wrapped multi-select response over graph-derived facts; CyberSOCEval grades the same shape over its held-out facts. |
 
 ### Adjacent corpus-hygiene gates (not contamination, but co-resident)
 
@@ -639,11 +639,11 @@ exclusions verbatim and adds no new ones:
     and CTIBench publish small validation slices intended for prompt
     engineering. v21 does not consume any of these splits as training
     data; they are only used downstream by the eval harness under
-    `SFT/test/`.
+    `SFT/eval/`.
   * **No cross-pollination from the eval harness.** The eval harness in
-    `SFT/test/pipelines/` reads from `SFT/test/benchmark_data/` only
+    `SFT/eval/pipelines/` reads from `SFT/eval/benchmark_data/` only
     and never writes back into `SFT/data/`. Training datasets live in
-    `SFT/data/`, benchmarks live in `SFT/test/benchmark_data/`, and
+    `SFT/data/`, benchmarks live in `SFT/eval/benchmark_data/`, and
     the v21 build pipeline scripts in `tmpl_gen/scripts/` write only
     to the former.
   * **No per-token contamination check on `tulu_3_sft_mixture` or
@@ -674,7 +674,7 @@ under each shard's build dir. To regenerate any one of them locally:
 python tmpl_gen/scripts/dedup_against_evals.py \
     --input           SFT/data/ift_data_2026_05_18_v21_core.balanced.json \
     --filter-output   /tmp/v21_core_clean.json \
-    --eval-dir        SFT/test/benchmark_data \
+    --eval-dir        SFT/eval/benchmark_data \
     --n 13 \
     --hit-threshold   1 \
     --drop-threshold  50 \
@@ -685,14 +685,14 @@ python tmpl_gen/scripts/dedup_against_evals.py \
 python tmpl_gen/scripts/dedup_against_evals.py \
     --input           SFT/data/ift_data_2026_05_18_v21_taa.balanced.json \
     --filter-output   /tmp/v21_taa_clean.json \
-    --eval-dir        SFT/test/benchmark_data \
+    --eval-dir        SFT/eval/benchmark_data \
     --n 13 --hit-threshold 1 --drop-threshold 50 --max-fail 999999 \
     --report          /tmp/v21_taa_dedup_report.json
 
 python tmpl_gen/scripts/dedup_against_evals.py \
     --input           SFT/data/ift_data_2026_05_18_v21_cse.balanced.json \
     --filter-output   /tmp/v21_cse_clean.json \
-    --eval-dir        SFT/test/benchmark_data \
+    --eval-dir        SFT/eval/benchmark_data \
     --n 13 --hit-threshold 1 --drop-threshold 50 --max-fail 999999 \
     --report          /tmp/v21_cse_dedup_report.json
 ```

@@ -384,10 +384,10 @@ After all three phases complete:
 1. Push merged Phase C checkpoint to
    ${HF_USERNAME}/athena-cti-sft-qwen25-{14b,32b}-v12.
 2. Register vLLM aliases athena-cti-sft-qwen25-{14b,32b}-v12-vllm in
-   SFT/test/pipelines/models.py (mirrors v11 entries; max-len 32768
+   SFT/eval/pipelines/models.py (mirrors v11 entries; max-len 32768
    for both 14B and 32B per the Qwen2.5 native ctx ceiling).
 3. Run full AthenaBench + CyberSOCEval + CyberMetric (sizes 80, 2000,
-   10000) suites via SFT/test/utils/serve_and_bench.sh.
+   10000) suites via SFT/eval/utils/serve_and_bench.sh.
 4. Run the new athena-cti-taa-canonical bench (§10) to score the
    TAA.CANON family in isolation. v11's TAA-accurate +3 pp gain was
    confounded with the AB.TAA overshoot; v12 separates the two signals.
@@ -472,8 +472,8 @@ Code (this PR scope, when v12 is greenlit):
       ift_data_2026_05_05_v12_val
 - [ ] SFT/autotrain/run_sft_qwen25_14b_v12.sh (three-phase)
 - [ ] SFT/autotrain/run_sft_qwen25_32b_v12.sh (three-phase)
-- [ ] SFT/test/pipelines/models.py aliases for v12 14B + 32B
-- [ ] SFT/test/benchmarks/ athena-cti-taa-canonical loader (NEW;
+- [ ] SFT/eval/pipelines/models.py aliases for v12 14B + 32B
+- [ ] SFT/eval/benchmarks/ athena-cti-taa-canonical loader (NEW;
       this time actually authored, unlike the v11 §10 deliverable
       that was scoped but never landed)
 

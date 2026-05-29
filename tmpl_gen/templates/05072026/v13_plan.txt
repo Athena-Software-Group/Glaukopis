@@ -488,7 +488,7 @@ Two complementary build-time gates enforce the policy:
          (MITRE ATT&CK Terms of Use)
        - tmpl_gen/data_generation/seeds/misp/threat-actor.json
          (CC-0 1.0 / Public Domain)
-       - SFT/test/benchmark_data/athena_bench/athena_taa/aliases.csv
+       - SFT/eval/benchmark_data/athena_bench/athena_taa/aliases.csv
          (Athena internal)
 
   2. The licence-allowlist gate (tmpl_gen/scripts/check_corpus_licences.py,
@@ -539,7 +539,7 @@ Code (this PR scope, when v13 is greenlit):
       ift_data_2026_05_07_v13_val
 - [ ] SFT/autotrain/run_sft_qwen25_14b_v13.sh (two-phase)
 - [ ] SFT/autotrain/run_sft_qwen25_32b_v13.sh (two-phase; deferred until 14B passes §8)
-- [ ] SFT/test/pipelines/models.py aliases for v13 14B + 32B vLLM
+- [ ] SFT/eval/pipelines/models.py aliases for v13 14B + 32B vLLM
 
 Replaces/deprecates: nothing removed. v12 launchers, HF repos, and the
 v12 dataset_info.json entries remain in the repo for reproducibility

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Register a trained+pushed HF model in SFT/test/pipelines/models.py
+# Register a trained+pushed HF model in SFT/eval/pipelines/models.py
 # (idempotent) and run athenabench against it.
 #
 # Run this AFTER train.sh has pushed the model to
@@ -20,19 +20,19 @@
 #
 # Flow:
 #   1. Verify the HF repo exists.
-#   2. Patch SFT/test/pipelines/models.py to add the alias if missing.
+#   2. Patch SFT/eval/pipelines/models.py to add the alias if missing.
 #   3. Activate the ctibench env.
 #   4. Run a 2-row smoke test on athena-mcq.
 #   5. If not --smoke-only and the smoke test passes, run the full sweep
-#      via SFT/test/utils/run_benchmark.sh.
+#      via SFT/eval/utils/run_benchmark.sh.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SFT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-MODELS_PY="${REPO_ROOT}/SFT/test/pipelines/models.py"
-BENCH_SCRIPT="${REPO_ROOT}/SFT/test/utils/run_benchmark.sh"
+MODELS_PY="${REPO_ROOT}/SFT/eval/pipelines/models.py"
+BENCH_SCRIPT="${REPO_ROOT}/SFT/eval/utils/run_benchmark.sh"
 
 REPO_ID=""
 ALIAS="athena-cti-sft-llama31-8b"
@@ -99,7 +99,7 @@ except Exception as e:
 PY
 
 # 2. Idempotent registry patch -------------------------------------------------
-echo "=== Registering '${ALIAS}' in SFT/test/pipelines/models.py ==="
+echo "=== Registering '${ALIAS}' in SFT/eval/pipelines/models.py ==="
 python - "${MODELS_PY}" "${ALIAS}" "${REPO_ID}" <<'PY'
 import ast, sys
 from pathlib import Path
@@ -143,7 +143,7 @@ conda activate "${ENV_NAME}"
 # 4. Smoke test ---------------------------------------------------------------
 echo
 echo "=== Smoke test (${ROWS} rows, task=athena-mcq) ==="
-cd "${REPO_ROOT}/SFT/test"
+cd "${REPO_ROOT}/SFT/eval"
 SMOKE_ARGS=(athena-mcq "${ALIAS}" --rows "${ROWS}" --version 99)
 [[ -n "${BATCH}" ]] && SMOKE_ARGS+=(--batch "${BATCH}")
 python inference.py "${SMOKE_ARGS[@]}"

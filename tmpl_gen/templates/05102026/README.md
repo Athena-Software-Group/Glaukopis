@@ -154,7 +154,7 @@ cybersoceval-malware, cybersoceval-ti.
 Inherited from v8 / v10 / v11 / v14 without modification. The v17
 corpus is built by `_v17_build/watcher.sh`, whose Phase 5 runs
 `tmpl_gen/scripts/dedup_against_evals.py` against
-`SFT/test/benchmark_data/` with `n=13` word-grams,
+`SFT/eval/benchmark_data/` with `n=13` word-grams,
 `hit-threshold=1`, and the v10 soft-drop policy (`--drop-threshold
 50`). Verbatim leakage of any AthenaBench / CTIBench / CyberMetric /
 CyberSOCEval row into the training corpus is blocked at build time;

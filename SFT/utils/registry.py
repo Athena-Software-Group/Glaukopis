@@ -4,13 +4,13 @@
 Storage: SFT/research/runs.jsonl, one JSON object per run keyed by run_id.
 The CLI is a tiny upsert layer on top of that file -- no schema migrations,
 no external deps. Designed to be run both on the training box (to register
-a finished SFT run) and on whatever host has the SFT/test sweep output
+a finished SFT run) and on whatever host has the SFT/eval sweep output
 (to attach benchmark metrics). All files referenced are kept as absolute
 paths so entries are portable across hosts only by the run_id.
 
 Commands:
     register   snapshot SFT/training meta from an output dir
-    attach     merge SFT/test summary JSON(s) into a run
+    attach     merge SFT/eval summary JSON(s) into a run
     show       pretty-print the registry as an ASCII table
     dump       print a single run as JSON (pretty)
     path       print the registry path
@@ -286,7 +286,7 @@ def _summarize_tasks(tasks: list[dict[str, Any]]) -> dict[str, Any]:
     """Flatten per-task metric dicts into a compact {task: metrics} map and
     pick a single headline number per task for the show table.
 
-    The convention in SFT/test is that each task's metrics dict has one
+    The convention in SFT/eval is that each task's metrics dict has one
     obvious top-level accuracy-like value (`accuracy`, `macro_f1`, etc.).
     We keep the full dict and also project a scalar headline for display.
     """
@@ -322,7 +322,7 @@ def cmd_attach(args: argparse.Namespace) -> int:
 
     summary_paths: list[Path] = [Path(p).resolve() for p in args.summary_json]
     if not summary_paths:
-        # Auto-discover: SFT/test/responses/<display>/summary_<suite>_*.json
+        # Auto-discover: SFT/eval/responses/<display>/summary_<suite>_*.json
         display = args.display or args.run_id
         pattern_dir = BENCH_RESPONSES_DIR / display
         if pattern_dir.exists():
@@ -462,12 +462,12 @@ def _build_parser() -> argparse.ArgumentParser:
     reg.add_argument("--gpu-name", default=None, help="Override GPU name string")
     reg.set_defaults(func=cmd_register)
 
-    att = sub.add_parser("attach", help="Attach SFT/test summary JSON(s) to a run")
+    att = sub.add_parser("attach", help="Attach SFT/eval summary JSON(s) to a run")
     att.add_argument("run_id", help="Registered run_id")
     att.add_argument("--summary-json", action="append", default=[],
                      help="Path to a summary_<suite>_*.json (repeatable)")
     att.add_argument("--display", default="",
-                     help="Display name under SFT/test/responses/ for auto-discovery")
+                     help="Display name under SFT/eval/responses/ for auto-discovery")
     att.set_defaults(func=cmd_attach)
 
     show = sub.add_parser("show", help="Print the registry as an ASCII table")

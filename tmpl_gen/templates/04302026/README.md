@@ -123,7 +123,7 @@ python tmpl_gen/scripts/stratified_subsample.py \
 # 4. Verbatim-overlap dedup against the eval suite (Section 2.1).
 python tmpl_gen/scripts/dedup_against_evals.py \
     --input    SFT/data/ift_data_2026_04_30_v81.json \
-    --eval-dir SFT/test/benchmark_data \
+    --eval-dir SFT/eval/benchmark_data \
     --n 13 --hit-threshold 1 \
     --report   SFT/data/ift_data_2026_04_30_v81.dedup.json
 ```
@@ -164,7 +164,7 @@ the v8.1-specific numbers.
 **Tool:** `tmpl_gen/scripts/dedup_against_evals.py` (unchanged from
 v8). **Mechanism / threshold rationale:** see v8 README Section 2.1
 (n=13 word-grams, `hit-threshold=1`, eval-dir
-`SFT/test/benchmark_data/`). Nothing about the script changed for
+`SFT/eval/benchmark_data/`). Nothing about the script changed for
 v8.1.
 
 **v8.1 result:** 11,180 of 41,808 rows (~26.7%) flagged at
@@ -286,7 +286,7 @@ appear in the corpus.
   * No benchmark answer keys in the Neo4j graph.
   * No fine-tuning on benchmark dev/validation splits.
   * No cross-pollination from the eval harness
-    (`SFT/test/benchmark_data/` is read-only relative to
+    (`SFT/eval/benchmark_data/` is read-only relative to
     `SFT/data/`).
   * No per-token contamination check on `tulu_3_sft_mixture` or
     `alpaca_en_demo`.
@@ -299,7 +299,7 @@ See v8 README Section 2.4 for the full text of each item.
 # Run from the repo root with the tmpl_gen virtualenv active.
 python tmpl_gen/scripts/dedup_against_evals.py \
     --input    SFT/data/ift_data_2026_04_30_v81.json \
-    --eval-dir SFT/test/benchmark_data \
+    --eval-dir SFT/eval/benchmark_data \
     --n 13 --hit-threshold 1 \
     --report   SFT/data/ift_data_2026_04_30_v81.dedup.json
 ```
@@ -325,7 +325,7 @@ print('top templates:', collections.Counter(h['shortname'] for h in d).most_comm
 
 Unchanged from v8 README Section 2.6. The CPT corpus runs MinHashLSH
 at Jaccard 0.30 over 13-grams against the same
-`SFT/test/benchmark_data/` corpora plus optional per-source exact-
+`SFT/eval/benchmark_data/` corpora plus optional per-source exact-
 CVE-id dropping. v8.1 does not change CPT.
 
 ## 3. File provenance for the consolidated manifest
@@ -541,7 +541,7 @@ python tmpl_gen/scripts/stratified_subsample.py \
 # 4. Verbatim-overlap dedup against the eval suite (informational).
 python tmpl_gen/scripts/dedup_against_evals.py \
     --input    SFT/data/ift_data_2026_04_30_v9_rms.json \
-    --eval-dir SFT/test/benchmark_data \
+    --eval-dir SFT/eval/benchmark_data \
     --n 13 --hit-threshold 1 \
     --report   SFT/data/ift_data_2026_04_30_v9_rms.dedup.json
 ```

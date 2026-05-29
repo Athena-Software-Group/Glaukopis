@@ -114,7 +114,7 @@ Operational ref  : THIS FILE
       reflect their domain-specific (not cumulative) nature:
         ...-v18-core-plus-taa      ->  ...-v18-taa
         ...-v18-core-plus-taa-cse  ->  ...-v18-cse
-      vLLM aliases in SFT/test/pipelines/models.py are updated to
+      vLLM aliases in SFT/eval/pipelines/models.py are updated to
       the new repo names. The Stage 2 / Stage 3 recipes, datasets,
       and launchers (run_sft_qwen25_14b_v18_plus_taa.sh /
       run_sft_qwen25_14b_v18_final.sh) are untouched.

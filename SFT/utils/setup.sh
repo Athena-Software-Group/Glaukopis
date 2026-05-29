@@ -2,7 +2,7 @@
 
 # End-to-end setup script for the SFT pipeline on a Linux CUDA machine.
 # By default (--mode all) installs both the LlamaFactory training stack into
-# `llm-sft` and the SFT/test benchmarking stack into `ctibench` (the two-env
+# `llm-sft` and the SFT/eval benchmarking stack into `ctibench` (the two-env
 # layout the rest of the repo + docs assume). Pass --env-name NAME together
 # with --mode all to collapse both stacks into a single named env instead.
 # Use --mode train|test|vllm to install only one side. --split-envs is kept
@@ -20,16 +20,16 @@
 #   3. PyTorch matched to the requested CUDA version
 #   4. [train] LlamaFactory (editable install of SFT/) + training extras
 #              (metrics, deepspeed) + wandb + huggingface_hub + python-dotenv
-#   5. [test]  SFT/test requirements + git-lfs + CyberSOCEval data fetch
+#   5. [test]  SFT/eval requirements + git-lfs + CyberSOCEval data fetch
 #              (Athena/CTI/CyberMetric data are committed regular files; only
 #              CyberSOCEval requires post-checkout downloads, which run via
-#              SFT/test/utils/fetch_cybersoceval_data.py. The fetch is gated
+#              SFT/eval/utils/fetch_cybersoceval_data.py. The fetch is gated
 #              to --mode test and --mode vllm only -- it is intentionally
 #              skipped under --mode all and --mode train so training-only
 #              boxes don't burn time pulling PurpleLlama/CrowdStrike PDFs
 #              they will never read. --skip-cybersoceval still forces it
 #              off in the test/vllm modes; populate later from any host with
-#              `cd SFT/test && python utils/fetch_cybersoceval_data.py`.)
+#              `cd SFT/eval && python utils/fetch_cybersoceval_data.py`.)
 #   6. [vllm]  vllm + openai client into an isolated env (default: vllm),
 #              plus the [test] stack into ctibench unless --no-bench-env
 #   7. flash-attn (only for the train stack; optional, non-fatal; skipped
@@ -81,7 +81,7 @@
 #    to widen the cap, or pass --no-flash-attn to drop it entirely)
 #
 # Dependency note:
-#   LlamaFactory pins datasets<=4.0.0 and transformers<=5.2.0; SFT/test asks
+#   LlamaFactory pins datasets<=4.0.0 and transformers<=5.2.0; SFT/eval asks
 #   for datasets>=4.0.0 and transformers>=4.56.2. The joint solution is
 #   datasets==4.0.0 and transformers 4.56.2..5.2.0, which pip resolves cleanly
 #   when LlamaFactory is installed first (the order used below).
@@ -189,7 +189,7 @@ fi
 # reports a CUDA whose tag isn't supported by PyTorch's wheel index. This
 # is the fix for the torchvision/torchaudio mismatch we keep hitting on
 # fresh boxes: the default cu124 index ships torch<=2.6, but
-# SFT/test/requirements.txt pins torch>=2.8.0 (CVE), which forces pip to
+# SFT/eval/requirements.txt pins torch>=2.8.0 (CVE), which forces pip to
 # yank a +cu130 torch from PyPI later -- orphaning torchvision/torchaudio
 # at the older cu124 wheels and producing the canonical
 # "RuntimeError: operator torchvision::nms does not exist" trip.
@@ -489,7 +489,7 @@ install_stack() {
         #      version 13.0 whereas TorchAudio has CUDA version 12.8.
         #    -- on first import.
         #
-        # 2. Downstream pip installs (e.g. SFT/test/requirements.txt's
+        # 2. Downstream pip installs (e.g. SFT/eval/requirements.txt's
         #    `torch>=2.8.0` CVE pin, line ~550 below) re-evaluate torch
         #    against PyPI and, finding a higher upstream version there,
         #    silently "upgrade" the env into the same broken state.
@@ -677,10 +677,10 @@ EOF
     fi
 
     if [[ "${stack}" == "test" || "${stack}" == "all" ]]; then
-        echo "=== Installing SFT/test requirements into ${env} ==="
+        echo "=== Installing SFT/eval requirements into ${env} ==="
         pip install -r "${TEST_DIR}/requirements.txt"
 
-        # SFT/test/requirements.txt pins torch>=2.8.0 (CVE), which is newer
+        # SFT/eval/requirements.txt pins torch>=2.8.0 (CVE), which is newer
         # than what the cu124 PyTorch wheel index ships. When that pin
         # forces pip to upgrade torch from PyPI (typically to a +cu130
         # wheel), torchvision/torchaudio installed earlier from the cu-tag
@@ -774,7 +774,7 @@ EOF
         # from CrowdStrike/CyberSOCEval_data, the threat-intel question set
         # comes from meta-llama/PurpleLlama, and per-question PDFs are
         # downloaded from the upstream vendors then converted to text via
-        # pypdf (already pinned in SFT/test/requirements.txt). The fetch
+        # pypdf (already pinned in SFT/eval/requirements.txt). The fetch
         # is wall-time non-trivial (~5-15 min of PDFs/JSONs, gated by the
         # ic3.gov / web.archive.org rate limits) and pulls ~200MB to disk,
         # so it's gated to operator intent: only --mode test and --mode
@@ -902,7 +902,7 @@ PY
 }
 
 # torchvision/torchaudio alignment helper ------------------------------------
-# SFT/test/requirements.txt pins torch>=2.8.0 (CVE), but the default cu124
+# SFT/eval/requirements.txt pins torch>=2.8.0 (CVE), but the default cu124
 # PyTorch wheel index ships at most torch 2.6. When pip resolves the pin it
 # yanks a newer torch (typically +cu130) from PyPI, leaving torchvision and
 # torchaudio at the original cu-tag wheels installed earlier. The two then
@@ -1224,7 +1224,7 @@ if [[ ${RUN_DISK_CLEANUP} -eq 1 ]]; then
             || echo "  skip: apt-get clean failed (non-fatal)"
     fi
 
-    # Old serve/bench logs (>7 days) under SFT/test. Each run produces two
+    # Old serve/bench logs (>7 days) under SFT/eval. Each run produces two
     # multi-MB logs; on a long-lived bench host these add up.
     if [[ -d "${TEST_DIR}" ]]; then
         REMOVED_LOGS=0

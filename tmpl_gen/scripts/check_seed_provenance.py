@@ -56,8 +56,8 @@ SEEDS: list[dict] = [
     },
     {
         "name": "Athena CTI vendor-alias CSV",
-        "path": "SFT/test/benchmark_data/athena_bench/athena_taa/aliases.csv",
-        "provenance": "SFT/test/benchmark_data/athena_bench/athena_taa/PROVENANCE.txt",
+        "path": "SFT/eval/benchmark_data/athena_bench/athena_taa/aliases.csv",
+        "provenance": "SFT/eval/benchmark_data/athena_bench/athena_taa/PROVENANCE.txt",
         "expected_sha256":
             "f6b3a56a3cdae1930a3af9dc2f35d452ebc315a97a794724f4c28a8e598a5ade",
         "licence_keywords": ["Athena internal"],

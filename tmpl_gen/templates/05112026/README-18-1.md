@@ -132,7 +132,7 @@ row-count gate (`v18_1_row_count_gate.json`).
    - `asg-ai/athena-cti-sft-qwen25-14b-v18-core-plus-taa`     → `…-v18-taa`
    - `asg-ai/athena-cti-sft-qwen25-14b-v18-core-plus-taa-cse` → `…-v18-cse`
 
-   The vLLM aliases in `SFT/test/pipelines/models.py` track the new names.
+   The vLLM aliases in `SFT/eval/pipelines/models.py` track the new names.
    On §5 sign-off the v18-taa / v18-cse stages are re-chained off the new
    v18.1-Core base; the resulting chained model is published as
    `asg-ai/athena-cti-sft-qwen25-14b-v18-1`.

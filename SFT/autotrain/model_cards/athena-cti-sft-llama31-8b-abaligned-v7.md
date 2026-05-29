@@ -103,7 +103,7 @@ vllm serve asg-ai/athena-cti-sft-llama31-8b-abaligned-v7 \
     --tensor-parallel-size 1 --max-model-len 4096 --port 8000
 
 # AthenaBench sweep (from a Glaukopis checkout):
-cd SFT/test
+cd SFT/eval
 BENCH_CONDA_ENV=ctibench bash utils/serve_and_bench.sh \
     athena-cti-sft-llama31-8b-abaligned-v7-vllm \
     --tp 1 --max-len 4096 --port 8000 \

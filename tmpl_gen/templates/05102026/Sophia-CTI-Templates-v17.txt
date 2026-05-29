@@ -84,7 +84,7 @@ description and a sample of its documented techniques so the model sees
 the question in a long-context shape that mirrors the CSE-TI eval set.
 The Answer wraps the JSON letter-set in <json_object>...</json_object>
 tags; the CSE-TI postprocessor uses this wrapper as its primary parse
-hook (see SFT/test/pipelines/post_processing/cybersoceval.py).
+hook (see SFT/eval/pipelines/post_processing/cybersoceval.py).
 --------------------------------------------------------------------------------
 
 JS.CSE.TI.GRP.1 Instruction: You are a CTI analyst at an enterprise Security Operations Center answering a multi-select Cyber Threat Intelligence question grounded in a sanitised threat intelligence report. Analyse the report, reason about each option in turn against the documented tradecraft of the named intrusion set, and respond with a single JSON object containing the key "correct_answers" (a list of the letters of the correct options). It is possible that there are multiple correct answers, or a single correct answer. Wrap the JSON object in <json_object></json_object> tags and return only that wrapped object, no other commentary.
@@ -335,7 +335,7 @@ This trains the model to extract MITRE IDs from the JSON, match them
 against the multi-choice options, and emit the bare {"correct_answers":
 [...]} JSON shape that the CSE-Malware extractor parses (no <json_object>
 wrapper for this family; the bare-brace path is the malware extractor's
-primary parse hook -- see SFT/test/pipelines/post_processing/cybersoceval.py).
+primary parse hook -- see SFT/eval/pipelines/post_processing/cybersoceval.py).
 --------------------------------------------------------------------------------
 
 JS.CSE.MAL.RPT.1 Instruction: You are a malware analyst at an enterprise Security Operations Center reviewing a sandbox detonation report and answering a multi-select question about the MITRE ATT&CK techniques the sample exhibits. Analyse the report, reason about each option in turn against the techniques present in the report, and respond with a single JSON object containing the key "correct_answers" (a list of the letters of the correct options). It is possible that there are multiple correct answers, or a single correct answer. Return only the JSON object, no other commentary.
@@ -417,7 +417,7 @@ SECTION CSE-MAL-TAC -- JS.CSE.MAL.TAC.1 multi-select malware->tactic
 Source: athena-cti-db-internal
 The CSE-Malware questions are not restricted to technique IDs; the
 truncated detonation report keeps the `tactic` field on each
-mitre_attcks entry (see SFT/test/benchmarks/cybersoceval_malware.py
+mitre_attcks entry (see SFT/eval/benchmarks/cybersoceval_malware.py
 _truncate_report keep=("tactic","technique","attck_id")), so the
 underlying question template can ask about either axis. This template
 trains the model to answer the tactic-axis variant by chaining

@@ -168,7 +168,7 @@ Inherited from v8 (`../04292026/README.md` §2) and v10
 (`../05012026/README.md` §10) without modification. The v11 corpus
 is built by `_v11_build/watcher.sh`, whose Phase 5 runs
 `tmpl_gen/scripts/dedup_against_evals.py` against
-`SFT/test/benchmark_data/` with `n=13` word-grams,
+`SFT/eval/benchmark_data/` with `n=13` word-grams,
 `hit-threshold=1`, and the v10 soft-drop policy (`--drop-threshold
 50`). Verbatim leakage of any AthenaBench / CTIBench / CyberMetric /
 CyberSOCEval row into the training corpus is blocked at build time;

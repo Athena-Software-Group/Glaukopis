@@ -16,7 +16,7 @@ def ids_in(s: str) -> set[str]:
     return set(ID_RE.findall(s or ""))
 
 train_path = sys.argv[1] if len(sys.argv) > 1 else "SFT/data/ift_data_2026_04_30_v81.subsampled.json"
-eval_dir = pathlib.Path("SFT/test/benchmark_data")
+eval_dir = pathlib.Path("SFT/eval/benchmark_data")
 
 # 1. Index eval IDs per file (input-IDs and answer-IDs separately)
 eval_input_ids = defaultdict(set)   # file -> set of IDs in question/desc

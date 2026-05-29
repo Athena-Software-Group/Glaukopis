@@ -46,7 +46,7 @@ bash cpt/train_cpt.sh --dataset cti_corpus_v1 \
 ### Do we need SFT after CPT?
 
 Yes, in a limited form, if we want the AthenaBench/CTIBench suites in
-`SFT/test/` to work unchanged. The existing evaluators issue instruction-
+`SFT/eval/` to work unchanged. The existing evaluators issue instruction-
 style prompts and parse structured output (`Answer: X`, `{...}` dicts,
 etc.). A pure CPT on the *base* model will produce fluent CTI prose but
 not reliably honor those output formats.

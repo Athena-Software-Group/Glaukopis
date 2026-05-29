@@ -30,7 +30,7 @@ flowchart LR
     A["tmpl_gen<br/>Sophia CTI templates<br/>+ Neo4j CTI graph<br/>(05182026 vintage)"]
     B["SFT/<br/>LlamaFactory full-param SFT<br/>Qwen-2.5-32B-Instruct<br/>v21 4-stage chain"]
     C["HF Hub<br/>asg-ai/athena-cti-sft-<br/>qwen25-32b-v21-recal-32b"]
-    D["SFT/test/<br/>vLLM / HF Router sweeps<br/>AthenaBench · CyberSOCEval ·<br/>CyberMetric · MMLU-Pro"]
+    D["SFT/eval/<br/>vLLM / HF Router sweeps<br/>AthenaBench · CyberSOCEval ·<br/>CyberMetric · MMLU-Pro"]
     A -- "IFT JSON shards" --> B
     B -- "push (per stage)" --> C
     C -- "serve via vLLM" --> D
@@ -69,7 +69,7 @@ full flag coverage.
 [`SFT/utils/setup.sh`](utils/setup.sh) is idempotent: it installs
 Miniconda (if missing), creates the `llm-sft` (training) and `ctibench`
 (benchmarking) conda envs, installs CUDA-matched PyTorch + LlamaFactory
-(editable) into the former and the `SFT/test/` benchmark stack into the
+(editable) into the former and the `SFT/eval/` benchmark stack into the
 latter, bootstraps `SFT/.env` from `.env.example`, and runs `conda init`
 for your shell. Pass `--env-name FOO` together with `--mode all` to
 collapse both stacks into a single named env instead.
@@ -208,12 +208,12 @@ suffix for the default transformers / `device_map="auto"` path.
 ```bash
 # Terminal 1 — serve the model (Ctrl-C to tear down).
 conda activate vllm
-bash SFT/test/utils/serve_vllm.sh \
+bash SFT/eval/utils/serve_vllm.sh \
     --model asg-ai/athena-cti-sft-llama31-8b-abaligned-v3 --tp 2
 
 # Terminal 2 — run the sweep against http://localhost:8000.
 conda activate llm-sft
-cd SFT/test/utils
+cd SFT/eval/utils
 ./run_benchmark.sh athena-cti-sft-llama31-8b-abaligned-v3-vllm \
     --suite athena --batch 64 --version 1
 ```
@@ -225,10 +225,10 @@ that carry their own template are used as-is.
 **HuggingFace Inference Providers** (hosted API; no local GPU):
 
 ```bash
-# One-time: put an 'Inference Providers'-scoped token in SFT/test/.env
+# One-time: put an 'Inference Providers'-scoped token in SFT/eval/.env
 #   HUGGINGFACE_TOKEN=hf_xxx
 conda activate llm-sft
-cd SFT/test
+cd SFT/eval
 ./utils/run_benchmark.sh deepseek-r1-14b-hf --batch 32 --overwrite --yes
 ```
 
@@ -241,7 +241,7 @@ parity checks against a vLLM run of the same model:
 
 ```bash
 conda activate llm-sft
-cd SFT/test/utils
+cd SFT/eval/utils
 ./run_benchmark.sh athena-cti-sft-llama31-8b-abaligned-v3 \
     --suite athena --version 1
 ```
@@ -463,8 +463,8 @@ Per-stage `serve_and_bench_qwen25_32b_v21_{core,taa,cse,recal_32b,recalibrate}.s
 wrappers run the full Athena + CSE + CM-2K + CM-10K sweep under one
 warm vLLM session on 2×H100 (~11 h end-to-end for the ship
 `v21-recal-32b`). Per-task token / GPU-hour cost is aggregated via
-`SFT/test/utils/build_cost_summary.py` into
-`SFT/test/responses/cost_summary.csv` (API rows priced from
+`SFT/eval/utils/build_cost_summary.py` into
+`SFT/eval/responses/cost_summary.csv` (API rows priced from
 `pipelines/api_usage.py::PRICING_PER_1K`; vLLM rows priced from
 wall-clock × $2.50/GPU-hr on 2×H100). All three transports share the
 same prompt templates, scoring code, and response-cache directory

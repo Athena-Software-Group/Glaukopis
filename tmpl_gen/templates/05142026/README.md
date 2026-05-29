@@ -216,7 +216,7 @@ Standard 14B AthenaBench + CyberMetric + CyberSOCEval sweep against
 (2xH100, ~8 min full sweep):
 
 ```bash
-BENCH_CONDA_ENV=ctibench bash SFT/test/utils/serve_and_bench_v18p2p2_multi_replay.sh
+BENCH_CONDA_ENV=ctibench bash SFT/eval/utils/serve_and_bench_v18p2p2_multi_replay.sh
 ```
 
 Sign-off criteria (full table in `plan.txt §4`; expected ranges in
@@ -235,7 +235,7 @@ parentheses are **predictions**, not gates):
 
 If §4 passes, `asg-ai/athena-cti-sft-qwen25-14b-v18-2-2` is promoted
 to the headline v18.2 ship by alias swap in
-`SFT/test/pipelines/models.py` — **not** by overwrite of v18.1-cse,
+`SFT/eval/pipelines/models.py` — **not** by overwrite of v18.1-cse,
 v18-2, or v18-2-1 (those repos are retained for regression
 comparison).
 

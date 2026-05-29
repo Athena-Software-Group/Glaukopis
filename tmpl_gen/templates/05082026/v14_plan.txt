@@ -361,7 +361,7 @@ Code (this PR scope, when v14 is greenlit):
       a|b|d-rms|d-taa|production|all; --dry-run)
 - [ ] SFT/autotrain/run_sft_qwen25_32b_v14.sh (five-pass; deferred
       until 14B production candidate passes §5 hard gates)
-- [ ] SFT/test/pipelines/models.py aliases:
+- [ ] SFT/eval/pipelines/models.py aliases:
       athena-cti-sft-qwen25-14b-v14-ab-vllm,
       athena-cti-sft-qwen25-14b-v14-rms-vllm,
       athena-cti-sft-qwen25-14b-v14-taa-vllm,

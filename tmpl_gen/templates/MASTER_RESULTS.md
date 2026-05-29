@@ -87,8 +87,8 @@ the user's Excel master sheet and has *not* been mirrored into the repo.
   frontier aliases (`gpt5.5-pro`, `gemini-3.1-pro`, etc.) -- rate cards
   remain in `api_usage.PRICING_PER_1K` so they're ready when reactivated.
 * **Cost-tracking patch is COMPLETE on disk** across the four files
-  (`SFT/test/pipelines/api_usage.py`, `SFT/test/pipelines/models.py`,
-  `SFT/test/inference.py`, `SFT/test/utils/_print_sweep_summary.py`).
+  (`SFT/eval/pipelines/api_usage.py`, `SFT/eval/pipelines/models.py`,
+  `SFT/eval/inference.py`, `SFT/eval/utils/_print_sweep_summary.py`).
   End-to-end smoke-test on 2026-05-10 confirmed `_render_cost_block`
   emits a markdown table and JSON block from a synthetic checkpoint,
   silently omitting tasks with no recorded usage (correct behavior for

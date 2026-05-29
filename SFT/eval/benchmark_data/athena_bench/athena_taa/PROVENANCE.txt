@@ -1,0 +1,67 @@
+Athena CTI threat-actor alias artefacts
+========================================
+
+This directory holds two artefacts with different provenance and
+different roles in the v13 build:
+
+1) aliases.csv  -- USED BY v13 SFT TRAINING
+   --------------------------------------------------------------------
+   Schema       : ThreatActor,Alias  (CSV with header row)
+   Row count    : 1,612 (header + 1,611 alias pairs)
+   Authored by  : Athena CTI analysts (in-house curation)
+   Sources      : public vendor naming reports, MITRE ATT&CK Groups
+                  knowledge base, MISP threat-actor galaxy, vendor
+                  blog posts and advisories. Each entry is a short
+                  factual identifier mapping (e.g. "ALLANITE" ->
+                  "Palmetto Fusion"); the data captured is the
+                  non-copyrightable factual fact that vendor X
+                  refers to threat actor A by name N.
+   Licence      : Athena internal -- this repo's licence applies;
+                  granted for use as a v13 SFT seed.
+   Source tag   : Generators reading aliases.csv stamp output rows
+                  with `athena-cti-db-internal` (per
+                  tmpl_gen/templates/05072026/v13_plan.txt sec 10.3).
+   Used by      : tmpl_gen/scripts/taa_canon_generator.py
+                  (--athena-aliases flag, augments MITRE alias lists)
+                  tmpl_gen/scripts/misp_taa_generator.py
+                  (--athena-aliases flag, augments MISP alias lists)
+   File hash    : SHA-256
+                  f6b3a56a3cdae1930a3af9dc2f35d452ebc315a97a794724f4c28a8e598a5ade
+
+2) athena-cti-taa.jsonl -- NOT USED BY v13 SFT TRAINING
+   --------------------------------------------------------------------
+   Schema       : url, timestamp, description, prompt, answer,
+                  prompt_hash  (one JSON object per line)
+   Row count    : 100
+   Role         : evaluation/benchmark fixture only -- consumed by
+                  the SFT/eval pipeline (athena_taa benchmark) to
+                  measure attribution-from-anonymized-incident
+                  performance against held-out threat reports.
+   Sources      : excerpts and summaries derived from publicly
+                  accessible third-party threat reports (Trend Micro,
+                  Talos, Google Cloud Mandiant, Microsoft Threat
+                  Intelligence, Securonix, Sekoia, Proofpoint,
+                  Recorded Future, Check Point Research, Wiz, Sophos,
+                  ESET, Securelist, Rapid7, Genians, etc.).
+   Provenance   : the `url` field on every row is the canonical link
+                  back to the source report; the `description` and
+                  `prompt` fields are Athena-authored summaries used
+                  as anonymized stimulus for the eval prompt; the
+                  `answer` field is the canonical attribution.
+   Licence note : because this artefact contains material derived
+                  from third-party vendor reporting (some of which is
+                  on the v13 commercial-use denylist, e.g. Recorded
+                  Future, Mandiant), it is EXPLICITLY NOT registered
+                  as a v13 SFT data source and is excluded from
+                  athena-cti-sft-* training corpora. The v13 build
+                  watcher does not read this file.
+   Used by      : SFT/eval (benchmark only)
+   File hash    : SHA-256
+                  19ddbdab54e97037fa90e1ca50cab6d042455dd8ff8794d6be6b406915326393
+
+Refresh policy:
+  Both artefacts ship as snapshots for reproducibility. Updates
+  require re-computing the SHA-256 above and re-running:
+    - the seed-provenance gate (tmpl_gen/scripts/check_seed_provenance.py)
+      [aliases.csv only -- athena-cti-taa.jsonl is out of SFT scope]
+    - the v13 build watcher

@@ -132,7 +132,7 @@ untouched.
     # Step 4 (informational): verbatim-overlap dedup against the eval suite
     python tmpl_gen/scripts/dedup_against_evals.py \
         --input    SFT/data/ift_data_2026_04_30_v9_rms.json \
-        --eval-dir SFT/test/benchmark_data \
+        --eval-dir SFT/eval/benchmark_data \
         --n 13 --hit-threshold 1 \
         --report   SFT/data/ift_data_2026_04_30_v9_rms.dedup.json
 

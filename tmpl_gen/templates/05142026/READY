@@ -35,9 +35,9 @@ Artifacts changed under this branch
 NEW (training launcher):
   SFT/autotrain/run_sft_qwen25_14b_v18p2p2_multi_replay.sh
 NEW (bench wrapper):
-  SFT/test/utils/serve_and_bench_v18p2p2_multi_replay.sh
+  SFT/eval/utils/serve_and_bench_v18p2p2_multi_replay.sh
 MODIFIED:
-  SFT/test/pipelines/models.py                       (v18-2-2 alias +
+  SFT/eval/pipelines/models.py                       (v18-2-2 alias +
                                                        v18-2-1 bench
                                                        results back-fill)
   tmpl_gen/templates/05132026/v18_2_plan.txt          (added §8: v18.2.1
@@ -101,9 +101,9 @@ Training (4xH100, ~50-65 min):
     # pushes to asg-ai/athena-cti-sft-qwen25-14b-v18-2-2
 
 Benchmark (2xH100, ~8 min, after HF push completes):
-    BENCH_CONDA_ENV=ctibench bash SFT/test/utils/serve_and_bench_v18p2p2_multi_replay.sh
+    BENCH_CONDA_ENV=ctibench bash SFT/eval/utils/serve_and_bench_v18p2p2_multi_replay.sh
 
 Sign-off:
     See plan.txt §4 (gates) and §5 (escalation paths). Promotion is
-    by alias swap in SFT/test/pipelines/models.py, NOT by overwrite of
+    by alias swap in SFT/eval/pipelines/models.py, NOT by overwrite of
     asg-ai/athena-cti-sft-qwen25-14b-v18-1-cse.

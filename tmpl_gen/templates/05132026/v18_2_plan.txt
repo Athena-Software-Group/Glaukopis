@@ -61,10 +61,10 @@ Operational ref  : THIS FILE
         MCQ     67.37    69.03    72.03     +4.66        +3.00
 
     (RMS combined_f1 = (strict_f1 + plausible_f1) / 2; see
-     SFT/test/pipelines/evaluation/athena_cti_eval.py:430.)
+     SFT/eval/pipelines/evaluation/athena_cti_eval.py:430.)
 
 1.2 Diagnosis (from per-stage benchmark response files at
-    SFT/test/responses/asg-ai_athena-cti-sft-qwen25-14b-v18-1-{core,
+    SFT/eval/responses/asg-ai_athena-cti-sft-qwen25-14b-v18-1-{core,
     taa,cse}/ on the bench host, 2026-05-13):
 
       RMS damage is entirely Stage-3 (CSE). The TAA stage leaves RMS
@@ -122,7 +122,7 @@ Operational ref  : THIS FILE
       v18-2 repo is the v18.2 ship. On sign-off (§5) v18-2 is promoted
       by alias, not by overwrite of v18.1-cse.
 
-  (3) New vLLM alias entry in SFT/test/pipelines/models.py:
+  (3) New vLLM alias entry in SFT/eval/pipelines/models.py:
         'athena-cti-sft-qwen25-14b-v18-2-vllm':
             'asg-ai/athena-cti-sft-qwen25-14b-v18-2'
       (Added alongside the cse-rms alias which is retained.)
@@ -309,7 +309,7 @@ Operational ref  : THIS FILE
 6.2 Diagnosis source: per-stage benchmark response files for the
     v18.1 chain on the bench host (responses/asg-ai_athena-cti-sft-
     qwen25-14b-v18-1-{core,taa,cse,cse-rms}/summary_model.json),
-    generated via SFT/test/utils/serve_and_bench_v18p1_{core,taa,cse,
+    generated via SFT/eval/utils/serve_and_bench_v18p1_{core,taa,cse,
     rms_replay}.sh on 2026-05-13. Per-axis trajectory in §1.1; cse-rms
     experiment results in §1.4.
 
@@ -319,7 +319,7 @@ Operational ref  : THIS FILE
 -------------------------------------------
 
 7.1 v18.2 ship candidate bench (2026-05-14, 2xH100 via
-    SFT/test/utils/serve_and_bench_v18p2_multi_replay.sh; full sweep
+    SFT/eval/utils/serve_and_bench_v18p2_multi_replay.sh; full sweep
     completed in 8m10s wallclock):
 
       axis                v18.1-cse   cse-rms      v18.2     §5 bar     verdict
@@ -388,8 +388,8 @@ Operational ref  : THIS FILE
       axis).
 
       Operational: SFT/autotrain/run_sft_qwen25_14b_v18p2p1_multi_replay.sh
-                   SFT/test/utils/serve_and_bench_v18p2p1_multi_replay.sh
-                   SFT/test/pipelines/models.py alias
+                   SFT/eval/utils/serve_and_bench_v18p2p1_multi_replay.sh
+                   SFT/eval/pipelines/models.py alias
                        'athena-cti-sft-qwen25-14b-v18-2-1-vllm'
 
 7.4 v18.2.1 falsification (refines §5 thresholds for this iteration).
@@ -444,7 +444,7 @@ Operational ref  : THIS FILE
 ---------------------------------------------
 
 8.1 v18.2.1 ship-candidate bench (2026-05-14, 2xH100 via
-    SFT/test/utils/serve_and_bench_v18p2p1_multi_replay.sh; full sweep
+    SFT/eval/utils/serve_and_bench_v18p2p1_multi_replay.sh; full sweep
     completed in 8m06s wallclock):
 
       axis                v18.1-cse   v18.2     v18.2.1    §7.4 bar    verdict
@@ -543,8 +543,8 @@ Operational ref  : THIS FILE
       v18.2 and v18.2.1 on every axis).
 
       Operational: SFT/autotrain/run_sft_qwen25_14b_v18p2p2_multi_replay.sh
-                   SFT/test/utils/serve_and_bench_v18p2p2_multi_replay.sh
-                   SFT/test/pipelines/models.py alias
+                   SFT/eval/utils/serve_and_bench_v18p2p2_multi_replay.sh
+                   SFT/eval/pipelines/models.py alias
                        'athena-cti-sft-qwen25-14b-v18-2-2-vllm'
 
 8.4 v18.2.2 falsification (refines §7.4 thresholds for this iteration).

@@ -170,6 +170,6 @@ v17.1-specific interpretation overlay:
   Manifest hash   : (sha256 of Sophia-CTI-Templates-v17.1.txt at build time)
   Engine commit   : tmpl_gen/src/tmpl_gen/tmpl_parser.py @ <sha after merge>
   Training run    : SFT/saves/.../v16_plus_v17_1_cse_${TIMESTAMP}
-  Bench run       : SFT/test/.../<bench_dir>
+  Bench run       : SFT/eval/.../<bench_dir>
   HF release      : asg-ai/athena-cti-sft-qwen25-14b-v17-1
   Outcome         : (A / B / C / D per §4)

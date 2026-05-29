@@ -223,7 +223,7 @@ Operational ref  : THIS FILE
     path component, and the HF push targets change. See
     SFT/autotrain/run_sft_llama31_8b_v21_{core,plus_taa,final,
     recalibrate,chain}.sh and the matching vLLM aliases registered in
-    SFT/test/pipelines/models.py.
+    SFT/eval/pipelines/models.py.
 
 
 8. Qwen2.5-32B port -- Stage-4 recipe split
@@ -307,9 +307,9 @@ Operational ref  : THIS FILE
                                                            The 32B-tuned _recal_32b variant is run
                                                            standalone off v21-cse as the diagnostic
                                                            A/B and is intentionally NOT on this chain path.)
-    Matching vLLM aliases registered in SFT/test/pipelines/models.py;
+    Matching vLLM aliases registered in SFT/eval/pipelines/models.py;
     bench wrappers at
-      SFT/test/utils/serve_and_bench_qwen25_32b_v21_{cse,recalibrate,recal_32b}.sh
+      SFT/eval/utils/serve_and_bench_qwen25_32b_v21_{cse,recalibrate,recal_32b}.sh
     (each runs the full AthenaBench + CyberMetric 2K/10K + CSE suite
     on 2xH100 under one warm vLLM session, ~11h wallclock per model).
 
@@ -340,7 +340,7 @@ Operational ref  : THIS FILE
 
 9.1 Tool and tunables (per shard, unchanged from v18.1).
       tmpl_gen/scripts/dedup_against_evals.py
-        --eval-dir        SFT/test/benchmark_data
+        --eval-dir        SFT/eval/benchmark_data
         --n               13          # word-gram size; OLMo / Pythia /
                                       # Llama decontamination convention
         --hit-threshold   1           # any single n=13 hit flags the row

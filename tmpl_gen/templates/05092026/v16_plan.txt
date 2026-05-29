@@ -161,6 +161,6 @@ After the v16 bench result lands, classify the outcome:
   Author          : (to be signed)
   Manifest hash   : (sha256 of Sophia-CTI-Templates-v16.txt at build time)
   Training run    : SFT/saves/.../v12_plus_v16_taa_${TIMESTAMP}
-  Bench run       : SFT/test/.../<bench_dir>
+  Bench run       : SFT/eval/.../<bench_dir>
   HF release      : asg-ai/athena-cti-sft-qwen25-14b-v16
   Outcome         : (A / B / C / D per §4)

@@ -45,7 +45,7 @@
 #   - Final merged model pushed to
 #     hf://${HF_USERNAME}/athena-cti-sft-llama31-8b-abaligned-v5-lora
 #     (upload_to_hf.py runs llamafactory-cli export to merge the adapter
-#     into base weights before upload, so SFT/test consumers see a full
+#     into base weights before upload, so SFT/eval consumers see a full
 #     model and don't need to know LoRA was used.)
 #
 # Usage:

@@ -29,16 +29,16 @@ leak_protection:
   # a CVE record embeds the literal CVSS-vector answer to CTIBench-VSP).
   drop_on_exact_id: false
   benchmarks:
-    - SFT/test/benchmark_data/cti_bench/cti-mcq.tsv
-    - SFT/test/benchmark_data/cti_bench/cti-rcm.tsv
-    - SFT/test/benchmark_data/cti_bench/cti-rcm-2021.tsv
-    - SFT/test/benchmark_data/cti_bench/cti-vsp.tsv
-    - SFT/test/benchmark_data/cti_bench/cti-ate.tsv
-    - SFT/test/benchmark_data/cti_bench/cti_taa/cti-taa.tsv
-    - SFT/test/benchmark_data/athena_bench/mcq-patch.tsv
+    - SFT/eval/benchmark_data/cti_bench/cti-mcq.tsv
+    - SFT/eval/benchmark_data/cti_bench/cti-rcm.tsv
+    - SFT/eval/benchmark_data/cti_bench/cti-rcm-2021.tsv
+    - SFT/eval/benchmark_data/cti_bench/cti-vsp.tsv
+    - SFT/eval/benchmark_data/cti_bench/cti-ate.tsv
+    - SFT/eval/benchmark_data/cti_bench/cti_taa/cti-taa.tsv
+    - SFT/eval/benchmark_data/athena_bench/mcq-patch.tsv
   athena_dirs:
-    - SFT/test/benchmark_data/athena_bench
-    - SFT/test/benchmark_data_mini
+    - SFT/eval/benchmark_data/athena_bench
+    - SFT/eval/benchmark_data_mini
 
 sources:
 

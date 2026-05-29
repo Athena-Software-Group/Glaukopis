@@ -246,9 +246,9 @@ mid-training with this in place.
 After training:
 1. Push merged checkpoints to ${HF_USERNAME}/athena-cti-sft-qwen25-{14b,32b}-v11.
 2. Register vLLM aliases athena-cti-sft-qwen25-{14b,32b}-v11-vllm in
-   SFT/test/pipelines/models.py.
+   SFT/eval/pipelines/models.py.
 3. Run full AthenaBench + CyberSOCEval + CyberMetric suites via the
-   bench loop (SFT/test/run_full_bench.sh equivalent).
+   bench loop (SFT/eval/run_full_bench.sh equivalent).
 4. Compare v11 vs v10 vs v9 vs v7 on:
    - per-axis accuracy (RMS, ATE, CKT, RCM, VSP, MCQ, MS,
      TAA-attribute, TAA-IE, TAA-NEG)
@@ -298,7 +298,7 @@ Code (this PR scope, when v11 is greenlit):
 - [ ] SFT/data/dataset_info.json entry for ift_data_2026_05_03_v11_val
 - [ ] SFT/autotrain/run_sft_qwen25_14b_v11.sh
 - [ ] SFT/autotrain/run_sft_qwen25_32b_v11.sh
-- [ ] SFT/test/pipelines/models.py aliases for v11 14B + 32B
+- [ ] SFT/eval/pipelines/models.py aliases for v11 14B + 32B
 - [ ] AthenaBench TAA-canonical slice loader (new task
       athena-cti-taa-canonical) for the §8 evaluation
 
@@ -310,7 +310,7 @@ Qwen3-32B v11-experimental fork):
       Layer 1 — auto-add --reasoning-parser qwen3 in serve_vllm.sh
                 for Qwen3 hybrid models
       Layer 2 — client-side _strip_thinking_trace in
-                SFT/test/pipelines/post_processing/{athena_cti,
+                SFT/eval/pipelines/post_processing/{athena_cti,
                 cybersoceval,cti}.py extractors
       Layer 3 — smoke_thinking_modes.py committed as a regression test
 

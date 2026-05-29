@@ -38,7 +38,7 @@ flowchart LR
         S4["Stage 4: Recal-32b<br/>3-shard interleave (ship)"]
         S1 --> S2 --> S3 --> S4
     end
-    subgraph EV["SFT/test/ (evaluation)"]
+    subgraph EV["SFT/eval/ (evaluation)"]
         E1["AthenaBench<br/>MCQ · RCM · VSP · ATE ·<br/>TAA Classic+Canonical · RMS"]
         E2["CyberSOCEval<br/>Malware · Threat-Intel"]
         E3["CyberMetric<br/>2K + 10K"]
@@ -415,11 +415,11 @@ flowchart LR
 ```bash
 # Two-terminal local vLLM sweep against v21-recal-32b (ship).
 conda activate vllm
-bash SFT/test/utils/serve_vllm.sh \
+bash SFT/eval/utils/serve_vllm.sh \
     --model asg-ai/athena-cti-sft-qwen25-32b-v21-recal-32b --tp 2
 
 conda activate ctibench
-cd SFT/test
+cd SFT/eval
 ./utils/run_benchmark.sh athena-cti-sft-qwen25-32b-v21-recal-32b-vllm \
     --suite athena --batch 64 --version 1
 ./utils/run_benchmark.sh athena-cti-sft-qwen25-32b-v21-recal-32b-vllm \
@@ -428,10 +428,10 @@ cd SFT/test
     --suite cybermetric --cybermetric-size 2000,10000 --batch 64
 
 # Or the all-in-one wrapper (one warm vLLM session; ~11 h end-to-end on 2xH100):
-bash SFT/test/utils/serve_and_bench_qwen25_32b_v21_recal_32b.sh
+bash SFT/eval/utils/serve_and_bench_qwen25_32b_v21_recal_32b.sh
 
 # MMLU-Pro is benched in a separate session so suite scope stays decoupled:
-bash SFT/test/utils/serve_and_bench_mmlu_pro.sh \
+bash SFT/eval/utils/serve_and_bench_mmlu_pro.sh \
     athena-cti-sft-qwen25-32b-v21-recal-32b-vllm
 ```
 

@@ -276,7 +276,7 @@ up the launcher and dataset registration.
 Inherited from v8 (`../04292026/README.md` §2) without modification.
 The v10 corpus is built by `_v10_build/watcher.sh`, whose Phase 5
 runs `tmpl_gen/scripts/dedup_against_evals.py` against
-`SFT/test/benchmark_data/` with `n=13` word-grams and
+`SFT/eval/benchmark_data/` with `n=13` word-grams and
 `hit-threshold=1` -- verbatim leakage of any AthenaBench / CTIBench /
 CyberMetric / CyberSOCEval row into the training corpus is blocked at
 build time, and structural overlap with the public MITRE / NIST /

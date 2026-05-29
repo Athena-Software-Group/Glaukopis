@@ -1,5 +1,5 @@
 # Extra dependencies for the CPT data pipeline, on top of SFT/pyproject.toml
-# and SFT/test/requirements.txt. Install into the existing llm-sft env:
+# and SFT/eval/requirements.txt. Install into the existing llm-sft env:
 #   pip install -r cpt/requirements.txt
 
 # HTTP + feed parsing

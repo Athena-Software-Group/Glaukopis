@@ -418,14 +418,14 @@ myenv/
 __pycache__/
 .cache/
 
-SFT/test/responses
-SFT/test/responses/
-SFT/test/responses/*
-# Aggregated cost report (built by SFT/test/utils/build_cost_summary.py):
+SFT/eval/responses
+SFT/eval/responses/
+SFT/eval/responses/*
+# Aggregated cost report (built by SFT/eval/utils/build_cost_summary.py):
 # tracked so the leaderboard / report consumers always see the latest
 # numbers without needing access to the per-model response trees.
-!SFT/test/responses/cost_summary.tsv
-!SFT/test/responses/cost_summary.csv
+!SFT/eval/responses/cost_summary.tsv
+!SFT/eval/responses/cost_summary.csv
 
 # Excel lock files (created while a workbook is open).
 ~$*.xlsx
@@ -436,8 +436,8 @@ SFT/test/responses/*
 # backing LFS objects are missing from the server (404 on 'git lfs pull').
 # The benchmark runner does not depend on this directory; it is only used
 # for regenerating datasets via the scraping pipelines.
-SFT/test/data/processed/
-SFT/test/data/raw/
+SFT/eval/data/processed/
+SFT/eval/data/raw/
 
 
 # tmpl_gen triple-generation artifacts (intermediate JSONs, merged triples,
@@ -461,9 +461,9 @@ cpt/corpus/
 SFT/data/
 
 # CyberSOCEval (CrowdStrike + Meta) data: cloned repo + downloaded PDFs +
-# extracted text files. Regenerable via SFT/test/utils/fetch_cybersoceval_data.py.
-SFT/test/benchmark_data/cybersoceval/
-SFT/test/responses/fdtn-ai_Foundation-Sec-8B-Reasoning
+# extracted text files. Regenerable via SFT/eval/utils/fetch_cybersoceval_data.py.
+SFT/eval/benchmark_data/cybersoceval/
+SFT/eval/responses/fdtn-ai_Foundation-Sec-8B-Reasoning
 
 # Per-version corpus build directories (_v10_build, _v11_build, _v12_build, ...):
 # entirely untracked. These are local scratch/build trees regenerated on demand
@@ -492,4 +492,4 @@ _v21_cse_build/*
 !_v21_cse_build/watcher.sh
 !_v21_cse_build/build_val_slice.py
 !_v21_cse_build/letter_balance_gate.py
-SFT/test/SFT/test/benchmark_data/
+SFT/eval/SFT/eval/benchmark_data/

@@ -531,7 +531,7 @@ scores TAA Classic+Canonical.
 | Qwen2.5-14B launcher | `SFT/autotrain/run_sft_qwen25_14b_v14.sh` (four-phase, supports `--phase a\|b\|d-rms\|d-taa\|production\|all` and `--dry-run`); **v14.1 production execution: `SFT/autotrain/run_sft_qwen25_14b_v14_1.sh` (cutoff-4096 + gradient-checkpointing-off hot-fix; same flags)** |
 | Qwen2.5-32B launcher | `SFT/autotrain/run_sft_qwen25_32b_v14.sh` (deferred; authored only after 14B passes §8 per v14 plan §6.2) |
 | HF targets | `${HF_USERNAME}/athena-cti-sft-qwen25-14b-v14{-ab,-rms,-taa,}` (4 checkpoints; 32B repo target reserved); **v14.1: `${HF_USERNAME}/athena-cti-sft-qwen25-14b-v14p1{-ab,-rms,-taa,}`** |
-| vLLM aliases | `athena-cti-sft-qwen25-14b-v14-{ab,rms,taa}-vllm` and `athena-cti-sft-qwen25-14b-v14-vllm` (`SFT/test/pipelines/models.py`); v14.1 aliases registered as `athena-cti-sft-qwen25-14b-v14p1-{ab,rms,taa}-vllm` and `athena-cti-sft-qwen25-14b-v14p1-vllm` once the v14.1 chain completes |
+| vLLM aliases | `athena-cti-sft-qwen25-14b-v14-{ab,rms,taa}-vllm` and `athena-cti-sft-qwen25-14b-v14-vllm` (`SFT/eval/pipelines/models.py`); v14.1 aliases registered as `athena-cti-sft-qwen25-14b-v14p1-{ab,rms,taa}-vllm` and `athena-cti-sft-qwen25-14b-v14p1-vllm` once the v14.1 chain completes |
 | Eval task (carried) | `athena-cti-taa-canonical` (alias-resolution scoring; v12 carry) |
 | Licence audit | `_v14_build/licence_gate_report.json` (every published row's source tag in §10.1 allowlist; v13 carry) |
 
@@ -687,7 +687,7 @@ the chain in §10 above; the v0 substrate's per-family design strategy
 Inherited from v8 / v10 / v11 without modification. The v14 corpus
 is built by `_v14_build/watcher.sh`, whose Phase 5 runs
 `tmpl_gen/scripts/dedup_against_evals.py` against
-`SFT/test/benchmark_data/` with `n=13` word-grams,
+`SFT/eval/benchmark_data/` with `n=13` word-grams,
 `hit-threshold=1`, and the v10 soft-drop policy (`--drop-threshold
 50`). Verbatim leakage of any AthenaBench / CTIBench / CyberMetric /
 CyberSOCEval row into the training corpus is blocked at build time;

@@ -22,7 +22,7 @@ Why this exists:
 Seed sources (read directly, no Neo4j):
   cpt/cache/raw/mitre_attack_enterprise/enterprise-attack.json
     -> intrusion-set objects + uses-relationships -> attack-pattern
-  SFT/test/benchmark_data/athena_bench/athena_taa/aliases.csv
+  SFT/eval/benchmark_data/athena_bench/athena_taa/aliases.csv
     -> vendor-specific aliases NOT in MITRE (e.g. CrowdStrike Spider
        names, Mandiant APT/UNC IDs, Microsoft Tempest names)
 
@@ -32,7 +32,7 @@ Fields per row: instruction, input, output, shortname.
 Usage:
   python tmpl_gen/scripts/taa_canon_generator.py \\
       --mitre cpt/cache/raw/mitre_attack_enterprise/enterprise-attack.json \\
-      --athena-aliases SFT/test/benchmark_data/athena_bench/athena_taa/aliases.csv \\
+      --athena-aliases SFT/eval/benchmark_data/athena_bench/athena_taa/aliases.csv \\
       --output SFT/data/ift_data_2026_05_05_v12_taa_canon_seed.json \\
       --target-canon1 3500 --target-canon2 3500 --target-canon3 3000 \\
       --seed 42

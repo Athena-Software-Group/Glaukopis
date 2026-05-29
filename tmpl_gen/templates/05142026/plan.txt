@@ -37,7 +37,7 @@ Operational ref  : THIS FILE                  -- self-contained plan
                                                  than re-deriving it)
                    SFT/autotrain/run_sft_qwen25_14b_v18p2p2_multi_replay.sh
                                               -- training launcher (4xH100)
-                   SFT/test/utils/serve_and_bench_v18p2p2_multi_replay.sh
+                   SFT/eval/utils/serve_and_bench_v18p2p2_multi_replay.sh
                                               -- benchmark wrapper (2xH100)
                    Sophia-CTI-Templates-v18.1.txt   (UNCHANGED -- no
                                                      manifest delta)
@@ -248,8 +248,8 @@ Operational ref  : THIS FILE                  -- self-contained plan
     feat/05142026-v18p2p2-multi-replay carries the source-code
     changes and this vintage directory.
 6.2 Diagnosis source: per-iteration benchmark response files at
-    SFT/test/responses/asg-ai_athena-cti-sft-qwen25-14b-v18-2{,-1}/
-    summary_model.json, generated via SFT/test/utils/
+    SFT/eval/responses/asg-ai_athena-cti-sft-qwen25-14b-v18-2{,-1}/
+    summary_model.json, generated via SFT/eval/utils/
     serve_and_bench_v18p2{,p1}_multi_replay.sh on 2026-05-14.
 6.3 Pre-launch verification: run preflight commands in READY, confirm
     asg-ai/athena-cti-sft-qwen25-14b-v18-1-cse is reachable on HF, and

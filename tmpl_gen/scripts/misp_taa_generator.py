@@ -42,7 +42,7 @@ Usage:
       --input tmpl_gen/data_generation/seeds/misp/threat-actor.json \\
       --license tmpl_gen/data_generation/seeds/misp/LICENSE.md \\
       --mitre cpt/cache/raw/mitre_attack_enterprise/enterprise-attack.json \\
-      --eval-aliases SFT/test/benchmark_data/athena_bench/athena_taa/aliases.csv \\
+      --eval-aliases SFT/eval/benchmark_data/athena_bench/athena_taa/aliases.csv \\
       --output SFT/data/ift_data_2026_05_07_v13_misp_taa.json \\
       --report _v13_build/misp_report.json \\
       --target-canon1 5000 --target-canon2 4000 --target-canon3 3000 \\

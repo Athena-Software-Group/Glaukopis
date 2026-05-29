@@ -182,7 +182,7 @@ CSE-TI ≥ 34.0, CSE-Malware ≥ 20.0, ATE ≥ 62.0, RCM ≥ 67.5, VSP ≥
 Inherited from v8 / v18.1 without modification. The v19 corpus is
 built by `_v19_{core,taa,cse}_build/watcher.sh`, each of whose
 Phase 5 runs `tmpl_gen/scripts/dedup_against_evals.py` against
-`SFT/test/benchmark_data/` with `n=13` word-grams,
+`SFT/eval/benchmark_data/` with `n=13` word-grams,
 `hit-threshold=1`, and the v10 soft-drop policy (`--drop-threshold
 50`). Verbatim leakage of any AthenaBench / CTIBench / CyberMetric /
 CyberSOCEval row into the training corpus is blocked at build time;
