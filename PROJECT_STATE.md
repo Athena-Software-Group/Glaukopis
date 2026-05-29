@@ -38,6 +38,13 @@ and treat this one as an index. Update protocol is in §7.
   05272026.xlsx`) are frozen for posterity. Companion tracked CSVs:
   `SFT/eval/responses/cost_summary.{csv,tsv}` and
   `SFT/eval/responses/mmlu_pro_summary.{csv,tsv}`.
+- **Paper sources**: `doc/` holds the LaTeX manuscripts, figures,
+  bibliographies, and rendered PDFs for the Glaukopis paper across
+  three publisher formats: `doc/ACM/`, `doc/IEEE/`, `doc/Oxford/`
+  (each with its own `figures/` tree). LaTeX build caches
+  (`.texpadtmp/`) and packaged drafts (`*.zip`) are gitignored.
+  Material is governed by the top-level `LICENSE.txt` (PolyForm
+  Noncommercial 1.0.0).
 
 ## 2. SFT lineage (authoritative pointers)
 
