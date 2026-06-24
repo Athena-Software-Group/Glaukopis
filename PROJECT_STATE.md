@@ -43,6 +43,7 @@ and treat this one as an index. Update protocol is in §7.
   three publisher formats: `doc/ACM/`, `doc/IEEE/`, `doc/Oxford/`
   (each with its own `figures/` tree). LaTeX build caches
   (`.texpadtmp/`) and packaged drafts (`*.zip`) are gitignored.
+  Active ICTAI/IEEE draft is `doc/IEEE/glaukopis_ieee_abridged-v1.3.tex`.
   Material is governed by the top-level `LICENSE.txt` (PolyForm
   Noncommercial 1.0.0).
 
@@ -149,25 +150,24 @@ HF Inference Providers route (`router.huggingface.co/v1`), driven by
 
 ## 6. In-flight work threads
 
-State as of 2026-05-29. Update §7 protocol when these change.
+State as of 2026-06-24. Update §7 protocol when these change.
 
-1. **MoE no-think baseline sweep** — bench
-   `Qwen/Qwen3-30B-A3B-Thinking-2507` under the matched-conditions
-   `-no-think-vllm` alias (suppresses the 8192-token thinking-mode
-   decode floor). Expected to collapse vs the thinking-on baseline;
-   the collapse magnitude isolates the v21 SFT contribution to
-   functioning under a no-trace inference budget. See README-21.md
-   §"Matched-conditions base baseline" for the pending sweep row.
-2. **Data-build determinism** — v19 / v20 / v21 axis-drift cluster
-   (ATE/RCM moving outside the ±1.5pp band vs v18.1 even under
-   byte-identical templates + gates) implicates substrate sampling,
-   dedup tiebreaks, or shuffle seeding in
-   `tmpl_gen/data_generation/make_dataset.sh` / Neo4j read order.
-   Next vintage should pin these before another reproducibility run.
-3. **Spreadsheet sync** — `SFT/eval/Glaukopis Results.xlsx`
-   (canonical) is the live result store; keep in lockstep with
-   `cost_summary.csv` and `mmlu_pro_summary.csv` after every sweep
-   batch. Dated snapshots are frozen.
+1. **IEEE ICTAI 2026 paper revision** — active source is
+   `doc/IEEE/glaukopis_ieee_abridged-v1.3.tex`. The current draft
+   softens novelty claims, removes the internal `cardei2025ift`
+   reference, expands limitations, adds real qualitative examples from
+   v21 response artifacts, compresses Ariadne operational details, adds
+   result interpretation for ATE/TAA/VSP/recalibration, and includes a
+   CyberPal/SecKnowledge positioning table.
+2. **Response artifacts** — real v21 stage response JSONLs used for the
+   qualitative table live locally under `SFT/test/responses/` and should
+   remain untracked unless explicitly requested. Do not silently migrate
+   these artifacts to `SFT/eval/responses/`; this bundle came from the
+   remote test path.
+3. **Open evidence gaps for the paper** — still missing matched
+   single-stage-vs-chain training, repeated-seed/significance analysis,
+   and a formal metric-level error taxonomy for VSP/TAA/ATE. These are
+   acknowledged as limitations rather than implied claims.
 
 ## 7. Update protocol
 
