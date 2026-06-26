@@ -480,19 +480,9 @@ _v*_build/
 # vintages (_v19_*_build/, _v20_*_build/) were retired with the
 # Qwen3-MoE v21 chain pivot and fall through to the generic _v*_build/
 # ignore above.
-!_v21_core_build/
 _v21_core_build/*
-!_v21_core_build/_neo4j_check.py
-!_v21_core_build/_substrate_probe_mcq.py
-!_v21_core_build/watcher.sh
-!_v21_core_build/build_val_slice.py
-!_v21_taa_build/
 _v21_taa_build/*
-!_v21_taa_build/watcher.sh
-!_v21_taa_build/build_val_slice.py
-!_v21_cse_build/
 _v21_cse_build/*
-!_v21_cse_build/watcher.sh
-!_v21_cse_build/build_val_slice.py
-!_v21_cse_build/letter_balance_gate.py
+
 SFT/eval/SFT/eval/benchmark_data/
+SFT/test/responses/*
