@@ -486,3 +486,5 @@ _v21_cse_build/*
 
 SFT/eval/SFT/eval/benchmark_data/
 SFT/test/responses/*
+
+/doc/
