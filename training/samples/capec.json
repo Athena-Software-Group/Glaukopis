@@ -1,0 +1,5 @@
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enteprise customers helping to protect their digital assets. Describe the CAPEC attack pattern {{capec_id}}, including related weaknesses and mitigations.",
+    "input": "CAPEC-66: SQL Injection",
+    "output": "CAPEC-66 refers to SQL Injection, where attackers manipulate queries via unsanitized input. It relates to CWE-89 (Improper Neutralization of Special Elements in SQL). Mitigations include parameterized queries, ORM frameworks, and strict input validation."
+}

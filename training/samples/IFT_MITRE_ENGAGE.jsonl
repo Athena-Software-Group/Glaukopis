@@ -1,0 +1,64 @@
+
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.",
+    "input": "Describe how defenders can detect or disrupt the technique {attack-pattern.name} ({attack-pattern.id}).",
+    "output": "The technique {attack-pattern.name} ({attack-pattern.id}) can be detected using {attack-pattern.detection}. It can be disrupted through mitigations such as {attack-pattern.mitigations}."
+},
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.",
+    "input": "Explain how deception can be applied against the technique {attack-pattern.name} ({attack-pattern.id}).",
+    "output": "Deception can be applied against {attack-pattern.name} by deploying decoy systems or false targets that attract and expose adversary actions."
+},
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.",
+    "input": "Which ATT&CK tactic does the technique {attack-pattern.name} ({attack-pattern.id}) belong to, and how does it aid active defense?",
+    "output": "{attack-pattern.name} is part of the {tactic.name} tactic. Understanding this helps defenders anticipate adversary goals and plan proactive defenses."
+},
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.",
+    "input": "How can SOC teams use {attack-pattern.data_sources} to detect and engage adversaries performing {attack-pattern.name} ({attack-pattern.id})?",
+    "output": "SOC teams can monitor {attack-pattern.data_sources} for behaviors linked to {attack-pattern.name}, using detections from {attack-pattern.detection} to engage or study attackers."
+},
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.",
+    "input": "Describe how defenders can mislead adversaries using {attack-pattern.name} ({attack-pattern.id}).",
+    "output": "Defenders can mislead adversaries by introducing deceptive configurations or honeypots that mimic assets targeted by {attack-pattern.name}."
+},
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.",
+    "input": "Explain how the group {intrusion-set.name} ({intrusion-set.id}) uses {attack-pattern.name} ({attack-pattern.id}) and how defenders can counter it.",
+    "output": "The group {intrusion-set.name} employs {attack-pattern.name} to achieve {attack-pattern.description}. Defenders can counter it through {attack-pattern.mitigations} and targeted deception."
+},
+
+## Example - Filled Data
+{
+"instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.", 
+"input": "Describe how defenders can detect or disrupt the technique Extra Window Memory Injection (T1055.011).", 
+"output": "The technique Extra Window Memory Injection (T1055.011) can be detected using Monitor for API calls related to enumerating and manipulating EWM such as GetWindowLong (Citation: Microsoft GetWindowLong function) and SetWindowLong (Citation: Microsoft SetWindowLong function). Malware associated with this technique have also used SendNotifyMessage (Citation: Microsoft SendNotifyMessage function) to trigger the associated window procedure and eventual malicious injection. (Citation: Elastic Process Injection July 2017). It can be disrupted through mitigations such as Behavior Prevention on Endpoint."
+},
+{
+"instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.", 
+"input": "Explain how deception can be applied against the technique Extra Window Memory Injection (T1055.011).", 
+"output": "Deception can be applied against Extra Window Memory Injection by deploying decoy systems or false targets that attract and expose adversary actions."
+},
+{
+"instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.",
+"input": "Which ATT&CK tactic does the technique Extra Window Memory Injection (T1055.011) belong to, and how does it aid active defense?", 
+"output": "Extra Window Memory Injection is part of the defense-evasion tactic. Understanding this helps defenders anticipate adversary goals and plan proactive defenses."
+},
+{
+"instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.",
+    "input": "How can SOC teams use {attack-pattern.data_sources} to detect and engage adversaries performing Extra Window Memory Injection (T1055.011)?", 
+    "output": "SOC teams can monitor Process: OS API Execution for behaviors linked to Extra Window Memory Injection, using detections from Monitor for API calls related to enumerating and manipulating EWM such as GetWindowLong (Citation: Microsoft GetWindowLong function) and SetWindowLong (Citation: Microsoft SetWindowLong function). Malware associated with this technique have also used SendNotifyMessage (Citation: Microsoft SendNotifyMessage function) to trigger the associated window procedure and eventual malicious injection. (Citation: Elastic Process Injection July 2017) to engage or study attackers."
+},
+{
+"instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.", 
+"input": "Describe how defenders can mislead adversaries using Extra Window Memory Injection (T1055.011).", 
+"output": "Defenders can mislead adversaries by introducing deceptive configurations or honeypots that mimic assets targeted by Extra Window Memory Injection."
+},
+{
+"instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.", 
+"input": "Describe how defenders can detect or disrupt the technique Scheduled Task (T1053.005).", 
+"output": "The technique Scheduled Task (T1053.005) can be detected using Monitor process execution from the <code>svchost.exe</code> in Windows 10 and the Windows Task Scheduler <code>taskeng.exe</code> for older versions of Windows. (Citation: Twitter Leoloobeek Scheduled Task) If scheduled tasks are not used for persistence, then the adversary is likely to remove the task when the action is complete. Monitor Windows Task Scheduler stores in %systemroot%\\System32\\Tasks for change entries related to scheduled tasks that do not correlate with known software, patch cycles, etc.\n\nConfigure event logging for scheduled task creation and changes by enabling the \"Microsoft-Windows-TaskScheduler/Operational\" setting within the event logging service. (Citation: TechNet Forum Scheduled Task Operational Setting) Several events will then be logged on scheduled task activity, including: (Citation: TechNet Scheduled Task Events)(Citation: Microsoft Scheduled Task Events Win10)\n\n* Event ID 106 on Windows 7, Server 2008 R2 - Scheduled task registered\n* Event ID 140 on Windows 7, Server 2008 R2 / 4702 on Windows 10, Server 2016 - Scheduled task updated\n* Event ID 141 on Windows 7, Server 2008 R2 / 4699 on Windows 10, Server 2016 - Scheduled task deleted\n* Event ID 4698 on Windows 10, Server 2016 - Scheduled task created\n* Event ID 4700 on Windows 10, Server 2016 - Scheduled task enabled\n* Event ID 4701 on Windows 10, Server 2016 - Scheduled task disabled\n\nTools such as Sysinternals Autoruns may also be used to detect system changes that could be attempts at persistence, including listing current scheduled tasks. (Citation: TechNet Autoruns)\n\nRemote access tools with built-in features may interact directly with the Windows API to perform these functions outside of typical system utilities. Tasks may also be created through Windows system management tools such as Windows Management Instrumentation and PowerShell, so additional logging may need to be configured to gather the appropriate data.. It can be disrupted through mitigations such as Privileged Account Management, User Account Management, Audit, Operating System Configuration."
+}
+

@@ -1,0 +1,445 @@
+
+Athena-CTI-LLM: Cyber Threat Intelligence Language Model (CTI-LLM) Design Specification
+
+Building and commercializing a Cyber Threat Intelligence Language Model (CTI-LLM) using open-source models like OpenAI, LLaMA, or Gemini requires a well-structured approach across data collection, pretraining/fine-tuning, evaluation, and deployment, especially when tailored to threat intelligence applications such as IOC enrichment, threat actor attribution, or incident reporting.
+
+
+Objective: Build a dataset that performs well on an up to data, CTI Benchmark such as (an updated version of) CTI-Bench. 
+
+The instruction dataset that the LLM will be trained on will include (instruction, input, output) tuples with information about concepts and relationships, positive and negative examples.
+
+
+
+
+
+=======================================================================
+I. Dataset Strategy for CTI-LLM
+==============================
+
+
+A. Objective: Gather information from the primary sources on techniques, tactics, groups, software, mitigations, examples, attack patterns, weaknesses, and vulnerabilities such as:
+
+- MITRE ATT&CK (for now: just Enterprise). Main GitHub page, and Enterprise JSON file, mitreattack-python module
+- CAPEC. Main Github page, STIX JSON file,
+- CWE. JSON file.
+- CVE. main page, GitHub page,  mitre-cve-database,  
+- STIX. Doc page, Python module doc page, STIX2 Github.
+- Proprietary: Flashpoint and others.
+
+
+
+A. Other Core Public Data Sources
+
+| Dataset / Feed        | Source / Access                        | Format                   | Type                       |
+| --------------------- | -------------------------------------- | ------------------------ | -------------------------- |
+| MITRE ATT\&CK         | attack.mitre.org                       | STIX 2.1, Markdown, JSON | TTPs, adversary tactics    |
+| MISP (open feeds)     | misp-project.org                       | STIX, JSON, CSV          | IOCs, sightings, tags      |
+| AlienVault OTX        | otx.alienvault.com                     | JSON (API)               | IOC feeds                  |
+| CVE/NVD               | nvd.nist.gov                           | JSON                     | Vulnerability descriptions |
+| Exploit-DB            | exploit-db.com                         | CSV, raw text            | Exploit PoCs               |
+| Metasploit Modules    | GitHub (rapid7)                        | Ruby scripts             | Exploits + payloads        |
+| Google Project Zero   | googleprojectzero.blogspot.com         | HTML, RSS                | 0-day analysis             |
+| ZDI Advisories        | zerodayinitiative.com                  | HTML, RSS                | Vulnerability writeups     |
+| APT Notes / ThreatFox | aptnotes repo / Abuse.ch               | Markdown / JSON          | Reports, TTPs, IOC feeds   |
+| Malpedia              | malpedia.caad.fkie.fraunhofer.de       | JSON                     | Malware family info        |
+| CTI Blogs             | Public sites (Unit42, Kaspersky, etc.) | HTML / Markdown / PDF    | Human-authored CTI         |
+| GitHub Exploits       | github.com                             | Code + README            | Exploit code and metadata  |
+
+
+
+CVE & Vulnerability Data
+-------------------------
+1. cve-search
+   - GitHub: https://github.com/cve-search/cve-search
+   - JSON-based CVE + CPE storage & querying system.
+
+2. nvd-json-data-feeds
+   - GitHub: https://github.com/cve-search/nvd-json-data-feeds
+   - Daily/weekly JSON feeds from NVD.
+
+3. vulners-cve-parser
+   - GitHub: https://github.com/vulnersCom/Vulners-API
+   - Includes CVE parsing and classification logic.
+
+
+
+IOC Feeds & Threat Repositories
+-------------------------------
+4. MISP Taxonomies
+   - GitHub: https://github.com/MISP/misp-taxonomies
+   - Classification system for tagging IOCs.
+
+5. MISP Galaxy
+   - GitHub: https://github.com/MISP/misp-galaxy
+   - Structured info on actors, malware, attack patterns.
+
+6. APTnotes
+   - GitHub: https://github.com/aptnotes/data
+   - Curated CTI reports with IOC and metadata.
+
+7. ThreatFox IOCs
+   - GitHub: https://github.com/AbuseCH/threatfox-iocs
+   - Active, structured IOC feed.
+
+
+
+Other Useful CTI Libraries and Toolkits
+---------------------------
+8. stix2 Python API
+   - GitHub: https://github.com/oasis-open/cti-python-stix2
+   - Parse and generate STIX 2.1 content.
+
+9. pyattck
+   - GitHub: https://github.com/swimlane/pyattck
+   - API for querying MITRE ATT&CK knowledge base.
+
+10. awesome-threat-intelligence
+    - GitHub: https://github.com/hslatman/awesome-threat-intelligence
+    - Curated list of CTI tools, feeds, and datasets.
+
+
+
+
+II. Data Gathering: Initial and Continuous Ingestion
+==============================
+
+
+A. One-Time Bulk Ingest:
+
+* Download JSON feeds (e.g., NVD)
+* Clone MITRE ATT\&CK repositories
+* Export Exploit-DB CSV
+* GitHub API cloning
+
+B. Ongoing Updates / Streaming:
+
+* Use RSS / JSON APIs:
+
+  * OTX API
+  * MISP live feeds
+  * NVD modified feeds
+  * Google Project Zero RSS
+  * CTI blog scrapers
+
+Tooling: Python + FastAPI + Airflow + MongoDB/MinIO + Git
+
+
+
+III. Data Preprocessing and Formatting
+==============================
+
+
+A. Task-Specific Dataset Examples:
+
+| Task                  | Format Example                         |
+| --------------------- | -------------------------------------- |
+| Threat Summarization  | <doc> → <summary>                      |
+| IOC Classification    | {"text": "...", "label": "..."}        |
+| Actor Attribution     | {"description": "...", "actor": "..."} |
+| Vulnerability Scoring | {"cve": "...", "score": "..."}         |
+| QA on Threat Graphs   | <context> Q: ... A: ...                |
+
+B. Corpus Format:
+
+* Normalized JSONL with metadata
+  {"source": "CVE", "type": "vuln\_description", "text": "...", "metadata": {...}}
+* Augment with:
+
+  * STIX to JSON converter (e.g., for MISP)
+  * Markdown to plain-text for blog content
+  * Script to extract observables (IP, hash, etc.) for classification tasks
+
+
+IV: Data Schema Definition
+
+Formalize the relationships and concepts identified in the CTI knowledge bases into a structured schema. This schema will guide the generation of diverse and relevant input/output pairs. The schema needs to capture the entities and relationships within MITRE ATT&CK, CAPEC, CWE, and CVE that are relevant for generating CTI-Bench type questions.
+
+Core Concepts (Entities):
+- MITRE ATT&CK:
+- Tactic (e.g., Execution, Persistence, Exfiltration)
+- Technique (e.g., T1041 Exfiltration Over C2 Channel, T1548.004 Abuse Elevation Control Mechanism: Elevated Execution with Prompt)
+- Sub-Technique (e.g., T1548.004)
+- Mitigation (e.g., Multi-factor Authentication, Protocol Signatures)
+- Group (Threat Actor, e.g., UNC2452, Lazarus Group, Sandworm Team)
+- Software (Malware/Tool, e.g., Agent Tesla, AdFind, CoinTicker, MacDownloader, CheckVMX)
+- Data Source (e.g., Process Monitoring, Network Traffic, API Monitoring)
+- Component (e.g., API Monitoring, Process Command-line)
+- Platform (Enterprise, Mobile, ICS, Cloud)
+- Procedure Example (Specific instance of a technique used by a group/software, e.g., 2015 Ukraine Electric Power Attack)
+- Targeted Asset (in ICS, e.g., HMI, PLC)
+- CAPEC (Common Attack Pattern Enumeration and Classification):
+- Attack Pattern (e.g. CAPEC-36: Using Unpublished Interfaces or Functionality)
+- Attack Category (e.g., Client-Side Attacks, Network Attacks)
+- Consequence (e.g., Information Disclosure, Arbitrary Code Execution)
+- CWE (Common Weakness Enumeration):
+- Weakness (e.g. CWE-293: Using Referer Field for Authentication)
+- Impact (e.g., Information Exposure, Arbitrary Code Execution, Loss of Confidentiality/Integrity)
+- Phase (Development Lifecycle Phase, e.g., Design, Implementation)
+- Mitigation Strategy (General approaches to address weaknesses)
+- CVE (Common Vulnerabilities and Exposures):
+- Vulnerability (Specific instance of a weakness, often linked to software versions)
+- Exploit (Specific code or technique used to take advantage of a vulnerability, e.g., DirtyCow)
+- Impact
+
+
+
+
+V. Athena-CTI-LLM Training Pipeline: Instruction-Based Fine-Tuning Requirements
+==========================================================
+
+
+Why Use the Instruction-Based Format?
+-------------------------------------
+
+1. Aligns with User Interaction Patterns
+   - CTI users will issue queries like:
+     "Summarize CVE-2023-1234"
+     "Which MITRE techniques are used by APT29?"
+     "Classify this IOC: 198.51.100.23"
+   - Instruction format trains the model to understand task intent, context, and structured output format.
+
+2. Enables Multi-Task Learning
+   - Trains the model to perform:
+     * Summarization (e.g., CVE explanations)
+     * Classification (e.g., IOC, ATT&CK tactic)
+     * QA (e.g., adversary-TTP mapping)
+     * Extraction (e.g., IOCs or MITRE techniques from unstructured text)
+     * Reasoning (e.g., risk scoring or mitigation strategy recommendation)
+
+3. Leverages Successful Precedents
+   - InstructGPT, Alpaca, LLaMA-2-Chat, CyberPal.AI all use instruction-tuned formats.
+   - Proven to improve generalization and multi-task zero-shot performance.
+
+
+Transformation of Raw Data
+--------------------------
+Raw CTI sources must be transformed into instruction–input–output triplets.
+
+Examples:
+
+- CVE Description:
+  instruction: "Summarize the vulnerability"
+  input: "CVE-2023-1234 affects XYZ software with buffer overflow..."
+  output: "A buffer overflow in XYZ allows remote code execution."
+
+- MISP IOC:
+  instruction: "Classify the observable"
+  input: "198.51.100.23"
+  output: "IP address (malicious)"
+
+- ATT&CK Mapping:
+  instruction: "Map this activity to ATT&CK"
+  input: "The threat actor used PowerShell over HTTP to exfil data."
+  output: "T1071.001 – Web Protocol"
+
+- CTI Blog:
+  instruction: "Extract threat actor"
+  input: "Researchers observed phishing campaigns targeting defense contractors..."
+  output: "APT28"
+
+
+Implementation Strategy
+-----------------------
+
+1. Use Templates
+   - Create task-to-template mappings for:
+     * CVE
+     * ATT&CK techniques
+     * IOC feeds
+     * Threat actor profiles
+     * CTI QA pairs
+
+2. Semi-Automation
+   - Use regex, NER models, and keyword matchers to extract structured data.
+   - Use Evol-Instruct or self-instruct pipelines to generate synthetic examples.
+
+3. Data Format
+   - Final JSONL format:
+     {"instruction": "...", "input": "...", "output": "..."}
+
+4. Organize Datasets
+   - Split into: train.jsonl, eval.jsonl, test.jsonl
+   - Use Hugging Face Datasets for ingestion.
+
+
+Tradeoffs Table
+---------------
+
+| Aspect              | Instruction Format | Plain Text  |
+|---------------------|--------------------|-------------|
+| Multi-task support  | Yes                | Limited     |
+| Generalization      | Strong             | Weak        |
+| Transformation Req  | Yes                | Yes         |
+| Downstream Usage    | Interactive        | Less direct |
+| Evaluation          | Modular & scored   | Unstructured|
+
+
+Recommendations
+---------------
+
+- Use instruction format for all fine-tuning tasks.
+- Build a transformation pipeline from raw CTI to instruction format.
+- Grow the dataset incrementally with automation + human refinement.
+- Implement templates per CTI task to enforce consistency.
+
+
+Optional Dev Add-ons
+--------------------
+
+- Template conversion scripts for CVE/MISP/ATT&CK
+- Tokenizer-ready JSONL output generator
+- Model evaluation scoring hooks by task type
+
+
+
+Base Model (draft):
+--------------------
+
+* LLaMA 3, Mistral, or Phi-2: Reason: smaller parameter size, open weights, permissive license (check carefully)
+* Use LoRA/QLoRA for efficient fine-tuning on domain-specific text
+
+
+Training Phases (possible):
+--------------------
+
+| Phase                       | Objective                              | Details                                           |
+| --------------------------- | -------------------------------------- | ------------------------------------------------- |
+| **Pre-finetuning**          | Adapt LLM to CTI domain                | Domain-Adaptive Pretraining on mixed CTI text     |
+| **Instruction Fine-Tuning** | Teach it to respond in CTI task format | Use synthetic or human-curated QA datasets        |
+| **Supervised Finetuning**   | Refine for specific tasks              | IOC classification, actor linking, summarization  |
+| **RAG Integration**         | Optional for knowledge grounding       | Use ElasticSearch or FAISS for CTI corpus lookups |
+
+
+
+
+
+
+
+
+
+VI. Evaluation and Benchmarking
+==============================
+
+A. CTIBench / SECUREBench:
+
+* Create tasks: IOC detection, threat report QA, malware family classification, etc.
+* Automate evaluation metrics: accuracy, F1, BLEU (for summarization), etc.
+* Use real threat reports for open-ended testing.
+
+B. Validation:
+
+* Manual expert review of model outputs
+* Side-by-side comparison with GPT-4, GPT-3.5, and Claude (if permitted)
+
+
+
+VII. Commercialization Strategy
+==============================
+
+A. Product Use Cases:
+
+| Use Case                         | Customer Type            |
+| -------------------------------- | ------------------------ |
+| IOC Enrichment                   | SOC teams, MSSPs         |
+| Threat Report Summarization      | Analysts, Threat Hunters |
+| Adversary Attribution Assistance | Incident Response        |
+| Vulnerability Prioritization     | AppSec Engineers         |
+| Threat Intel Chatbot             | MSP / MSSP helpdesks     |
+
+B. Delivery Models:
+
+* SaaS API Gateway: Host inference via vLLM or Triton
+* On-prem LLM appliance: For regulated industries
+* Integration hooks: Python SDK, MISP plugin, Zeek/Wazuh parsers
+
+C. Monetization:
+
+* Per-seat or per-query API license
+* Bundled within larger CTI platform (e.g., Promachos, Glaukopis)
+* White-label for MSSPs
+
+
+VIII. Infrastructure
+==============================
+
+| Component     | Stack                     |
+| ------------- | ------------------------- |
+| Data Pipeline | Airflow + FastAPI + Mongo |
+| Pretraining   | PyTorch + HF Transformers |
+| Finetuning    | LoRA / QLoRA + A100s      |
+| Deployment    | vLLM + FastAPI / Ollama   |
+| Storage       | HuggingFace / MinIO       |
+| Evaluation    | CTI-Bench + ClearML       |
+
+
+
+IX. Summary
+==============================
+
+You can build a commercial-grade CTI-LLM by:
+
+* Collecting public, structured CTI data (e.g., CVEs, ATT\&CK, MISP, OTX).
+* Preprocessing it into a clean corpus segmented by task and format.
+* Training a finetuned open-source model like LLaMA3 or Mistral using LoRA/QLoRA.
+* Benchmarking with CTIBench/SECUREBench and your own real-world CTI queries.
+* Deploying as an API/SaaS/on-prem solution tailored for SOCs, MSSPs, or CTI teams.
+
+
+
+
+
+Appendix A: CTI-LLM Data Pipeline Overview
+==============================
+
+[1] Data Ingestion
+------------------
+- Source Feeds: CVE, MITRE ATT&CK, MISP, OTX, Exploit-DB, CTI Blogs
+- Methods: APIs, Git Cloning, RSS Scrapers, Manual Dumps
+
+[2] Preprocessing
+-----------------
+- Format Normalization: STIX → JSON, Markdown → Plaintext
+- Cleaning: Tokenization, HTML Strip, IOC Tagging, NER
+- Output: JSONL format, structured fields per task type
+
+[3] Corpus Store
+----------------
+- Storage: MongoDB, MinIO/S3
+- Versioning: DVC or Git LFS for dataset control
+
+[4] Base Model Selection
+------------------------
+- Options: LLaMA3, Mistral, Phi-2
+- Tokenizer Sync: Adapt corpus to model-specific tokenizer
+
+[5] Training Phase
+------------------
+- Domain-Adaptive Pretraining (DAPT)
+- Instruction Fine-Tuning (synthetic + real QAs)
+- Task-Specific SFT (IOC tagger, CVE summarizer, threat actor classifier)
+- Framework: HuggingFace + QLoRA
+
+[6] Evaluation
+--------------
+- Benchmarks: CTIBench, SECUREBench
+- Metrics: F1, Accuracy, BLEU (summarization), Recall
+
+[7] Deployment
+--------------
+- Options: vLLM, FastAPI, Ollama
+- Modalities: API, On-Prem, SaaS
+
+[8] Ongoing Training Loop
+--------------------------
+- Nightly Feed Updates: CVE, MISP, OTX, Exploit-DB
+- New QA Generation: Using RAG or template-based pipeline
+- Continual Finetuning: Biweekly with QLoRA adapters
+- Human-in-the-loop Review: Sampled eval via CTI analyst interface
+
+
+
+
+
+
+
+

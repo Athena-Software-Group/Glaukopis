@@ -1,0 +1,434 @@
+{
+ "shard_profile": {
+  "taa": {
+   "rows": 20359,
+   "out_gcode": 13454,
+   "out_group": 10664,
+   "out_tcode": 6905,
+   "in_group": 3881,
+   "median_output_words": 29
+  },
+  "cse": {
+   "rows": 17320,
+   "out_gcode": 0,
+   "out_group": 0,
+   "out_tcode": 0,
+   "in_group": 8801,
+   "median_output_words": 3
+  }
+ },
+ "vsp_metric_level": {
+  "Core": {
+   "n": 2000,
+   "unparsed": 2,
+   "exact": 492,
+   "metric_level_acc_pct": 82.5,
+   "mismatches": {
+    "AV": 149,
+    "AC": 127,
+    "PR": 369,
+    "UI": 344,
+    "S": 163,
+    "C": 634,
+    "I": 653,
+    "A": 341
+   }
+  },
+  "+TAA": {
+   "n": 2000,
+   "unparsed": 0,
+   "exact": 519,
+   "metric_level_acc_pct": 83.1,
+   "mismatches": {
+    "AV": 136,
+    "AC": 131,
+    "PR": 357,
+    "UI": 342,
+    "S": 115,
+    "C": 618,
+    "I": 661,
+    "A": 340
+   }
+  },
+  "CSE": {
+   "n": 2000,
+   "unparsed": 0,
+   "exact": 329,
+   "metric_level_acc_pct": 76.6,
+   "mismatches": {
+    "AV": 537,
+    "AC": 125,
+    "PR": 799,
+    "UI": 422,
+    "S": 421,
+    "C": 578,
+    "I": 504,
+    "A": 356
+   }
+  },
+  "Recal-14B": {
+   "n": 2000,
+   "unparsed": 0,
+   "exact": 305,
+   "metric_level_acc_pct": 77.0,
+   "mismatches": {
+    "AV": 556,
+    "AC": 126,
+    "PR": 774,
+    "UI": 392,
+    "S": 405,
+    "C": 520,
+    "I": 489,
+    "A": 420
+   }
+  },
+  "Recal-32B": {
+   "n": 2000,
+   "unparsed": 1,
+   "exact": 272,
+   "metric_level_acc_pct": 74.7,
+   "mismatches": {
+    "AV": 583,
+    "AC": 211,
+    "PR": 791,
+    "UI": 372,
+    "S": 526,
+    "C": 601,
+    "I": 507,
+    "A": 444
+   }
+  }
+ },
+ "vsp_direction": {
+  "Core": {
+   "AV": {
+    "L->N": 101,
+    "N->L": 20,
+    "A->N": 7,
+    "A->L": 7
+   },
+   "PR": {
+    "L->N": 180,
+    "N->L": 86,
+    "L->H": 44,
+    "H->L": 29
+   },
+   "S": {
+    "U->C": 108,
+    "C->U": 55
+   }
+  },
+  "+TAA": {
+   "AV": {
+    "L->N": 83,
+    "N->L": 33,
+    "A->N": 6,
+    "A->L": 4
+   },
+   "PR": {
+    "L->N": 166,
+    "N->L": 98,
+    "H->L": 32,
+    "L->H": 29
+   },
+   "S": {
+    "U->C": 61,
+    "C->U": 54
+   }
+  },
+  "CSE": {
+   "AV": {
+    "L->N": 499,
+    "N->L": 16,
+    "A->N": 8,
+    "A->L": 8
+   },
+   "PR": {
+    "L->N": 663,
+    "L->H": 49,
+    "H->N": 35,
+    "N->L": 30
+   },
+   "S": {
+    "C->U": 241,
+    "U->C": 180
+   }
+  },
+  "Recal-14B": {
+   "AV": {
+    "L->N": 523,
+    "A->N": 11,
+    "N->L": 10,
+    "A->L": 6
+   },
+   "PR": {
+    "L->N": 632,
+    "L->H": 44,
+    "N->L": 43,
+    "H->N": 29
+   },
+   "S": {
+    "U->C": 296,
+    "C->U": 109
+   }
+  },
+  "Recal-32B": {
+   "AV": {
+    "L->N": 552,
+    "A->N": 14,
+    "N->L": 7,
+    "A->L": 5
+   },
+   "PR": {
+    "L->N": 657,
+    "L->H": 47,
+    "N->L": 33,
+    "H->N": 30
+   },
+   "S": {
+    "C->U": 286,
+    "U->C": 240
+   }
+  }
+ },
+ "mmlu_subject_delta_base_minus_final": {
+  "biolog": 6.2,
+  "busine": 18.7,
+  "chemis": 22.7,
+  "comput": 10.7,
+  "econom": 5.5,
+  "engine": 7.2,
+  "health": 4.0,
+  "histor": 3.2,
+  "law": 8.7,
+  "math": 18.6,
+  "other": 7.0,
+  "philos": 0.4,
+  "physic": 23.2,
+  "psycho": 3.8
+ },
+ "single_stage_v7_32b": {
+  "CKT": 71,
+  "ATE": 57.4,
+  "RCM": 62.1,
+  "RMS": 68.5,
+  "VSP": 83.4,
+  "TAA_classic": 52.5,
+  "C": 39.6,
+  "Y": 88.6,
+  "A_classic": 65.8,
+  "B_classic": 64.7
+ },
+ "efficiency": {
+  "gemini-3-flash-preview": {
+   "input_tok": 12049618,
+   "output_tok": 382702497,
+   "wallclock_h": null,
+   "total_usd": 1154.1323
+  },
+  "gpt-5.5": {
+   "input_tok": 19765005,
+   "output_tok": 13643569,
+   "wallclock_h": null,
+   "total_usd": 508.1321
+  },
+  "gpt-5.2(reasoning=default[medium])": {
+   "input_tok": 22659871,
+   "output_tok": 12143915,
+   "wallclock_h": null,
+   "total_usd": 209.6696
+  },
+  "Qwen/Qwen3-30B-A3B-Thinking-2507": {
+   "input_tok": null,
+   "output_tok": null,
+   "wallclock_h": 38.512,
+   "total_usd": 192.5611
+  },
+  "gemini-2.5-flash": {
+   "input_tok": 20977607,
+   "output_tok": 63977724,
+   "wallclock_h": null,
+   "total_usd": 166.2376
+  },
+  "deepseek-ai/DeepSeek-V4-Pro": {
+   "input_tok": 20817369,
+   "output_tok": 25912563,
+   "wallclock_h": null,
+   "total_usd": 126.3979
+  },
+  "deepseek-ai/DeepSeek-V3.1-Terminus": {
+   "input_tok": 20321220,
+   "output_tok": 8840449,
+   "wallclock_h": null,
+   "total_usd": 14.3272
+  },
+  "deepseek-ai/DeepSeek-V3.2-Exp": {
+   "input_tok": 20965383,
+   "output_tok": 13946977,
+   "wallclock_h": null,
+   "total_usd": 11.2394
+  },
+  "Qwen/Qwen2.5-32B-Instruct": {
+   "input_tok": null,
+   "output_tok": null,
+   "wallclock_h": 2.133,
+   "total_usd": 10.6667
+  },
+  "asg-ai/athena-cti-sft-foundation-8b-v21-taa": {
+   "input_tok": null,
+   "output_tok": null,
+   "wallclock_h": 1.378,
+   "total_usd": 6.8889
+  },
+  "Qwen/Qwen2.5-14B-Instruct": {
+   "input_tok": null,
+   "output_tok": null,
+   "wallclock_h": 1.216,
+   "total_usd": 6.0806
+  },
+  "asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-cse ": {
+   "input_tok": null,
+   "output_tok": null,
+   "wallclock_h": 1.214,
+   "total_usd": 6.0694
+  },
+  "asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-taa": {
+   "input_tok": null,
+   "output_tok": null,
+   "wallclock_h": 1.177,
+   "total_usd": 5.8861
+  },
+  "asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-recal-32b": {
+   "input_tok": null,
+   "output_tok": null,
+   "wallclock_h": 1.131,
+   "total_usd": 5.6528
+  },
+  "asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-core": {
+   "input_tok": null,
+   "output_tok": null,
+   "wallclock_h": 1.123,
+   "total_usd": 5.6167
+  },
+  "Qwen/Qwen3-30B-A3B-Instruct-2507": {
+   "input_tok": null,
+   "output_tok": null,
+   "wallclock_h": 0.902,
+   "total_usd": 4.5111
+  },
+  "asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-recalibrate": {
+   "input_tok": null,
+   "output_tok": null,
+   "wallclock_h": 0.896,
+   "total_usd": 4.4806
+  },
+  "meta-llama/Meta-Llama-3.1-8B-Instruct": {
+   "input_tok": null,
+   "output_tok": null,
+   "wallclock_h": 0.855,
+   "total_usd": 4.275
+  },
+  "fdtn-ai/Foundation-Sec-8B-Instruct": {
+   "input_tok": null,
+   "output_tok": null,
+   "wallclock_h": 0.671,
+   "total_usd": 3.3528
+  },
+  "asg-ai/athena-cti-sft-qwen25-14b-v21-taa": {
+   "input_tok": null,
+   "output_tok": null,
+   "wallclock_h": 0.628,
+   "total_usd": 3.1417
+  },
+  "asg-ai/athena-cti-sft-qwen25-14b-v21-core": {
+   "input_tok": null,
+   "output_tok": null,
+   "wallclock_h": 0.605,
+   "total_usd": 3.025
+  },
+  "asg-ai/athena-cti-sft-qwen25-32b-v21-core": {
+   "input_tok": null,
+   "output_tok": null,
+   "wallclock_h": 0.577,
+   "total_usd": 2.8833
+  },
+  "asg-ai/athena-cti-sft-qwen25-32b-v21-recal-32b": {
+   "input_tok": null,
+   "output_tok": null,
+   "wallclock_h": 0.567,
+   "total_usd": 2.8333
+  },
+  "asg-ai/athena-cti-sft-foundation-8b-v21-cse": {
+   "input_tok": null,
+   "output_tok": null,
+   "wallclock_h": 0.564,
+   "total_usd": 2.8194
+  },
+  "asg-ai/athena-cti-sft-qwen25-32b-v21-taa": {
+   "input_tok": null,
+   "output_tok": null,
+   "wallclock_h": 0.546,
+   "total_usd": 2.7278
+  },
+  "asg-ai/athena-cti-sft-llama31-8b-v21-taa": {
+   "input_tok": null,
+   "output_tok": null,
+   "wallclock_h": 0.516,
+   "total_usd": 2.5778
+  },
+  "asg-ai/athena-cti-sft-qwen25-32b-v21-recalibrate": {
+   "input_tok": null,
+   "output_tok": null,
+   "wallclock_h": 0.502,
+   "total_usd": 2.5083
+  },
+  "asg-ai/athena-cti-sft-qwen25-14b-v21-recalibrate": {
+   "input_tok": null,
+   "output_tok": null,
+   "wallclock_h": 0.449,
+   "total_usd": 2.2472
+  },
+  "asg-ai/athena-cti-sft-qwen25-32b-v21-cse": {
+   "input_tok": null,
+   "output_tok": null,
+   "wallclock_h": 0.435,
+   "total_usd": 2.175
+  },
+  "asg-ai/athena-cti-sft-foundation-8b-v21-core": {
+   "input_tok": null,
+   "output_tok": null,
+   "wallclock_h": 0.397,
+   "total_usd": 1.9833
+  },
+  "asg-ai/athena-cti-sft-foundation-8b-v21-recalibrate": {
+   "input_tok": null,
+   "output_tok": null,
+   "wallclock_h": 0.373,
+   "total_usd": 1.8667
+  },
+  "asg-ai/athena-cti-sft-llama31-8b-v21-core": {
+   "input_tok": null,
+   "output_tok": null,
+   "wallclock_h": 0.292,
+   "total_usd": 1.4583
+  },
+  "asg-ai/athena-cti-sft-llama31-8b-v21-recalibrate": {
+   "input_tok": null,
+   "output_tok": null,
+   "wallclock_h": 0.163,
+   "total_usd": 0.8139
+  },
+  "asg-ai/athena-cti-sft-llama31-8b-v21-cse": {
+   "input_tok": null,
+   "output_tok": null,
+   "wallclock_h": 0.158,
+   "total_usd": 0.7917
+  },
+  "ftdn-ai/Foundation-Sec-8B-Instruct": {
+   "input_tok": null,
+   "output_tok": null,
+   "wallclock_h": null,
+   "total_usd": null
+  }
+ }
+}

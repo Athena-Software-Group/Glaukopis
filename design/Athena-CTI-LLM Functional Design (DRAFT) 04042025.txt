@@ -1,0 +1,111 @@
+
+Athena-CTI-LLM: Design Overview, Data Sources, and Training Pipeline
+=====================================================================
+
+GOAL:
+-----
+Fine-tune an existing LLM to create Athena-CTI-LLM (Glaukopis), specialized in Cyber Threat Intelligence (CTI).
+This model will return detailed threat intelligence reports when queried by CVE, IOC, or threat actor metadata.
+
+1. CORE TRAINING OBJECTIVES
+---------------------------
+- Threat Report Generation (prompt → natural language summary)
+- CVE-to-Threat Summary Mapping
+- IOC Extraction and IOC-Type Classification
+- Threat Actor Behavioral Analysis
+- Campaign Summarization
+- Risk Scoring and Exploit Evaluation
+
+2. KEY DATA SOURCES
+-------------------
+Flashpoint Ignite:
+- CTI reports (natural language)
+- Structured vulnerability data (keyed by CVE)
+- Actor tactics, techniques, and indicators
+
+Public Supplements:
+- MISP (IOC feeds, incident sharing)
+- MITRE ATT&CK (tactics and procedures)
+- OTX (AlienVault Threat Exchange)
+- NVD / CVE.org (official CVE data)
+- Exploit-DB (public PoCs linked to CVEs)
+- Metasploit Framework (exploits + payloads)
+- Google Project Zero (0-day vulnerability reports)
+- ZDI (Trend Micro disclosures)
+- APT Notes, ThreatFox, Malpedia
+- VirusTotal/Unit42/Kaspersky CTI blogs
+- Cybersecurity GitHub repos (curated exploit data)
+
+3. TOKENIZATION AND REPRESENTATION
+----------------------------------
+- Event/Indicator Tokenization
+- Masked Token Prediction (MLM)
+- CVE and IOC fields as instruction inputs
+- Structured YAMLs and JSONs parsed into QA format
+
+4. FINE-TUNING STRATEGY
+-----------------------
+- LoRA (Low-Rank Adaptation)
+- PEFT (Parameter-Efficient Fine-Tuning)
+- Supervised instruction-tuning on threat Q&A datasets
+- Use triplet loss or contrastive loss where applicable
+
+5. SAMPLE PROMPT FORMATS
+-------------------------
+Instruction: "Summarize the threat actor behavior associated with CVE-2023-12345."
+Input: "CVE-2023-12345 affects Microsoft Exchange and is actively exploited..."
+Output: "The vulnerability allows remote code execution and has been linked to APT41..."
+
+Instruction: "List IOCs related to BlackCat ransomware."
+Instruction: "Summarize the latest 0-days disclosed by Project Zero."
+
+6. EVALUATION STRATEGY
+-----------------------
+- CTI-Bench (custom adaptation of CTI-Benchmark)
+  - IOC extraction
+  - Threat summary coherence
+  - Entity linking accuracy
+- Athena-CTI-Bench (CTI-Bench + MMLU extension)
+  - General language capability via MMLU
+  - Domain-specific QA on threat intelligence
+  - Summarization score (ROUGE/BLEU)
+  - Entity extraction F1 / accuracy
+
+7. DEPLOYMENT DESIGN
+---------------------
+- Model inference exposed via internal SOC API
+- Integrated with Neo4j/ELK/Elastic SIEM
+- Prompted by CVE/IOC detections from Suricata, Wazuh, etc.
+- Embedding support for CVE → vector search (FAISS or Elasticsearch)
+
+PIPELINE:
+---------
+1. DATA INGESTION
+   - Sources: Ignite, MISP, ATT&CK, NVD, Project Zero, etc.
+
+2. PREPROCESSING
+   - Normalize CTI report formats (HTML → text, JSON → fields)
+   - De-duplicate and enrich CVEs (join with NVD, Exploit-DB)
+   - IOC resolution and tagging (IP, Domain, Hash)
+   - Tokenization and chunking for LLM compatibility
+
+3. INSTRUCTION GENERATION
+   - Template: {Instruction, Input, Output}
+   - Grouped by intent: IOC extraction, CVE summary, threat actor profile
+
+4. FINE-TUNING
+   - Base LLM: e.g., LLaMA2-7B or Mistral-7B
+   - Method: LoRA + PEFT
+   - Tooling: HuggingFace Transformers + TRL + bitsandbytes
+
+5. TESTING
+   - Eval Suite: Athena-CTI-Bench
+   - Includes:
+     - CTI-Bench task formats (IOC Extraction, Threat QA)
+     - MMLU for language understanding
+     - Manual threat report grading
+
+6. DEPLOYMENT
+   - TorchServe or vLLM for inference
+   - Connected to internal SOC dashboard
+   - Triggered by CVE/IOC alerts

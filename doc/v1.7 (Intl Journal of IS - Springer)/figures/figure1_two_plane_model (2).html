@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Figure 1 – Two-plane Zero Trust operating model</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: #ffffff; }
+body { font-family: Arial, sans-serif; padding: 40px 50px 50px; }
+.c-blue-r   { fill: #E6F1FB; stroke: #185FA5; stroke-width: 0.8; }
+.c-amber-r  { fill: #FAEEDA; stroke: #BA7517; stroke-width: 1.0; }
+.c-teal-r   { fill: #E1F5EE; stroke: #0F6E56; stroke-width: 0.8; }
+.c-purple-r { fill: #EEEDFE; stroke: #534AB7; stroke-width: 0.8; }
+.c-gray-r   { fill: #F1EFE8; stroke: #5F5E5A; stroke-width: 0.8; }
+.lbl-blue   { fill: #0C447C; }
+.lbl-amber  { fill: #633806; }
+.lbl-teal   { fill: #085041; }
+.lbl-purple { fill: #3C3489; }
+.lbl-gray   { fill: #444441; }
+.lbl-muted  { fill: #888780; }
+.dot-blue   { fill: #185FA5; }
+.dot-amber  { fill: #BA7517; }
+.dot-teal   { fill: #0F6E56; }
+.dot-purple { fill: #534AB7; }
+</style>
+</head>
+<body>
+<svg width="100%" viewBox="0 0 720 540" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+  <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+
+<!-- ─── Internet / Customers / Partners ─── -->
+<rect x="22" y="12" width="194" height="30" rx="6" class="c-gray-r"/>
+<text font-family="Arial" font-size="9.5" font-weight="700" text-anchor="middle" class="lbl-gray">
+  <tspan x="119" y="31">Internet / customers / partners</tspan>
+</text>
+
+<!-- arrow down to External edge -->
+<line x1="119" y1="42" x2="119" y2="62" stroke="#5F5E5A" stroke-width="1.4" marker-end="url(#ah)"/>
+
+<!-- ═══════════ EXTERNAL APPLICATION EDGE ═══════════ -->
+<rect x="22" y="64" width="194" height="200" rx="10" class="c-blue-r"/>
+<text font-family="Arial" font-size="11" font-weight="700" text-anchor="middle" class="lbl-blue">
+  <tspan x="119" y="84">External</tspan>
+  <tspan x="119" dy="14">application edge</tspan>
+</text>
+<line x1="34" y1="108" x2="204" y2="108" stroke="#185FA5" stroke-width="0.4" opacity="0.5"/>
+
+<circle cx="38" cy="123" r="2.5" class="dot-blue"/>
+<text font-family="Arial" font-size="10" class="lbl-blue"><tspan x="47" y="127">Web and API traffic only</tspan></text>
+
+<circle cx="38" cy="141" r="2.5" class="dot-blue"/>
+<text font-family="Arial" font-size="10" class="lbl-blue"><tspan x="47" y="145">Reverse proxy / WAF gate</tspan></text>
+
+<circle cx="38" cy="159" r="2.5" class="dot-blue"/>
+<text font-family="Arial" font-size="10" class="lbl-blue">
+  <tspan x="47" y="163">Rate limits, abuse-IP</tspan>
+  <tspan x="47" dy="13">controls, geo signals</tspan>
+</text>
+
+<circle cx="38" cy="191" r="2.5" class="dot-blue"/>
+<text font-family="Arial" font-size="10" class="lbl-blue"><tspan x="47" y="195">NIDS network telemetry</tspan></text>
+
+<circle cx="38" cy="209" r="2.5" class="dot-blue"/>
+<text font-family="Arial" font-size="10" class="lbl-blue"><tspan x="47" y="213">TTL-bounded auto blocks</tspan></text>
+
+<circle cx="38" cy="227" r="2.5" class="dot-blue"/>
+<text font-family="Arial" font-size="10" class="lbl-blue"><tspan x="47" y="231">Exception review queue</tspan></text>
+
+<!-- arrow External → Protected -->
+<line x1="218" y1="164" x2="244" y2="164" stroke="#185FA5" stroke-width="1.6" marker-end="url(#ah)"/>
+
+<!-- ═══════════ PROTECTED SaaS PLATFORM ═══════════ -->
+<rect x="246" y="64" width="222" height="200" rx="10" class="c-amber-r"/>
+<text font-family="Arial" font-size="11" font-weight="700" text-anchor="middle" class="lbl-amber">
+  <tspan x="357" y="84">Protected SaaS platform</tspan>
+</text>
+<text font-family="Arial" font-size="10" font-style="italic" text-anchor="middle" class="lbl-amber">
+  <tspan x="357" y="99">and regulated data</tspan>
+</text>
+<line x1="258" y1="108" x2="456" y2="108" stroke="#BA7517" stroke-width="0.4" opacity="0.5"/>
+
+<circle cx="262" cy="123" r="2.5" class="dot-amber"/>
+<text font-family="Arial" font-size="10" class="lbl-amber">
+  <tspan x="271" y="127">Application services and APIs</tspan>
+</text>
+
+<circle cx="262" cy="141" r="2.5" class="dot-amber"/>
+<text font-family="Arial" font-size="10" class="lbl-amber">
+  <tspan x="271" y="145">Admin plane separated</tspan>
+  <tspan x="271" dy="13">from customer plane</tspan>
+</text>
+
+<circle cx="262" cy="173" r="2.5" class="dot-amber"/>
+<text font-family="Arial" font-size="10" class="lbl-amber">
+  <tspan x="271" y="177">Cloud control plane and</tspan>
+  <tspan x="271" dy="13">secrets stores</tspan>
+</text>
+
+<circle cx="262" cy="205" r="2.5" class="dot-amber"/>
+<text font-family="Arial" font-size="10" class="lbl-amber">
+  <tspan x="271" y="209">Least-privilege data access</tspan>
+</text>
+
+<circle cx="262" cy="223" r="2.5" class="dot-amber"/>
+<text font-family="Arial" font-size="10" class="lbl-amber">
+  <tspan x="271" y="227">Regulated tenant data stores</tspan>
+</text>
+
+<!-- arrow Internal → Protected -->
+<line x1="492" y1="164" x2="470" y2="164" stroke="#0F6E56" stroke-width="1.6" marker-end="url(#ah)"/>
+
+<!-- ═══════════ INTERNAL DISTRIBUTED ENTERPRISE ═══════════ -->
+<rect x="494" y="64" width="204" height="200" rx="10" class="c-teal-r"/>
+<text font-family="Arial" font-size="11" font-weight="700" text-anchor="middle" class="lbl-teal">
+  <tspan x="596" y="84">Internal distributed</tspan>
+  <tspan x="596" dy="14">enterprise</tspan>
+</text>
+<line x1="506" y1="108" x2="686" y2="108" stroke="#0F6E56" stroke-width="0.4" opacity="0.5"/>
+
+<circle cx="510" cy="123" r="2.5" class="dot-teal"/>
+<text font-family="Arial" font-size="10" class="lbl-teal">
+  <tspan x="519" y="127">Managed and BYOD devices</tspan>
+</text>
+
+<circle cx="510" cy="141" r="2.5" class="dot-teal"/>
+<text font-family="Arial" font-size="10" class="lbl-teal">
+  <tspan x="519" y="145">ZTNA / VPN as channel,</tspan>
+  <tspan x="519" dy="13">not authorization</tspan>
+</text>
+
+<circle cx="510" cy="173" r="2.5" class="dot-teal"/>
+<text font-family="Arial" font-size="10" class="lbl-teal">
+  <tspan x="519" y="177">JIT privilege, step-up auth,</tspan>
+  <tspan x="519" dy="13">session controls</tspan>
+</text>
+
+<circle cx="510" cy="205" r="2.5" class="dot-teal"/>
+<text font-family="Arial" font-size="10" class="lbl-teal">
+  <tspan x="519" y="209">Behavioral baselining</tspan>
+</text>
+
+<circle cx="510" cy="223" r="2.5" class="dot-teal"/>
+<text font-family="Arial" font-size="10" class="lbl-teal">
+  <tspan x="519" y="227">Service identity and mTLS</tspan>
+</text>
+
+<!-- ─── Bidirectional dashed arrows to/from telemetry ─── -->
+<line x1="111" y1="266" x2="111" y2="310" stroke="#185FA5" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#ah)"/>
+<line x1="99"  y1="310" x2="99"  y2="266" stroke="#534AB7" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#ah)"/>
+
+<line x1="358" y1="266" x2="358" y2="310" stroke="#BA7517" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#ah)"/>
+<line x1="346" y1="310" x2="346" y2="266" stroke="#534AB7" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#ah)"/>
+
+<line x1="597" y1="266" x2="597" y2="310" stroke="#0F6E56" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#ah)"/>
+<line x1="585" y1="310" x2="585" y2="266" stroke="#534AB7" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#ah)"/>
+
+<!-- ═══════════ UNIFIED TELEMETRY AND POLICY PLANE ═══════════ -->
+<rect x="22" y="312" width="676" height="166" rx="10" class="c-purple-r"/>
+<text font-family="Arial" font-size="11" font-weight="700" text-anchor="middle" class="lbl-purple">
+  <tspan x="360" y="332">Unified telemetry and policy plane</tspan>
+</text>
+<line x1="34" y1="342" x2="686" y2="342" stroke="#534AB7" stroke-width="0.4" opacity="0.5"/>
+
+<!-- Left column -->
+<circle cx="40" cy="357" r="2.5" class="dot-purple"/>
+<text font-family="Arial" font-size="10" class="lbl-purple"><tspan x="50" y="361">SIEM, EDR, XDR log ingestion</tspan></text>
+
+<circle cx="40" cy="375" r="2.5" class="dot-purple"/>
+<text font-family="Arial" font-size="10" class="lbl-purple"><tspan x="50" y="379">NIDS and WAF event streams</tspan></text>
+
+<circle cx="40" cy="393" r="2.5" class="dot-purple"/>
+<text font-family="Arial" font-size="10" class="lbl-purple"><tspan x="50" y="397">IAM and ZTNA session signals</tspan></text>
+
+<circle cx="40" cy="411" r="2.5" class="dot-purple"/>
+<text font-family="Arial" font-size="10" class="lbl-purple">
+  <tspan x="50" y="415">Cloud and data-access</tspan>
+  <tspan x="50" dy="13">audit logs</tspan>
+</text>
+
+<!-- Right column -->
+<circle cx="370" cy="357" r="2.5" class="dot-purple"/>
+<text font-family="Arial" font-size="10" class="lbl-purple"><tspan x="380" y="361">Entity resolution and correlation</tspan></text>
+
+<circle cx="370" cy="375" r="2.5" class="dot-purple"/>
+<text font-family="Arial" font-size="10" class="lbl-purple">
+  <tspan x="380" y="379">Case assembly and</tspan>
+  <tspan x="380" dy="13">AI-assisted triage</tspan>
+</text>
+
+<circle cx="370" cy="407" r="2.5" class="dot-purple"/>
+<text font-family="Arial" font-size="10" class="lbl-purple"><tspan x="380" y="411">Bounded autonomous response</tspan></text>
+
+<circle cx="370" cy="425" r="2.5" class="dot-purple"/>
+<text font-family="Arial" font-size="10" class="lbl-purple"><tspan x="380" y="429">Compliance evidence generation</tspan></text>
+
+<!-- Design rule footer -->
+<text font-family="Arial" font-size="10" text-anchor="middle" class="lbl-muted">
+  <tspan x="360" y="503">Design rule: constrain exposure at the edge, constrain capability inside, one evidence plane underneath both.</tspan>
+</text>
+</svg>
+</body>
+</html>

@@ -1,0 +1,101 @@
+
+Athena-CTI-LLM: Instruction-Based Fine-Tuning Requirements
+==========================================================
+
+Why Use the Instruction-Based Format?
+-------------------------------------
+
+1. Aligns with User Interaction Patterns
+   - CTI users will issue queries like:
+     "Summarize CVE-2023-1234"
+     "Which MITRE techniques are used by APT29?"
+     "Classify this IOC: 198.51.100.23"
+   - Instruction format trains the model to understand task intent, context, and structured output format.
+
+2. Enables Multi-Task Learning
+   - Trains the model to perform:
+     * Summarization (e.g., CVE explanations)
+     * Classification (e.g., IOC, ATT&CK tactic)
+     * QA (e.g., adversary-TTP mapping)
+     * Extraction (e.g., IOCs or MITRE techniques from unstructured text)
+     * Reasoning (e.g., risk scoring or mitigation strategy recommendation)
+
+3. Leverages Successful Precedents
+   - InstructGPT, Alpaca, LLaMA-2-Chat, CyberPal.AI all use instruction-tuned formats.
+   - Proven to improve generalization and multi-task zero-shot performance.
+
+Transformation of Raw Data
+--------------------------
+
+Raw CTI sources must be transformed into instruction–input–output triplets.
+
+Examples:
+
+- CVE Description:
+  instruction: "Summarize the vulnerability"
+  input: "CVE-2023-1234 affects XYZ software with buffer overflow..."
+  output: "A buffer overflow in XYZ allows remote code execution."
+
+- MISP IOC:
+  instruction: "Classify the observable"
+  input: "198.51.100.23"
+  output: "IP address (malicious)"
+
+- ATT&CK Mapping:
+  instruction: "Map this activity to ATT&CK"
+  input: "The threat actor used PowerShell over HTTP to exfil data."
+  output: "T1071.001 – Web Protocol"
+
+- CTI Blog:
+  instruction: "Extract threat actor"
+  input: "Researchers observed phishing campaigns targeting defense contractors..."
+  output: "APT28"
+
+Implementation Strategy
+-----------------------
+
+1. Use Templates
+   - Create task-to-template mappings for:
+     * CVE
+     * ATT&CK techniques
+     * IOC feeds
+     * Threat actor profiles
+     * CTI QA pairs
+
+2. Semi-Automation
+   - Use regex, NER models, and keyword matchers to extract structured data.
+   - Use Evol-Instruct or self-instruct pipelines to generate synthetic examples.
+
+3. Data Format
+   - Final JSONL format:
+     {"instruction": "...", "input": "...", "output": "..."}
+
+4. Organize Datasets
+   - Split into: train.jsonl, eval.jsonl, test.jsonl
+   - Use Hugging Face Datasets for ingestion.
+
+Tradeoffs Table
+---------------
+
+| Aspect              | Instruction Format | Plain Text  |
+|---------------------|--------------------|-------------|
+| Multi-task support  | Yes                | Limited     |
+| Generalization      | Strong             | Weak        |
+| Transformation Req  | Yes                | Yes         |
+| Downstream Usage    | Interactive        | Less direct |
+| Evaluation          | Modular & scored   | Unstructured|
+
+Recommendations
+---------------
+
+- Use instruction format for all fine-tuning tasks.
+- Build a transformation pipeline from raw CTI to instruction format.
+- Grow the dataset incrementally with automation + human refinement.
+- Implement templates per CTI task to enforce consistency.
+
+Optional Dev Add-ons
+--------------------
+
+- Template conversion scripts for CVE/MISP/ATT&CK
+- Tokenizer-ready JSONL output generator
+- Model evaluation scoring hooks by task type

@@ -1,0 +1,26 @@
+# IR Templates for CVE
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enteprise customers helping to protect their digital assets.",
+    "input": "What is CVE {cve_id}, describe the vulnerability and the potential impact.",
+    "output": "CVE {cve_id} describes a vulnerability {vulnerability_description} and the potential impact is {potential_impact}."
+}
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enteprise customers helping to protect their digital assets.",
+    "input": "Given the description {cve_description} of the CVE, predict its CVE ID.",
+    "output": "The CVE ID for the vulnerability described in {cve_description} is {cve_id}."
+}
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enteprise customers helping to protect their digital assets.",
+    "input": "Given the {cve_id}, predict its severity score {cvss_score}.",
+    "output": "The severity score for the vulnerability described in {cve_id} is {cvss_score}."
+}
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enteprise customers helping to protect their digital assets.",
+    "input": "Given the description {cve_description} of the CVE, predict its severity score {cvss_score}.",
+    "output": "The severity score for the vulnerability described in {cve_description} is {cvss_score}."
+}
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enteprise customers helping to protect their digital assets.",
+    "input": "Identify the CVSS v3.1 Attack Vector (AV) for the following vulnerability {cve_description}",
+    "output": "Attack Vector: {attack_vector}"
+}

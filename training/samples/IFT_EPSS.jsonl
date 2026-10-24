@@ -1,0 +1,56 @@
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.",
+    "input": "Assess the exploitability likelihood for {cve} with EPSS {epss} and percentile {percentile}.",
+    "output": "{cve} has an EPSS of {epss} ({percentile} percentile). Higher percentiles indicate greater exploit likelihood; prioritize remediation accordingly."
+},
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.",
+    "input": "Compare EPSS {epss} and CVSS {cvss_score} for {cve} and explain prioritization.",
+    "output": "{cve}: EPSS {epss} reflects exploitation likelihood; CVSS {cvss_score} indicates technical severity. High EPSS + high CVSS → urgent remediation; low EPSS + high CVSS → moderate priority."
+},
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.",
+    "input": "Explain how EPSS {epss} for {cve} on {date} informs short-term patching.",
+    "output": "On {date}, {cve} had EPSS {epss}, indicating probability of near-term exploitation. Rising scores suggest prioritizing immediate remediation."
+},
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.",
+    "input": "Given {cve} with EPSS {epss} and another CVE with lower EPSS, which to prioritize?",
+    "output": "{cve} with higher EPSS {epss} should be prioritized due to greater real-world exploit likelihood."
+},
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.",
+    "input": "Correlate EPSS {epss} for {cve} with external threat intelligence.",
+    "output": "EPSS {epss} for {cve} suggests exploit likelihood; combine with KEV, exploit DB, or campaign data to confirm real-world risk."
+},
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.",
+    "input": "Provide an EPSS-based risk assessment for {cve}, CVSS {cvss_score}.",
+    "output": "{cve}: EPSS {epss} ({epss × 100}% chance of near-term exploitation), CVSS {cvss_score} indicates {cvss_severity} severity. Use both plus context to prioritize remediation."
+},
+
+## Example - Filled Templates
+{
+    "input": "Assess the exploitability likelihood for CVE-2025-0168 with EPSS 0.000200000 and percentile 0.037940000.",
+    "output": "CVE-2025-0168 has an EPSS of 0.000200000 (0.03794 percentile). Higher percentiles indicate greater exploit likelihood; prioritize remediation accordingly."
+},
+{
+    "input": "Compare EPSS 0.000200000 and CVSS 6.3 for CVE-2025-0168 and explain prioritization.",
+    "output": "CVE-2025-0168: EPSS 0.000200000 reflects exploitation likelihood; CVSS 6.3 indicates technical severity. High EPSS + high CVSS → urgent remediation; low EPSS + high CVSS → moderate priority."
+},
+{
+    "input": "Explain how EPSS 0.000200000 for CVE-2025-0168 on 2025-10-09 informs short-term patching.",
+    "output": "On 2025-10-09, CVE-2025-0168 had EPSS 0.000200000, indicating probability of near-term exploitation. Rising scores suggest prioritizing immediate remediation."
+},
+{
+    "input": "Given CVE-2025-0168 with EPSS 0.000200000 and another CVE with lower EPSS, which to prioritize?",
+    "output": "CVE-2025-0168 with higher EPSS 0.000200000 should be prioritized due to greater real-world exploit likelihood."
+},
+{
+    "input": "Correlate EPSS 0.000200000 for CVE-2025-0168 with external threat intelligence.",
+    "output": "EPSS 0.000200000 for CVE-2025-0168 suggests exploit likelihood; combine with KEV, exploit DB, or campaign data to confirm real-world risk."
+},
+{
+    "input": "Provide an EPSS-based risk assessment for CVE-2025-0168, CVSS 6.3.",
+    "output": "CVE-2025-0168: EPSS 0.000200000 (0.02% chance of near-term exploitation), CVSS 6.3 indicates medium severity. Use both plus context to prioritize remediation."
+}

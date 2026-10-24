@@ -1,0 +1,11 @@
+Highlights
+
+Glaukopis: Auditable Graph-Grounded Instruction Tuning for Cyber Threat Intelligence
+
+Peter J. Worth Jr., Ionut Cardei, Salman Ahmad, Muhammad Mamoon Khan
+
+- Every CTI training target is the rendering of a typed query over a 12-source graph
+- Retained checkpoints locate where specialization gains and loses capability
+- Aligned benchmark 65.0 vs 57.7 base; external benchmarks and MMLU-Pro do not gain
+- One 17,320-row structured-answer stage collapses attribution and skews CVSS
+- Single-stage run performs comparably; no advantage is claimed for the schedule

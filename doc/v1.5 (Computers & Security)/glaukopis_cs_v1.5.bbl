@@ -1,0 +1,331 @@
+\begin{thebibliography}{30}
+\expandafter\ifx\csname natexlab\endcsname\relax\def\natexlab#1{#1}\fi
+\providecommand{\url}[1]{\texttt{#1}}
+\providecommand{\href}[2]{#2}
+\providecommand{\path}[1]{#1}
+\providecommand{\DOIprefix}{doi:}
+\providecommand{\ArXivprefix}{arXiv:}
+\providecommand{\URLprefix}{URL: }
+\providecommand{\Pubmedprefix}{pmid:}
+\providecommand{\doi}[1]{\href{http://dx.doi.org/#1}{\path{#1}}}
+\providecommand{\Pubmed}[1]{\href{pmid:#1}{\path{#1}}}
+\providecommand{\bibinfo}[2]{#2}
+\ifx\xfnm\relax \def\xfnm[#1]{\unskip,\space#1}\fi
+%Type = Inproceedings
+\bibitem[{Alam et~al.(2025)Alam, Bhusal, Ahmad, Rastogi and
+  Worth~Jr.}]{alam2025athenabench}
+\bibinfo{author}{Alam, M.T.}, \bibinfo{author}{Bhusal, D.},
+  \bibinfo{author}{Ahmad, S.}, \bibinfo{author}{Rastogi, N.},
+  \bibinfo{author}{Worth~Jr., P.}, \bibinfo{year}{2025}.
+\newblock \bibinfo{title}{{AthenaBench}: A dynamic benchmark for evaluating
+  {LLMs} in cyber threat intelligence}, in: \bibinfo{booktitle}{2025 Annual
+  Computer Security Applications Conference Workshops (ACSAC Workshops)}, pp.
+  \bibinfo{pages}{443--450}.
+\newblock \DOIprefix\doi{10.1109/ACSACW69556.2025.00072}.
+  \bibinfo{note}{{Preprint: arXiv:2511.01144}}.
+%Type = Inproceedings
+\bibitem[{Alam et~al.(2024)Alam, Bhusal, Nguyen and Rastogi}]{alam2024ctibench}
+\bibinfo{author}{Alam, M.T.}, \bibinfo{author}{Bhusal, D.},
+  \bibinfo{author}{Nguyen, L.}, \bibinfo{author}{Rastogi, N.},
+  \bibinfo{year}{2024}.
+\newblock \bibinfo{title}{{CTIBench}: A benchmark for evaluating {LLMs} in
+  cyber threat intelligence}, in: \bibinfo{booktitle}{Advances in Neural
+  Information Processing Systems}, pp. \bibinfo{pages}{50805--50825}.
+\newblock \DOIprefix\doi{10.52202/079017-1607}.
+%Type = Misc
+\bibitem[{Alam et~al.(2026)Alam, Piplai, Cardei, Rastogi and
+  Worth~Jr.}]{alam2026minerva}
+\bibinfo{author}{Alam, M.T.}, \bibinfo{author}{Piplai, A.},
+  \bibinfo{author}{Cardei, I.}, \bibinfo{author}{Rastogi, N.},
+  \bibinfo{author}{Worth~Jr., P.J.}, \bibinfo{year}{2026}.
+\newblock \bibinfo{title}{Minerva: Reinforcement learning with verifiable
+  rewards for cyber threat intelligence {LLMs}}.
+\newblock \URLprefix \url{https://arxiv.org/abs/2602.00513}.
+  \bibinfo{note}{{arXiv preprint arXiv:2602.00513 (v3, May 2026)}}.
+%Type = Misc
+\bibitem[{{Athena Security Group, LLC}(2026)}]{glaukopis2026software}
+\bibinfo{author}{{Athena Security Group, LLC}}, \bibinfo{year}{2026}.
+\newblock \bibinfo{title}{{Glaukopis}: Source-available software, training
+  configuration, and evaluation utilities}.
+\newblock \URLprefix \url{https://github.com/Athena-Software-Group/Glaukopis}.
+  \bibinfo{note}{{Software repository, commit
+  c4d3a2f45e0a08672c87c2b46c3c4be109440c38; PolyForm Noncommercial 1.0.0
+  license}}.
+%Type = Inproceedings
+\bibitem[{Brown et~al.(2020)Brown, Mann, Ryder, Subbiah, Kaplan, Dhariwal,
+  Neelakantan, Shyam, Sastry, Askell et~al.}]{brown2020gpt3}
+\bibinfo{author}{Brown, T.B.}, \bibinfo{author}{Mann, B.},
+  \bibinfo{author}{Ryder, N.}, \bibinfo{author}{Subbiah, M.},
+  \bibinfo{author}{Kaplan, J.}, \bibinfo{author}{Dhariwal, P.},
+  \bibinfo{author}{Neelakantan, A.}, \bibinfo{author}{Shyam, P.},
+  \bibinfo{author}{Sastry, G.}, \bibinfo{author}{Askell, A.}, et~al.,
+  \bibinfo{year}{2020}.
+\newblock \bibinfo{title}{Language models are few-shot learners}, in:
+  \bibinfo{booktitle}{Advances in Neural Information Processing Systems}, pp.
+  \bibinfo{pages}{1877--1901}.
+%Type = Article
+\bibitem[{Chung et~al.(2024)Chung, Hou, Longpre, Zoph, Tay, Fedus, Li, Wang,
+  Dehghani, Brahma et~al.}]{chung2024flant5}
+\bibinfo{author}{Chung, H.W.}, \bibinfo{author}{Hou, L.},
+  \bibinfo{author}{Longpre, S.}, \bibinfo{author}{Zoph, B.},
+  \bibinfo{author}{Tay, Y.}, \bibinfo{author}{Fedus, W.}, \bibinfo{author}{Li,
+  Y.}, \bibinfo{author}{Wang, X.}, \bibinfo{author}{Dehghani, M.},
+  \bibinfo{author}{Brahma, S.}, et~al., \bibinfo{year}{2024}.
+\newblock \bibinfo{title}{Scaling instruction-finetuned language models}.
+\newblock \bibinfo{journal}{Journal of Machine Learning Research}
+  \bibinfo{volume}{25}, \bibinfo{pages}{1--53}.
+\newblock \URLprefix \url{https://jmlr.org/papers/v25/23-0870.html}.
+%Type = Misc
+\bibitem[{{CVE Program}(2026)}]{mitreCVE}
+\bibinfo{author}{{CVE Program}}, \bibinfo{year}{2026}.
+\newblock \bibinfo{title}{Common vulnerabilities and exposures ({CVE})}.
+\newblock \URLprefix \url{https://www.cve.org/}. \bibinfo{note}{{Accessed
+  September 2026}}.
+%Type = Misc
+\bibitem[{Deason et~al.(2025)Deason, Bali, Bejean, Bolocan, Crnkovich,
+  Croitoru, Durai, Midler, Miron, Molnar, Moon, Ostarcevic, Peltea, Rosenberg,
+  Sandu, Saputkin, Shah, Stan, Szocs, Wan, Whitman, Krasser and
+  Saxe}]{deason2025cybersoceval}
+\bibinfo{author}{Deason, L.}, \bibinfo{author}{Bali, A.},
+  \bibinfo{author}{Bejean, C.}, \bibinfo{author}{Bolocan, D.},
+  \bibinfo{author}{Crnkovich, J.}, \bibinfo{author}{Croitoru, I.},
+  \bibinfo{author}{Durai, K.}, \bibinfo{author}{Midler, C.},
+  \bibinfo{author}{Miron, C.}, \bibinfo{author}{Molnar, D.},
+  \bibinfo{author}{Moon, B.}, \bibinfo{author}{Ostarcevic, B.},
+  \bibinfo{author}{Peltea, A.}, \bibinfo{author}{Rosenberg, M.},
+  \bibinfo{author}{Sandu, C.}, \bibinfo{author}{Saputkin, A.},
+  \bibinfo{author}{Shah, S.}, \bibinfo{author}{Stan, D.},
+  \bibinfo{author}{Szocs, E.}, \bibinfo{author}{Wan, S.},
+  \bibinfo{author}{Whitman, S.}, \bibinfo{author}{Krasser, S.},
+  \bibinfo{author}{Saxe, J.}, \bibinfo{year}{2025}.
+\newblock \bibinfo{title}{{CyberSOCEval}: Benchmarking {LLMs} capabilities for
+  malware analysis and threat intelligence reasoning}.
+\newblock \URLprefix \url{https://arxiv.org/abs/2509.20166}.
+  \bibinfo{note}{{arXiv preprint arXiv:2509.20166 (v2, November 2025)}}.
+%Type = Book
+\bibitem[{Efron and Tibshirani(1993)}]{efron1993bootstrap}
+\bibinfo{author}{Efron, B.}, \bibinfo{author}{Tibshirani, R.J.},
+  \bibinfo{year}{1993}.
+\newblock \bibinfo{title}{An Introduction to the Bootstrap}.
+\newblock \bibinfo{publisher}{Chapman \& Hall}, \bibinfo{address}{New York}.
+%Type = Misc
+\bibitem[{{FIRST.Org, Inc.}(2019)}]{first2019cvss}
+\bibinfo{author}{{FIRST.Org, Inc.}}, \bibinfo{year}{2019}.
+\newblock \bibinfo{title}{Common vulnerability scoring system v3.1:
+  Specification document}.
+\newblock \URLprefix
+  \url{https://www.first.org/cvss/v3.1/specification-document}.
+%Type = Inproceedings
+\bibitem[{Groeneveld et~al.(2024)Groeneveld, Beltagy, Walsh, Bhagia, Kinney,
+  Tafjord, Jha, Ivison, Magnusson, Wang et~al.}]{groeneveld2024olmo}
+\bibinfo{author}{Groeneveld, D.}, \bibinfo{author}{Beltagy, I.},
+  \bibinfo{author}{Walsh, P.}, \bibinfo{author}{Bhagia, A.},
+  \bibinfo{author}{Kinney, R.}, \bibinfo{author}{Tafjord, O.},
+  \bibinfo{author}{Jha, A.H.}, \bibinfo{author}{Ivison, H.},
+  \bibinfo{author}{Magnusson, I.}, \bibinfo{author}{Wang, Y.}, et~al.,
+  \bibinfo{year}{2024}.
+\newblock \bibinfo{title}{{OLMo}: Accelerating the science of language models},
+  in: \bibinfo{booktitle}{Proceedings of the 62nd Annual Meeting of the
+  Association for Computational Linguistics (Volume 1: Long Papers)}, pp.
+  \bibinfo{pages}{15789--15809}.
+\newblock \DOIprefix\doi{10.18653/v1/2024.acl-long.841}.
+%Type = Inproceedings
+\bibitem[{Gururangan et~al.(2020)Gururangan, Marasovi{\'c}, Swayamdipta, Lo,
+  Beltagy, Downey and Smith}]{gururangan2020dontstop}
+\bibinfo{author}{Gururangan, S.}, \bibinfo{author}{Marasovi{\'c}, A.},
+  \bibinfo{author}{Swayamdipta, S.}, \bibinfo{author}{Lo, K.},
+  \bibinfo{author}{Beltagy, I.}, \bibinfo{author}{Downey, D.},
+  \bibinfo{author}{Smith, N.A.}, \bibinfo{year}{2020}.
+\newblock \bibinfo{title}{Don't stop pretraining: Adapt language models to
+  domains and tasks}, in: \bibinfo{booktitle}{Proceedings of the 58th Annual
+  Meeting of the Association for Computational Linguistics}, pp.
+  \bibinfo{pages}{8342--8360}.
+\newblock \DOIprefix\doi{10.18653/v1/2020.acl-main.740}.
+%Type = Misc
+\bibitem[{Ji et~al.(2024)Ji, Yang, Chai, Wei, Yang, Duan, Wang, Sun, Guo, Li,
+  Ren and Li}]{ji2024sevenllm}
+\bibinfo{author}{Ji, H.}, \bibinfo{author}{Yang, J.}, \bibinfo{author}{Chai,
+  L.}, \bibinfo{author}{Wei, C.}, \bibinfo{author}{Yang, L.},
+  \bibinfo{author}{Duan, Y.}, \bibinfo{author}{Wang, Y.}, \bibinfo{author}{Sun,
+  T.}, \bibinfo{author}{Guo, H.}, \bibinfo{author}{Li, T.},
+  \bibinfo{author}{Ren, C.}, \bibinfo{author}{Li, Z.}, \bibinfo{year}{2024}.
+\newblock \bibinfo{title}{{SEvenLLM}: Benchmarking, eliciting, and enhancing
+  abilities of large language models in cyber threat intelligence}.
+\newblock \URLprefix \url{https://arxiv.org/abs/2405.03446}.
+  \bibinfo{note}{{arXiv preprint arXiv:2405.03446}}.
+%Type = Inproceedings
+\bibitem[{Kwon et~al.(2023)Kwon, Li, Zhuang, Sheng, Zheng, Yu, Gonzalez, Zhang
+  and Stoica}]{kwon2023vllm}
+\bibinfo{author}{Kwon, W.}, \bibinfo{author}{Li, Z.}, \bibinfo{author}{Zhuang,
+  S.}, \bibinfo{author}{Sheng, Y.}, \bibinfo{author}{Zheng, L.},
+  \bibinfo{author}{Yu, C.H.}, \bibinfo{author}{Gonzalez, J.E.},
+  \bibinfo{author}{Zhang, H.}, \bibinfo{author}{Stoica, I.},
+  \bibinfo{year}{2023}.
+\newblock \bibinfo{title}{Efficient memory management for large language model
+  serving with {PagedAttention}}, in: \bibinfo{booktitle}{Proceedings of the
+  29th ACM Symposium on Operating Systems Principles}, pp.
+  \bibinfo{pages}{611--626}.
+\newblock \DOIprefix\doi{10.1145/3600006.3613165}.
+%Type = Misc
+\bibitem[{Lambert et~al.(2024)Lambert, Morrison, Pyatkin, Huang, Ivison
+  et~al.}]{lambert2024tulu3}
+\bibinfo{author}{Lambert, N.}, \bibinfo{author}{Morrison, J.},
+  \bibinfo{author}{Pyatkin, V.}, \bibinfo{author}{Huang, S.},
+  \bibinfo{author}{Ivison, H.}, et~al., \bibinfo{year}{2024}.
+\newblock \bibinfo{title}{{T\"ulu} 3: Pushing frontiers in open language model
+  post-training}.
+\newblock \URLprefix \url{https://arxiv.org/abs/2411.15124}.
+  \bibinfo{note}{{arXiv preprint arXiv:2411.15124}}.
+%Type = Article
+\bibitem[{Levi et~al.(2025a)Levi, Allouche, Ohayon and
+  Puzanov}]{levi2025cyberpal}
+\bibinfo{author}{Levi, M.}, \bibinfo{author}{Allouche, Y.},
+  \bibinfo{author}{Ohayon, D.}, \bibinfo{author}{Puzanov, A.},
+  \bibinfo{year}{2025}a.
+\newblock \bibinfo{title}{{CyberPal.AI}: Empowering {LLMs} with expert-driven
+  cybersecurity instructions}.
+\newblock \bibinfo{journal}{Proceedings of the AAAI Conference on Artificial
+  Intelligence} \bibinfo{volume}{39}, \bibinfo{pages}{24402--24412}.
+\newblock \DOIprefix\doi{10.1609/aaai.v39i23.34618}.
+%Type = Misc
+\bibitem[{Levi et~al.(2025b)Levi, Ohayon, Blobstein, Sagi, Molloy and
+  Allouche}]{levi2025toward}
+\bibinfo{author}{Levi, M.}, \bibinfo{author}{Ohayon, D.},
+  \bibinfo{author}{Blobstein, A.}, \bibinfo{author}{Sagi, R.},
+  \bibinfo{author}{Molloy, I.}, \bibinfo{author}{Allouche, Y.},
+  \bibinfo{year}{2025}b.
+\newblock \bibinfo{title}{Toward cybersecurity-expert small language models}.
+\newblock \URLprefix \url{https://arxiv.org/abs/2510.14113}.
+  \bibinfo{note}{{arXiv preprint arXiv:2510.14113 (v2, July 2026)}}.
+%Type = Inproceedings
+\bibitem[{Liu et~al.(2024)Liu, Shi and Buford}]{liu2024cyberbench}
+\bibinfo{author}{Liu, Z.}, \bibinfo{author}{Shi, J.}, \bibinfo{author}{Buford,
+  J.F.}, \bibinfo{year}{2024}.
+\newblock \bibinfo{title}{{CyberBench}: A multi-task benchmark for evaluating
+  large language models in cybersecurity}, in: \bibinfo{booktitle}{AAAI
+  Workshop on Artificial Intelligence for Cyber Security (AICS)}.
+\newblock \URLprefix
+  \url{https://zefang-liu.github.io/publication/liu2024cyberbench}.
+%Type = Inproceedings
+\bibitem[{Ouyang et~al.(2022)Ouyang, Wu, Jiang, Almeida, Wainwright, Mishkin,
+  Zhang, Agarwal, Slama, Ray et~al.}]{ouyang2022instructgpt}
+\bibinfo{author}{Ouyang, L.}, \bibinfo{author}{Wu, J.}, \bibinfo{author}{Jiang,
+  X.}, \bibinfo{author}{Almeida, D.}, \bibinfo{author}{Wainwright, C.},
+  \bibinfo{author}{Mishkin, P.}, \bibinfo{author}{Zhang, C.},
+  \bibinfo{author}{Agarwal, S.}, \bibinfo{author}{Slama, K.},
+  \bibinfo{author}{Ray, A.}, et~al., \bibinfo{year}{2022}.
+\newblock \bibinfo{title}{Training language models to follow instructions with
+  human feedback}, in: \bibinfo{booktitle}{Advances in Neural Information
+  Processing Systems}, pp. \bibinfo{pages}{27730--27744}.
+%Type = Misc
+\bibitem[{{Qwen Team}(2025)}]{qwen2025qwen25}
+\bibinfo{author}{{Qwen Team}}, \bibinfo{year}{2025}.
+\newblock \bibinfo{title}{{Qwen2.5} technical report}.
+\newblock \URLprefix \url{https://arxiv.org/abs/2412.15115}.
+  \bibinfo{note}{{arXiv preprint arXiv:2412.15115 (v2, January 2025)}}.
+%Type = Inproceedings
+\bibitem[{Rajbhandari et~al.(2020)Rajbhandari, Rasley, Ruwase and
+  He}]{rajbhandari2020zero}
+\bibinfo{author}{Rajbhandari, S.}, \bibinfo{author}{Rasley, J.},
+  \bibinfo{author}{Ruwase, O.}, \bibinfo{author}{He, Y.}, \bibinfo{year}{2020}.
+\newblock \bibinfo{title}{{ZeRO}: Memory optimizations toward training trillion
+  parameter models}, in: \bibinfo{booktitle}{SC20: International Conference for
+  High Performance Computing, Networking, Storage and Analysis}, pp.
+  \bibinfo{pages}{1--16}.
+\newblock \DOIprefix\doi{10.1109/SC41405.2020.00024}.
+%Type = Article
+\bibitem[{Sarhan and Spruit(2021)}]{sarhan2021opencykg}
+\bibinfo{author}{Sarhan, I.}, \bibinfo{author}{Spruit, M.},
+  \bibinfo{year}{2021}.
+\newblock \bibinfo{title}{{Open-CyKG}: An open cyber threat intelligence
+  knowledge graph}.
+\newblock \bibinfo{journal}{Knowledge-Based Systems} \bibinfo{volume}{233},
+  \bibinfo{pages}{107524}.
+\newblock \DOIprefix\doi{10.1016/j.knosys.2021.107524}.
+%Type = Techreport
+\bibitem[{Strom et~al.(2018)Strom, Applebaum, Miller, Nickels, Pennington and
+  Thomas}]{strom2018mitre}
+\bibinfo{author}{Strom, B.E.}, \bibinfo{author}{Applebaum, A.},
+  \bibinfo{author}{Miller, D.P.}, \bibinfo{author}{Nickels, K.C.},
+  \bibinfo{author}{Pennington, A.G.}, \bibinfo{author}{Thomas, C.B.},
+  \bibinfo{year}{2018}.
+\newblock \bibinfo{title}{{MITRE ATT\&CK}: Design and Philosophy}.
+\newblock \bibinfo{type}{Technical Report} \bibinfo{number}{MP180360}. The
+  MITRE Corporation.
+\newblock \bibinfo{note}{{Originally published July 2018; revised March 2020
+  (MP180360R1)}}.
+%Type = Misc
+\bibitem[{Taori et~al.(2023)Taori, Gulrajani, Zhang, Dubois, Li, Guestrin,
+  Liang and Hashimoto}]{taori2023alpaca}
+\bibinfo{author}{Taori, R.}, \bibinfo{author}{Gulrajani, I.},
+  \bibinfo{author}{Zhang, T.}, \bibinfo{author}{Dubois, Y.},
+  \bibinfo{author}{Li, X.}, \bibinfo{author}{Guestrin, C.},
+  \bibinfo{author}{Liang, P.}, \bibinfo{author}{Hashimoto, T.B.},
+  \bibinfo{year}{2023}.
+\newblock \bibinfo{title}{{Stanford Alpaca}: An instruction-following {LLaMA}
+  model}.
+\newblock \URLprefix \url{https://github.com/tatsu-lab/stanford_alpaca}.
+  \bibinfo{note}{{Software and dataset}}.
+%Type = Misc
+\bibitem[{{The MITRE Corporation}(2026a)}]{mitreCAPEC}
+\bibinfo{author}{{The MITRE Corporation}}, \bibinfo{year}{2026}a.
+\newblock \bibinfo{title}{Common attack pattern enumeration and classification
+  ({CAPEC})}.
+\newblock \URLprefix \url{https://capec.mitre.org/}. \bibinfo{note}{{Accessed
+  September 2026}}.
+%Type = Misc
+\bibitem[{{The MITRE Corporation}(2026b)}]{mitreCWE}
+\bibinfo{author}{{The MITRE Corporation}}, \bibinfo{year}{2026}b.
+\newblock \bibinfo{title}{Common weakness enumeration ({CWE})}.
+\newblock \URLprefix \url{https://cwe.mitre.org/}. \bibinfo{note}{{Accessed
+  September 2026}}.
+%Type = Inproceedings
+\bibitem[{Tihanyi et~al.(2024)Tihanyi, Ferrag, Jain, Bisztray and
+  Debbah}]{tihanyi2024cybermetric}
+\bibinfo{author}{Tihanyi, N.}, \bibinfo{author}{Ferrag, M.A.},
+  \bibinfo{author}{Jain, R.}, \bibinfo{author}{Bisztray, T.},
+  \bibinfo{author}{Debbah, M.}, \bibinfo{year}{2024}.
+\newblock \bibinfo{title}{{CyberMetric}: A benchmark dataset based on
+  retrieval-augmented generation for evaluating {LLMs} in cybersecurity
+  knowledge}, in: \bibinfo{booktitle}{2024 IEEE International Conference on
+  Cyber Security and Resilience (CSR)}, pp. \bibinfo{pages}{296--302}.
+\newblock \DOIprefix\doi{10.1109/CSR61664.2024.10679494}.
+%Type = Inproceedings
+\bibitem[{Wang et~al.(2024)Wang, Ma, Zhang, Ni, Chandra, Guo, Ren, Arulraj, He,
+  Jiang, Li, Ku, Wang, Zhuang, Fan, Yue and Chen}]{wang2024mmlupro}
+\bibinfo{author}{Wang, Y.}, \bibinfo{author}{Ma, X.}, \bibinfo{author}{Zhang,
+  G.}, \bibinfo{author}{Ni, Y.}, \bibinfo{author}{Chandra, A.},
+  \bibinfo{author}{Guo, S.}, \bibinfo{author}{Ren, W.},
+  \bibinfo{author}{Arulraj, A.}, \bibinfo{author}{He, X.},
+  \bibinfo{author}{Jiang, Z.}, \bibinfo{author}{Li, T.}, \bibinfo{author}{Ku,
+  M.}, \bibinfo{author}{Wang, K.}, \bibinfo{author}{Zhuang, A.},
+  \bibinfo{author}{Fan, R.}, \bibinfo{author}{Yue, X.}, \bibinfo{author}{Chen,
+  W.}, \bibinfo{year}{2024}.
+\newblock \bibinfo{title}{{MMLU-Pro}: A more robust and challenging multi-task
+  language understanding benchmark}, in: \bibinfo{booktitle}{Advances in Neural
+  Information Processing Systems}, pp. \bibinfo{pages}{95266--95290}.
+\newblock \DOIprefix\doi{10.52202/079017-3018}.
+%Type = Inproceedings
+\bibitem[{Wei et~al.(2022)Wei, Bosma, Zhao, Guu, Yu, Lester, Du, Dai and
+  Le}]{wei2022flan}
+\bibinfo{author}{Wei, J.}, \bibinfo{author}{Bosma, M.}, \bibinfo{author}{Zhao,
+  V.Y.}, \bibinfo{author}{Guu, K.}, \bibinfo{author}{Yu, A.W.},
+  \bibinfo{author}{Lester, B.}, \bibinfo{author}{Du, N.}, \bibinfo{author}{Dai,
+  A.M.}, \bibinfo{author}{Le, Q.V.}, \bibinfo{year}{2022}.
+\newblock \bibinfo{title}{Finetuned language models are zero-shot learners},
+  in: \bibinfo{booktitle}{International Conference on Learning Representations
+  (ICLR)}.
+\newblock \URLprefix \url{https://openreview.net/forum?id=gEZrGCozdqR}.
+%Type = Inproceedings
+\bibitem[{Zheng et~al.(2024)Zheng, Zhang, Zhang, Ye and
+  Luo}]{zheng2024llamafactory}
+\bibinfo{author}{Zheng, Y.}, \bibinfo{author}{Zhang, R.},
+  \bibinfo{author}{Zhang, J.}, \bibinfo{author}{Ye, Y.}, \bibinfo{author}{Luo,
+  Z.}, \bibinfo{year}{2024}.
+\newblock \bibinfo{title}{{LlamaFactory}: Unified efficient fine-tuning of 100+
+  language models}, in: \bibinfo{booktitle}{Proceedings of the 62nd Annual
+  Meeting of the Association for Computational Linguistics (Volume 3: System
+  Demonstrations)}, pp. \bibinfo{pages}{400--410}.
+\newblock \DOIprefix\doi{10.18653/v1/2024.acl-demos.38}.
+
+\end{thebibliography}

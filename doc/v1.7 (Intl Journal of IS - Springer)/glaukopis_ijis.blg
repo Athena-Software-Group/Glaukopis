@@ -1,0 +1,46 @@
+This is BibTeX, Version 0.99d (TeX Live 2022/dev/Debian)
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
+The top-level auxiliary file: glaukopis_ijis.aux
+The style file: spmpsci.bst
+Database file #1: glaukopis_ijis.bib
+You've used 46 entries,
+            2945 wiz_defined-function locations,
+            859 strings with 18379 characters,
+and the built_in function-call counts, 28080 in all, are:
+= -- 2057
+> -- 1562
+< -- 17
++ -- 637
+- -- 588
+* -- 1867
+:= -- 3788
+add.period$ -- 90
+call.type$ -- 46
+change.case$ -- 448
+chr.to.int$ -- 0
+cite$ -- 46
+duplicate$ -- 2176
+empty$ -- 2116
+format.name$ -- 623
+if$ -- 5786
+int.to.chr$ -- 0
+int.to.str$ -- 46
+missing$ -- 577
+newline$ -- 236
+num.names$ -- 92
+pop$ -- 1253
+preamble$ -- 1
+purify$ -- 375
+quote$ -- 0
+skip$ -- 623
+stack$ -- 0
+substring$ -- 788
+swap$ -- 1339
+text.length$ -- 17
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 182
+warning$ -- 0
+while$ -- 131
+width$ -- 48
+write$ -- 525

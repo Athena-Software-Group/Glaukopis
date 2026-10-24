@@ -1,0 +1,18 @@
+{
+  "notice": "All calculations are post hoc arithmetic from existing rounded summaries, not new model runs. Cost ratios are ledger ratios, not proven per-pass comparisons.",
+  "derived_ship_CTI_mean": 65.00277777777778,
+  "derived_base_CTI_mean": 57.71111111111111,
+  "derived_CTI_gain": 7.291666666666671,
+  "gain_attribution": {
+    "AB_component": 7.424999999999997,
+    "CSE_component": 0.0,
+    "CM_component": -0.13333333333333522
+  },
+  "legacy_total_formula_check": {
+    "base_claimed": 49.3,
+    "base_implied_by_legacy_10_test_mean": 51.36363636363637,
+    "ship_claimed": 62.8,
+    "ship_implied_by_legacy_10_test_mean": 62.4
+  },
+  "distinct_13gram_drop50_shortrow_bound": "A compared evaluation record with fewer than 62 word tokens has at most 49 distinct 13-grams. A complete duplicate can therefore fail the drop=50 threshold (assuming unique record keys)."
+}

@@ -43,7 +43,10 @@ and treat this one as an index. Update protocol is in §7.
   three publisher formats: `doc/ACM/`, `doc/IEEE/`, `doc/Oxford/`
   (each with its own `figures/` tree). LaTeX build caches
   (`.texpadtmp/`) and packaged drafts (`*.zip`) are gitignored.
-  Active ICTAI/IEEE draft is `doc/IEEE/glaukopis_ieee_abridged-v1.3.tex`.
+  Active journal draft is `doc/v1.5 (Computers & Security)/glaukopis_cs_v1.5.tex`
+  (Elsevier C&S, elsarticle); `doc/IEEE/glaukopis_ieee_abridged-v1.3.tex`
+  was the ICTAI 2026 submission (rejected) and `doc/v1.4 (abridged)/` the
+  2026-09-05 author-review revision it was rebuilt from.
   Material is governed by the top-level `LICENSE.txt` (PolyForm
   Noncommercial 1.0.0).
 
@@ -150,10 +153,22 @@ HF Inference Providers route (`router.huggingface.co/v1`), driven by
 
 ## 6. In-flight work threads
 
-State as of 2026-06-24. Update §7 protocol when these change.
+State as of 2026-09-06. Update §7 protocol when these change.
 
-1. **IEEE ICTAI 2026 paper revision** — active source is
-   `doc/IEEE/glaukopis_ieee_abridged-v1.3.tex`. The current draft
+1. **Journal submission (Computers & Security)** — active source is
+   `doc/v1.5 (Computers & Security)/glaukopis_cs_v1.5.tex` (2026-09-06).
+   The ICTAI 2026 abridged paper (`doc/IEEE/glaukopis_ieee_abridged-v1.3.tex`)
+   was rejected; v1.5 re-derives every number from artifacts. Two repo
+   defects found during that audit are still open: (a)
+   `SFT/eval/utils/build_cost_summary.py` double-counts local rows
+   (`summary_model.json` matches the `summary_*.json` glob), so every
+   local row of `cost_summary.csv` is 2x the run record; (b) in
+   `SFT/eval/Glaukopis Results.xlsx` sheet `Final wMMLUPro-v21` the
+   "AB Avg II" cells of the SFT rows and the base row are Classic-TAA-only
+   while hosted rows use the 50/50 blend (use sheet `Final  (v21) 14B 32B`:
+   ship 65.0 / base 57.7, not 66.3 / 59.0). See
+   `doc/v1.5 (Computers & Security)/REVISION_MEMORANDUM_v1.5.md` §4.
+   Earlier ICTAI-revision notes: the v1.3 draft The current draft
    softens novelty claims, removes the internal `cardei2025ift`
    reference, expands limitations, adds real qualitative examples from
    v21 response artifacts, compresses Ariadne operational details, adds

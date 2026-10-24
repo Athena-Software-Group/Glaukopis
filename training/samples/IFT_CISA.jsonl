@@ -1,0 +1,58 @@
+
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.",
+    "input": "Assess remediation urgency for {cveID}: {vulnerabilityName} in {product}.",
+    "output": "{cveID} ({vulnerabilityName}) in {product} ({vendorProject}) is actively exploited. Recommended action: {requiredAction}."
+},
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.",
+    "input": "Explain the significance of {dueDate} for {cveID}: {vulnerabilityName}.",
+    "output": "Patching for {cveID} ({vulnerabilityName}) is due by {dueDate}. Meeting this deadline ensures compliance with BOD 22-01 and reduces exposure to active exploitation."
+},
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.",
+    "input": "Identify if {cveID}: {vulnerabilityName} in {product} is associated with ransomware activity.",
+    "output": "{cveID} ({vulnerabilityName}) in {product} has ransomware association: {knownRansomwareCampaignUse}. Immediate patching is recommended for higher risk."
+},
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.",
+    "input": "Summarize the technical impact and mitigation for {cveID}: {vulnerabilityName} in {product}.",
+    "output": "{cveID} ({vulnerabilityName}) causes: {shortDescription}. Mitigation: {requiredAction}. Listed in KEV — patch immediately."
+},
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.",
+    "input": "Generate a detailed patching advisory for {cveID}: {vulnerabilityName} in {vendorProject} {product}.",
+    "output": "Vulnerability {cveID} ({vulnerabilityName}) in {product} ({vendorProject}) is actively exploited. Detailed advisory: {shortDescription}. Recommended action: {requiredAction} before {dueDate}."
+},
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.",
+    "input": "Provide a technical summary for {cveID}: {vulnerabilityName} in {vendorProject} {product}, including its weakness type.",
+    "output": "{cveID} ({vulnerabilityName}) affects {product} ({vendorProject}). Description: {shortDescription}. Mitigation: {requiredAction}. Weakness(es) involved: [{cwes}]."
+},
+
+## Example - Filled Templates
+{
+    "input": "Assess remediation urgency for CVE-2021-43798: Grafana Path Traversal Vulnerability in Grafana.",
+    "output": "CVE-2021-43798 (Grafana Path Traversal Vulnerability) in Grafana (Grafana Labs) is actively exploited. Recommended action: Apply mitigations per vendor instructions, follow applicable BOD 22-01 guidance for cloud services, or discontinue use of the product if mitigations are unavailable."
+},
+{
+    "input":"Explain the significance of 2025-10-30 for CVE-2021-43798: Grafana Path Traversal Vulnerability.",
+    "output": "Patching for CVE-2021-43798 (Grafana Path Traversal Vulnerability) is due by 2025-10-30. Meeting this deadline ensures compliance with BOD 22-01 and reduces exposure to active exploitation."
+},
+{
+    "input": "Identify if CVE-2021-43798: Grafana Path Traversal Vulnerability in Grafana is associated with ransomware activity.",
+    "output": "CVE-2021-43798 (Grafana Path Traversal Vulnerability) in Grafana has ransomware association: Unknown. Immediate patching is recommended for higher risk."
+},
+{
+    "input": "Summarize the technical impact and mitigation for CVE-2021-43798: Grafana Path Traversal Vulnerability in Grafana.",
+    "output": "CVE-2021-43798 (Grafana Path Traversal Vulnerability) causes: Grafana contains a path traversal vulnerability that could allow access to local files. Mitigation: Apply mitigations per vendor instructions, follow applicable BOD 22-01 guidance for cloud services, or discontinue use of the product if mitigations are unavailable. Listed in KEV — patch immediately."
+},
+{
+    "input": "Generate a detailed patching advisory for CVE-2021-43798: Grafana Path Traversal Vulnerability in Grafana Labs Grafana.",
+    "output": "Vulnerability CVE-2021-43798 (Grafana Path Traversal Vulnerability) in Grafana (Grafana Labs) is actively exploited. Detailed advisory: Grafana contains a path traversal vulnerability that could allow access to local files. Recommended action: Apply mitigations per vendor instructions, follow applicable BOD 22-01 guidance for cloud services, or discontinue use of the product if mitigations are unavailable before 2025-10-30."
+},
+{
+    "input": "Provide a technical summary for CVE-2021-43798: Grafana Path Traversal Vulnerability in Grafana Labs Grafana, including its weakness type.",
+    "output": "CVE-2021-43798 (Grafana Path Traversal Vulnerability) affects Grafana (Grafana Labs). Description: Grafana contains a path traversal vulnerability that could allow access to local files. Mitigation: Apply mitigations per vendor instructions, follow applicable BOD 22-01 guidance for cloud services, or discontinue use of the product if mitigations are unavailable. Weakness(es) involved: [CWE-22]."
+} 
+

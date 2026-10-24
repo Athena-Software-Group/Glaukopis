@@ -1,0 +1,31 @@
+AAIML 2027 BLIND-SUBMISSION CHECKLIST
+
+[PASS] IEEE conference LaTeX class retained.
+[PASS] Total PDF length: exactly 10 pages, including references.
+[PASS] US Letter page size (612 x 792 pt).
+[PASS] Page numbers are visible on all pages.
+[PASS] PDF metadata author: Anonymous.
+[PASS] Authors and affiliations removed.
+[PASS] Funding, CRediT statement, competing-interest disclosure, email, and ORCID removed.
+[PASS] Self-identifying Benchmark A citation remains masked.
+[PASS] Repository is cited as an anonymized software artifact with no public URL/name/namespace.
+[PASS] Ariadne and Sophia Greek sub-module names restored in text and pipeline figure.
+[PASS] Parent project/repository name omitted from the blind manuscript to reduce direct search-based identification.
+[PASS] Title now calls out Small Language Models, layered instruction fine-tuning, and graph-grounded template generation.
+[PASS] Full 10-page version restores substantive methodology/results from the long-form manuscript:
+       provenance formulation, related-work positioning, pipeline boundaries, full training schedule,
+       evaluation protocol, contamination analysis, gold-fact overlap, checkpoint intervals,
+       semantic error taxonomies, VSP decomposition, cross-architecture transfer, hosted references,
+       evaluation expenditure, SLM design implications, threats, and conclusion.
+[PASS] LaTeX compile completed without unresolved citations/references or overfull-box warnings.
+[PASS] All PDF fonts are embedded; preflight confirms 10 pages and an openable, unencrypted PDF.
+
+IMPORTANT DOUBLE-BLIND NOTE
+Ariadne and Sophia are intentionally retained at the author's request because they are part of the
+technical architecture. Any distinctive public project/module terminology can increase search-based
+deanonymization risk. The manuscript therefore masks the parent project/repository name and all direct
+identity/organization/repository links. Confirm that this trade-off is acceptable before submission.
+
+CAMERA-READY AFTER ACCEPTANCE
+Restore real authors/affiliations, Benchmark A bibliographic details, public project/repository name and URL,
+commit/checkpoint links, funding/conflict disclosures, CRediT statement, and any required AI-assistance disclosure.

@@ -1,0 +1,73 @@
+
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.",
+    "input": "Explain the weakness {Name} (CWE-{CWE_ID}).",
+    "output": "{Name} (CWE-{CWE_ID}) occurs when {Description}. {Extended_Description}."
+},
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.",
+    "input": "What is the root cause of {Name} (CWE-{CWE_ID})?",
+    "output": "The root cause of {Name} is {Background_Details}. In essence, {Description}."
+},
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.",
+    "input": "Describe how attackers could exploit {Name} (CWE-{CWE_ID}) and what the consequences are.",
+    "output": "Attackers exploit {Name} by {Exploitation_Factors}, which can lead to {Common_Consequences}."
+},
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.",
+    "input": "How can {Name} (CWE-{CWE_ID}) be detected and prevented?",
+    "output": "{Name} can be detected through {Detection_Methods}. To prevent it, apply these mitigations: {Potential_Mitigations}."
+},
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.",
+    "input": "At what stage is {Name} (CWE-{CWE_ID}) usually introduced, and why?",
+    "output": "{Name} is commonly introduced during {Modes_Of_Introduction}. This happens because {Description}."
+},
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.",
+    "input": "List related weaknesses or attack patterns associated with {Name} (CWE-{CWE_ID}).",
+    "output": "{Name} is associated with {Related_Weaknesses} and attack patterns {Related_Attack_Patterns}."
+},
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.",
+    "input": "Give an example CVE related to {Name} (CWE-{CWE_ID}) and explain its cause.",
+    "output": "Examples include {Observed_Examples}. It demonstrates {Description} as the core issue of {Name}."
+},
+
+## Example - Filled Templates
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.",
+    "input": "Explain the weakness Improper Handling of File Names that Identify Virtual Resources (CWE-66) in simple terms.",
+    "output": "Improper Handling of File Names that Identify Virtual Resources (CWE-66) occurs when The product does not handle or incorrectly handles a file name that identifies a virtual resource that is not directly specified within the directory that is associated with the file name, causing the product to perform file-based operations on a resource that is not a file.. Virtual file names are represented like normal file names, but they are effectively aliases for other resources that do not behave like normal files. Depending on their functionality, they could be alternate entities. They are not necessarily listed in directories.."
+    },
+    {
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.",
+    "input": "What is the root cause of Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting') (CWE-79)?",
+    "output": "The root cause of Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting') is ::The Same Origin Policy states that browsers should limit the resources accessible to scripts running on a given web site, or origin, to the resources associated with that web site on the client-side, and not the client-side resources of any other sites or origins. The goal is to prevent one site from being able to modify or read the contents of an unrelated site. Since the World Wide Web involves interactions between many sites, this policy is important for browsers to enforce. When referring to XSS, the Domain of a website is roughly equivalent to the resources associated with that website on the client-side of the connection. That is, the domain can be thought of as all resources the browser is storing for the user's interactions with this particular site.::. In essence, The product does not neutralize or incorrectly neutralizes user-controllable input before it is placed in output that is used as a web page that is served to other users.."
+    },
+    {
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.",
+    "input": "Describe how attackers could exploit Improper Handling of File Names that Identify Virtual Resources (CWE-66) and what the consequences are.",
+    "output": "Attackers exploit Improper Handling of File Names that Identify Virtual Resources by , which can lead to ::SCOPE:Other:IMPACT:Other::."
+    },
+    {
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.",
+    "input": "How can Improper Handling of File Names that Identify Virtual Resources (CWE-66) be detected and prevented?",
+    "output": "Improper Handling of File Names that Identify Virtual Resources can be detected through ::METHOD:Automated Static Analysis - Binary or Bytecode:DESCRIPTION:According to SOAR [REF-1479], the following detection techniques may be useful: Cost effective for partial coverage: Bytecode Weakness Analysis - including disassembler + source code weakness analysis:EFFECTIVENESS:SOAR Partial::METHOD:Manual Static Analysis - Binary or Bytecode:DESCRIPTION:According to SOAR [REF-1479], the following detection techniques may be useful: Cost effective for partial coverage: Binary / Bytecode disassembler - then use manual analysis for vulnerabilities & anomalies:EFFECTIVENESS:SOAR Partial::METHOD:Dynamic Analysis with Automated Results Interpretation:DESCRIPTION:According to SOAR [REF-1479], the following detection techniques may be useful: Cost effective for partial coverage: Web Application Scanner Web Services Scanner Database Scanners:EFFECTIVENESS:SOAR Partial::METHOD:Dynamic Analysis with Manual Results Interpretation:DESCRIPTION:According to SOAR [REF-1479], the following detection techniques may be useful: Cost effective for partial coverage: Fuzz Tester Framework-based Fuzzer:EFFECTIVENESS:SOAR Partial::METHOD:Manual Static Analysis - Source Code:DESCRIPTION:According to SOAR [REF-1479], the following detection techniques may be useful: Highly cost effective: Focused Manual Spotcheck - Focused manual analysis of source Manual Source Code Review (not inspections):EFFECTIVENESS:High::METHOD:Automated Static Analysis - Source Code:DESCRIPTION:According to SOAR [REF-1479], the following detection techniques may be useful: Cost effective for partial coverage: Source code Weakness Analyzer Context-configured Source Code Weakness Analyzer:EFFECTIVENESS:SOAR Partial::METHOD:Architecture or Design Review:DESCRIPTION:According to SOAR [REF-1479], the following detection techniques may be useful: Highly cost effective: Formal Methods / Correct-By-Construction Cost effective for partial coverage: Inspection (IEEE 1028 standard) (can apply to requirements, design, source code, etc.):EFFECTIVENESS:High::. To prevent it, apply these mitigations: ."
+    },
+    {
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.",
+    "input": "At what stage is Improper Handling of File Names that Identify Virtual Resources (CWE-66) usually introduced, and why?",
+    "output": "Improper Handling of File Names that Identify Virtual Resources is commonly introduced during ::PHASE:Implementation::PHASE:Operation::. This happens because The product does not handle or incorrectly handles a file name that identifies a virtual resource that is not directly specified within the directory that is associated with the file name, causing the product to perform file-based operations on a resource that is not a file.."
+    },
+    {
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.",
+    "input": "List related weaknesses or attack patterns associated with Improper Handling of File Names that Identify Virtual Resources (CWE-66).",
+    "output": "Improper Handling of File Names that Identify Virtual Resources is associated with ::NATURE:ChildOf:CWE ID:706:VIEW ID:1000:ORDINAL:Primary:: and attack patterns ."
+    },
+    {
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enterprise customers helping to protect their digital assets.",
+    "input": "Give an example CVE related to Improper Handling of File Names that Identify Virtual Resources (CWE-66) and explain its cause.",
+    "output": "Examples include ::REFERENCE:CVE-1999-0278:DESCRIPTION:In IIS, remote attackers can obtain source code for ASP files by appending ::$DATA to the URL.:LINK:https://www.cve.org/CVERecord?id=CVE-1999-0278::REFERENCE:CVE-2004-1084:DESCRIPTION:Server allows remote attackers to read files and resource fork content via HTTP requests to certain special file names related to multiple data streams in HFS+.:LINK:https://www.cve.org/CVERecord?id=CVE-2004-1084::REFERENCE:CVE-2002-0106:DESCRIPTION:Server allows remote attackers to cause a denial of service via a series of requests to .JSP files that contain an MS-DOS device name.:LINK:https://www.cve.org/CVERecord?id=CVE-2002-0106::. It demonstrates The product does not handle or incorrectly handles a file name that identifies a virtual resource that is not directly specified within the directory that is associated with the file name, causing the product to perform file-based operations on a resource that is not a file. as the core issue of Improper Handling of File Names that Identify Virtual Resources."
+    }

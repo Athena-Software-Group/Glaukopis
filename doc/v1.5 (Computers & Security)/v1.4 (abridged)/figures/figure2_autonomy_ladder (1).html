@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Figure 2 – Bounded-autonomy ladder</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: #ffffff; }
+body { font-family: Arial, sans-serif; padding: 40px 50px 50px; }
+.c-teal-r  { fill: #E1F5EE; stroke: #0F6E56; stroke-width: 0.8; }
+.c-blue-r  { fill: #E6F1FB; stroke: #185FA5; stroke-width: 0.8; }
+.c-amber-r { fill: #FAEEDA; stroke: #BA7517; stroke-width: 0.8; }
+.c-coral-r { fill: #FAECE7; stroke: #993C1D; stroke-width: 0.8; }
+.lbl-teal  { fill: #085041; }
+.lbl-blue  { fill: #0C447C; }
+.lbl-amber { fill: #633806; }
+.lbl-coral { fill: #4A1B0C; }
+.lbl-muted { fill: #888780; }
+</style>
+</head>
+<body>
+<svg width="100%" viewBox="0 0 720 570" xmlns="http://www.w3.org/2000/svg">
+
+<!-- subtitle -->
+<text font-family="Arial" font-size="10" text-anchor="middle" class="lbl-muted">
+  <tspan x="360" y="16">Automate what is narrow, reversible, and evidenced — require human approval where blast radius is broad or rollback is hard.</tspan>
+</text>
+
+<!-- Vertical spine -->
+<line x1="56" y1="38" x2="56" y2="465" stroke="#D3D1C7" stroke-width="1.2" stroke-dasharray="4 3"/>
+
+<!-- ══════ LEVEL 1 — ENRICH ══════ -->
+<circle cx="56" cy="72" r="10" fill="#1D9E75"/>
+<text font-family="Arial" font-size="11" font-weight="700" text-anchor="middle" fill="#ffffff"><tspan x="56" y="76">1</tspan></text>
+<rect x="80" y="44" width="490" height="56" rx="8" class="c-teal-r"/>
+<text font-family="Arial" font-size="11" font-weight="700" class="lbl-teal"><tspan x="96" y="64">Enrich</tspan></text>
+<text font-family="Arial" font-size="10" class="lbl-teal">
+  <tspan x="96" y="80">Collect related alerts, identity history, endpoint context, cloud logs,</tspan>
+  <tspan x="96" dy="13">WAF and NIDS evidence, and asset criticality.</tspan>
+</text>
+<!-- badge -->
+<rect x="582" y="54" width="96" height="36" rx="6" class="c-teal-r"/>
+<text font-family="Arial" font-size="11" font-weight="700" text-anchor="middle" class="lbl-teal"><tspan x="630" y="76">Auto</tspan></text>
+
+<!-- ══════ LEVEL 2 — EXPLAIN ══════ -->
+<circle cx="56" cy="148" r="10" fill="#1D9E75"/>
+<text font-family="Arial" font-size="11" font-weight="700" text-anchor="middle" fill="#ffffff"><tspan x="56" y="152">2</tspan></text>
+<rect x="80" y="120" width="490" height="56" rx="8" class="c-teal-r"/>
+<text font-family="Arial" font-size="11" font-weight="700" class="lbl-teal"><tspan x="96" y="140">Explain</tspan></text>
+<text font-family="Arial" font-size="10" class="lbl-teal">
+  <tspan x="96" y="156">Translate detections into analyst-readable context, timeline,</tspan>
+  <tspan x="96" dy="13">ATT&amp;CK technique mapping, and explicit uncertainty.</tspan>
+</text>
+<rect x="582" y="130" width="96" height="36" rx="6" class="c-teal-r"/>
+<text font-family="Arial" font-size="11" font-weight="700" text-anchor="middle" class="lbl-teal"><tspan x="630" y="152">Auto</tspan></text>
+
+<!-- ══════ LEVEL 3 — RECOMMEND ══════ -->
+<circle cx="56" cy="224" r="10" fill="#185FA5"/>
+<text font-family="Arial" font-size="11" font-weight="700" text-anchor="middle" fill="#ffffff"><tspan x="56" y="228">3</tspan></text>
+<rect x="80" y="196" width="490" height="56" rx="8" class="c-blue-r"/>
+<text font-family="Arial" font-size="11" font-weight="700" class="lbl-blue"><tspan x="96" y="216">Recommend</tspan></text>
+<text font-family="Arial" font-size="10" class="lbl-blue">
+  <tspan x="96" y="232">Propose next-best playbook actions, queries, and escalation choices.</tspan>
+  <tspan x="96" dy="13">Decision authority stays with the analyst.</tspan>
+</text>
+<rect x="582" y="206" width="96" height="36" rx="6" class="c-blue-r"/>
+<text font-family="Arial" font-size="11" font-weight="700" text-anchor="middle" class="lbl-blue"><tspan x="630" y="228">Auto</tspan></text>
+
+<!-- ══════ LEVEL 4 — ACT WITHIN POLICY ══════ -->
+<circle cx="56" cy="308" r="10" fill="#BA7517"/>
+<text font-family="Arial" font-size="11" font-weight="700" text-anchor="middle" fill="#ffffff"><tspan x="56" y="312">4</tspan></text>
+<rect x="80" y="280" width="490" height="56" rx="8" class="c-amber-r"/>
+<text font-family="Arial" font-size="11" font-weight="700" class="lbl-amber"><tspan x="96" y="300">Act within policy</tspan></text>
+<text font-family="Arial" font-size="10" class="lbl-amber">
+  <tspan x="96" y="316">Execute preapproved, reversible actions: WAF deny entries, rate limits,</tspan>
+  <tspan x="96" dy="13">step-up auth, session revocation, and limited host isolation.</tspan>
+</text>
+<rect x="582" y="290" width="96" height="36" rx="6" class="c-amber-r"/>
+<text font-family="Arial" font-size="10" font-weight="700" text-anchor="middle" class="lbl-amber">
+  <tspan x="630" y="304">Auto</tspan>
+  <tspan x="630" dy="13">within policy</tspan>
+</text>
+
+<!-- ══════ LEVEL 5 — HUMAN-GOVERNED ══════ -->
+<circle cx="56" cy="392" r="10" fill="#993C1D"/>
+<text font-family="Arial" font-size="11" font-weight="700" text-anchor="middle" fill="#ffffff"><tspan x="56" y="396">5</tspan></text>
+<rect x="80" y="364" width="490" height="56" rx="8" class="c-coral-r"/>
+<text font-family="Arial" font-size="11" font-weight="700" class="lbl-coral"><tspan x="96" y="384">Human-governed high impact</tspan></text>
+<text font-family="Arial" font-size="10" class="lbl-coral">
+  <tspan x="96" y="400">Credential disable, broad WAF / firewall changes, production quarantine,</tspan>
+  <tspan x="96" dy="13">policy rewrites, and customer-impacting containment.</tspan>
+</text>
+<rect x="582" y="374" width="96" height="36" rx="6" class="c-coral-r"/>
+<text font-family="Arial" font-size="10" font-weight="700" text-anchor="middle" class="lbl-coral">
+  <tspan x="630" y="388">Human</tspan>
+  <tspan x="630" dy="13">approval</tspan>
+</text>
+
+<!-- ══════ CONTROL PRINCIPLE ══════ -->
+<rect x="22" y="438" width="676" height="50" rx="8" fill="none" stroke="#D3D1C7" stroke-width="0.8" stroke-dasharray="4 3"/>
+<text font-family="Arial" font-size="10" text-anchor="middle" class="lbl-muted">
+  <tspan x="360" y="456">Control principle: learning systems may tune thresholds and rank allowed actions,</tspan>
+  <tspan x="360" dy="13">but they must optimize within policy — not silently rewrite it.</tspan>
+</text>
+</svg>
+</body>
+</html>

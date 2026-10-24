@@ -1,0 +1,58 @@
+{
+  "revision_date": "2026-09-05",
+  "source_version": "Uploaded abridged v1.3; long-form v1.1",
+  "target": "glaukopis_abridged_v1.4.tex",
+  "input_files": [
+    {
+      "filename": "glaukopis_ieee_abridged-v1.3(1).tex",
+      "bytes": 49977,
+      "sha256": "8bcb8a64b194392de87221072823de6184600e40812d360d272e5dee6db5d9ed"
+    },
+    {
+      "filename": "glaukopis_ieee_abridged-v1.3.pdf",
+      "bytes": 365161,
+      "sha256": "04c1176ae57e9d51c3e9d1f3c47c9b51fd79ac902ac7a6d613b585391290f2d0"
+    },
+    {
+      "filename": "glaukopis_ieee-v1.1.tex",
+      "bytes": 141879,
+      "sha256": "1353c91882788fc5d2f8d6cf3e9db08320b06fe07092585af5dee0aa8815ddf1"
+    },
+    {
+      "filename": "glaukopis_ieee-v1.1.pdf",
+      "bytes": 812201,
+      "sha256": "d0df44c236dd642ffe7c6f93c8cc679086709285cd7c12449d2e041d9d9a9a52"
+    },
+    {
+      "filename": "Pasted text.txt",
+      "bytes": 13259,
+      "sha256": "6bf383cd946e64ba215f2b6fb12d5ade11505c5ac54851a0fac1442373599a79"
+    }
+  ],
+  "repository": {
+    "name": "Athena-Software-Group/Glaukopis",
+    "commit": "c4d3a2f45e0a08672c87c2b46c3c4be109440c38",
+    "access": "read-only via connected GitHub",
+    "inspected_paths": [
+      "README.md",
+      "PROJECT_STATE.md",
+      "doc/IEEE/glaukopis-v1.4.bib",
+      "SFT/eval/responses/cost_summary.csv",
+      "SFT/eval/utils/_print_sweep_summary.py",
+      "SFT/eval/utils/build_cost_summary.py",
+      "tmpl_gen/scripts/dedup_against_evals.py"
+    ]
+  },
+  "local_project_mounted": false,
+  "experiments_run": [],
+  "derived_analysis": "Arithmetic reaggregation of existing rounded stage scores and recorded cost CSV components. Not model inference or a statistical significance analysis.",
+  "remaining_limitations": [
+    "Raw prediction files not accessed",
+    "Results workbook binary/formulas not materialized",
+    "Evaluation snapshot date not reconciled",
+    "Legacy CTI-test/total weighting not reconciled",
+    "Single-pass cost matching not established",
+    "Training-stage cost ledger not recovered",
+    "No matched controls or repeated-seed experiments performed"
+  ]
+}

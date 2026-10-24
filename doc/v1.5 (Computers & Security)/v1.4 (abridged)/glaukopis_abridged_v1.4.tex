@@ -1,0 +1,327 @@
+\documentclass[journal]{IEEEtran}
+% Journal-neutral author-review revision of the uploaded IEEE abridged v1.3.
+% This is NOT the official IEEE Access template. See README.md before submission.
+% No new model training or inference was performed for this revision.
+% Derived summary values are computed by tools/recompute_revision_tables.py.
+\usepackage[T1]{fontenc}
+\usepackage{cite,amsmath,amssymb,graphicx,booktabs,array,tabularx}
+\usepackage{xcolor,xurl}
+\usepackage[hidelinks]{hyperref}
+\hypersetup{pdftitle={Glaukopis: Auditable Graph-Grounded Instruction Tuning for Cyber Threat Intelligence},pdfauthor={Peter J. Worth Jr.; Ionut Cardei; Salman Ahmad; Muhammad Mamoon Khan},pdfsubject={Version 1.4 author-review journal revision}}
+\usepackage{microtype}
+\usepackage{listings}
+\usepackage{float}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcommand{\code}[1]{{\small\nolinkurl{#1}}}
+\newcommand{\repostamp}{\texttt{c4d3a2f}}
+\newcommand{\aidisclosure}{\textit{Editorial-assistance disclosure:} This section received AI-assisted revision; see the Acknowledgment and Ref.~\cite{openai2026chatgpt}.}
+\lstset{basicstyle=\scriptsize\ttfamily,breaklines=true,columns=fullflexible,keepspaces=true,frame=single,showstringspaces=false}
+\setlength{\emergencystretch}{1.5em}
+\markboth{GLAUKOPIS --- V1.4 AUTHOR-REVIEW DRAFT, SEPTEMBER 2026}{Worth et al.: Auditable Graph-Grounded Instruction Tuning for CTI}
+\begin{document}
+\title{Glaukopis: Auditable Graph-Grounded Instruction Tuning for Cyber Threat Intelligence}
+\author{Peter J. Worth Jr., Ionut Cardei, Salman Ahmad, and Muhammad Mamoon Khan%
+\thanks{Peter J. Worth Jr. and Ionut Cardei are affiliated with the Department of Electrical Engineering and Computer Science, Florida Atlantic University, Boca Raton, FL, USA, and Athena Security Group, LLC, USA. Salman Ahmad and Muhammad Mamoon Khan are affiliated with RevolveAI. Corresponding author: Peter J. Worth Jr. (pworthjr@athenasecuritygrp.com); ORCID: 0000-0003-4211-3866.}%
+\thanks{This research was funded by Athena Security Group, LLC. This author-review revision is based on the supplied abridged v1.3 and long-form v1.1 manuscripts, with read-only inspection of the accompanying public repository.}}
+\maketitle
+\begin{abstract}
+Cyber threat intelligence (CTI) assistants must produce usable security-schema mappings while allowing scrutiny of the data used for specialization. Glaukopis addresses training-data traceability through Ariadne, a Neo4j graph integrating twelve public CTI sources, and Sophia, a template engine that materializes instruction targets by executing typed graph queries. A four-stage supervised fine-tuning schedule retains intermediate checkpoints for diagnosis, rather than establishing a new learning algorithm. On the reported Qwen2.5-32B evaluations, attack-technique extraction increases from 18.2 to 65.8 and risk-mitigation scoring from 7.6 to 62.5. Reaggregation of the reported task scores using an explicit 50/50 Classic/Canonical threat-attribution blend gives a three-benchmark mean of approximately 65.0, versus 57.7 for the base. The gain is concentrated in training-aligned AthenaBench tasks: CyberSOCEval is unchanged relative to the base, while CyberMetric and MMLU-Pro decrease. Intermediate checkpoints expose substantial task interference, including collapse of Canonical attribution after the SOC-oriented stage. We distinguish graph-relative label provenance from label correctness, aligned-task improvement from external generalization, and recorded evaluation expenditure from validated per-pass or lifecycle cost. The evidence supports an auditable CTI data-construction system and an empirical specialization study; matched training controls, repeated seeds, and independently held-out incidents remain necessary to establish scheduling advantages and broader deployment claims.
+\end{abstract}
+\begin{IEEEkeywords}
+cyber threat intelligence, instruction fine-tuning, knowledge graphs, data provenance, language-model evaluation, catastrophic interference
+\end{IEEEkeywords}
+\begin{center}
+\fbox{\parbox{0.94\columnwidth}{\footnotesize\textbf{Author-review status.} Scientific framing, bibliography, and arithmetic have been revised. Exact evaluation manifests, remaining legacy aggregate definitions, and matched-run cost accounting require author reconciliation before journal submission. No new model experiments or confidence intervals are claimed.}}
+\end{center}
+
+\section{Introduction}\label{sec:intro}
+Cyber threat intelligence (CTI) work involves connecting vulnerability descriptions, weakness classes, attacker behaviors, and defensive actions. A language model may be fluent yet return a parent ATT\&CK technique instead of the requested sub-technique, select a related but incorrect CWE, or emit an unusable structured answer. CTIBench and AthenaBench make these distinctions operational through task-specific evaluation rather than relying only on general language-model benchmarks~\cite{alam2024ctibench,alam2025athenabench}.
+
+The deployment problem is not that every regulated organization is categorically prohibited from using external models. Rather, some security operations centers (SOCs) face contractual, confidentiality, data-residency, or infrastructure constraints that make locally served models preferable. Under those constraints, a practical question is whether specialization of an existing open-weight model improves the required CTI tasks without obscuring its training provenance or its losses on other workloads. This study targets a locally deployable 32-billion-parameter (32B) model; it does not establish a universal minimum model size or a compliance certification.
+
+Glaukopis addresses two concrete engineering problems. First, instruction targets synthesized from unstructured material can be difficult to trace to a specific source fact. Sophia instead obtains the CTI target from an executed query over the Ariadne knowledge graph. Second, a single final model score hides when specialization introduces failures. Glaukopis retains checkpoints after Core, attribution-oriented (+TAA), SOC-oriented (CSE), and recalibration stages, exposing both improvements and regressions. The data pipeline is the central technical contribution. The stage sequence is an instrumented training configuration, not a demonstrated improvement over all single-stage alternatives.
+
+The evidence also limits the claim. Training shards intentionally target the schemas used by the evaluation suites. Peter Worth and Salman Ahmad are co-authors of AthenaBench~\cite{alam2025athenabench}; different data-generation pipelines therefore do not establish organizationally independent evaluation. The 32B final checkpoint improves several AthenaBench tasks, but it does not improve the reported CyberSOCEval score over the base and lowers general-task performance. Accordingly, the study asks whether graph-materialized instruction construction and checkpoint-level reporting provide a useful, inspectable CTI specialization workflow, not whether the model is a general-purpose SOC replacement.
+
+The contributions are: (i) a CTI data-construction architecture with graph-relative target provenance; (ii) an explicit multi-stage recipe and retained-checkpoint analysis of schema adaptation and interference; and (iii) a bounded evaluation that separates task scores, aggregation conventions, contamination controls, and cost-accounting assumptions. Public source artifacts are identified as software, distinct from publications~\cite{glaukopis2026software}. No superiority claim is made for stage ordering, graph-generated data versus a matched alternative, or lifecycle economics without the corresponding control.
+
+\section{Problem Formulation and Scope}\label{sec:problem}
+\subsection{Inputs, outputs, and provenance}
+Let $G_t=(V_t,E_t,A_t)$ be a versioned CTI graph at snapshot $t$, comprising typed entities, relationships, and attributes. A template $\tau$ specifies a typed query $q_\tau$, constraints, and rendering functions. For a returned binding $b\in q_\tau(G_t)$, Sophia constructs
+\begin{align}
+ r_{\tau,b}&=\bigl(i_\tau(b),x_\tau(b),y_\tau(b)\bigr),\\
+ y_\tau(b)&=\operatorname{render}_{\tau}\bigl(q_\tau(G_t),b\bigr).
+\end{align}
+Here $i$ is the instruction, $x$ the optional context or question, and $y$ the supervised target. An audit links the row to its template, graph snapshot, and bound public identifiers. These provenance elements may be maintained in generation artifacts; the three-field Alpaca training record alone does not encode a complete immutable provenance manifest.
+
+The resulting model $p_\theta(y\mid i,x)$ is trained with ordinary next-token cross-entropy. For stage $s$ and its training set $D_s$, the objective is
+\begin{equation}
+ \mathcal{L}_s(\theta)=-\sum_{(i,x,y)\in D_s}\sum_{j=1}^{|y|}
+ \log p_\theta(y_j\mid i,x,y_{<j}),
+\end{equation}
+with the preceding checkpoint initializing the next stage. No new optimizer, loss function, or inference architecture is introduced. Changes in data, order, sequence length, learning rate, and packing are all part of the observed treatment; a stage transition is not an isolated causal estimate of any one of them.
+
+\subsection{Technical requirements and non-goals}
+The system seeks source-resolvable supervision, controllable coverage of CTI schemas, inspectable specialization trade-offs, and local serving of the resulting checkpoint. These are distinguishable requirements. A target consistent with a stored graph can still be wrong because a source record is incomplete, a relationship is misinterpreted, or the graph is stale. Similarly, graph-grounded training does not guarantee graph-faithful model answers at inference time. Runtime constrained decoding, retrieval, or output verification would be separate mechanisms.
+
+The evaluation concerns structured public-CTI tasks. It does not establish reliable handling of arbitrary private telemetry, autonomous containment, legal or regulatory interpretation, secure-code generation, or production incident attribution. For these workloads, a benchmark score is not an operational acceptance test. The deployed assistant should be constrained to validated task types, with schema checks, source verification, human approval, and abstention or escalation outside its evaluated scope.
+
+\section{Background and Related Work}\label{sec:related}
+Instruction fine-tuning adapts pretrained models using instruction--response examples. FLAN established transfer to unseen instruction-formulated tasks~\cite{wei2022flan}; InstructGPT combined supervised demonstrations with preference-based training~\cite{ouyang2022instructgpt}; and subsequent work studied scaling instruction mixtures~\cite{chung2024flant5}. These results motivate investment in instruction data, but they do not prove that Glaukopis's particular four-stage supervised schedule is superior to a matched mixed-data run.
+
+CyberPal.AI uses expert-driven cybersecurity instruction construction and provides a close comparison for domain-specific supervision~\cite{levi2025cyberpal}. Its follow-on, \emph{Toward Cybersecurity-Expert Small Language Models}, examines expert SLM specialization and enriched reasoning data~\cite{levi2025toward}. SEvenLLM studies bilingual CTI instruction data and evaluation~\cite{ji2024sevenllm}. CyberBench provides a multi-task cybersecurity evaluation and accompanying adaptation framework~\cite{liu2024cyberbench}. Glaukopis's distinguishing design is the explicit query-to-target path for Sophia-produced CTI records. This is a provenance property, not a measured assertion that every alternative has lower label quality.
+
+CTI knowledge graphs address a related but distinct problem. For example, Open-CyKG constructs an open cyber-threat knowledge graph from unstructured reports~\cite{sarhan2021opencykg}. Such extraction work concerns how facts enter a graph; Glaukopis primarily concerns how a populated graph is projected into instruction targets. Extraction quality and target-materialization quality should not be conflated. The implementation may also contain upstream enrichment or additional ingestion capabilities beyond the twelve-source configuration described here. The defensible guarantee is that a Sophia target is materialized from its bound graph data, not that the entire software stack never uses language models.
+
+The evaluation uses CTIBench-related task formulations, AthenaBench, CyberMetric, CyberSOCEval, and a separate MMLU-Pro diagnostic~\cite{alam2024ctibench,alam2025athenabench,tihanyi2024cybermetric,meta2025cybersoceval,wang2024mmlupro}. Conference and journal versions are cited where verified; remaining preprints and software resources are identified as such. They are not treated as refereed publications merely because they have an arXiv identifier or a public repository.
+
+\section{Ariadne and Sophia: The Data Pipeline}\label{sec:data}
+\subsection{Ariadne's source and refresh boundaries}
+Ariadne is the populated Neo4j substrate. The reported configuration integrates twelve public CTI sources: ATT\&CK, ENGAGE, CAPEC, CWE, D3FEND, CVE, NVD, CISA KEV, FIRST EPSS, Sigma, ExploitDB, and PoC-in-GitHub. The resulting graph is reported at approximately 280,000 nodes and 480,000 relationships. These are approximate snapshot sizes, not a statement that all public CTI is covered. ATT\&CK, CWE, CAPEC, and CVE provide identifiable source entities and schema relationships~\cite{strom2018mitre,mitreCWE,mitreCAPEC,mitreCVE}.
+
+Bounded catalogues are loaded in full in the reported configuration, while several high-churn vulnerability and exploitation feeds are scoped to 2024 onward. Refresh behavior is source-dependent. The long-form implementation description specifies routine re-download of EPSS and the current-year NVD feed; other sources can remain cached until explicit refresh, cache removal, or a repository update. Thus, ``daily refresh'' does not mean that all twelve source snapshots advance every night. Dataset freshness must be assessed from the actual per-source versions and acquisition times used in a build.
+
+Construction follows dependencies: controlled vocabularies are loaded before vulnerability overlays and exploit references, and identifiers support idempotent graph population. The intended audit path is from a generated row to the template and binding, then to the source identifier. Source keys alone are insufficient for exact replay if the corresponding source record or graph snapshot has changed.
+
+\begin{table*}[!t]
+\centering\small
+\caption{Pipeline boundaries. Provenance is strongest for Sophia-materialized CTI targets; it should not be generalized to all auxiliary data or to unconstrained model completions.}\label{tab:boundaries}
+\begin{tabularx}{\textwidth}{p{0.17\textwidth}YYY}
+\toprule Component & Input and transformation & Resulting artifact & Scope of assurance \\\midrule
+Ariadne & Public CTI records normalized to typed entities and relations & Neo4j CTI snapshot & Source-linked facts; not proof of source completeness or correctness \\
+Sophia & Expert-authored template, typed query, graph binding, rendering & Instruction/context/target record & Target traceable to the executed graph binding \\
+Corpus preparation & Generation, balancing, deduplication, phase splitting & Core-A, Core-B, TAA, CSE and validation shards & Dependent on covered files, fields, thresholds, and retained manifests \\
+Supervised training & Stage-specific shard mixture and optimizer configuration & Core, +TAA, CSE, Recal-32B checkpoints & Observable transitions; no isolated scheduling effect \\
+Evaluation & Fixed task inputs, checkpoint, parser/scorer, serving settings & Predictions, scores, runtime/token records & Only as reproducible as the saved run and evaluation manifests \\\bottomrule
+\end{tabularx}
+\end{table*}
+
+\subsection{Typed-query materialization}
+Sophia parses a declarative template, executes its typed graph query, binds the returned entities and relationships, and renders instruction records. Templates support property access, relationship traversals, list expansion, hidden bindings, source disambiguation, and equality or inequality constraints. For example, the following abbreviated pattern is taken from the supplied abridged manuscript:
+\begin{lstlisting}
+Question: Correlate CVE, CWE, and CAPEC for a single vulnerability chain.
+Answer: CVE {cve:CVE.id} impacts CAPEC
+{cap:cve.impacts>CAPEC.name} and is categorized
+as weakness {cwe:cve.problemType>Weakness.name}.
+CAPEC {cap.id} exploits weakness
+{cwe2:cap.exploits>Weakness.name}.
+<*{force cwe.id=cwe2.id}*>
+\end{lstlisting}
+The hidden equality constraint requires the two traversals to resolve to the same weakness identifier. A reviewer can therefore inspect the binding rather than trust a separately synthesized answer. The example illustrates the materialization mechanism; it is not a new measured reasoning benchmark.
+
+Negative constraints can generate examples that distinguish graph-supported from unsupported associations. However, absence of a relationship in an incomplete CTI graph is not necessarily evidence that the relationship is false in the world. Negative examples should be interpreted against the declared graph and schema, with a documented closed-world assumption where appropriate.
+
+The generation workflow parses template manifests, materializes bindings, balances and deduplicates records, and serializes Alpaca-format JSON. Schema tests detect template references to absent graph labels, relationships, or properties. These tests can reveal incompatibilities but do not replace a semantic audit of source mappings. The combination provides content control and inspectability without establishing a measured reduction in all types of label error.
+
+\subsection{Corpus scope and reproducibility}
+The reported v21 release uses four production CTI shards (Core-A, Core-B, TAA, and CSE) and three validation shards. Validation holds out 50 rows per task shortname in the described build. Core-A also receives a general-purpose instruction mixture during training, including T\"ulu-3 SFT and Alpaca-English. Consequently, the statement ``every training example is graph-materialized'' is too broad: it applies to Sophia-generated CTI records, not automatically to those auxiliary corpora.
+
+The architecture ports use the same serialized CTI release. Nevertheless, exact row-level regeneration was not fully seed-pinned in v21: graph-read order, sampling, shuffle order, and deduplication decisions can vary. Template identity alone therefore does not certify identical training rows. A reproducible release needs hashes of the actual serialized files, per-source graph snapshots, counts after each filter, and software/configuration versions, in addition to the templates. The current study reports this limitation rather than attributing all differences between vintages to a proven single cause.
+
+\section{Multi-Stage Training Configuration}\label{sec:training}
+The canonical base is \code{Qwen/Qwen2.5-32B-Instruct}. Additional ports use Qwen2.5-14B-Instruct, Qwen3-30B-A3B-Thinking-2507, Meta-Llama-3.1-8B-Instruct, and Foundation-Sec-8B-Instruct. The MoE port should be distinguished by total and active parameter counts; its total model size is not its per-token active parameter count.
+
+Table~\ref{tab:training} states the schedule from the textual recipe, replacing an earlier schematic whose learning rates, packing, and epoch annotations did not consistently match the body. Stage 1 has two phases. Core-A mixes broad CTI instruction families with auxiliary general instructions; Core-B targets the RMS, ATE, VSP, and RCM schema tasks. Stage 2 specializes on threat-actor-attribution records. Stage 3 uses SOC-style structured-response drills. Stage 4 revisits earlier shards to seek a different capability balance. These are intended objectives; whether they are achieved is an empirical question.
+
+\begin{table*}[!t]
+\centering\small
+\caption{Reported canonical 32B training recipe. Caps are example limits, not realized unique-row counts, processed-token counts, or measured compute budgets. The textual recipe describes one epoch per pass.}\label{tab:training}
+\begin{tabular}{@{}llrrrrl@{}}
+\toprule Pass & Training input & Example cap & Max. tokens & Learning rate & Eff. batch & Packing \\\midrule
+1A & Core-A + general instructions & 240,000 & 8,192 & $1\times10^{-5}$ & 16 & On \\
+1B & Core-B & 70,000 & 16,384 & $5\times10^{-6}$ & 8 & Off \\
+2 & TAA & 33,000 & 4,096 & $5\times10^{-6}$ & 16 & On \\
+3 & CSE & 33,000 & 4,096 & $5\times10^{-6}$ & 16 & On \\
+4 & Core-A/Core-B/TAA: 0.15/0.60/0.25 & 3,600 & 16,384 & $3\times10^{-6}$ & 8 & Off \\\bottomrule
+\end{tabular}
+\end{table*}
+
+All stages use bfloat16 mixed precision, DeepSpeed ZeRO-3, an 8-bit AdamW optimizer, Liger kernels, and gradient checkpointing in the reported 32B configuration. The canonical training topology is eight H100 GPUs with 80 GB each. Effective batch size is preserved by adjusting accumulation across supported topologies. The sum of pass caps is 379,600, but neither repeated exposure nor actual token consumption can be inferred from that sum. Sequence caps are maxima, not average lengths.
+
+The alternative Stage-4 recipe developed for the 14B port uses learning rate $10^{-6}$, mixture probabilities 0.25/0.40/0.35, and a 2,400-example cap. Applying different Stage-4 mixtures and rates across architectures means that the complete training treatment is not byte-identical across every port. The same input release supports comparison, but pretraining, parameterization, optimization behavior, and serving configuration remain confounders.
+
+We call the retained models \emph{cumulative checkpoints}. They reveal the effects of continuing training under each configured treatment; they are not matched ablations. In particular, Core$\rightarrow$CSE without TAA and a one-stage mixture with matched realized tokens and updates were not reported. The necessity of Stage 2 and the superiority of four stages are therefore unresolved.
+
+\section{Evaluation Protocol and Contamination Boundaries}\label{sec:evaluation}
+\subsection{Task portfolio and alignment}
+AthenaBench evaluates CTI knowledge (CKT), attack-technique extraction (ATE), root-cause mapping (RCM), risk-mitigation strategy (RMS), vulnerability-severity prediction (VSP), and threat-actor attribution (TAA)~\cite{alam2025athenabench}. TAA has Classic and Canonical forms. CyberSOCEval supplies malware-analysis and threat-intelligence-reasoning tasks~\cite{meta2025cybersoceval}; CyberMetric supplies broader cybersecurity multiple-choice evaluation at 2K and 10K tiers~\cite{tihanyi2024cybermetric}. MMLU-Pro is reported separately as a general-task diagnostic~\cite{wang2024mmlupro}. The task scores use their respective scorers and should not all be called accuracy or treated as calibrated probabilities of operational success.
+
+Alignment is deliberate. Core-B trains the schemas assessed by AthenaBench's mapping and mitigation tasks; Stage 2 targets attribution; Stage 3 targets SOC-style answer formats; and Core-A includes CyberMetric-style and multiple-choice families. Therefore, none of the three CTI benchmark families serves here as a demonstrably untouched evaluation target. Sharing public catalogues may be appropriate for measuring public-catalogue competence, but it does not establish generalization to unseen facts, new incidents, or private SOC telemetry. Independent construction is not equivalent to entity-disjoint, fact-disjoint, or temporally held-out evaluation.
+
+Local checkpoints are served with vLLM, and hosted references use the project's API-compatible harness~\cite{kwon2023vllm,glaukopis2026software}. The supplied results are single reported evaluations, not repeated-seed estimates. Exact item manifests, model revisions, decoding settings, timeout/retry handling, parser versions, and prediction-level artifacts are necessary to certify paired comparisons. The manuscript variants label their evaluation snapshot differently (May 24 versus June 24, 2026); that date discrepancy must be resolved against the immutable run manifest before publication. This revision does not invent a common timestamp.
+
+\subsection{What the n-gram filter does and does not establish}
+The reported filter lowercases alphanumeric word tokens and indexes distinct 13-word sequences. A single shared sequence flags a candidate row for audit, while at least 50 shared sequences with an indexed evaluation record trigger removal. These are different thresholds. Rows with one to 49 matches are retained under the described configuration. It is therefore incorrect to state that all verbatim overlap is removed.
+
+For a record of $L$ tokens, the number of distinct 13-grams is at most $\max(0,L-12)$. Thus, a compared evaluation record shorter than 62 tokens cannot supply 50 distinct matches under unique record keys, even when copied exactly. The absolute threshold can miss complete short duplicates, not only paraphrases. Common instructions and boilerplate can also create flags that require interpretation; a single match does not by itself establish harmful leakage.
+
+Read-only inspection of the released filter at commit \repostamp{} shows default discovery of JSON and JSONL files, not TSV files~\cite{glaukopis2026software}. The code extracts selected text fields and an \code{answers} field. The earlier long-form claim that CTIBench TSV files were uniformly covered cannot be assumed from that implementation; converted inputs or an additional scan would need to be demonstrated. Index keys also use a file basename plus row index, so identical basenames in separate directories require checking for collisions. These are coverage and implementation-audit issues, not evidence that a particular reported test item was contaminated.
+
+The long-form description further states that the auxiliary T\"ulu-3 and Alpaca mixtures were not routinely passed through the CTI overlap filter. Base-model pretraining contamination is outside its scope. Semantic paraphrases, reused source facts, related incidents, task-schema familiarity, and adaptive use of benchmark scores for recipe selection remain uncontrolled. Hash-based exact deduplication, full-path record identifiers, field/file coverage validation, similarity analysis, and entity/time-based holdouts would strengthen the protocol. No new overlap counts are claimed in this revision.
+
+\subsection{Explicit aggregation and a corrected TAA convention}\label{sec:aggregation}
+To avoid hiding the Canonical-TAA regression, define a balanced attribution score and AthenaBench macro-score:
+\begin{align}
+ T_{\mathrm{bal}} &= \tfrac12(T_{\mathrm{Classic}}+T_{\mathrm{Canonical}}),\\
+ A_{\mathrm{bal}} &= \tfrac16(K+E+R+M+V+T_{\mathrm{bal}}),\\
+ B_{\mathrm{bal}} &= \tfrac13(A_{\mathrm{bal}}+C+Y).
+\end{align}
+Here $K,E,R,M,V$ denote CKT, ATE, RCM, RMS, and VSP; $C$ and $Y$ are the reported CyberSOCEval and CyberMetric benchmark summaries. This is an explicit post-hoc reporting convention, not a newly executed evaluation or a retrospectively pre-registered selection rule.
+
+The legacy AthenaBench values (44.2 for the base and 66.5 for Recal-32B) agree, to rounding, with using \emph{Classic TAA alone}. They do not agree with the caption's claimed 50/50 blend. Recomputing from the displayed task values gives $A_{\mathrm{bal}}=40.3$ and $62.6$, and $B_{\mathrm{bal}}=57.7$ and $65.0$, respectively. Table~\ref{tab:stage} labels these derived quantities explicitly. They should be regenerated from unrounded item-level scores for final production tables.
+
+The legacy ``Avg CTI Test'' and ``Avg Total (w/MMLU)'' columns are not used for the principal conclusions because their stated formulas do not reconcile with the displayed values. For example, extending a ten-test mean of 49.6 with MMLU-Pro 69.0 yields $(10\cdot49.6+69.0)/11=51.36$, not the legacy base value 49.3. Removing unsupported aggregate interpretations is preferable to silently substituting an unknown weighting scheme. Original values are retained in the accompanying numerical audit for reconciliation.
+
+\section{Results: Adaptation, Interference, and Transfer}\label{sec:results}
+\subsection{Canonical 32B chain}
+Table~\ref{tab:stage} preserves the reported individual task scores and adds the clearly defined reaggregation. Recal-32B improves ATE by 47.6 points, RMS by 54.9, RCM by 7.6, and CKT by 22.6 relative to the base. VSP decreases by 1.0 point. The balanced AthenaBench score increases by about 22.3 points, while MMLU-Pro decreases by 11.6. These observations support strong adaptation to several CTI mapping schemas alongside material losses elsewhere.
+
+\begin{table*}[!t]
+\centering\scriptsize
+\caption{Reported task scores and post-hoc reaggregation of the canonical Qwen2.5-32B chain. All scores are on a 0--100 scale. $A_{\mathrm{bal}}$ and $B_{\mathrm{bal}}$ are derived from the displayed rounded scores using Section~\ref{sec:aggregation}, not new inference results. CSE and CM are the source benchmark summaries; MMLU-Pro is separate.}\label{tab:stage}
+\setlength{\tabcolsep}{4.3pt}
+\begin{tabular}{@{}lrrrrrrrrrrrr@{}}
+\toprule Checkpoint & CKT & ATE & RCM & RMS & VSP & TAA Cl. & TAA Can. & CSE & CM & MMLU & $A_{\mathrm{bal}}$ & $B_{\mathrm{bal}}$ \\\midrule
+Base & 52.9 & 18.2 & 59.5 & 7.6 & 78.8 & 48.0 & 2.0 & 42.6 & 90.2 & 69.0 & 40.3 & 57.7 \\
+Core & 72.9 & 67.2 & 69.8 & 63.8 & 83.1 & 46.5 & 18.4 & 31.1 & 89.6 & 59.2 & 64.9 & 61.9 \\
++TAA & 75.4 & 63.4 & 69.0 & 62.9 & 83.5 & 47.0 & 36.8 & 29.8 & 89.4 & 58.2 & 66.0 & 61.7 \\
+CSE & 72.5 & 63.4 & 67.7 & 63.7 & 78.9 & 53.5 & 3.4 & 42.0 & 88.8 & 54.2 & 62.4 & 64.4 \\
+Recal-32B & 75.5 & 65.8 & 67.1 & 62.5 & 77.8 & 50.5 & 3.4 & 42.6 & 89.8 & 57.4 & 62.6 & 65.0 \\\bottomrule
+\end{tabular}
+\end{table*}
+
+Importantly, the cross-benchmark gain is not spread across the three benchmark families. Using the displayed numbers, the AthenaBench contribution to $\Delta B_{\mathrm{bal}}$ is approximately $+7.425$, the CyberSOCEval contribution is zero, and the CyberMetric contribution is $-0.133$, yielding $+7.292$ overall. Thus, the entire positive contribution comes from the most visibly training-aligned benchmark. This is useful evidence of schema adaptation, not evidence of uniform gains across independently targeted CTI workloads.
+
+\subsection{What each transition reveals}
+Core produces the largest mapping gains: ATE increases from 18.2 to 67.2 and RMS from 7.6 to 63.8. The existing record does not isolate the relative contributions of Phase A, Phase B, more training, and schema familiarity. After the attribution stage, Canonical TAA increases from 18.4 to 36.8. Under the corrected balanced aggregation, AthenaBench peaks at this +TAA checkpoint (66.0), whereas the Classic-only legacy composite peaks at Core (67.2). This distinction matters when describing which stage is ``best.''
+
+Stage 3 raises CyberSOCEval from 29.8 to 42.0 relative to +TAA, but Canonical TAA falls by 33.4 points to 3.4 and VSP falls from 83.5 to 78.9. Classic TAA rises from 47.0 to 53.5. The divergence is consistent with several possibilities: loss of canonical-label calibration, a change in output format, a parser interaction, or a genuine change in attribution behavior. Aggregate scores alone do not distinguish them. A paired response audit should separately count malformed outputs, unknown identifiers, alias-normalization failures, supported-but-incorrect labels, and unsupported attributions. This is a proposed diagnostic, not a completed error analysis.
+
+Stage 4 does not meet the specific objective of restoring VSP: 77.8 is below both its CSE parent (78.9) and the base (78.8). Canonical TAA stays at 3.4. Other scores recover partially, including MMLU-Pro (54.2 to 57.4), CKT, ATE, and CyberMetric. The resulting balanced mean increases from 64.4 to 65.0, but a favorable aggregate must not be described as universal capability recovery.
+
+The label ``ship'' in the project denotes the released checkpoint, not a statistically established optimum. The 32B-specific Stage-4 recipe's VSP score is higher than that of the alternative 14B-derived recipe (77.8 versus 75.7), yet both are single observed runs. Repeated training seeds on the fork, and evaluation with the same frozen selection rule, are needed to distinguish a robust recipe improvement from stochastic variation. A bootstrap over existing evaluation items would estimate item-sampling uncertainty, not replace training-seed replication.
+
+\subsection{Qualitative schema examples}
+The supplied v1.3 response-excerpt table illustrates how individual mapping errors can change between Core and the final checkpoint. For a stolen-SSH-credentials scenario, Core returned T1078 and the final checkpoint returned the supplied gold T1021.004. For the supplied MicroSCADA file-tampering example, the response changed from CWE-732 to the supplied gold CWE-276. These examples are retained as qualitative illustrations from the manuscript's selected excerpts. They are not a representative error sample, a newly verified response audit, or evidence that those mappings are universally correct for every similarly worded incident. Full prompts, references, item IDs, and unabridged responses should accompany a reproducible qualitative analysis.
+
+\subsection{Cross-architecture specialization costs}
+Table~\ref{tab:ports} preserves the general-task scores for each reported selected port. The 32B dense model has the highest MMLU-Pro score among these selected adapted checkpoints (57.4); the MoE score is 53.0, not the overall maximum. The losses vary with architecture and starting model, but this small heterogeneous comparison does not isolate parameter scale as their cause.
+
+\begin{table}[!t]
+\centering\small
+\caption{MMLU-Pro outcomes for the reported selected architecture ports. Differences are adapted minus corresponding base. Selection is the project's historical designation, not a newly validated optimum.}\label{tab:ports}
+\begin{tabular}{@{}lrr@{}}
+\toprule Architecture & Adapted score & Change \\\midrule
+Qwen2.5-32B & 57.4 & $-11.6$ \\
+Qwen2.5-14B & 50.2 & $-13.9$ \\
+Qwen3-30B-A3B Thinking & 53.0 & $-24.6$ \\
+Foundation-Sec-8B & 25.6 & $-17.6$ \\
+Llama-3.1-8B & 27.7 & $-20.6$ \\\bottomrule
+\end{tabular}
+\end{table}
+
+Foundation-Sec-8B is an especially important negative finding. The original cross-architecture table reports only a 0.4-point improvement on its legacy CTI-test aggregate while MMLU-Pro decreases by 17.6. Because that aggregate's weighting still needs reconciliation, 0.4 should not be treated as a verified effect size under the revised balanced metric. Even as reported, however, it does not demonstrate a compelling general benefit from applying the same tuning recipe to an already security-specialized base. Architecture-specific tuning and a task-level comparison against its base are needed before recommending that port.
+
+The legacy CTI-test lifts of the other ports are preserved in the audit package rather than relabeled as results under a new formula. Differences in pretraining, the adapted Stage-4 recipe, and thinking/serving behavior prevent a clean size-only conclusion. In particular, a claim that MoE routing intrinsically explains cost or forgetting is not established by these observations.
+
+\subsection{Hosted reference models}
+Table~\ref{tab:frontier} preserves the reported benchmark summaries for hosted references as contextual results. They are not re-evaluated here. Their AthenaBench aggregation must be reconciled with the same TAA convention before a balanced three-benchmark leaderboard is published. The earlier claim of a 4--7 point gap to frontier models is therefore not carried forward as an established comparison under $B_{\mathrm{bal}}$. Comparing a newly balanced local aggregate against a Classic-only or otherwise undocumented external aggregate would be invalid.
+
+\begin{table}[!t]
+\centering\scriptsize
+\caption{Legacy hosted-reference summaries retained for context, not a newly harmonized leaderboard. AB is the originally reported AthenaBench composite with aggregation pending confirmation for these rows.}\label{tab:frontier}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule Model & AB & CSE & CM & MMLU \\\midrule
+GPT-5.5 & 77.0 & 48.3 & 93.3 & 88.3 \\
+DeepSeek-V4-Pro & 67.2 & 52.2 & 91.8 & 79.1 \\
+Gemini-3-Flash-Preview & 69.3 & 48.1 & 92.1 & 89.2 \\
+GPT-5.2 & 63.8 & 46.8 & 91.8 & 81.3 \\
+DeepSeek-V3.2-Exp & 59.0 & 47.2 & 91.7 & 82.5 \\
+Gemini-2.5-Flash & 53.1 & 46.2 & 91.0 & 82.1 \\\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Evaluation Expenditure and Lifecycle Economics}\label{sec:cost}
+\subsection{Recorded expenditure is not automatically cost per pass}
+The repository cost summary combines hosted-API token accounting with local elapsed-time accounting at an assumed \$2.50 per GPU-hour on a two-H100 reference host~\cite{glaukopis2026software}. This distinction is already important: commercial API charges and local compute rental are different economic quantities. Neither includes all costs of operating a production SOC assistant.
+
+Read-only inspection identifies an additional boundary. The API-summary code documents restoration and accumulation of token-cost counters across reruns, while the local aggregator sums task elapsed time from available \code{summary_*.json} files. The aggregation code does not by itself establish one common run, one item set, and one execution per model. Consequently, the existing totals cannot be treated as validated single-pass comparisons without reconciling run identifiers, completed items, retries, cached/resumed work, and duplicate summaries. This observation identifies an accounting risk; it does not establish the number of reruns that contributed to any particular model's total.
+
+\subsection{CTI-only reaggregation}
+Table~\ref{tab:cost} separates the three CTI components from MMLU-Pro using the tracked CSV. Recal-32B's recorded CTI-only subtotal is
+\begin{equation}
+ \$1.2194+\$0.5944+\$0.2333=\$2.0471.
+\end{equation}
+The Gemini-3-Flash-Preview CTI subtotal is \$148.6440, compared with its recorded full total of \$1,154.1323. MMLU-Pro accounts for approximately 87.1\% of that total, versus 27.7\% of the final local checkpoint's total. Thus, inclusion of a non-CTI diagnostic materially changes the apparent cost comparison. Minor differences between sums and the recorded totals reflect four-decimal component rounding.
+
+\begin{table*}[!t]
+\centering\small
+\caption{Reaggregation of the existing cost ledger at repository commit \repostamp{}. USD amounts are rounded for display. These are recorded expenditures, not certified matched single-pass costs or total deployment costs. CTI-only includes AthenaBench, CyberSOCEval, and CyberMetric; no training costs are included.}\label{tab:cost}
+\begin{tabular}{@{}lrrrl@{}}
+\toprule Model & CTI-only & MMLU-Pro & Recorded full total & Accounting basis \\\midrule
+Gemini-3-Flash-Preview & 148.64 & 1,005.49 & 1,154.13 & API token ledger \\
+GPT-5.5 & 320.53 & 187.60 & 508.13 & API token ledger \\
+GPT-5.2 & 57.77 & 151.90 & 209.67 & API token ledger \\
+Gemini-2.5-Flash & 88.01 & 78.23 & 166.24 & API token ledger \\
+DeepSeek-V4-Pro & 38.12 & 88.28 & 126.40 & API token ledger \\
+DeepSeek-V3.1-Terminus & 6.63 & 7.70 & 14.33 & API token ledger \\
+DeepSeek-V3.2-Exp & 4.14 & 7.10 & 11.24 & API token ledger \\\midrule
+Qwen2.5-32B base & 3.38 & 7.29 & 10.67 & Local elapsed time, assumed GPU rate \\
+v21-core & 1.95 & 0.93 & 2.88 & Local elapsed time, assumed GPU rate \\
+v21-taa & 1.86 & 0.86 & 2.73 & Local elapsed time, assumed GPU rate \\
+v21-cse & 1.55 & 0.63 & 2.18 & Local elapsed time, assumed GPU rate \\
+v21-recalibrate (14B recipe) & 1.86 & 0.65 & 2.51 & Local elapsed time, assumed GPU rate \\
+v21-recal-32b & 2.05 & 0.79 & 2.83 & Local elapsed time, assumed GPU rate \\\bottomrule
+\end{tabular}
+\end{table*}
+
+As arithmetic on the ledger, the CTI-only expenditure ratios relative to Recal-32B are approximately 72.6 for Gemini-3-Flash-Preview, 156.6 for GPT-5.5, 18.6 for DeepSeek-V4-Pro, and 2.0 for DeepSeek-V3.2-Exp. They are not evidence of those per-request savings until matched-run accounting is established. The earlier full-suite 45--408$\times$ headline and dollars-per-benchmark-point normalization are therefore not used as central scientific results.
+
+\subsection{Training amortization and break-even conditions}
+For a fixed workload definition and acceptable quality level, let $C_{\mathrm{fixed}}$ include graph construction, corpus generation, the successful training chain, and applicable setup costs. Report exploratory or failed runs separately when comparing research-development cost with repeat-deployment cost. The training component requires measured per-pass GPU-hours and rates:
+\begin{equation}
+ C_{\mathrm{train}}=\sum_s g_s h_s r_s,
+\end{equation}
+where $g_s$ is the GPU count, $h_s$ elapsed training hours, and $r_s$ the cost per GPU-hour. Example caps and sequence-length maxima are not substitutes for these measurements. The repository's approximate runtime descriptions do not provide a verified, stage-complete billing ledger for all five optimization passes.
+
+For $N$ comparable CTI workloads, write
+\begin{align}
+ C_{\mathrm{local}}(N)&=C_{\mathrm{fixed}}+C_{\mathrm{maint}}(N)+Nc_L,\\
+ C_{\mathrm{API}}(N)&=Nc_A.
+\end{align}
+Here $c_L$ and $c_A$ must be measured on the same task population and stated serving/decoding conditions. If maintenance is negligible or already included, the first integer workload count with local cost no greater than API cost is
+\begin{equation}
+ N_{\mathrm{BE}}=\left\lceil\frac{C_{\mathrm{fixed}}}{c_A-c_L}\right\rceil,
+ \qquad c_A>c_L.
+\end{equation}
+There is no finite cost break-even under this simplified model if $c_A\leq c_L$ and fixed cost is positive. Standing capacity, utilization, staff time, electricity, refresh training, and infrastructure depreciation may change the result. No numerical measured break-even is claimed without the missing training and matched-inference records.
+
+\section{Threats to Validity and Operational Boundaries}\label{sec:limits}
+The first threat is attribution of benefit. Graph-derived data, shard composition, training duration, order, and hyperparameters co-vary. The present record demonstrates observable transitions, not superiority over matched monolithic instruction tuning. A Core$\rightarrow$CSE control would test the need for the attribution stage; an equal-token mixed-data control would test the scheduling hypothesis. A separate data-provenance ablation would be required to quantify the contribution of Sophia independently of scheduling.
+
+The second threat is evaluation alignment and selection. Public catalogue overlap, common answer spaces, unscreened auxiliary data, and repeated benchmark-guided recipe development limit an out-of-sample interpretation. A defensible extension would freeze a training graph, select checkpoints on separate development data, and evaluate once on a later, independently constructed incident set with documented entity/fact exclusions. A new benchmark title is not sufficient if it reuses the same facts and schemas without a contamination audit.
+
+The third threat is uncertainty. Single evaluations cannot support statistical claims about small margins. At least several independently seeded Stage-4 runs would test the narrow recipe-selection question, while paired item-level confidence intervals would quantify sampling uncertainty for fixed checkpoints. Temporal or entity clusters may require clustered resampling rather than treating repeated descriptions of the same underlying incident as independent observations. No significance test is reported from aggregate scores alone.
+
+The fourth threat is the distinction between catalogue competence and operational safety. An 11.6-point MMLU-Pro decrease at 32B and larger losses on other ports motivate explicit workload boundaries, not a claim that all general reasoning is lost. In particular, the final Canonical-TAA score does not support autonomous actor attribution. The model should not be the sole basis for high-consequence attribution, incident containment, unrestricted tool execution, legal advice, or decisions requiring broad reasoning outside the validated CTI schemas. Prompt-injection resistance, private-telemetry performance, latency under concurrent load, and human-analyst utility have not been established by these tables.
+
+Finally, source-relative auditability is distinct from repeatability, reproducibility, and correctness. Replaying generation requires immutable graph and template snapshots; reproducing training also requires the actual rows, seeds, environment, and optimizer settings; reproducing evaluation requires complete inputs, outputs, scoring code, and run boundaries. A public software repository improves access, but its existence alone does not certify that all of these artifacts have been released or audited.
+
+\section{Conclusion}\label{sec:conclusion}
+Glaukopis provides a concrete mechanism for constructing source-resolvable CTI instruction targets and observing specialization across retained model checkpoints. The canonical 32B results show large improvements in attack-technique extraction and mitigation scoring, but also pronounced interference, failure to recover Canonical attribution, and a decline in general-task performance. Under an explicitly balanced TAA aggregation recomputed from the supplied scores, the three-benchmark mean is approximately 65.0 versus 57.7 for the base. Its positive gain is concentrated in training-aligned AthenaBench tasks.
+
+The evidence supports the graph-grounded data pipeline and the value of transparent checkpoint-level diagnosis. It does not yet establish that four-stage training is necessary or superior, that the gains extend to unseen enterprise incidents, or that the recorded expenditure ratios constitute controlled lifecycle savings. Addressing these distinctions makes the system a testable CTI specialization framework rather than an unqualified claim of frontier parity. Verifiable-reward training, as explored in related CTI work such as Minerva~\cite{alam2026minerva}, is a possible extension, but does not replace the controls and provenance reconciliation needed for the present supervised study.
+
+\section*{Data, Code, Funding, and Competing Interests}
+The project repository is a software artifact~\cite{glaukopis2026software}, not a second peer-reviewed publication. The code audit for this revision is pinned to commit \code{c4d3a2f45e0a08672c87c2b46c3c4be109440c38}. The repository uses PolyForm Noncommercial 1.0.0; it is described here as \emph{source-available}, not as unrestricted open-source software. Upstream source terms and model-weight licenses remain separate considerations. The v21 final checkpoint is documented at \url{https://huggingface.co/asg-ai/athena-cti-sft-qwen25-32b-v21-recal-32b}. Availability statements are not a substitute for versioned manifests or an independent reproduction.
+
+The long-form and abridged manuscripts describe the same underlying Glaukopis study. They should be disclosed as related manuscript versions where the receiving journal requires it, not presented as independent experimental contributions. Their submission/publication status must be confirmed by the authors. AthenaBench is a separate benchmark work with overlapping authorship, disclosed in Section~\ref{sec:intro}. No claim is made here that a repository or preprint constitutes duplicate concurrent journal submission.
+
+Athena Security Group, LLC funded this research and develops Glaukopis. Peter Worth and Ionut Cardei have the Athena affiliations listed above; the remaining authors' affiliations are preserved from the supplied abridged manuscript. These relationships are disclosed so that readers can assess the developer-evaluator overlap.
+
+\section*{Acknowledgment and Editorial-Assistance Disclosure}
+The author-review revision used OpenAI ChatGPT~\cite{openai2026chatgpt} for editorial restructuring of Sections~\ref{sec:intro}--\ref{sec:conclusion}, refinement of the problem formulation and limitations, reference checking, and arithmetic-consistency analysis. This assistance did not perform the reported model training or generate new model predictions. The derived quantities are accompanied by a deterministic calculation script. The manuscript remains subject to author verification and approval; unresolved items are documented in the accompanying revision memorandum.
+
+\bibliographystyle{IEEEtran}
+\bibliography{glaukopis_v1.4_verified}
+\end{document}

@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Unified Telemetry and Data Ingestion Pipeline</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: #ffffff; }
+body { font-family: Arial, sans-serif; padding: 40px 48px 52px; }
+</style>
+</head>
+<body>
+<!--
+  ViewBox: 880 x 620
+  ┌─────────────────────────────────────────┐
+  │  TELEMETRY SOURCES (dashed box)          │
+  │  3×3 grid: x=18..388, y=42..248         │
+  └─────────────────────────────────────────┘
+        → single arrow at y=144 →
+  ┌──────────────────────────────┐
+  │  DECODER (x=406..618)        │  y=42..130
+  └──────────────────────────────┘
+        ↓
+  ┌──────────────────────────────┐ ← email branch → [SOC notification]
+  │  ALERTING (x=406..618)       │  y=148..280
+  │  (No: suppressed/logged)     │ ← suppress branch ↓ to [Suppressed]
+  └──────────────────────────────┘
+        ↓  (relevant alerts only)
+  ┌──────────────────────────────┐
+  │  ENRICHMENT (x=406..618)     │  y=298..430
+  └──────────────────────────────┘
+        ↓
+  ┌──────────────────────────────┐ ── trunk ──→ [3 outputs]
+  │  ENRICHED INCIDENT           │  y=448..524
+  └──────────────────────────────┘
+-->
+<svg width="100%" viewBox="0 0 880 620" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<marker id="ah" viewBox="0 0 10 10" refX="8" refY="5"
+        markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+  <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke"
+        stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+<!-- Email icon path (used inline) -->
+</defs>
+
+<!-- ══════════════════════════════════════════════════════════
+     TELEMETRY SOURCES — dashed outer box
+     Inner tiles: col x=34,148,262  tile w=106, row y=58,114,170 tile h=44
+     ══════════════════════════════════════════════════════════ -->
+<rect x="18" y="38" width="378" height="216" rx="10"
+      fill="none" stroke="#888780" stroke-width="1.2" stroke-dasharray="6 4"/>
+<text font-family="Arial" font-size="10" font-weight="700" fill="#444441"
+      x="207" y="52" text-anchor="middle" dominant-baseline="central">Telemetry sources</text>
+
+<!-- Row 1 (blue) y=62 -->
+<rect x="34"  y="62" width="106" height="44" rx="7" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.7"/>
+<text font-family="Arial" font-size="11" font-weight="700" fill="#0C447C"
+      x="87"  y="80" text-anchor="middle" dominant-baseline="central">WAF</text>
+<text font-family="Arial" font-size="9" fill="#185FA5"
+      x="87"  y="96" text-anchor="middle" dominant-baseline="central">Web app events</text>
+
+<rect x="148" y="62" width="106" height="44" rx="7" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.7"/>
+<text font-family="Arial" font-size="11" font-weight="700" fill="#0C447C"
+      x="201" y="80" text-anchor="middle" dominant-baseline="central">NIDS</text>
+<text font-family="Arial" font-size="9" fill="#185FA5"
+      x="201" y="96" text-anchor="middle" dominant-baseline="central">Network anomalies</text>
+
+<rect x="262" y="62" width="106" height="44" rx="7" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.7"/>
+<text font-family="Arial" font-size="11" font-weight="700" fill="#0C447C"
+      x="315" y="80" text-anchor="middle" dominant-baseline="central">SIEM</text>
+<text font-family="Arial" font-size="9" fill="#185FA5"
+      x="315" y="96" text-anchor="middle" dominant-baseline="central">Aggregated log events</text>
+
+<!-- Row 2 (teal) y=118 -->
+<rect x="34"  y="118" width="106" height="44" rx="7" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.7"/>
+<text font-family="Arial" font-size="11" font-weight="700" fill="#085041"
+      x="87"  y="136" text-anchor="middle" dominant-baseline="central">EDR / XDR</text>
+<text font-family="Arial" font-size="9" fill="#0F6E56"
+      x="87"  y="152" text-anchor="middle" dominant-baseline="central">Endpoint detections</text>
+
+<rect x="148" y="118" width="106" height="44" rx="7" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.7"/>
+<text font-family="Arial" font-size="11" font-weight="700" fill="#085041"
+      x="201" y="136" text-anchor="middle" dominant-baseline="central">IAM</text>
+<text font-family="Arial" font-size="9" fill="#0F6E56"
+      x="201" y="152" text-anchor="middle" dominant-baseline="central">Identity and auth</text>
+
+<rect x="262" y="118" width="106" height="44" rx="7" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.7"/>
+<text font-family="Arial" font-size="11" font-weight="700" fill="#085041"
+      x="315" y="136" text-anchor="middle" dominant-baseline="central">VPN / ZTNA</text>
+<text font-family="Arial" font-size="9" fill="#0F6E56"
+      x="315" y="152" text-anchor="middle" dominant-baseline="central">Access sessions</text>
+
+<!-- Row 3 (amber) y=174 -->
+<rect x="34"  y="174" width="106" height="44" rx="7" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.7"/>
+<text font-family="Arial" font-size="11" font-weight="700" fill="#633806"
+      x="87"  y="192" text-anchor="middle" dominant-baseline="central">Cloud audit</text>
+<text font-family="Arial" font-size="9" fill="#BA7517"
+      x="87"  y="208" text-anchor="middle" dominant-baseline="central">Infrastructure events</text>
+
+<rect x="148" y="174" width="106" height="44" rx="7" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.7"/>
+<text font-family="Arial" font-size="11" font-weight="700" fill="#633806"
+      x="201" y="192" text-anchor="middle" dominant-baseline="central">Data-access logs</text>
+<text font-family="Arial" font-size="9" fill="#BA7517"
+      x="201" y="208" text-anchor="middle" dominant-baseline="central">Regulated records</text>
+
+<rect x="262" y="174" width="106" height="44" rx="7" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.7"/>
+<text font-family="Arial" font-size="11" font-weight="700" fill="#633806"
+      x="315" y="192" text-anchor="middle" dominant-baseline="central">SaaS app logs</text>
+<text font-family="Arial" font-size="9" fill="#BA7517"
+      x="315" y="208" text-anchor="middle" dominant-baseline="central">Application audit trail</text>
+
+<!-- ══ Arrow: dashed box right edge → Decoder (horizontal at y=144) ══ -->
+<line x1="396" y1="144" x2="420" y2="144" stroke="#534AB7" stroke-width="1.8"
+      marker-end="url(#ah)"/>
+<!-- Label above arrow -->
+<text font-family="Arial" font-size="8" fill="#888780"
+      x="408" y="137" text-anchor="middle">raw log streams</text>
+
+<!-- ══════════════════════════════════════════════════════════
+     DECODER  (x=422..636, y=42..128)
+     ══════════════════════════════════════════════════════════ -->
+<rect x="422" y="42" width="214" height="88" rx="9"
+      fill="#EEEDFE" stroke="#534AB7" stroke-width="0.9"/>
+<text font-family="Arial" font-size="12" font-weight="700" fill="#3C3489"
+      x="529" y="62" text-anchor="middle" dominant-baseline="central">Decoder</text>
+<line x1="434" y1="72" x2="624" y2="72" stroke="#534AB7" stroke-width="0.4" opacity="0.5"/>
+<text font-family="Arial" font-size="9" fill="#534AB7"
+      x="529" y="84" text-anchor="middle" dominant-baseline="central">Log ingestion and normalization</text>
+<text font-family="Arial" font-size="9" fill="#534AB7"
+      x="529" y="98" text-anchor="middle" dominant-baseline="central">Common schema: identity, device,</text>
+<text font-family="Arial" font-size="9" fill="#534AB7"
+      x="529" y="111" text-anchor="middle" dominant-baseline="central">session, resource, action, confidence</text>
+<text font-family="Arial" font-size="8" fill="#534AB7" font-style="italic"
+      x="529" y="122" text-anchor="middle" dominant-baseline="central">(alert rules embedded per telemetry source)</text>
+
+<!-- ══ Arrow: Decoder → Alerting ══ -->
+<line x1="529" y1="132" x2="529" y2="154" stroke="#534AB7" stroke-width="1.5"
+      marker-end="url(#ah)"/>
+<text font-family="Arial" font-size="8" fill="#888780"
+      x="547" y="145" dominant-baseline="central">normalised events</text>
+
+<!-- ══════════════════════════════════════════════════════════
+     ALERTING  (x=422..636, y=156..298)
+     ══════════════════════════════════════════════════════════ -->
+<rect x="422" y="156" width="214" height="144" rx="9"
+      fill="#E6F1FB" stroke="#185FA5" stroke-width="0.9"/>
+<text font-family="Arial" font-size="12" font-weight="700" fill="#0C447C"
+      x="529" y="176" text-anchor="middle" dominant-baseline="central">Alerting</text>
+<line x1="434" y1="187" x2="624" y2="187" stroke="#185FA5" stroke-width="0.4" opacity="0.5"/>
+<text font-family="Arial" font-size="9" fill="#185FA5"
+      x="529" y="201" text-anchor="middle" dominant-baseline="central">Decoder-embedded rules evaluate each</text>
+<text font-family="Arial" font-size="9" fill="#185FA5"
+      x="529" y="215" text-anchor="middle" dominant-baseline="central">event against alert thresholds</text>
+
+<!-- Decision fork label -->
+<text font-family="Arial" font-size="9" font-weight="700" fill="#0C447C"
+      x="436" y="234" dominant-baseline="central">Alert warrants SOC attention?</text>
+
+<!-- YES branch label -->
+<text font-family="Arial" font-size="9" fill="#085041" font-weight="700"
+      x="436" y="252" dominant-baseline="central">YES &#x2713;  Enrich + notify SOC via email</text>
+<!-- NO branch label -->
+<text font-family="Arial" font-size="9" fill="#993C1D" font-weight="700"
+      x="436" y="271" dominant-baseline="central">NO &#x2717;  Suppress: log only, no escalation</text>
+
+<!-- Thin dividers between rows -->
+<line x1="434" y1="244" x2="624" y2="244" stroke="#185FA5" stroke-width="0.3" opacity="0.4" stroke-dasharray="3 3"/>
+<line x1="434" y1="262" x2="624" y2="262" stroke="#185FA5" stroke-width="0.3" opacity="0.4" stroke-dasharray="3 3"/>
+
+<!-- ══ Email notification branch (right side of Alerting, at y=252) ══ -->
+<path d="M636 252 L680 252 L680 184 L736 184"
+      fill="none" stroke="#185FA5" stroke-width="1.3"
+      stroke-dasharray="5 3" marker-end="url(#ah)"/>
+<!-- SOC notification box -->
+<rect x="738" y="160" width="124" height="48" rx="8"
+      fill="#E6F1FB" stroke="#185FA5" stroke-width="0.7"/>
+<!-- Simple envelope icon -->
+<rect x="750" y="170" width="18" height="13" rx="1"
+      fill="none" stroke="#185FA5" stroke-width="1"/>
+<path d="M750 170 L759 178 L768 170" fill="none" stroke="#185FA5" stroke-width="1"/>
+<text font-family="Arial" font-size="9" font-weight="700" fill="#0C447C"
+      x="776" y="174" dominant-baseline="central">SOC notification</text>
+<text font-family="Arial" font-size="8.5" fill="#185FA5"
+      x="776" y="183" dominant-baseline="central">Alert forwarded</text>
+<text font-family="Arial" font-size="8.5" fill="#185FA5"
+      x="776" y="194" dominant-baseline="central">via email</text>
+
+<!-- ══ Suppress branch (right side of Alerting, at y=271, goes to suppress box) ══ -->
+<path d="M636 271 L680 271 L680 336 L736 336"
+      fill="none" stroke="#993C1D" stroke-width="1"
+      stroke-dasharray="4 3" marker-end="url(#ah)"/>
+<!-- Suppressed box -->
+<rect x="738" y="316" width="124" height="40" rx="8"
+      fill="#FAECE7" stroke="#993C1D" stroke-width="0.7"/>
+<text font-family="Arial" font-size="9" font-weight="700" fill="#4A1B0C"
+      x="800" y="330" text-anchor="middle" dominant-baseline="central">Suppressed</text>
+<text font-family="Arial" font-size="8.5" fill="#993C1D"
+      x="800" y="346" text-anchor="middle" dominant-baseline="central">Logged only, no escalation</text>
+
+<!-- ══ Arrow: Alerting → Enrichment (YES path only) ══ -->
+<line x1="529" y1="302" x2="529" y2="322" stroke="#534AB7" stroke-width="1.5"
+      marker-end="url(#ah)"/>
+<text font-family="Arial" font-size="8" fill="#888780"
+      x="556" y="314" dominant-baseline="central">relevant alerts only</text>
+
+<!-- ══════════════════════════════════════════════════════════
+     ENRICHMENT  (x=422..636, y=324..444)
+     ══════════════════════════════════════════════════════════ -->
+<rect x="422" y="324" width="214" height="122" rx="9"
+      fill="#EEEDFE" stroke="#534AB7" stroke-width="0.9"/>
+<text font-family="Arial" font-size="12" font-weight="700" fill="#3C3489"
+      x="529" y="344" text-anchor="middle" dominant-baseline="central">Enrichment</text>
+<line x1="434" y1="354" x2="624" y2="354" stroke="#534AB7" stroke-width="0.4" opacity="0.5"/>
+<text font-family="Arial" font-size="9" fill="#534AB7" x="436" y="368" dominant-baseline="central">&#x25CF; V(a&#x1D62;, t) verification score per action</text>
+<text font-family="Arial" font-size="9" fill="#534AB7" x="436" y="382" dominant-baseline="central">&#x25CF; &#x03B8;(&#x03C1;&#x1D62;, t) resource sensitivity threshold</text>
+<text font-family="Arial" font-size="9" fill="#534AB7" x="436" y="396" dominant-baseline="central">&#x25CF; Risk weight c&#x1D62; and action priority</text>
+<text font-family="Arial" font-size="9" fill="#534AB7" x="436" y="410" dominant-baseline="central">&#x25CF; ATT&amp;CK technique mapping</text>
+<text font-family="Arial" font-size="9" fill="#534AB7" x="436" y="424" dominant-baseline="central">&#x25CF; Policy constraints and blast-radius class</text>
+<text font-family="Arial" font-size="9" fill="#534AB7" x="436" y="438" dominant-baseline="central">&#x25CF; Data sensitivity label and classification</text>
+
+<!-- ══ Arrow: Enrichment → Enriched Incident ══ -->
+<line x1="529" y1="448" x2="529" y2="466" stroke="#534AB7" stroke-width="1.5"
+      marker-end="url(#ah)"/>
+
+<!-- ══════════════════════════════════════════════════════════
+     ENRICHED INCIDENT  (x=422..636, y=468..548)
+     ══════════════════════════════════════════════════════════ -->
+<rect x="422" y="468" width="214" height="80" rx="9"
+      fill="#3C3489" stroke="#534AB7" stroke-width="0.9"/>
+<text font-family="Arial" font-size="12" font-weight="700" fill="#EEEDFE"
+      x="529" y="487" text-anchor="middle" dominant-baseline="central">Enriched incident</text>
+<line x1="434" y1="498" x2="624" y2="498" stroke="#AFA9EC" stroke-width="0.4" opacity="0.6"/>
+<text font-family="Arial" font-size="9" fill="#CECBF6"
+      x="529" y="511" text-anchor="middle" dominant-baseline="central">Who &#x00B7; From where &#x00B7; Against what</text>
+<text font-family="Arial" font-size="9" fill="#CECBF6"
+      x="529" y="525" text-anchor="middle" dominant-baseline="central">Trust score &#x00B7; Confidence &#x00B7; Policy constraints</text>
+
+<!-- ══ ROUTING: enriched incident → vertical trunk → 3 outputs ══ -->
+<!-- Right stub from enriched incident box -->
+<line x1="636" y1="508" x2="654" y2="508" stroke="#534AB7" stroke-width="1.3"/>
+<!-- Vertical trunk x=654, y=90..565 -->
+<line x1="654" y1="90" x2="654" y2="565" stroke="#534AB7" stroke-width="1.3"/>
+<!-- Horizontal arrows to each output -->
+<line x1="654" y1="90"  x2="656" y2="90"  stroke="#534AB7" stroke-width="1.3" marker-end="url(#ah)"/>
+<line x1="654" y1="440" x2="656" y2="440" stroke="#534AB7" stroke-width="1.3" marker-end="url(#ah)"/>
+<line x1="654" y1="565" x2="656" y2="565" stroke="#534AB7" stroke-width="1.3" marker-end="url(#ah)"/>
+
+<!-- ══ OUTPUT 1: Bounded autonomous response ══ -->
+<rect x="658" y="64" width="142" height="52" rx="8"
+      fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.8"/>
+<text font-family="Arial" font-size="10" font-weight="700" fill="#085041"
+      x="729" y="80" text-anchor="middle" dominant-baseline="central">Bounded autonomous</text>
+<text font-family="Arial" font-size="10" font-weight="700" fill="#085041"
+      x="729" y="94" text-anchor="middle" dominant-baseline="central">response</text>
+<text font-family="Arial" font-size="8.5" fill="#0F6E56"
+      x="729" y="108" text-anchor="middle" dominant-baseline="central">Edge blocks &#x00B7; Session revocation</text>
+
+<!-- ══ OUTPUT 2: vSOC analyst ══ -->
+<rect x="658" y="414" width="142" height="52" rx="8"
+      fill="#FAEEDA" stroke="#BA7517" stroke-width="0.8"/>
+<text font-family="Arial" font-size="10" font-weight="700" fill="#633806"
+      x="729" y="430" text-anchor="middle" dominant-baseline="central">vSOC analyst</text>
+<text font-family="Arial" font-size="10" font-weight="700" fill="#633806"
+      x="729" y="444" text-anchor="middle" dominant-baseline="central">decision surface</text>
+<text font-family="Arial" font-size="8.5" fill="#BA7517"
+      x="729" y="453" text-anchor="middle" dominant-baseline="central">Triage &#x00B7; Investigation</text>
+<text font-family="Arial" font-size="8.5" fill="#BA7517"
+      x="729" y="464" text-anchor="middle" dominant-baseline="central">Incident command</text>
+
+<!-- ══ OUTPUT 3: Compliance ══ -->
+<rect x="658" y="540" width="142" height="50" rx="8"
+      fill="#FAECE7" stroke="#993C1D" stroke-width="0.8"/>
+<text font-family="Arial" font-size="10" font-weight="700" fill="#4A1B0C"
+      x="729" y="556" text-anchor="middle" dominant-baseline="central">Compliance and</text>
+<text font-family="Arial" font-size="10" font-weight="700" fill="#4A1B0C"
+      x="729" y="570" text-anchor="middle" dominant-baseline="central">audit evidence</text>
+<text font-family="Arial" font-size="8.5" fill="#993C1D"
+      x="729" y="582" text-anchor="middle" dominant-baseline="central">Control outcomes &#x00B7; Audit records</text>
+
+<!-- ══ COLUMN HEADER — Outputs ══ -->
+<text font-family="Arial" font-size="10" font-weight="700" fill="#444441"
+      x="729" y="50" text-anchor="middle">Outputs</text>
+
+<!-- ══ FOOTER ══ -->
+<text font-family="Arial" font-size="8.5" fill="#888780"
+      x="350" y="603" text-anchor="middle">
+  Only alerts confirmed as relevant by the Alerting module proceed to Enrichment and SOC notification. All events remain in the audit log.
+</text>
+</svg>
+</body>
+</html>

@@ -1,0 +1,36 @@
+# MITRE ATTACK IFT Templates
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enteprise customers helping to protect their digital assets.",
+    "input": "Explain the Technique {technique_name} {technique_id} and how it works.",
+    "output": "This the description of the {technique_name} ({technique_id}) — {brief_description_of_technique}."
+}
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enteprise customers helping to protect their digital assets.",
+    "input": "What are the defensive measures against {technique_id}?",
+    "output": "The defensive measures against {technique_name} ({technique_id}) are {defensive_measures}."
+}
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enteprise customers helping to protect their digital assets.",
+    "input": "Which threat actors commonly use {technique_id}?",
+    "output": "Threat actors such as {group_list} are known to use {technique_name} ({technique_id}) in their campaigns."
+}
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enteprise customers helping to protect their digital assets.",
+    "input": "What subtechniques fall under {technique_id}?",
+    "output": "Subtechniques of {technique_name} ({technique_id}) include {subtechnique_list}."
+}
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enteprise customers helping to protect their digital assets.",
+    "input": "How can {technique_id} be detected in network traffic?",
+    "output": "{technique_name} ({technique_id}) can be detected in network traffic by monitoring {x_mitre_data_sources}."
+}
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enteprise customers helping to protect their digital assets.",
+    "input": "Which platforms are affected by {technique_id}?",
+    "output": "{technique_name} ({technique_id}) is applicable to {platform_list} environments."
+}
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enteprise customers helping to protect their digital assets.",
+    "input": "Which tactic does {technique_id} support?",
+    "output": "{technique_name} ({technique_id}) supports the {tactic_name} tactic, which focuses on {tactic_purpose}."
+}

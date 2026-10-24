@@ -1,0 +1,50 @@
+This is BibTeX, Version 0.99d (TeX Live 2024)
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
+The top-level auxiliary file: glaukopis_cs_v1.5.aux
+The style file: elsarticle-harv.bst
+Database file #1: glaukopis_cs_v1.5.bib
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+Warning--empty pages in liu2024cyberbench
+Warning--empty pages in wei2022flan
+You've used 30 entries,
+            2990 wiz_defined-function locations,
+            803 strings with 13495 characters,
+and the built_in function-call counts, 26456 in all, are:
+= -- 1879
+> -- 1596
+< -- 20
++ -- 610
+- -- 576
+* -- 3143
+:= -- 3854
+add.period$ -- 92
+call.type$ -- 30
+change.case$ -- 335
+chr.to.int$ -- 28
+cite$ -- 32
+duplicate$ -- 1759
+empty$ -- 1542
+format.name$ -- 658
+if$ -- 4859
+int.to.chr$ -- 3
+int.to.str$ -- 1
+missing$ -- 377
+newline$ -- 167
+num.names$ -- 120
+pop$ -- 650
+preamble$ -- 1
+purify$ -- 307
+quote$ -- 0
+skip$ -- 618
+stack$ -- 0
+substring$ -- 848
+swap$ -- 1494
+text.length$ -- 12
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 267
+warning$ -- 2
+while$ -- 128
+width$ -- 0
+write$ -- 448
+(There were 2 warnings)

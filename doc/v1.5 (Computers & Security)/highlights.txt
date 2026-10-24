@@ -1,0 +1,11 @@
+Highlights
+
+Glaukopis: Auditable Graph-Grounded Instruction Tuning for Cyber Threat Intelligence
+
+Peter J. Worth Jr., Ionut Cardei, Salman Ahmad, Muhammad Mamoon Khan
+
+- Sophia materializes CTI instruction targets by executing typed graph queries
+- Retained checkpoints expose task interference hidden by a single final score
+- Balanced attribution aggregation: 65.0 vs. 57.7 base, all gain in aligned tasks
+- Item-level audit: attribution collapse is semantic, not a parsing artifact
+- Gold-fact overlap, n-gram screening and cost accounting are quantified

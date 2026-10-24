@@ -1,0 +1,340 @@
+\begin{thebibliography}{10}
+\providecommand{\url}[1]{{#1}}
+\providecommand{\urlprefix}{URL }
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{DOI~\discretionary{}{}{}#1}\else
+  \providecommand{\doi}{DOI~\discretionary{}{}{}\begingroup
+  \urlstyle{rm}\Url}\fi
+
+\bibitem{alam2025athenabench}
+Alam, M.T., Bhusal, D., Ahmad, S., Rastogi, N., Worth~Jr., P.: {AthenaBench}: A
+  dynamic benchmark for evaluating {LLMs} in cyber threat intelligence.
+\newblock In: 2025 Annual Computer Security Applications Conference Workshops
+  (ACSAC Workshops), pp. 443--450 (2025).
+\newblock \doi{10.1109/ACSACW69556.2025.00072}.
+\newblock {Preprint: arXiv:2511.01144}
+
+\bibitem{alam2024ctibench}
+Alam, M.T., Bhusal, D., Nguyen, L., Rastogi, N.: {CTIBench}: A benchmark for
+  evaluating {LLMs} in cyber threat intelligence.
+\newblock In: Advances in Neural Information Processing Systems, vol.~37, pp.
+  50805--50825 (2024).
+\newblock \doi{10.52202/079017-1607}
+
+\bibitem{alam2026minerva}
+Alam, M.T., Piplai, A., Cardei, I., Rastogi, N., Worth~Jr., P.J.: Minerva:
+  Reinforcement learning with verifiable rewards for cyber threat intelligence
+  {LLMs} (2026).
+\newblock \urlprefix\url{https://arxiv.org/abs/2602.00513}.
+\newblock {arXiv preprint arXiv:2602.00513 (v3, May 2026)}
+
+\bibitem{glaukopis2026software}
+{Athena Security Group, LLC}: {Glaukopis}: Source-available software, training
+  configuration, and evaluation utilities (2026).
+\newblock \urlprefix\url{https://github.com/Athena-Software-Group/Glaukopis}.
+\newblock {Software repository, commit
+  c4d3a2f45e0a08672c87c2b46c3c4be109440c38; PolyForm Noncommercial 1.0.0
+  license}
+
+\bibitem{bhatt2024cyberseceval2}
+Bhatt, M., Chennabasappa, S., Li, Y., Nikolaidis, C., Song, D., Wan, S., Ahmad,
+  F., Aschermann, C., Chen, Y., Kapil, D., Molnar, D., Whitman, S., Saxe, J.:
+  {CyberSecEval} 2: A wide-ranging cybersecurity evaluation suite for large
+  language models (2024).
+\newblock \urlprefix\url{https://arxiv.org/abs/2404.13161}.
+\newblock {arXiv preprint arXiv:2404.13161}
+
+\bibitem{bhatt2023cyberseceval}
+Bhatt, M., Chennabasappa, S., Nikolaidis, C., Wan, S., Evtimov, I., Gabi, D.,
+  Song, D., Ahmad, F., Aschermann, C., Fontana, L., et~al.: Purple {Llama}
+  {CyberSecEval}: A secure coding benchmark for language models (2023).
+\newblock \urlprefix\url{https://arxiv.org/abs/2312.04724}.
+\newblock {arXiv preprint arXiv:2312.04724}
+
+\bibitem{brown2020gpt3}
+Brown, T.B., Mann, B., Ryder, N., Subbiah, M., Kaplan, J., Dhariwal, P.,
+  Neelakantan, A., Shyam, P., Sastry, G., Askell, A., et~al.: Language models
+  are few-shot learners.
+\newblock In: Advances in Neural Information Processing Systems, vol.~33, pp.
+  1877--1901 (2020)
+
+\bibitem{cheng2024ctinexus}
+Cheng, Y., Bajaber, O., Tsegai, S.A., Song, D., Gao, P.: {CTINexus}: Automatic
+  cyber threat intelligence knowledge graph construction using large language
+  models (2024).
+\newblock \urlprefix\url{https://arxiv.org/abs/2410.21060}.
+\newblock {arXiv preprint arXiv:2410.21060 (v2, April 2025)}
+
+\bibitem{chung2024flant5}
+Chung, H.W., Hou, L., Longpre, S., Zoph, B., Tay, Y., Fedus, W., Li, Y., Wang,
+  X., Dehghani, M., Brahma, S., et~al.: Scaling instruction-finetuned language
+  models.
+\newblock Journal of Machine Learning Research \textbf{25}(70), 1--53 (2024).
+\newblock \urlprefix\url{https://jmlr.org/papers/v25/23-0870.html}
+
+\bibitem{comanici2025gemini25}
+Comanici, G., Bieber, E., Schaekermann, M., Pasupat, I., Sachdeva, N., Dhillon,
+  I., Blistein, M., Ram, O., Zhang, D., Rosen, E., et~al.: {Gemini 2.5}:
+  Pushing the frontier with advanced reasoning, multimodality, long context,
+  and next generation agentic capabilities (2025).
+\newblock \urlprefix\url{https://arxiv.org/abs/2507.06261}.
+\newblock {arXiv preprint arXiv:2507.06261. Model card:
+  https://storage.googleapis.com/deepmind-media/Model-Cards/Gemini-2-5-Flash-Model-Card.pdf.
+  Evaluated here as \texttt{gemini-2.5-flash} in May 2026}
+
+\bibitem{mitreCVE}
+{CVE Program}: Common vulnerabilities and exposures ({CVE}) (2026).
+\newblock \urlprefix\url{https://www.cve.org/}.
+\newblock {Accessed September 2026}
+
+\bibitem{deason2025cybersoceval}
+Deason, L., Bali, A., Bejean, C., Bolocan, D., Crnkovich, J., Croitoru, I.,
+  Durai, K., Midler, C., Miron, C., Molnar, D., Moon, B., Ostarcevic, B.,
+  Peltea, A., Rosenberg, M., Sandu, C., Saputkin, A., Shah, S., Stan, D.,
+  Szocs, E., Wan, S., Whitman, S., Krasser, S., Saxe, J.: {CyberSOCEval}:
+  Benchmarking {LLMs} capabilities for malware analysis and threat intelligence
+  reasoning (2025).
+\newblock \urlprefix\url{https://arxiv.org/abs/2509.20166}.
+\newblock {arXiv preprint arXiv:2509.20166 (v2, November 2025)}
+
+\bibitem{deepseek2025v32exp}
+{DeepSeek-AI}: {DeepSeek-V3.2-Exp}: Boosting long-context efficiency with
+  {DeepSeek} sparse attention (2025).
+\newblock
+  \urlprefix\url{https://github.com/deepseek-ai/DeepSeek-V3.2-Exp/blob/main/DeepSeek_V3_2.pdf}.
+\newblock {Technical report distributed with the open-weight release, September
+  2025. Evaluated here as \texttt{deepseek-ai/DeepSeek-V3.2-Exp} through a
+  hosted inference provider in May 2026}
+
+\bibitem{deepseek2026v4}
+{DeepSeek-AI}: {DeepSeek-V4} technical report (2026).
+\newblock
+  \urlprefix\url{https://huggingface.co/deepseek-ai/DeepSeek-V4-Pro/blob/main/DeepSeek_V4.pdf}.
+\newblock {Technical report distributed with the open-weight release of
+  DeepSeek-V4-Pro (1.6T total / 49B active parameters) and DeepSeek-V4-Flash,
+  April 2026. Evaluated here as \texttt{deepseek-ai/DeepSeek-V4-Pro} through a
+  hosted inference provider in May 2026}
+
+\bibitem{efron1993bootstrap}
+Efron, B., Tibshirani, R.J.: An Introduction to the Bootstrap.
+\newblock Chapman \& Hall, New York (1993)
+
+\bibitem{fieblinger2024actionable}
+Fieblinger, R., Alam, M.T., Rastogi, N.: Actionable cyber threat intelligence
+  using knowledge graphs and large language models (2024).
+\newblock \urlprefix\url{https://arxiv.org/abs/2407.02528}.
+\newblock {arXiv preprint arXiv:2407.02528; presented at the 6th Workshop on
+  Attackers and Cyber-Crime Operations (WACCO)}
+
+\bibitem{first2019cvss}
+{FIRST.Org, Inc.}: Common vulnerability scoring system v3.1: Specification
+  document (2019).
+\newblock
+  \urlprefix\url{https://www.first.org/cvss/v3.1/specification-document}
+
+\bibitem{google2025gemini3flash}
+{Google DeepMind}: {Gemini 3 Flash} model card (2025).
+\newblock
+  \urlprefix\url{https://deepmind.google/models/model-cards/gemini-3-flash/}.
+\newblock {Model card for the Gemini 3 Flash preview released 17 December 2025.
+  Evaluated here as \texttt{gemini-3-flash-preview} in May 2026}
+
+\bibitem{grattafiori2024llama3}
+Grattafiori, A., Dubey, A., Jauhri, A., Pandey, A., Kadian, A., Al-Dahle, A.,
+  Letman, A., Mathur, A., Schelten, A., Vaughan, A., et~al.: The {Llama 3} herd
+  of models (2024).
+\newblock \urlprefix\url{https://arxiv.org/abs/2407.21783}.
+\newblock {arXiv preprint arXiv:2407.21783}
+
+\bibitem{groeneveld2024olmo}
+Groeneveld, D., Beltagy, I., Walsh, P., Bhagia, A., Kinney, R., Tafjord, O.,
+  Jha, A.H., Ivison, H., Magnusson, I., Wang, Y., et~al.: {OLMo}: Accelerating
+  the science of language models.
+\newblock In: Proceedings of the 62nd Annual Meeting of the Association for
+  Computational Linguistics (Volume 1: Long Papers), pp. 15789--15809 (2024).
+\newblock \doi{10.18653/v1/2024.acl-long.841}
+
+\bibitem{gururangan2020dontstop}
+Gururangan, S., Marasovi{\'c}, A., Swayamdipta, S., Lo, K., Beltagy, I.,
+  Downey, D., Smith, N.A.: Don't stop pretraining: Adapt language models to
+  domains and tasks.
+\newblock In: Proceedings of the 58th Annual Meeting of the Association for
+  Computational Linguistics, pp. 8342--8360 (2020).
+\newblock \doi{10.18653/v1/2020.acl-main.740}
+
+\bibitem{ji2024sevenllm}
+Ji, H., Yang, J., Chai, L., Wei, C., Yang, L., Duan, Y., Wang, Y., Sun, T.,
+  Guo, H., Li, T., Ren, C., Li, Z.: {SEvenLLM}: Benchmarking, eliciting, and
+  enhancing abilities of large language models in cyber threat intelligence
+  (2024).
+\newblock \urlprefix\url{https://arxiv.org/abs/2405.03446}.
+\newblock {arXiv preprint arXiv:2405.03446}
+
+\bibitem{kassianik2025foundationsec}
+Kassianik, P., Saglam, B., Chen, A., Nelson, B., Vellore, A., Aufiero, M.,
+  Burch, F., Kedia, D., Zohary, A., Weerawardhena, S., et~al.:
+  {Llama-3.1-FoundationAI-SecurityLLM-Base-8B} technical report (2025).
+\newblock \urlprefix\url{https://arxiv.org/abs/2504.21039}.
+\newblock {arXiv preprint arXiv:2504.21039. The instruction-tuned variant
+  evaluated here is \texttt{fdtn-ai/Foundation-Sec-8B-Instruct} (Hugging Face,
+  2025)}
+
+\bibitem{kwon2023vllm}
+Kwon, W., Li, Z., Zhuang, S., Sheng, Y., Zheng, L., Yu, C.H., Gonzalez, J.E.,
+  Zhang, H., Stoica, I.: Efficient memory management for large language model
+  serving with {PagedAttention}.
+\newblock In: Proceedings of the 29th ACM Symposium on Operating Systems
+  Principles, pp. 611--626 (2023).
+\newblock \doi{10.1145/3600006.3613165}
+
+\bibitem{lambert2024tulu3}
+Lambert, N., Morrison, J., Pyatkin, V., Huang, S., Ivison, H., et~al.: {T\"ulu}
+  3: Pushing frontiers in open language model post-training (2024).
+\newblock \urlprefix\url{https://arxiv.org/abs/2411.15124}.
+\newblock {arXiv preprint arXiv:2411.15124}
+
+\bibitem{levi2025cyberpal}
+Levi, M., Allouche, Y., Ohayon, D., Puzanov, A.: {CyberPal.AI}: Empowering
+  {LLMs} with expert-driven cybersecurity instructions.
+\newblock Proceedings of the AAAI Conference on Artificial Intelligence
+  \textbf{39}(23), 24402--24412 (2025).
+\newblock \doi{10.1609/aaai.v39i23.34618}
+
+\bibitem{levi2025toward}
+Levi, M., Ohayon, D., Blobstein, A., Sagi, R., Molloy, I., Allouche, Y.: Toward
+  cybersecurity-expert small language models (2025).
+\newblock \urlprefix\url{https://arxiv.org/abs/2510.14113}.
+\newblock {arXiv preprint arXiv:2510.14113 (v2, July 2026)}
+
+\bibitem{li2023seceval}
+Li, G., Li, Y., Wang, G., Yang, H., Yu, Y.: {SecEval}: A comprehensive
+  benchmark for evaluating cybersecurity knowledge of foundation models (2023).
+\newblock \urlprefix\url{https://github.com/XuanwuAI/SecEval}.
+\newblock {Dataset and code}
+
+\bibitem{li2024wmdp}
+Li, N., Pan, A., Gopal, A., Yue, S., Berrios, D., Gatti, A., Li, J.D.,
+  Dombrowski, A.K., Goel, S., Phan, L., et~al.: The {WMDP} benchmark: Measuring
+  and reducing malicious use with unlearning.
+\newblock In: Proceedings of the 41st International Conference on Machine
+  Learning (ICML), \emph{Proceedings of Machine Learning Research}, vol. 235
+  (2024).
+\newblock \urlprefix\url{https://arxiv.org/abs/2403.03218}.
+\newblock {arXiv:2403.03218}
+
+\bibitem{li2023kctiaa}
+Li, Z.X., Li, Y.J., Liu, Y.W., Liu, C., Zhou, N.X.: {K-CTIAA}: Automatic
+  analysis of cyber threat intelligence based on a knowledge graph.
+\newblock Symmetry \textbf{15}(2), 337 (2023).
+\newblock \doi{10.3390/sym15020337}
+
+\bibitem{liu2024cyberbench}
+Liu, Z., Shi, J., Buford, J.F.: {CyberBench}: A multi-task benchmark for
+  evaluating large language models in cybersecurity.
+\newblock In: AAAI Workshop on Artificial Intelligence for Cyber Security
+  (AICS) (2024).
+\newblock
+  \urlprefix\url{https://zefang-liu.github.io/publication/liu2024cyberbench}
+
+\bibitem{openai2025gpt52}
+{OpenAI}: Update to {GPT-5} system card: {GPT-5.2} (2025).
+\newblock
+  \urlprefix\url{https://openai.com/index/gpt-5-system-card-update-gpt-5-2}.
+\newblock {System card, 11 December 2025. Evaluated here as \texttt{gpt-5.2} at
+  the default (medium) reasoning effort in May 2026}
+
+\bibitem{openai2026gpt55}
+{OpenAI}: Introducing {GPT-5.5} (2026).
+\newblock \urlprefix\url{https://openai.com/index/introducing-gpt-5-5/}.
+\newblock {Release announcement, 23 April 2026, with accompanying system card
+  at https://openai.com/index/gpt-5-5-system-card/. Evaluated here as
+  \texttt{gpt-5.5} through the provider API in May 2026}
+
+\bibitem{ouyang2022instructgpt}
+Ouyang, L., Wu, J., Jiang, X., Almeida, D., Wainwright, C., Mishkin, P., Zhang,
+  C., Agarwal, S., Slama, K., Ray, A., et~al.: Training language models to
+  follow instructions with human feedback.
+\newblock In: Advances in Neural Information Processing Systems, vol.~35, pp.
+  27730--27744 (2022)
+
+\bibitem{qwen2025qwen25}
+{Qwen Team}: {Qwen2.5} technical report (2025).
+\newblock \urlprefix\url{https://arxiv.org/abs/2412.15115}.
+\newblock {arXiv preprint arXiv:2412.15115 (v2, January 2025)}
+
+\bibitem{rajbhandari2020zero}
+Rajbhandari, S., Rasley, J., Ruwase, O., He, Y.: {ZeRO}: Memory optimizations
+  toward training trillion parameter models.
+\newblock In: SC20: International Conference for High Performance Computing,
+  Networking, Storage and Analysis, pp. 1--16 (2020).
+\newblock \doi{10.1109/SC41405.2020.00024}
+
+\bibitem{sarhan2021opencykg}
+Sarhan, I., Spruit, M.: {Open-CyKG}: An open cyber threat intelligence
+  knowledge graph.
+\newblock Knowledge-Based Systems \textbf{233}, 107524 (2021).
+\newblock \doi{10.1016/j.knosys.2021.107524}
+
+\bibitem{strom2018mitre}
+Strom, B.E., Applebaum, A., Miller, D.P., Nickels, K.C., Pennington, A.G.,
+  Thomas, C.B.: {MITRE ATT\&CK}: Design and philosophy.
+\newblock Tech. Rep. MP180360, The MITRE Corporation (2018).
+\newblock {Originally published July 2018; revised March 2020 (MP180360R1)}
+
+\bibitem{taori2023alpaca}
+Taori, R., Gulrajani, I., Zhang, T., Dubois, Y., Li, X., Guestrin, C., Liang,
+  P., Hashimoto, T.B.: {Stanford Alpaca}: An instruction-following {LLaMA}
+  model (2023).
+\newblock \urlprefix\url{https://github.com/tatsu-lab/stanford_alpaca}.
+\newblock {Software and dataset}
+
+\bibitem{mitreCAPEC}
+{The MITRE Corporation}: Common attack pattern enumeration and classification
+  ({CAPEC}) (2026).
+\newblock \urlprefix\url{https://capec.mitre.org/}.
+\newblock {Accessed September 2026}
+
+\bibitem{mitreCWE}
+{The MITRE Corporation}: Common weakness enumeration ({CWE}) (2026).
+\newblock \urlprefix\url{https://cwe.mitre.org/}.
+\newblock {Accessed September 2026}
+
+\bibitem{tihanyi2024cybermetric}
+Tihanyi, N., Ferrag, M.A., Jain, R., Bisztray, T., Debbah, M.: {CyberMetric}: A
+  benchmark dataset based on retrieval-augmented generation for evaluating
+  {LLMs} in cybersecurity knowledge.
+\newblock In: 2024 IEEE International Conference on Cyber Security and
+  Resilience (CSR), pp. 296--302 (2024).
+\newblock \doi{10.1109/CSR61664.2024.10679494}
+
+\bibitem{wang2024mmlupro}
+Wang, Y., Ma, X., Zhang, G., Ni, Y., Chandra, A., Guo, S., Ren, W., Arulraj,
+  A., He, X., Jiang, Z., Li, T., Ku, M., Wang, K., Zhuang, A., Fan, R., Yue,
+  X., Chen, W.: {MMLU-Pro}: A more robust and challenging multi-task language
+  understanding benchmark.
+\newblock In: Advances in Neural Information Processing Systems, vol.~37, pp.
+  95266--95290 (2024).
+\newblock \doi{10.52202/079017-3018}
+
+\bibitem{wei2022flan}
+Wei, J., Bosma, M., Zhao, V.Y., Guu, K., Yu, A.W., Lester, B., Du, N., Dai,
+  A.M., Le, Q.V.: Finetuned language models are zero-shot learners.
+\newblock In: International Conference on Learning Representations (ICLR)
+  (2022).
+\newblock \urlprefix\url{https://openreview.net/forum?id=gEZrGCozdqR}
+
+\bibitem{yang2025qwen3}
+Yang, A., Li, A., Yang, B., Zhang, B., Hui, B., Zheng, B., Yu, B., Gao, C.,
+  Huang, C., Lv, C., et~al.: {Qwen3} technical report (2025).
+\newblock \urlprefix\url{https://arxiv.org/abs/2505.09388}.
+\newblock {arXiv preprint arXiv:2505.09388}
+
+\bibitem{zheng2024llamafactory}
+Zheng, Y., Zhang, R., Zhang, J., Ye, Y., Luo, Z.: {LlamaFactory}: Unified
+  efficient fine-tuning of 100+ language models.
+\newblock In: Proceedings of the 62nd Annual Meeting of the Association for
+  Computational Linguistics (Volume 3: System Demonstrations), pp. 400--410
+  (2024).
+\newblock \doi{10.18653/v1/2024.acl-demos.38}
+
+\end{thebibliography}

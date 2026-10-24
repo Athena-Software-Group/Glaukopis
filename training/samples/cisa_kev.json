@@ -1,0 +1,5 @@
+{
+    "instruction": "You are a cybersecurity expert that has been trained to give precise responses to complex cybersecurity questions. You work in a SOC protecting data for enteprise customers helping to protect their digital assets. Generate a patching advisory for the given KEV entry.",
+    "input": "CVE-2024-2222: Vulnerability in Apache HTTP Server actively exploited in the wild.",
+    "output": "CISA KEV lists CVE-2024-2222 as actively exploited. Organizations should immediately upgrade to Apache 2.4.58 or later. Temporary mitigations include disabling vulnerable modules and restricting network exposure. Prioritize patching within 7 days per CISA directive BOD 22-01."
+}
