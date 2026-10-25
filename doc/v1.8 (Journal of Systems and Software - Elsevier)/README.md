@@ -15,7 +15,7 @@ Created 2026-10-25 from `doc/v1.7 (Intl Journal of IS - Springer)/glaukopis_ijis
 | `build.sh` | Builds the article, then the supplement (`pdflatex → bibtex → pdflatex ×2` each). |
 | `highlights.txt` | Five highlights (≤ 85 characters), for separate upload; not typeset in the PDF. |
 | `VITAE.md` → `vitae.docx` | Author biographies (≤ 100 words each), as the guide requires. Sources: the Athena leadership page and Cardei's FAU pages. |
-| `DECLARATION_OF_INTEREST.md` → `Declaration_of_Interest_Statement.docx` | Separate Declaration of Interest Statement in Elsevier's declarations-tool format, to upload as "Declaration of Interest Statement". Three highlighted [CONFIRM] items (equity, and Cardei's relationship type) must be resolved first. |
+| `DECLARATION_OF_INTEREST.md` → `Declaration_of_Interest_Statement.docx` | Separate Declaration of Interest Statement in Elsevier's declarations-tool format, to upload as "Declaration of Interest Statement". Complete: Worth (employment, board, shares); Cardei (advisory, incentive options). |
 | `COVER_LETTER_JSS.md` | Cover letter. The "Prior history" paragraph is marked for you to confirm. |
 | `SUBMISSION_CHECKLIST_JSS.md` | Guide-by-guide check, files to upload, author actions. |
 | `SINGLE_STAGE_BASELINE.md` | The single-stage-baseline framing, with the record behind it. |

@@ -46,18 +46,19 @@
 - `glaukopis_jss_supplementary.pdf`, as Supplementary material
 - `highlights.txt`
 - `vitae.docx`
-- `Declaration_of_Interest_Statement.docx` (after resolving its [CONFIRM] items), or the tool's own Word output
+- `Declaration_of_Interest_Statement.docx`, or the tool's own Word output
 - the cover letter
 
 ## Two Editorial Manager steps explained
 
 **Article type.** This is not about layout. Editorial Manager's first screen asks which category of contribution you are submitting, from a drop-down of the journal's types: research papers, the *In Practice* track, *New Ideas and Trends Papers*, and special-issue ("VSI: …") entries. Choose the regular research-paper entry; its exact label is whatever the drop-down shows. The two-column layout is a separate matter: the PDF is already two-column, and the guide permits that for LaTeX submissions.
 
-**Declarations tool.** A ready statement is in `Declaration_of_Interest_Statement.docx` (source: `DECLARATION_OF_INTEREST.md`), in the tool's format. Resolve its three highlighted [CONFIRM] items before uploading. Elsevier asks every author group to fill in a short web form, the *Declaration of Interest tool*. Editorial Manager links it during submission, and it is also reachable from Elsevier's "declaration of competing interests" author page. You tick the categories that apply and type a short statement; the tool then produces a Word file, which you upload at the "attach files" step as the item type *Declaration of Interest Statement*. The content must match the manuscript's "Declaration of competing interest" section:
+**Declarations tool.** A ready statement is in `Declaration_of_Interest_Statement.docx` (source: `DECLARATION_OF_INTEREST.md`), in the tool's format. Elsevier asks every author group to fill in a short web form, the *Declaration of Interest tool*. Editorial Manager links it during submission, and it is also reachable from Elsevier's "declaration of competing interests" author page. You tick the categories that apply and type a short statement; the tool then produces a Word file, which you upload at the "attach files" step as the item type *Declaration of Interest Statement*. The content must match the manuscript's "Declaration of competing interest" section:
 
 - **Funding:** Athena Software Group Inc. funded the work and develops Glaukopis.
-- **Employment / board:** P. J. Worth Jr. is founder, president, CEO and chairman of Athena Software Group Inc.; I. Cardei is its Chief Scientist (choose employment or consulting/advisory).
-- **Stock ownership:** tick it if either author holds equity in Athena. The manuscript does not currently say so. If you tick it, add "and holds equity in" to the manuscript's declaration so the two match.
+- **Employment / board:** P. J. Worth Jr. is founder, president, CEO and chairman of Athena Software Group Inc.
+- **Consulting or advisory:** I. Cardei advises the company as its Chief Scientist.
+- **Equity or stocks:** tick for both authors. Worth holds shares; Cardei holds incentive options. The manuscript states both.
 - **Other relationships:** P. J. Worth Jr. is a co-author of the AthenaBench benchmark used in the evaluation.
 
 ## Author actions before upload
