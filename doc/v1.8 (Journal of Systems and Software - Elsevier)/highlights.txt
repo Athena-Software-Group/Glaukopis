@@ -1,6 +1,6 @@
 Highlights
 
-Glaukopis: Traceable Instruction Data and Checkpoint-Level Diagnosis of Capability Regressions in a Cyber Threat Intelligence Language Model
+Glaukopis: Layered Instruction Fine-Tuning for Cyber Threat Intelligence LLM Training
 
 Peter J. Worth Jr., Ionut Cardei
 

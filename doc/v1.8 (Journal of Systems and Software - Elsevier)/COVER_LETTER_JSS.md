@@ -2,7 +2,7 @@
 
 Dear Editors-in-Chief,
 
-We submit the manuscript "Glaukopis: Traceable Instruction Data and Checkpoint-Level Diagnosis of Capability Regressions in a Cyber Threat Intelligence Language Model" for consideration as a research paper in the *Journal of Systems and Software*.
+We submit the manuscript "Glaukopis: Layered Instruction Fine-Tuning for Cyber Threat Intelligence LLM Training" for consideration as a research paper in the *Journal of Systems and Software*.
 
 **Fit with the journal.** The article is a software-engineering study of a machine-learning system, the topic the journal lists as *Software Engineering for AI systems*. Its subject is the pipeline that produces a domain-specialized language model:
 
