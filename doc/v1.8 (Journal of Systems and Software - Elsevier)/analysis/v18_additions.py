@@ -10,9 +10,10 @@ Reads only existing artifacts (no training, no inference):
 Needs openpyxl for the workbook part.
 
 Outputs (printed and written to data/v18_additions.json):
-  1. Table "single-stage vs chain configuration": rows, row-passes and characters per run  -> budget
-  2. Table "32B single-stage reference": v7 single-stage, chain final, and both base evaluations -> ref32
-  3. Table "14B design history": single-pass and phased 14B releases                          -> hist14
+  1. Training budgets of the v7 single-stage run, the v21 chain, and a single pass over its shards -> budget
+  2. 32B v7 single-stage run, chain final, and both base evaluations (Section 6.3 paragraph
+     "Earlier single-pass releases": 65.8 vs 66.5 A_Cl)                                          -> ref32
+  3. 14B single-pass and phased releases (same paragraph: 56.1-60.0 vs 60.6-64.9 A_Cl)            -> hist14
 """
 import json, os, sys
 

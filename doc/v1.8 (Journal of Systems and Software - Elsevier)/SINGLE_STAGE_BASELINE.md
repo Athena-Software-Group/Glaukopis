@@ -2,6 +2,33 @@
 
 *Prepared 2026-10-25 for the v1.8 (Journal of Systems and Software) submission. Every number below is reproduced by `analysis/v18_additions.py` (output in `data/v18_additions.json`) from the results workbook and the training shards, or is quoted from the v1.7 manuscript.*
 
+## Decision (2026-10-25, after this assessment)
+
+The authors chose to treat the **first stage of the build, the Core checkpoint, as the study's single-stage baseline**. It is a model fine-tuned once on the core shards, and it is retained and evaluated with the same harness and per-item records as every later checkpoint. v1.8 now:
+
+- defines this baseline in §6.3;
+- reports the full chain against it with paired item-level intervals in §8.3;
+- answers RQ4 from it.
+
+The later stages add **+3.2** points to the three-benchmark mean (paired interval +2.2 to +4.2) and change the following, all with intervals that exclude zero:
+
+| Measure | Change |
+|---|---|
+| CyberSOCEval malware, strict | +18.6 |
+| CyberSOCEval threat intelligence, strict | +7.9 |
+| CKT | +2.7 |
+| Balanced AthenaBench score | −2.3 |
+| Canonical TAA | −15.0 |
+| VSP | −5.3 |
+| RCM | −2.7 |
+| MMLU-Pro | −1.8 |
+
+The earlier single-pass releases appear only as one paragraph of design history. The matched-control launcher stays in the repository (`931a087`) but is not used by the paper.
+
+**What this framing does and does not answer.** It answers "what do the later stages add over a single-stage model?" with paired statistics. It does not answer Reviewer 2's literal request, a single-stage control "trained on an equivalent total token budget or update count", because the Core checkpoint never saw the TAA and CSE shards. v1.8 says this in one sentence, in the internal-validity threat (§11), and lists a single pass over all four shards as a future control (§12). If a reviewer or the committee presses the point, the launcher below runs that control.
+
+The rest of this document is the assessment as written before the decision.
+
 ## Short answer
 
 **Not yet.** v1.7, and v1.8 as drafted, answer the point by no longer claiming that staging helps and by reporting the single-stage runs the project already had. That removes the over-claim but leaves the line of attack open:
@@ -139,25 +166,12 @@ New files:
 
 None of these is committed yet.
 
-## Putting the result into v1.8
-
-The manuscript marks every place that changes with `MATCHED-CONTROL` or `STAGING-CLAIM` comments:
-
-- the abstract's second-to-last sentence
-- the introduction's "results should be read accordingly" paragraph
-- Section 6.3 (paragraph "The matched control"; Table 7 header; add a row to Table 8 and a full-suite row to Table 13)
-- the RQ4 answer (§10.1)
-- lesson L7 (§10.2)
-- the internal-validity threat (§11)
-- the conclusion's second paragraph
-- the last highlight
-
 ## Corrections already made in v1.8 to how v1.7 described the 32B run
 
 - v1.7's table caption called the run "one pass"; it was **one stage of three epochs**.
-- v1.7 said the run's "update budget … is comparable to the staged chain's". That holds only for total rows (544,596 vs ≈503,000). It saw about twice the CTI rows and almost no general data. v1.8 states this in a configuration table (Table 7).
+- v1.7 said the run's "update budget … is comparable to the staged chain's". That holds only for total rows (544,596 vs ≈503,000). It saw about twice the CTI rows and almost no general data. v1.8 drops the "comparable budget" claim; §6.3 describes the run as one stage of three epochs on an earlier corpus, as design history only.
 
-## Recommendation
+## Recommendation (before the decision above)
 
 Run the primary control (lr 1e-5) before submitting to JSS. Add the sensitivity run if the budget allows.
 

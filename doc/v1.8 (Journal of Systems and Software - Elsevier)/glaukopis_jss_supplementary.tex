@@ -1,0 +1,129 @@
+%% Supplementary material for the JSS submission (v1.8). Formerly Appendices A--C of glaukopis_jss.tex.
+%% Build after the article (it reads glaukopis_jss.aux for cross-references): bash build.sh builds both.
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[margin=25mm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs,array,tabularx}
+\renewcommand{\tabularxcolumn}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
+\usepackage[authoryear]{natbib}
+\usepackage{xr-hyper}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xurl}
+\externaldocument[M-]{glaukopis_jss}
+\newcommand{\code}[1]{\path{#1}}
+\renewcommand{\thesection}{S\arabic{section}}
+\renewcommand{\thetable}{S\arabic{table}}
+\setlength{\emergencystretch}{2em}
+
+\title{Supplementary material for\\``Glaukopis: Traceable Instruction Data and Checkpoint-Level Diagnosis of Capability Regressions in a Cyber Threat Intelligence Language Model''}
+\author{Peter J. Worth Jr.\ and Ionut Cardei\\[2pt]
+\small Department of Electrical Engineering and Computer Science, Florida Atlantic University, Boca Raton, FL, USA\\
+\small Athena Software Group Inc., West Palm Beach, FL, USA\\
+\small Corresponding author: Peter J. Worth Jr., \texttt{pworthjr@athenasecuritygrp.com}}
+\date{Submitted to the \emph{Journal of Systems and Software}}
+
+\begin{document}
+\maketitle
+
+\noindent This file accompanies the article. Section, table, and figure numbers without an ``S'' prefix refer to the article. Section~\ref{app:benchmarks} describes the three security evaluation suites; Section~\ref{app:contamination} documents the contamination screen; Section~\ref{app:examples} reproduces one verbatim training record per template family.
+
+\section{The evaluation suites}\label{app:benchmarks}
+This section describes the three security benchmarks in the portfolio in more detail than Section~\ref{M-sec:evaluation} of the article; the item counts and scorers as executed are in Table~\ref{M-tab:portfolio} of the article.
+
+\paragraph{AthenaBench}
+AthenaBench extends CTIBench \citep{alam2024ctibench} with dynamic construction: instead of a fixed corpus, its generator draws items from live sources (ATT\&CK, NVD, CISA advisories, threat reports) within a configurable time window, so that root-cause and severity items concern recent CVEs and the benchmark can be regenerated as the landscape changes \citep{alam2025athenabench}. It defines six tasks. CKT (CTI knowledge test) is multiple choice over catalog facts. RCM (root-cause mapping) asks for the CWE that explains a CVE description. VSP (vulnerability severity prediction) asks for the full CVSS v3.1 base vector of a CVE from its description. ATE (attack-technique extraction) asks for the ATT\&CK technique behind a described behavior. RMS (risk-mitigation strategy) asks for the set of ATT\&CK mitigations that address a described technique. TAA (threat-actor attribution) asks which known group a description of tradecraft matches, in a Classic form, scored with half credit for a related group, and a Canonical form, which requires the group's canonical name or G-code and gives half credit for another alias. The release paper evaluates twelve models and finds that proprietary models lead and that all models struggle on the reasoning-intensive attribution and mitigation tasks. As Section~\ref{M-sec:independence} of the article states, the benchmark was built by a team that includes one of the present authors, and the training templates target its schemas; it is the aligned benchmark in this evaluation.
+
+\paragraph{CyberSOCEval}
+CyberSOCEval was built by Meta and CrowdStrike to measure SOC-relevant reasoning rather than recall \citep{deason2025cybersoceval}. Its two suites used here are multiple-select: each item presents an artifact and a set of lettered options, of which one or more are correct, and the model must return the set. The malware-analysis suite presents sandbox detonation reports and asks which ATT\&CK techniques the sample exhibits, which behaviors it shows, or similar questions about the sample; the threat-intelligence suite presents excerpts of threat reports and asks questions that require relating the described activity to groups, techniques, and campaigns. The harness scores a response by the Jaccard similarity between the predicted and gold option sets, with strict accuracy defined as Jaccard equal to one; responses that cannot be parsed into a letter set are excluded from both denominators, which is why parse-failure rates are reported alongside accuracy in Section~\ref{M-sec:results} of the article. The suite is independent of the training templates in authorship and content, although Stage 3 of the recipe targets its answer format; its items are clustered by source report, which the item bootstrap does not model.
+
+\paragraph{CyberMetric}
+CyberMetric is a multiple-choice knowledge benchmark whose questions were generated by retrieval-augmented generation over security standards, frameworks, and references and then validated by human experts \citep{tihanyi2024cybermetric}. It covers nine domains (network security, cryptography, identity and access, governance, threats and vulnerabilities, security operations, application and system security, cloud security, incident response) and is released in tiers of 80, 500, 2,000, and 10,000 questions. The 2,000 and 10,000 tiers are used here because at 10,000 items the standard error of an accuracy estimate is about 0.3 points at the observed accuracies, which resolves the sub-point changes that stages produce on this benchmark. Like every multiple-choice benchmark it measures recognition rather than generation; the base model already scores 90.2, and the benchmark's role in this article is to detect loss of security knowledge, which did not occur, rather than to measure gains.
+
+\section{The contamination screen: mechanism, enforcement, and posture}\label{app:contamination}
+Section~\ref{M-sec:contamination} of the article reports what the verbatim screen covered in the release build. This section records how it works and how it is enforced, so that the counts in Table~\ref{M-tab:ngram} of the article can be reproduced and the limits of the audit are explicit.
+
+\paragraph{Mechanism}
+The screen is one script, run once per shard as a fixed step of each shard's build watcher. It tokenizes the user-visible text fields of every evaluation record it is pointed at (question, prompt, report, context, input, instruction, answers) into lowercase alphanumeric word tokens, builds the set of distinct 13-word sequences across all indexed files with each sequence keyed to its source file and row, and then, for every candidate training row, tokenizes the concatenation of its instruction, input, and output fields and counts shared sequences per evaluation row. A row with at least one shared sequence against any evaluation row is written to the report for audit; a row with at least 50 shared sequences against a single evaluation row is removed. The 13-token window is the one GPT-3 used for its contamination analysis \citep{brown2020gpt3}: short enough to catch verbatim inclusion of a question or answer, long enough that stock phrases shared by every prompt (``you are a CTI analyst at an enterprise security operations center'') do not trigger it. The removal threshold of 50 distinguishes inclusion of a whole evaluation record from incidental overlap on a CVE or technique description that both the record and the training row quote from the same public source; the retained band of 1--49 shared sequences is therefore expected for a corpus and a benchmark built from the same catalogs, and Table~\ref{M-tab:ngram} of the article reports its distribution rather than hiding it.
+
+\paragraph{Enforcement}
+A non-zero exit from the screen causes the watcher to record a failure and skip every later phase, so no clean shard file is written. Each training launcher checks for the existence of the shard files it consumes before starting, which makes the screen a gate on training without the launcher re-implementing it; every architecture port consumes the same three screened shard files, so one screen per shard certifies all ports. The screen runs at build time, not at every epoch, and the contract is that the file on disk is already clean when the trainer reads it. Re-running it requires only the balanced shard, the evaluation directory, and the three thresholds.
+
+\paragraph{Per-benchmark posture}
+Table~\ref{tab:contamposture} records, for each benchmark, what the training data shares with it by construction, whether the build's screen indexed it, and what the audit therefore does and does not establish. Two corrections to the project's own documentation are recorded in the table: the CyberSOCEval question files are fetched into the evaluation directory at run time and were not present when the release shards were built, and the CTIBench tab-separated files were outside the file pattern the screen indexed; the dedup reports contain no hits against either, which is consistent with both explanations and cannot distinguish them.
+
+\begin{table}
+\centering\footnotesize
+\caption{Contamination posture of the release build by benchmark. ``Shared by construction'' is overlap that follows from building the training data and the benchmark from the same public catalogs; ``indexed'' states whether the benchmark's files were in the 13-gram index when the shards were built.}\label{tab:contamposture}
+\begin{tabularx}{\textwidth}{@{}P{2.2cm}XXX@{}}
+\toprule Benchmark & Shared by construction & Indexed by the release screen & What the audit establishes \\\midrule
+AthenaBench & The ATT\&CK, CWE, CVE, KEV, EPSS, and D3FEND facts; the benchmark's prompts are model-rewritten narratives produced at benchmark generation time and are not in the corpus. & Yes: all task files. 34,897 Core rows flagged, 684 removed, chiefly VSP and RCM rows that quote CVE descriptions at length. & No evaluation record is reproduced in a training row at or above the removal threshold. Entity and gold-fact overlap are quantified separately (Table~\ref{M-tab:overlap} of the article). \\
+CyberMetric & Domain knowledge and definitions; the question stems and options are not in the corpus. & Yes: the released question files. No removals attributable to CyberMetric. & No question stem or option set is reproduced in a training row. \\
+CyberSOCEval & The JSON letter-set answer envelope, which the CSE templates imitate; the questions and gold answers are not in the corpus. & \textbf{No}: the files are fetched at run time and did not exist at build time. & Nothing about verbatim overlap. Independence rests on provenance (the templates were written without access to the benchmark's items) rather than on the screen. \\
+CTIBench & The same catalogs as AthenaBench; not used in the reported evaluation. & \textbf{No}: the tab-separated files were outside the indexed file pattern. & Nothing; not evaluated here. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{What the screen does not do}
+It does not screen the general instruction mixtures used in Stage 1A; it does not detect paraphrases, which would require embedding similarity; it does not cover the base model's pretraining; and it indexes only the listed text fields, keyed by file basename and row index rather than by content hash. The graph itself contains no benchmark items: it ingests the upstream catalogs only, and the evaluation harness reads from a directory the build never writes to.
+
+\section{Example training records}\label{app:examples}
+One record from each major template family of the release shards, reproduced verbatim from the shard files (long instructions and inputs are abridged with ``\ldots''; outputs are complete). They show what the model is trained to produce for each task and, in two cases, what ``graph-consistent but not necessarily correct'' means in practice.
+
+\paragraph{Core-A, multiple choice (\texttt{AB.MCQ.6})}
+\emph{Instruction:} You are a CTI analyst at an enterprise Security Operations Center answering a Cyber Threat Intelligence multiple-choice question. Consult the MITRE CAPEC and ATT\&CK knowledge bases, reason about each option in turn, and then select the single best answer from A, B, C, D, or E.
+\emph{Input:} Which MITRE ATT\&CK technique corresponds to CAPEC-267 (Leverage Alternate Encoding)? Attack pattern description: \ldots\ A) T1027 (Obfuscated Files or Information) B) T1673 (Virtual Machine Discovery) C) T1587.004 (Exploits) D) T1070.007 (Clear Network Connection History and Configurations) E) T1484.001 (Group Policy Modification)
+\emph{Output:} CAPEC-267 aligns with MITRE ATT\&CK technique T1027 (Obfuscated Files or Information); both describe the same adversary behaviour. Therefore, A.
+
+\paragraph{Core-A, tactic-to-technique (\texttt{X.MT.2})}
+\emph{Instruction:} You are a threat hunter \ldots\ Consult MITRE ATT\&CK to identify a technique that realises the tactic.
+\emph{Input:} Provide a technique that adversaries use to achieve the Exfiltration tactic.
+\emph{Output:} Technique T1041 (Exfiltration Over C2 Channel) is used to achieve the Exfiltration tactic: Adversaries may steal data by exfiltrating it over an existing command and control channel. Stolen data is encoded into the normal communications channel using the same protocol as command and control communications..
+
+\paragraph{Core-A, negative yes/no (\texttt{YN.MN.N.1})}
+\emph{Instruction:} You are a cybersecurity architect hardening a corporate enterprise network. Consult MITRE ATT\&CK, reason about whether the proposed control addresses the technique, and then conclude with yes or no.
+\emph{Input:} Does mitigation T1131 (Authentication Package Mitigation) address MITRE ATT\&CK technique T1087.004 (Cloud Account)?
+\emph{Output:} MITRE ATT\&CK does not record mitigation T1131 as addressing technique T1087.004; the appropriate control for this technique is M1047 (Audit). Therefore, no.
+This record is graph-consistent and illustrates a source artifact: ATT\&CK's legacy mitigation objects carry technique-style identifiers (T1131 is a deprecated mitigation that predates the M-code scheme), and the template renders the identifier the graph holds. The record is correct with respect to the catalog, but a reviewer unaware of the legacy scheme would read it as an error, and a model trained on it learns that mitigations can carry T-codes.
+
+\paragraph{Core-A, classification (\texttt{CL.V.1})}
+\emph{Instruction:} \ldots\ Consult the MITRE CVE and CWE knowledge bases to determine the correct weakness, then respond with the CWE identifier only.
+\emph{Input:} Classify the following vulnerability: The Sante PACS Server Web Portal sends credential information without encryption.
+\emph{Output:} CWE-CWE-319
+This record shows a template defect: the source property already carries the ``CWE-'' prefix and the template prepends another. The screen and schema tests do not catch it because it is well-formed with respect to the graph; it was found by reading sampled rows, and it is retained here because it is in the released shard. It is the kind of error that a reviewer can locate and fix at the template, after which every row the template produced is regenerated correctly.
+
+\paragraph{Core-B, root-cause mapping (\texttt{AB.RCM.4})}
+\emph{Instruction:} You are a vulnerability analyst \ldots\ state the single CWE identifier that best captures the root weakness.
+\emph{Input:} Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting') vulnerability in Tagbox Taggbox allows Stored XSS. This issue affects Taggbox: from n/a through 3.2. (CVE identifier: CVE-2024-32552)
+\emph{Output:} The defect described maps to Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting') (CWE-79), characterised as: The product does not neutralize or incorrectly neutralizes user-controllable input before it is placed in output that is used as a web page that is served to other users. Therefore, the root cause is CWE-79.
+
+\paragraph{Core-B, mitigation set (\texttt{AB.RMS.3d})}
+\emph{Instruction:} \ldots\ recommend the most appropriate MITRE ATT\&CK mitigation IDs (format: M10xx) that address the scenario. Return exactly 4 mitigation IDs as a comma-separated list. \ldots\ The final line of your response must begin with ``Answer:'' and contain only the mitigation IDs \ldots
+\emph{Input:} Adversaries may search compromised systems to find and obtain insecurely stored credentials. \ldots
+\emph{Output:} To address Unsecured Credentials, the applicable MITRE ATT\&CK mitigations are M1051 (Update Software), M1035 (Limit Access to Resource Over Network), M1027 (Password Policies), and M1041 (Encrypt Sensitive Information). Answer: M1051, M1035, M1027, M1041
+
+\paragraph{Core-B, technique extraction (\texttt{AB.ATE.1})}
+\emph{Input:} Adversaries may steal data by exfiltrating it over an existing command and control channel. \ldots
+\emph{Output:} The described behaviour matches Exfiltration Over C2 Channel, which MITRE ATT\&CK documents on platforms ESXi, Linux, macOS, Windows with detection guidance: . Therefore, the technique is T1041.
+The empty ``detection guidance'' clause is a second rendering defect: the technique's detection field is empty in the current ATT\&CK release, and the template does not guard the clause.
+
+\paragraph{Core-B, severity vector (\texttt{AB.VSP.1})}
+\emph{Input:} Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal') vulnerability in smartypants SP Project \& Document Manager. This issue affects SP Project \& Document Manager: from n/a through 4.71.
+\emph{Output:} The exploit preconditions and impact implied by the description correspond to a CVSS v3.1 base score of 7.5. Therefore, the CVSS v3.1 vector is CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N.
+
+\paragraph{TAA shard, attribution (\texttt{AB.TAA.1})}
+\emph{Instruction:} You are a CTI attribution analyst \ldots\ identify the responsible named intrusion set. Consult the MITRE ATT\&CK groups knowledge base, reason about which documented intrusion set the combination of techniques and tooling matches, and then state the adversary name.
+\emph{Output:} The joint use of Masquerading, Password Spraying, and Data from Local System together with IPsec Helper matches the documented tradecraft of Agrius (G1030). Therefore, the adversary is Agrius.
+
+\paragraph{CSE shard, multi-select (\texttt{JS.CSE.TI.GRP.1})}
+\emph{Instruction:} You are a CTI analyst \ldots\ answering a multi-select Cyber Threat Intelligence question grounded in a sanitised threat intelligence report. \ldots\ respond with a single JSON object containing the key ``correct\_answers'' \ldots
+\emph{Input:} Threat intelligence report excerpt: The intrusion set Gallmaker (G0084) is documented in MITRE ATT\&CK as employing the following techniques during observed operations: T1204.002 (Malicious File), T1560.001 (Archive via Utility), and additional tradecraft consistent with the group's profile. Group profile: \ldots
+\emph{Output:} \texttt{<json\_object>\{"correct\_answers": ["C", "E"]\}</json\_object>}
+The contrast between the last two records is the mechanism of Section~\ref{M-sec:cseshard} of the article: the TAA record produces a group name and G-code; the CSE record consumes them and produces letters.
+
+\bibliographystyle{cas-model2-names}
+\bibliography{glaukopis_jss}
+
+\end{document}

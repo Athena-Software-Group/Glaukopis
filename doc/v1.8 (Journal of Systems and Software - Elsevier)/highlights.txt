@@ -8,8 +8,6 @@ Peter J. Worth Jr., Ionut Cardei
 - Build gates catch structural data defects; semantic defects still need human review
 - Retained checkpoints localize where a four-stage fine-tune gains and loses ability
 - Aligned benchmark 65.0 vs 57.7 base; independent benchmarks and MMLU-Pro do not gain
-- No advantage of staged training is shown; the matched single-stage control is defined
+- Over the single-stage baseline, later stages add 3.2 points but cost attribution
 
-(Each bullet is at most 85 characters including spaces. If the matched single-stage control is run before
-submission, replace the last bullet with its result, e.g. "A matched single-stage control scores X vs 65.0
-for the staged chain".)
+(Each bullet is at most 85 characters including spaces; JSS requires 3-5 bullets in a separate file whose name contains "highlights".)

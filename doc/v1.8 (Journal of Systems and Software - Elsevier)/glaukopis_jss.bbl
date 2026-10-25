@@ -61,9 +61,8 @@
 \newblock \bibinfo{title}{{Glaukopis}: Source-available software, training
   configuration, and evaluation utilities}.
 \newblock \URLprefix \url{https://github.com/Athena-Software-Group/Glaukopis}.
-  \bibinfo{note}{{Software repository, commit
-  c4d3a2f45e0a08672c87c2b46c3c4be109440c38; PolyForm Noncommercial 1.0.0
-  license}}.
+  \bibinfo{note}{{[software]. GitHub repository, accessed 25 October 2026;
+  PolyForm Noncommercial 1.0.0 license}}.
 %Type = Misc
 \bibitem[{Bhatt et~al.(2024)Bhatt, Chennabasappa, Li, Nikolaidis, Song, Wan,
   Ahmad, Aschermann, Chen, Kapil, Molnar, Whitman and

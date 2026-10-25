@@ -1,0 +1,80 @@
+\begin{thebibliography}{5}
+\expandafter\ifx\csname natexlab\endcsname\relax\def\natexlab#1{#1}\fi
+\providecommand{\url}[1]{\texttt{#1}}
+\providecommand{\href}[2]{#2}
+\providecommand{\path}[1]{#1}
+\providecommand{\DOIprefix}{doi:}
+\providecommand{\ArXivprefix}{arXiv:}
+\providecommand{\URLprefix}{URL: }
+\providecommand{\Pubmedprefix}{pmid:}
+\providecommand{\doi}[1]{\href{http://dx.doi.org/#1}{\path{#1}}}
+\providecommand{\Pubmed}[1]{\href{pmid:#1}{\path{#1}}}
+\providecommand{\bibinfo}[2]{#2}
+\ifx\xfnm\relax \def\xfnm[#1]{\unskip,\space#1}\fi
+%Type = Inproceedings
+\bibitem[{Alam et~al.(2025)Alam, Bhusal, Ahmad, Rastogi and
+  Worth~Jr.}]{alam2025athenabench}
+\bibinfo{author}{Alam, M.T.}, \bibinfo{author}{Bhusal, D.},
+  \bibinfo{author}{Ahmad, S.}, \bibinfo{author}{Rastogi, N.},
+  \bibinfo{author}{Worth~Jr., P.}, \bibinfo{year}{2025}.
+\newblock \bibinfo{title}{{AthenaBench}: A dynamic benchmark for evaluating
+  {LLMs} in cyber threat intelligence}, in: \bibinfo{booktitle}{2025 Annual
+  Computer Security Applications Conference Workshops (ACSAC Workshops)}, pp.
+  \bibinfo{pages}{443--450}.
+\newblock \DOIprefix\doi{10.1109/ACSACW69556.2025.00072}.
+  \bibinfo{note}{{Preprint: arXiv:2511.01144}}.
+%Type = Inproceedings
+\bibitem[{Alam et~al.(2024)Alam, Bhusal, Nguyen and Rastogi}]{alam2024ctibench}
+\bibinfo{author}{Alam, M.T.}, \bibinfo{author}{Bhusal, D.},
+  \bibinfo{author}{Nguyen, L.}, \bibinfo{author}{Rastogi, N.},
+  \bibinfo{year}{2024}.
+\newblock \bibinfo{title}{{CTIBench}: A benchmark for evaluating {LLMs} in
+  cyber threat intelligence}, in: \bibinfo{booktitle}{Advances in Neural
+  Information Processing Systems}, pp. \bibinfo{pages}{50805--50825}.
+\newblock \DOIprefix\doi{10.52202/079017-1607}.
+%Type = Inproceedings
+\bibitem[{Brown et~al.(2020)Brown, Mann, Ryder, Subbiah, Kaplan, Dhariwal,
+  Neelakantan, Shyam, Sastry, Askell et~al.}]{brown2020gpt3}
+\bibinfo{author}{Brown, T.B.}, \bibinfo{author}{Mann, B.},
+  \bibinfo{author}{Ryder, N.}, \bibinfo{author}{Subbiah, M.},
+  \bibinfo{author}{Kaplan, J.}, \bibinfo{author}{Dhariwal, P.},
+  \bibinfo{author}{Neelakantan, A.}, \bibinfo{author}{Shyam, P.},
+  \bibinfo{author}{Sastry, G.}, \bibinfo{author}{Askell, A.}, et~al.,
+  \bibinfo{year}{2020}.
+\newblock \bibinfo{title}{Language models are few-shot learners}, in:
+  \bibinfo{booktitle}{Advances in Neural Information Processing Systems}, pp.
+  \bibinfo{pages}{1877--1901}.
+%Type = Misc
+\bibitem[{Deason et~al.(2025)Deason, Bali, Bejean, Bolocan, Crnkovich,
+  Croitoru, Durai, Midler, Miron, Molnar, Moon, Ostarcevic, Peltea, Rosenberg,
+  Sandu, Saputkin, Shah, Stan, Szocs, Wan, Whitman, Krasser and
+  Saxe}]{deason2025cybersoceval}
+\bibinfo{author}{Deason, L.}, \bibinfo{author}{Bali, A.},
+  \bibinfo{author}{Bejean, C.}, \bibinfo{author}{Bolocan, D.},
+  \bibinfo{author}{Crnkovich, J.}, \bibinfo{author}{Croitoru, I.},
+  \bibinfo{author}{Durai, K.}, \bibinfo{author}{Midler, C.},
+  \bibinfo{author}{Miron, C.}, \bibinfo{author}{Molnar, D.},
+  \bibinfo{author}{Moon, B.}, \bibinfo{author}{Ostarcevic, B.},
+  \bibinfo{author}{Peltea, A.}, \bibinfo{author}{Rosenberg, M.},
+  \bibinfo{author}{Sandu, C.}, \bibinfo{author}{Saputkin, A.},
+  \bibinfo{author}{Shah, S.}, \bibinfo{author}{Stan, D.},
+  \bibinfo{author}{Szocs, E.}, \bibinfo{author}{Wan, S.},
+  \bibinfo{author}{Whitman, S.}, \bibinfo{author}{Krasser, S.},
+  \bibinfo{author}{Saxe, J.}, \bibinfo{year}{2025}.
+\newblock \bibinfo{title}{{CyberSOCEval}: Benchmarking {LLMs} capabilities for
+  malware analysis and threat intelligence reasoning}.
+\newblock \URLprefix \url{https://arxiv.org/abs/2509.20166}.
+  \bibinfo{note}{{arXiv preprint arXiv:2509.20166 (v2, November 2025)}}.
+%Type = Inproceedings
+\bibitem[{Tihanyi et~al.(2024)Tihanyi, Ferrag, Jain, Bisztray and
+  Debbah}]{tihanyi2024cybermetric}
+\bibinfo{author}{Tihanyi, N.}, \bibinfo{author}{Ferrag, M.A.},
+  \bibinfo{author}{Jain, R.}, \bibinfo{author}{Bisztray, T.},
+  \bibinfo{author}{Debbah, M.}, \bibinfo{year}{2024}.
+\newblock \bibinfo{title}{{CyberMetric}: A benchmark dataset based on
+  retrieval-augmented generation for evaluating {LLMs} in cybersecurity
+  knowledge}, in: \bibinfo{booktitle}{2024 IEEE International Conference on
+  Cyber Security and Resilience (CSR)}, pp. \bibinfo{pages}{296--302}.
+\newblock \DOIprefix\doi{10.1109/CSR61664.2024.10679494}.
+
+\end{thebibliography}

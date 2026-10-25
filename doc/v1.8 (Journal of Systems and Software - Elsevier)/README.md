@@ -2,89 +2,65 @@
 
 Created 2026-10-25 from `doc/v1.7 (Intl Journal of IS - Springer)/glaukopis_ijis.tex`. The v1.7 content was re-framed for a software-engineering readership and ported to Elsevier's two-column CAS class (`cas-dc`).
 
-- `SUBMISSION_CHECKLIST_JSS.md`: requirements, files to upload, and remaining author actions.
-- `SINGLE_STAGE_BASELINE.md`: the assessment of Reviewer 2's single-stage-control point, raised again by Dr. Cardei, and the protocol for closing it.
+- `SUBMISSION_CHECKLIST_JSS.md`: requirement-by-requirement check against the journal's Guide for Authors, plus the remaining author actions.
+- `SINGLE_STAGE_BASELINE.md`: how the paper answers the single-stage-baseline point raised by the earlier reviewers and Dr. Cardei.
 
 ## Files
 
 | File | Purpose |
 |---|---|
-| `glaukopis_jss.tex`, `glaukopis_jss.bib`, `glaukopis_jss.bbl` | Manuscript source and bibliography (author–year, `cas-model2-names.bst`). |
-| `glaukopis_jss.pdf` | Compiled manuscript (31 pages, two-column). |
-| `build.sh` | `pdflatex → bibtex → pdflatex ×2`. |
+| `glaukopis_jss.tex`, `glaukopis_jss.bib`, `glaukopis_jss.bbl` | Article source and bibliography (author–year, `cas-model2-names.bst`). |
+| `glaukopis_jss.pdf` | Compiled article (27 pages, two-column). |
+| `glaukopis_jss_supplementary.tex` / `.pdf` | Supplementary material (6 pages), formerly Appendices A–C: S1 evaluation suites; S2 contamination screen with Table S1; S3 verbatim training records. Its references to article sections and tables resolve through `xr-hyper` from `glaukopis_jss.aux`. |
+| `build.sh` | Builds the article, then the supplement (`pdflatex → bibtex → pdflatex ×2` each). |
 | `highlights.txt` | Five highlights (≤ 85 characters), for separate upload; not typeset in the PDF. |
-| `COVER_LETTER_JSS.md` | Cover letter, with bracketed items to confirm. |
-| `VITAE.md` | Template for the author biographies the guide requires (at most 100 words each). |
-| `SUBMISSION_CHECKLIST_JSS.md` | Requirement-by-requirement check, replication-package contents, and author actions. |
-| `SINGLE_STAGE_BASELINE.md` | Whether the single-stage point is closed (it is not yet), what the record contains, and the matched-control protocol and commands. |
-| `analysis/v18_additions.py` → `data/v18_additions.json` | Reproduces every number new in v1.8 (Tables 7–9; row and character budgets; base re-evaluation drift) from the workbook and shards. Run: `GLAUKOPIS_ROOT=/path/to/Glaukopis python3 analysis/v18_additions.py` (needs `openpyxl`). |
-| `figures/` | `Figure_1`/`Figure_2` as vector PDF/EPS plus their TikZ sources, copied unchanged from v1.7 (the v1.7 `Fig1`/`Fig2` files, renamed to the guide's naming convention). The manuscript compiles the same figures inline. |
-| `cas-dc.cls`, `cas-common.sty`, `cas-model2-names.bst` | Elsevier CAS bundle files the build needs. |
-| `Guide for authors - Journal of Systems and Software ….pdf` | Elsevier's guide, downloaded 2026-10-25; left uncommitted because it is Elsevier's page and the repository is public. |
-| Other template files | Elsevier's elsarticle/CAS download, as you placed it: templates, samples, `doc/`, `figs/`, `thumbnails/`, the other `.bst` and `.cls` files. Not part of the submission. |
+| `VITAE.md` → `vitae.docx` | Author biographies (≤ 100 words each), as the guide requires. Sources: the Athena leadership page and Cardei's FAU pages. |
+| `COVER_LETTER_JSS.md` | Cover letter. The "Prior history" paragraph is marked for you to confirm. |
+| `SUBMISSION_CHECKLIST_JSS.md` | Guide-by-guide check, files to upload, author actions. |
+| `SINGLE_STAGE_BASELINE.md` | The single-stage-baseline framing, with the record behind it. |
+| `analysis/v18_additions.py` → `data/v18_additions.json` | Reproduces the earlier-single-pass numbers quoted in §6.3 and the related budget figures from the workbook and shards. Run: `GLAUKOPIS_ROOT=/path/to/Glaukopis python3 analysis/v18_additions.py` (needs `openpyxl`). |
+| `figures/` | `Figure_1`/`Figure_2` as vector PDF/EPS plus their TikZ sources. The article compiles the same figures inline. |
+| `cas-dc.cls`, `cas-common.sty`, `cas-model2-names.bst` | Elsevier CAS files the build needs. |
+| `Guide for authors - Journal of Systems and Software ….pdf` | Elsevier's guide, downloaded 2026-10-25. Untracked: it is Elsevier's page and the repository is public. |
+| Other template files | Elsevier's elsarticle/CAS download (templates, samples, `doc/`, `figs/`, `thumbnails/`, other `.bst`/`.cls`). Not part of the submission. |
 
 ## What changed from v1.7
 
-**Venue and format.**
+- **Venue and format.**
+  - Elsevier CAS two-column class with author–year references.
+  - Elsevier declarations: CRediT via `\printcredits`, competing interest, funding with the sponsor's role, ethics, data availability, and the generative-AI declaration with the guide's title.
+  - Highlights and vitae as separate files; appendices moved to the supplement.
+- **Software-engineering framing.**
+  - New title and abstract (248 words).
+  - Five research questions (RQ1–RQ5).
+  - §4.1 on engineering ML systems and their data: SE4AI, data validation, datasheets and model cards, leakage, LLM threats in SE research.
+  - Table 5, the data-quality checks: what each detects, what it misses, and two silent failures that led to new gates.
+  - §10: answers to the RQs and seven lessons learned.
+  - §11: threats to validity by construct, internal, external, conclusion, reliability (Wohlin et al. 2012).
+- **Staging.**
+  - The Stage-1 (Core) checkpoint is the study's single-stage baseline; §6.3 defines it.
+  - New §8.3 reports the full chain against it with paired item-level intervals. The later stages add 3.2 points to the three-benchmark mean (interval +2.2 to +4.2) and cost 2.3 on the balanced AthenaBench score, 15.0 on Canonical attribution, and 5.3 on severity prediction.
+  - RQ4, lesson L7, the internal-validity threat and the conclusion follow this framing.
+  - The earlier single-pass releases (32B v7; 14B v7/v10/v11) are summarized in one paragraph as design history.
+  - §4.3 cites the forgetting literature and Dong et al. (2024).
+- **Author facts.**
+  - The competing-interest statement names the authors' Athena roles: founder and CEO (Worth), Chief Scientist (Cardei).
+  - Data availability: code and templates are in the public repository; shards, per-item files and build reports are available on request.
+  - ORCIDs for both authors.
+  - Athena Software Group Inc., 294 Queens Ct, West Palm Beach, FL 33401, and FAU's postal address.
+  - The software reference cites the public repository with an access date.
 
-- Elsevier CAS two-column class, author–year references.
-- Elsevier declarations: CRediT via `\printcredits`, competing interest, funding, ethics, data availability, and the generative-AI declaration in Elsevier's wording.
-- Highlights moved to a separate file.
+No result number from v1.7 changed. The new numbers are the paired differences already reported in the paired-differences table (Table 11), and the earlier-single-pass figures reproduced by `analysis/v18_additions.py`.
 
-**Software-engineering framing.**
+## Remaining markers
 
-- New title.
-- New abstract (246 words).
-- Introduction with five research questions (RQ1–RQ5).
-- New §4.1 on engineering ML systems and their data:
-  - SE4AI: Amershi et al. 2019, Sculley et al. 2015, Martínez-Fernández et al. 2022, Paleyes et al. 2022
-  - data validation and documentation: Breck et al. 2019, datasheets, model cards
-  - leakage: Kapoor & Narayanan 2023
-  - LLM threats in SE research: Sallou et al. 2024
-- New Table 5, the data-quality checks: what each detects, what it misses, and two historical silent failures that led to gates.
-- New §10 with answers to the RQs and seven lessons learned.
-- Threats to validity reorganized into construct, internal, external, conclusion and reliability (Wohlin et al. 2012).
+`grep -n 'TODO (authors)' glaukopis_jss.tex`:
 
-**Staging question.**
+- the optional Neo4j graph counts, carried over from v1.7.
 
-- §4.3 now cites the forgetting literature (McCloskey & Cohen 1989; Kirkpatrick et al. 2017; Luo et al. 2023) and the controlled mixed-vs-sequential SFT study of Dong et al. 2024.
-- §6.3 is rewritten:
-  - Table 7 compares the configuration of the 32B single-stage run, the chain, and the matched control.
-  - Table 8 is the v7 result table with its caption corrected: one stage of three epochs, not "one pass".
-  - Table 9 is new: the 14B single-pass and phased releases.
-  - A paragraph defines the matched control.
-- v1.7's claim that the single-stage run had a "comparable update budget" is replaced by the exact exposure figures (2.07× CTI rows, 1.76× CTI text, almost no general data).
+## Related repository files
 
-**Small corrections.**
-
-- The row-count gate is per task axis, not per template.
-- The conference-draft note in §7.6 is reworded for readers who never saw the draft.
-- The baseline list says "single-stage runs" (plural) and that none holds the data fixed.
-
-**Changes from the JSS Guide for Authors (read 2026-10-25).**
-
-- Cardei's ORCID added.
-- Legal entity is Athena Software Group Inc. throughout: affiliation, declarations, software reference.
-- FAU postal address added.
-- Generative-AI declaration retitled to the guide's wording.
-- Funding statement now uses the guide's form with a sponsor-role sentence.
-- Appendix tables numbered per appendix (Table B.1).
-- American spelling outside verbatim records.
-- CRediT role names match the guide.
-- Figure files renamed `Figure_N`.
-- Added a vitae template and a length-justification paragraph in the cover letter (the paper is 31 two-column pages against the encouraged 18).
-
-No result number from v1.7 changed. The new numbers are those produced by `analysis/v18_additions.py`.
-
-## Markers to resolve before submitting
-
-`grep -n 'TODO (authors)\|MATCHED-CONTROL\|STAGING-CLAIM' glaukopis_jss.tex`
-
-## Related repository changes (uncommitted)
-
-- `SFT/autotrain/run_sft_qwen25_32b_v21_single_stage.sh`: matched-control launcher. Dry run checked.
-- `SFT/eval/utils/serve_and_bench_qwen25_32b_v21_single_stage.sh`: full-suite bench wrapper, including MMLU-Pro.
-- `SFT/eval/pipelines/models.py`: two vLLM aliases for the control and its learning-rate sensitivity run.
+The matched single-stage-control launcher (`SFT/autotrain/run_sft_qwen25_32b_v21_single_stage.sh`), its bench wrapper, and two model aliases were committed on 2026-10-25 (`931a087`). With the baseline framing above, the paper does not depend on them. They remain available if a reviewer asks for a single pass over all four shards.
 
 ## Build
 

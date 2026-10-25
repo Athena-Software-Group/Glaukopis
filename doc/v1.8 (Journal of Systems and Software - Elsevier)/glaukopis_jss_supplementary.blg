@@ -1,0 +1,47 @@
+This is BibTeX, Version 0.99d (TeX Live 2024)
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
+The top-level auxiliary file: glaukopis_jss_supplementary.aux
+The style file: cas-model2-names.bst
+Database file #1: glaukopis_jss.bib
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+You've used 5 entries,
+            2990 wiz_defined-function locations,
+            766 strings with 8157 characters,
+and the built_in function-call counts, 5905 in all, are:
+= -- 415
+> -- 394
+< -- 4
++ -- 149
+- -- 144
+* -- 722
+:= -- 844
+add.period$ -- 14
+call.type$ -- 5
+change.case$ -- 72
+chr.to.int$ -- 5
+cite$ -- 5
+duplicate$ -- 363
+empty$ -- 316
+format.name$ -- 159
+if$ -- 1094
+int.to.chr$ -- 1
+int.to.str$ -- 1
+missing$ -- 82
+newline$ -- 39
+num.names$ -- 20
+pop$ -- 129
+preamble$ -- 1
+purify$ -- 67
+quote$ -- 0
+skip$ -- 141
+stack$ -- 0
+substring$ -- 211
+swap$ -- 345
+text.length$ -- 4
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 45
+warning$ -- 0
+while$ -- 27
+width$ -- 0
+write$ -- 87
