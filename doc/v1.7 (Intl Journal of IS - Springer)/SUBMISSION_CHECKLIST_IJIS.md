@@ -3,6 +3,21 @@
 Checked against https://link.springer.com/journal/10207/submission-guidelines on 2026-10-24.
 Manuscript: `glaukopis_ijis.tex` (v1.7: the v1.6 content ported to svjour3, plus the expanded background, Sophia, research-directions and appendix material from the Oxford drafts; see CHANGELOG_v1.7.md).
 
+## Status after the v1.7.2 backport (2026-10-25)
+
+Resolved:
+
+- Cardei's ORCID added.
+- Legal entity is Athena Software Group Inc. throughout.
+- Graph counts are exact.
+
+Changed:
+
+- Data availability now states that large artifacts are available on request, so no "Online Resource 1" deposit is needed. The supplementary-information and research-data rows below describe the v1.7.1 submission.
+- Title, single-stage-baseline framing, and competing-interest disclosures, as in `CHANGELOG_v1.7.md`.
+
+If the v1.7.1 submission is under review, these changes can only enter through a revision the editor invites.
+
 ## Requirements and how the manuscript meets them
 
 | Guideline | Requirement | Status |

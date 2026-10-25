@@ -1,46 +1,46 @@
-This is BibTeX, Version 0.99d (TeX Live 2022/dev/Debian)
+This is BibTeX, Version 0.99d (TeX Live 2024)
 Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
 The top-level auxiliary file: glaukopis_ijis.aux
 The style file: spmpsci.bst
 Database file #1: glaukopis_ijis.bib
-You've used 46 entries,
+You've used 60 entries,
             2945 wiz_defined-function locations,
-            859 strings with 18379 characters,
-and the built_in function-call counts, 28080 in all, are:
-= -- 2057
-> -- 1562
-< -- 17
-+ -- 637
-- -- 588
-* -- 1867
-:= -- 3788
-add.period$ -- 90
-call.type$ -- 46
-change.case$ -- 448
+            950 strings with 22266 characters,
+and the built_in function-call counts, 37662 in all, are:
+= -- 2793
+> -- 2045
+< -- 25
++ -- 834
+- -- 770
+* -- 2530
+:= -- 5063
+add.period$ -- 118
+call.type$ -- 60
+change.case$ -- 593
 chr.to.int$ -- 0
-cite$ -- 46
-duplicate$ -- 2176
-empty$ -- 2116
-format.name$ -- 623
-if$ -- 5786
+cite$ -- 60
+duplicate$ -- 2949
+empty$ -- 2855
+format.name$ -- 819
+if$ -- 7780
 int.to.chr$ -- 0
-int.to.str$ -- 46
-missing$ -- 577
-newline$ -- 236
-num.names$ -- 92
-pop$ -- 1253
+int.to.str$ -- 60
+missing$ -- 775
+newline$ -- 304
+num.names$ -- 120
+pop$ -- 1622
 preamble$ -- 1
-purify$ -- 375
+purify$ -- 493
 quote$ -- 0
-skip$ -- 623
+skip$ -- 818
 stack$ -- 0
-substring$ -- 788
-swap$ -- 1339
-text.length$ -- 17
+substring$ -- 1155
+swap$ -- 1827
+text.length$ -- 25
 text.prefix$ -- 0
 top$ -- 0
-type$ -- 182
+type$ -- 236
 warning$ -- 0
-while$ -- 131
-width$ -- 48
-write$ -- 525
+while$ -- 183
+width$ -- 62
+write$ -- 687

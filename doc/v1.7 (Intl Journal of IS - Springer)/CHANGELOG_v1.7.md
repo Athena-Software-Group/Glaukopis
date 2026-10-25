@@ -1,3 +1,32 @@
+# v1.7.2 (2026-10-25): content backported from v1.8 (JSS)
+
+The manuscript was rebuilt from `doc/v1.8 (Journal of Systems and Software - Elsevier)/glaukopis_jss.tex`. It keeps Springer's svjour3 two-column format, numbered references (`spmpsci`), front matter, and "Statements and Declarations". The submitted v1.7.1 source is preserved in `previous/glaukopis_ijis_v1.7.1_submitted.tex` / `.bib`. The PDF is now 34 pages.
+
+- **Title.** "Glaukopis: Layered Instruction Fine-Tuning for Cyber Threat Intelligence LLM Training". The stages are described as layered, each on the checkpoint of the one before.
+- **Single-stage baseline.**
+  - The Stage-1 (Core) checkpoint is the study's single-stage baseline (§6.3).
+  - New §8.3 reports the full chain against it with paired intervals: +3.2 on the three-benchmark mean (+2.2 to +4.2); −2.3 on the balanced AthenaBench score; −15.0 on Canonical TAA; −5.3 on VSP.
+  - The unmatched v7 comparison table and its "comparable update budget" claim are replaced by one paragraph of design history.
+- **Exact graph statistics.**
+  - 214,651 nodes, 330,935 relationships, 31 labels and 41 relationship types, in §5.1, in Figure 1 (Fig1.pdf/.eps regenerated), and in the new Appendix D table.
+  - These replace "~280K nodes, ~480K edges" and "26 labels, 37 types".
+- **Data pipeline.** A quality-checks table records what each check detects and misses, including the two silent failures (v11 under-build, v17 parser defect) that led to new gates. The row-count gate is described as per task axis.
+- **Framing carried over from v1.8.**
+  - Research questions RQ1–RQ5.
+  - Background on engineering ML systems and their data.
+  - The forgetting literature, and Dong et al. (2024) on mixed versus sequential SFT.
+  - Answers to the RQs and seven lessons learned.
+  - Threats to validity by construct, internal, external and conclusion validity, and reliability.
+- **Author facts.**
+  - ORCIDs for both authors.
+  - Athena Software Group Inc. (294 Queens Ct, West Palm Beach, FL 33401) and FAU's postal address.
+  - Competing interests: Worth is founder, president, CEO and board chairman and holds shares; Cardei advises Athena as Chief Scientist and holds incentive options.
+  - Funding statement with the sponsor's role.
+  - Data availability: code in the public repository; shards, per-item results and build reports on request. "Online Resource 1" is no longer referenced.
+- **Bibliography.** Same 60 records as v1.8.
+
+Not changed: the cover letters (`COVER_LETTER_IJIS.*`) remain the record of the original submission.
+
 # v1.7 (2026-10-24) — expansion of the IJIS manuscript with the Oxford-draft material
 
 Base: v1.6 content in svjour3 format (22 pages). Result: 29 pages. No numbers changed; every added

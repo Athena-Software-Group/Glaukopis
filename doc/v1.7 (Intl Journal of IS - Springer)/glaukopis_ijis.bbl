@@ -28,13 +28,21 @@ Alam, M.T., Piplai, A., Cardei, I., Rastogi, N., Worth~Jr., P.J.: Minerva:
 \newblock \urlprefix\url{https://arxiv.org/abs/2602.00513}.
 \newblock {arXiv preprint arXiv:2602.00513 (v3, May 2026)}
 
+\bibitem{amershi2019se4ml}
+Amershi, S., Begel, A., Bird, C., DeLine, R., Gall, H., Kamar, E., Nagappan,
+  N., Nushi, B., Zimmermann, T.: Software engineering for machine learning: A
+  case study.
+\newblock In: 2019 IEEE/ACM 41st International Conference on Software
+  Engineering: Software Engineering in Practice (ICSE-SEIP), pp. 291--300
+  (2019).
+\newblock \doi{10.1109/ICSE-SEIP.2019.00042}
+
 \bibitem{glaukopis2026software}
-{Athena Security Group, LLC}: {Glaukopis}: Source-available software, training
+{Athena Software Group Inc.}: {Glaukopis}: Source-available software, training
   configuration, and evaluation utilities (2026).
 \newblock \urlprefix\url{https://github.com/Athena-Software-Group/Glaukopis}.
-\newblock {Software repository, commit
-  c4d3a2f45e0a08672c87c2b46c3c4be109440c38; PolyForm Noncommercial 1.0.0
-  license}
+\newblock {[software]. GitHub repository, accessed 25 October 2026; PolyForm
+  Noncommercial 1.0.0 license}
 
 \bibitem{bhatt2024cyberseceval2}
 Bhatt, M., Chennabasappa, S., Li, Y., Nikolaidis, C., Song, D., Wan, S., Ahmad,
@@ -50,6 +58,12 @@ Bhatt, M., Chennabasappa, S., Nikolaidis, C., Wan, S., Evtimov, I., Gabi, D.,
   {CyberSecEval}: A secure coding benchmark for language models (2023).
 \newblock \urlprefix\url{https://arxiv.org/abs/2312.04724}.
 \newblock {arXiv preprint arXiv:2312.04724}
+
+\bibitem{breck2019datavalidation}
+Breck, E., Polyzotis, N., Roy, S., Whang, S.E., Zinkevich, M.: Data validation
+  for machine learning.
+\newblock In: Proceedings of Machine Learning and Systems (MLSys), vol.~1
+  (2019)
 
 \bibitem{brown2020gpt3}
 Brown, T.B., Mann, B., Ryder, N., Subbiah, M., Kaplan, J., Dhariwal, P.,
@@ -115,6 +129,14 @@ Deason, L., Bali, A., Bejean, C., Bolocan, D., Crnkovich, J., Croitoru, I.,
   April 2026. Evaluated here as \texttt{deepseek-ai/DeepSeek-V4-Pro} through a
   hosted inference provider in May 2026}
 
+\bibitem{dong2024composition}
+Dong, G., Yuan, H., Lu, K., Li, C., Xue, M., Liu, D., Wang, W., Yuan, Z., Zhou,
+  C., Zhou, J.: How abilities in large language models are affected by
+  supervised fine-tuning data composition.
+\newblock In: Proceedings of the 62nd Annual Meeting of the Association for
+  Computational Linguistics (Volume 1: Long Papers), pp. 177--198 (2024).
+\newblock \doi{10.18653/v1/2024.acl-long.12}
+
 \bibitem{efron1993bootstrap}
 Efron, B., Tibshirani, R.J.: An Introduction to the Bootstrap.
 \newblock Chapman \& Hall, New York (1993)
@@ -131,6 +153,12 @@ Fieblinger, R., Alam, M.T., Rastogi, N.: Actionable cyber threat intelligence
   document (2019).
 \newblock
   \urlprefix\url{https://www.first.org/cvss/v3.1/specification-document}
+
+\bibitem{gebru2021datasheets}
+Gebru, T., Morgenstern, J., Vecchione, B., Vaughan, J.W., Wallach, H.,
+  Daum{\'e}~III, H., Crawford, K.: Datasheets for datasets.
+\newblock Communications of the ACM \textbf{64}(12), 86--92 (2021).
+\newblock \doi{10.1145/3458723}
 
 \bibitem{google2025gemini3flash}
 {Google DeepMind}: {Gemini 3 Flash} model card (2025).
@@ -170,6 +198,12 @@ Ji, H., Yang, J., Chai, L., Wei, C., Yang, L., Duan, Y., Wang, Y., Sun, T.,
 \newblock \urlprefix\url{https://arxiv.org/abs/2405.03446}.
 \newblock {arXiv preprint arXiv:2405.03446}
 
+\bibitem{kapoor2023leakage}
+Kapoor, S., Narayanan, A.: Leakage and the reproducibility crisis in
+  machine-learning-based science.
+\newblock Patterns \textbf{4}(9), 100804 (2023).
+\newblock \doi{10.1016/j.patter.2023.100804}
+
 \bibitem{kassianik2025foundationsec}
 Kassianik, P., Saglam, B., Chen, A., Nelson, B., Vellore, A., Aufiero, M.,
   Burch, F., Kedia, D., Zohary, A., Weerawardhena, S., et~al.:
@@ -178,6 +212,14 @@ Kassianik, P., Saglam, B., Chen, A., Nelson, B., Vellore, A., Aufiero, M.,
 \newblock {arXiv preprint arXiv:2504.21039. The instruction-tuned variant
   evaluated here is \texttt{fdtn-ai/Foundation-Sec-8B-Instruct} (Hugging Face,
   2025)}
+
+\bibitem{kirkpatrick2017ewc}
+Kirkpatrick, J., Pascanu, R., Rabinowitz, N., Veness, J., Desjardins, G., Rusu,
+  A.A., Milan, K., Quan, J., Ramalho, T., Grabska-Barwinska, A., et~al.:
+  Overcoming catastrophic forgetting in neural networks.
+\newblock Proceedings of the National Academy of Sciences \textbf{114}(13),
+  3521--3526 (2017).
+\newblock \doi{10.1073/pnas.1611835114}
 
 \bibitem{kwon2023vllm}
 Kwon, W., Li, Z., Zhuang, S., Sheng, Y., Zheng, L., Yu, C.H., Gonzalez, J.E.,
@@ -236,6 +278,35 @@ Liu, Z., Shi, J., Buford, J.F.: {CyberBench}: A multi-task benchmark for
 \newblock
   \urlprefix\url{https://zefang-liu.github.io/publication/liu2024cyberbench}
 
+\bibitem{luo2023forgetting}
+Luo, Y., Yang, Z., Meng, F., Li, Y., Zhou, J., Zhang, Y.: An empirical study of
+  catastrophic forgetting in large language models during continual fine-tuning
+  (2023).
+\newblock \urlprefix\url{https://arxiv.org/abs/2308.08747}.
+\newblock {arXiv preprint arXiv:2308.08747 (v5, January 2025)}
+
+\bibitem{martinez2022se4ai}
+Mart{\'i}nez-Fern{\'a}ndez, S., Bogner, J., Franch, X., Oriol, M., Siebert, J.,
+  Trendowicz, A., Vollmer, A.M., Wagner, S.: Software engineering for
+  {AI}-based systems: A survey.
+\newblock ACM Transactions on Software Engineering and Methodology
+  \textbf{31}(2), 1--59 (2022).
+\newblock \doi{10.1145/3487043}
+
+\bibitem{mccloskey1989catastrophic}
+McCloskey, M., Cohen, N.J.: Catastrophic interference in connectionist
+  networks: The sequential learning problem.
+\newblock In: Psychology of Learning and Motivation, vol.~24, pp. 109--165.
+  Academic Press (1989).
+\newblock \doi{10.1016/S0079-7421(08)60536-8}
+
+\bibitem{mitchell2019modelcards}
+Mitchell, M., Wu, S., Zaldivar, A., Barnes, P., Vasserman, L., Hutchinson, B.,
+  Spitzer, E., Raji, I.D., Gebru, T.: Model cards for model reporting.
+\newblock In: Proceedings of the Conference on Fairness, Accountability, and
+  Transparency (FAT*), pp. 220--229 (2019).
+\newblock \doi{10.1145/3287560.3287596}
+
 \bibitem{openai2025gpt52}
 {OpenAI}: Update to {GPT-5} system card: {GPT-5.2} (2025).
 \newblock
@@ -257,6 +328,12 @@ Ouyang, L., Wu, J., Jiang, X., Almeida, D., Wainwright, C., Mishkin, P., Zhang,
 \newblock In: Advances in Neural Information Processing Systems, vol.~35, pp.
   27730--27744 (2022)
 
+\bibitem{paleyes2022challenges}
+Paleyes, A., Urma, R.G., Lawrence, N.D.: Challenges in deploying machine
+  learning: A survey of case studies.
+\newblock ACM Computing Surveys \textbf{55}(6), 114:1--114:29 (2022).
+\newblock \doi{10.1145/3533378}
+
 \bibitem{qwen2025qwen25}
 {Qwen Team}: {Qwen2.5} technical report (2025).
 \newblock \urlprefix\url{https://arxiv.org/abs/2412.15115}.
@@ -269,11 +346,25 @@ Rajbhandari, S., Rasley, J., Ruwase, O., He, Y.: {ZeRO}: Memory optimizations
   Networking, Storage and Analysis, pp. 1--16 (2020).
 \newblock \doi{10.1109/SC41405.2020.00024}
 
+\bibitem{sallou2024breaking}
+Sallou, J., Durieux, T., Panichella, A.: Breaking the silence: The threats of
+  using {LLMs} in software engineering.
+\newblock In: Proceedings of the 46th International Conference on Software
+  Engineering: New Ideas and Emerging Results (ICSE-NIER '24). ACM (2024).
+\newblock {Preprint: arXiv:2312.08055}
+
 \bibitem{sarhan2021opencykg}
 Sarhan, I., Spruit, M.: {Open-CyKG}: An open cyber threat intelligence
   knowledge graph.
 \newblock Knowledge-Based Systems \textbf{233}, 107524 (2021).
 \newblock \doi{10.1016/j.knosys.2021.107524}
+
+\bibitem{sculley2015hidden}
+Sculley, D., Holt, G., Golovin, D., Davydov, E., Phillips, T., Ebner, D.,
+  Chaudhary, V., Young, M., Crespo, J.F., Dennison, D.: Hidden technical debt
+  in machine learning systems.
+\newblock In: Advances in Neural Information Processing Systems, vol.~28, pp.
+  2503--2511 (2015)
 
 \bibitem{strom2018mitre}
 Strom, B.E., Applebaum, A., Miller, D.P., Nickels, K.C., Pennington, A.G.,
@@ -322,6 +413,12 @@ Wei, J., Bosma, M., Zhao, V.Y., Guu, K., Yu, A.W., Lester, B., Du, N., Dai,
 \newblock In: International Conference on Learning Representations (ICLR)
   (2022).
 \newblock \urlprefix\url{https://openreview.net/forum?id=gEZrGCozdqR}
+
+\bibitem{wohlin2012experimentation}
+Wohlin, C., Runeson, P., H{\"o}st, M., Ohlsson, M.C., Regnell, B., Wessl{\'e}n,
+  A.: Experimentation in Software Engineering.
+\newblock Springer, Berlin, Heidelberg (2012).
+\newblock \doi{10.1007/978-3-642-29044-2}
 
 \bibitem{yang2025qwen3}
 Yang, A., Li, A., Yang, B., Zhang, B., Hui, B., Zheng, B., Yu, B., Gao, C.,

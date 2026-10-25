@@ -1,5 +1,7 @@
 # International Journal of Information Security (Springer) — submission package
 
+**v1.7.2 (2026-10-25):** content backported from v1.8 (JSS), in this package's Springer format; see `CHANGELOG_v1.7.md`. The submitted v1.7.1 source is in `previous/`.
+
 Created 2026-10-24 by porting `doc/v1.6/glaukopis_v1.6.tex` (the post–Computers & Security revision)
 to Springer's svjour3 class in the journal's required two-column format with numbered references,
 then expanded (v1.7) with the background, Sophia, research-directions and appendix material from the
@@ -12,7 +14,7 @@ and `COVER_LETTER_IJIS.md` for the cover letter.
 - `glaukopis_ijis.tex`, `glaukopis_ijis.bib`, `glaukopis_ijis.bbl` — manuscript source and bibliography
 - `svjour3.cls`, `svglov3.clo`, `spmpsci.bst` — class, class options and Springer's numbered bibliography style
 - `Fig1.eps` / `Fig1.pdf`, `Fig2.eps` / `Fig2.pdf` — the two figures as separate vector files (also embedded as TikZ in the .tex)
-- `glaukopis_ijis.pdf` — compiled manuscript (29 pages, two-column)
+- `glaukopis_ijis.pdf` — compiled manuscript (34 pages, two-column; v1.7.2)
 
 ## Build
 

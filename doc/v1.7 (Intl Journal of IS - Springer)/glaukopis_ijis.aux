@@ -1,40 +1,37 @@
 \relax 
 \providecommand\hyper@newdestlabel[2]{}
-\providecommand\HyperFirstAtBeginDocument{\AtBeginDocument}
-\HyperFirstAtBeginDocument{\ifx\hyper@anchor\@undefined
-\global\let\oldcontentsline\contentsline
-\gdef\contentsline#1#2#3#4{\oldcontentsline{#1}{#2}{#3}}
-\global\let\oldnewlabel\newlabel
-\gdef\newlabel#1#2{\newlabelxx{#1}#2}
-\gdef\newlabelxx#1#2#3#4#5#6{\oldnewlabel{#1}{{#2}{#3}}}
-\AtEndDocument{\ifx\hyper@anchor\@undefined
-\let\contentsline\oldcontentsline
-\let\newlabel\oldnewlabel
-\fi}
-\fi}
-\global\let\hyper@last\relax 
-\gdef\HyperFirstAtBeginDocument#1{#1}
 \providecommand\HyField@AuxAddToFields[1]{}
 \providecommand\HyField@AuxAddToCoFields[2]{}
 \citation{alam2024ctibench,alam2025athenabench}
+\citation{sculley2015hidden,amershi2019se4ml,martinez2022se4ai}
 \@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
 \newlabel{sec:intro}{{1}{1}{Introduction}{section.1}{}}
 \citation{glaukopis2026software}
-\@writefile{toc}{\contentsline {section}{\numberline {2}System overview and terminology}{2}{section.2}\protected@file@percent }
-\newlabel{sec:overview}{{2}{2}{System overview and terminology}{section.2}{}}
 \citation{alam2025athenabench}
 \citation{deason2025cybersoceval}
 \citation{tihanyi2024cybermetric}
 \citation{wang2024mmlupro}
-\citation{strom2018mitre}
+\@writefile{toc}{\contentsline {section}{\numberline {2}System overview and terminology}{3}{section.2}\protected@file@percent }
+\newlabel{sec:overview}{{2}{3}{System overview and terminology}{section.2}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {3}Problem formulation and scope}{3}{section.3}\protected@file@percent }
 \newlabel{sec:problem}{{3}{3}{Problem formulation and scope}{section.3}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Inputs, outputs, and provenance}{3}{subsection.3.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Technical requirements and non-goals}{3}{subsection.3.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {4}Background and related work}{3}{section.4}\protected@file@percent }
-\newlabel{sec:related}{{4}{3}{Background and related work}{section.4}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Cyber threat intelligence and its public catalogs}{3}{subsection.4.1}\protected@file@percent }
-\newlabel{sec:bg-cti}{{4.1}{3}{Cyber threat intelligence and its public catalogs}{subsection.4.1}{}}
+\citation{amershi2019se4ml}
+\citation{sculley2015hidden}
+\citation{martinez2022se4ai}
+\citation{paleyes2022challenges}
+\citation{breck2019datavalidation}
+\citation{gebru2021datasheets,mitchell2019modelcards}
+\citation{kapoor2023leakage}
+\citation{sallou2024breaking}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Names and acronyms used in this article.}}{4}{table.1}\protected@file@percent }
+\newlabel{tab:glossary}{{1}{4}{Names and acronyms used in this article}{table.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Background and related work}{4}{section.4}\protected@file@percent }
+\newlabel{sec:related}{{4}{4}{Background and related work}{section.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Engineering machine-learning systems and their training data}{4}{subsection.4.1}\protected@file@percent }
+\newlabel{sec:bg-se}{{4.1}{4}{Engineering machine-learning systems and their training data}{subsection.4.1}{}}
+\citation{strom2018mitre}
 \citation{mitreCVE}
 \citation{mitreCWE}
 \citation{mitreCAPEC}
@@ -43,10 +40,14 @@
 \citation{ouyang2022instructgpt}
 \citation{chung2024flant5}
 \citation{gururangan2020dontstop}
-\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Names and acronyms used in this article.}}{4}{table.1}\protected@file@percent }
-\newlabel{tab:glossary}{{1}{4}{Names and acronyms used in this article}{table.1}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Instruction fine-tuning and staged training}{4}{subsection.4.2}\protected@file@percent }
-\newlabel{sec:bg-ift}{{4.2}{4}{Instruction fine-tuning and staged training}{subsection.4.2}{}}
+\citation{mccloskey1989catastrophic}
+\citation{kirkpatrick2017ewc}
+\citation{luo2023forgetting}
+\citation{dong2024composition}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Cyber threat intelligence and its public catalogs}{5}{subsection.4.2}\protected@file@percent }
+\newlabel{sec:bg-cti}{{4.2}{5}{Cyber threat intelligence and its public catalogs}{subsection.4.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Instruction fine-tuning and staged training}{5}{subsection.4.3}\protected@file@percent }
+\newlabel{sec:bg-ift}{{4.3}{5}{Instruction fine-tuning and staged training}{subsection.4.3}{}}
 \citation{sarhan2021opencykg}
 \citation{cheng2024ctinexus}
 \citation{li2023kctiaa}
@@ -67,54 +68,65 @@
 \citation{ji2024sevenllm}
 \citation{deason2025cybersoceval}
 \citation{alam2025athenabench}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Graph-grounded instruction data}{5}{subsection.4.3}\protected@file@percent }
-\newlabel{sec:bg-graph}{{4.3}{5}{Graph-grounded instruction data}{subsection.4.3}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Security-specific instruction data and models}{5}{subsection.4.4}\protected@file@percent }
-\newlabel{sec:bg-security}{{4.4}{5}{Security-specific instruction data and models}{subsection.4.4}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.5}Cyber-security benchmarks}{5}{subsection.4.5}\protected@file@percent }
-\newlabel{sec:bg-benchmarks}{{4.5}{5}{Cyber-security benchmarks}{subsection.4.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Graph-grounded instruction data}{6}{subsection.4.4}\protected@file@percent }
+\newlabel{sec:bg-graph}{{4.4}{6}{Graph-grounded instruction data}{subsection.4.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.5}Security-specific instruction data and models}{6}{subsection.4.5}\protected@file@percent }
+\newlabel{sec:bg-security}{{4.5}{6}{Security-specific instruction data and models}{subsection.4.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.6}Cyber-security benchmarks}{6}{subsection.4.6}\protected@file@percent }
+\newlabel{sec:bg-benchmarks}{{4.6}{6}{Cyber-security benchmarks}{subsection.4.6}{}}
 \citation{brown2020gpt3}
 \citation{groeneveld2024olmo}
 \citation{strom2018mitre,mitreCWE,mitreCAPEC,mitreCVE}
-\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Positioning against the closest security instruction-tuning systems. ``Partial'' means that the cited system uses structured schemas, graph paths, or grounding traces for part of its pipeline but does not make every generated label the deterministic result of executing a typed graph query. Characterizations are taken from the cited papers.}}{6}{table.2}\protected@file@percent }
-\newlabel{tab:positioning}{{2}{6}{Positioning against the closest security instruction-tuning systems. ``Partial'' means that the cited system uses structured schemas, graph paths, or grounding traces for part of its pipeline but does not make every generated label the deterministic result of executing a typed graph query. Characterizations are taken from the cited papers}{table.2}{}}
-\@writefile{toc}{\contentsline {paragraph}{Benchmarks and contamination}{6}{section*.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {5}Ariadne and Sophia: the data pipeline}{6}{section.5}\protected@file@percent }
-\newlabel{sec:data}{{5}{6}{Ariadne and Sophia: the data pipeline}{section.5}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Why a knowledge graph, and why these sources}{6}{subsection.5.1}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces The twelve public sources integrated by Ariadne, as read from the populator's source definitions. ``Full'' means the entire catalog is loaded; ``2024+'' means records from 2024 onward. Licenses are those stated by each source.}}{7}{table.3}\protected@file@percent }
-\newlabel{tab:sources}{{3}{7}{The twelve public sources integrated by Ariadne, as read from the populator's source definitions. ``Full'' means the entire catalog is loaded; ``2024+'' means records from 2024 onward. Licenses are those stated by each source}{table.3}{}}
-\@writefile{toc}{\contentsline {paragraph}{How the sources were selected}{7}{section*.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Sophia: template language, generation pipeline, and validation}{7}{subsection.5.2}\protected@file@percent }
-\newlabel{sec:sophia}{{5.2}{7}{Sophia: template language, generation pipeline, and validation}{subsection.5.2}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Glaukopis pipeline as configured for the reported v21 release. Shard sizes are the realized post-screen training rows; stage settings are read from the release launchers. The general mixture in Stage 1A (T\"ulu-3 SFT and Alpaca) is not Sophia-generated and is not screened against the evaluation files.}}{8}{figure.1}\protected@file@percent }
-\newlabel{fig:pipeline}{{1}{8}{Glaukopis pipeline as configured for the reported v21 release. Shard sizes are the realized post-screen training rows; stage settings are read from the release launchers. The general mixture in Stage 1A (T\"ulu-3 SFT and Alpaca) is not Sophia-generated and is not screened against the evaluation files}{figure.1}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Pipeline boundaries. Provenance is strongest for Sophia-materialized CTI targets; it should not be generalized to all auxiliary data or to unconstrained model completions.}}{8}{table.4}\protected@file@percent }
-\newlabel{tab:boundaries}{{4}{8}{Pipeline boundaries. Provenance is strongest for Sophia-materialized CTI targets; it should not be generalized to all auxiliary data or to unconstrained model completions}{table.4}{}}
-\@writefile{toc}{\contentsline {paragraph}{Template language}{9}{section*.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Positioning against the closest security instruction-tuning systems. ``Partial'' means that the cited system uses structured schemas, graph paths, or grounding traces for part of its pipeline but does not make every generated label the deterministic result of executing a typed graph query. Characterizations are taken from the cited papers.}}{7}{table.2}\protected@file@percent }
+\newlabel{tab:positioning}{{2}{7}{Positioning against the closest security instruction-tuning systems. ``Partial'' means that the cited system uses structured schemas, graph paths, or grounding traces for part of its pipeline but does not make every generated label the deterministic result of executing a typed graph query. Characterizations are taken from the cited papers}{table.2}{}}
+\@writefile{toc}{\contentsline {paragraph}{Benchmarks and contamination}{7}{section*.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}Ariadne and Sophia: the data pipeline}{7}{section.5}\protected@file@percent }
+\newlabel{sec:data}{{5}{7}{Ariadne and Sophia: the data pipeline}{section.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Why a knowledge graph, and why these sources}{7}{subsection.5.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{How the sources were selected}{8}{section*.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Sophia: template language, generation pipeline, and validation}{8}{subsection.5.2}\protected@file@percent }
+\newlabel{sec:sophia}{{5.2}{8}{Sophia: template language, generation pipeline, and validation}{subsection.5.2}{}}
+\@writefile{toc}{\contentsline {paragraph}{Template language}{8}{section*.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces The twelve public sources integrated by Ariadne, as read from the populator's source definitions. ``Full'' means the entire catalog is loaded; ``2024+'' means records from 2024 onward. Licenses are those stated by each source.}}{9}{table.3}\protected@file@percent }
+\newlabel{tab:sources}{{3}{9}{The twelve public sources integrated by Ariadne, as read from the populator's source definitions. ``Full'' means the entire catalog is loaded; ``2024+'' means records from 2024 onward. Licenses are those stated by each source}{table.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Pipeline boundaries. Provenance is strongest for Sophia-materialized CTI targets; it should not be generalized to all auxiliary data or to unconstrained model completions.}}{9}{table.4}\protected@file@percent }
+\newlabel{tab:boundaries}{{4}{9}{Pipeline boundaries. Provenance is strongest for Sophia-materialized CTI targets; it should not be generalized to all auxiliary data or to unconstrained model completions}{table.4}{}}
 \@writefile{toc}{\contentsline {paragraph}{Record format and family identifiers}{9}{section*.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Generation pipeline}{9}{section*.5}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Balancing, screening, and validation hold-out}{9}{section*.6}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Schema validation}{9}{section*.7}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Glaukopis pipeline as configured for the reported v21 release. Shard sizes are the realized post-screen training rows; stage settings are read from the release launchers. The general mixture in Stage 1A (T\"ulu-3 SFT and Alpaca) is not Sophia-generated and is not screened against the evaluation files.}}{10}{figure.1}\protected@file@percent }
+\newlabel{fig:pipeline}{{1}{10}{Glaukopis pipeline as configured for the reported v21 release. Shard sizes are the realized post-screen training rows; stage settings are read from the release launchers. The general mixture in Stage 1A (T\"ulu-3 SFT and Alpaca) is not Sophia-generated and is not screened against the evaluation files}{figure.1}{}}
+\@writefile{toc}{\contentsline {paragraph}{Generation pipeline}{10}{section*.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Balancing, screening, and validation hold-out}{10}{section*.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Schema validation}{10}{section*.7}\protected@file@percent }
+\citation{breck2019datavalidation}
 \citation{lambert2024tulu3,taori2023alpaca}
 \citation{qwen2025qwen25}
 \citation{yang2025qwen3}
 \citation{grattafiori2024llama3}
 \citation{kassianik2025foundationsec}
+\@writefile{toc}{\contentsline {paragraph}{Quality checks and what they miss}{11}{section*.8}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Corpus scope and reproducibility}{11}{subsection.5.3}\protected@file@percent }
+\newlabel{sec:corpus}{{5.3}{11}{Corpus scope and reproducibility}{subsection.5.3}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}Multi-stage training configuration}{11}{section.6}\protected@file@percent }
+\newlabel{sec:training}{{6}{11}{Multi-stage training configuration}{section.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Base model and the rationale for the stages}{11}{subsection.6.1}\protected@file@percent }
 \citation{zheng2024llamafactory}
 \citation{rajbhandari2020zero}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Corpus scope and reproducibility}{10}{subsection.5.3}\protected@file@percent }
-\newlabel{sec:corpus}{{5.3}{10}{Corpus scope and reproducibility}{subsection.5.3}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {6}Multi-stage training configuration}{10}{section.6}\protected@file@percent }
-\newlabel{sec:training}{{6}{10}{Multi-stage training configuration}{section.6}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Base model and the rationale for the stages}{10}{subsection.6.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Quality checks applied to the generated data. All automated checks except the schema tests run as phases of each shard's build and halt it on failure; every check passed for the reported release, and the training launchers refuse to start without the shard files (Appendix~\ref {app:contamination}).}}{12}{table.5}\protected@file@percent }
+\newlabel{tab:gates}{{5}{12}{Quality checks applied to the generated data. All automated checks except the schema tests run as phases of each shard's build and halt it on failure; every check passed for the reported release, and the training launchers refuse to start without the shard files (Appendix~\ref {app:contamination})}{table.5}{}}
 \citation{alam2025athenabench}
 \citation{deason2025cybersoceval}
 \citation{tihanyi2024cybermetric}
 \citation{wang2024mmlupro}
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}What changes between stages}{11}{subsection.6.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}A single-stage reference run}{11}{subsection.6.3}\protected@file@percent }
-\newlabel{sec:singlestage}{{6.3}{11}{A single-stage reference run}{subsection.6.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Canonical 32B training recipe read from the v21 launchers. Caps are the per-dataset \texttt  {max\_samples} limits, not realized token counts. The general mixture is capped separately from Core-A because the limit applies per dataset. Wall-time budgets are the project's documented planning figures for eight H100 GPUs, not metered bills of the reported runs.}}{13}{table.6}\protected@file@percent }
+\newlabel{tab:training}{{6}{13}{Canonical 32B training recipe read from the v21 launchers. Caps are the per-dataset \texttt {max\_samples} limits, not realized token counts. The general mixture is capped separately from Core-A because the limit applies per dataset. Wall-time budgets are the project's documented planning figures for eight H100 GPUs, not metered bills of the reported runs}{table.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}What changes between stages}{13}{subsection.6.2}\protected@file@percent }
+\newlabel{sec:stagechanges}{{6.2}{13}{What changes between stages}{subsection.6.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}The single-stage baseline}{13}{subsection.6.3}\protected@file@percent }
+\newlabel{sec:singlestage}{{6.3}{13}{The single-stage baseline}{subsection.6.3}{}}
+\@writefile{toc}{\contentsline {paragraph}{Earlier single-pass releases}{13}{section*.9}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7}Evaluation protocol}{13}{section.7}\protected@file@percent }
+\newlabel{sec:evaluation}{{7}{13}{Evaluation protocol}{section.7}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.1}Task portfolio, scorers, and run records}{13}{subsection.7.1}\protected@file@percent }
 \citation{first2019cvss}
 \citation{kwon2023vllm}
 \citation{glaukopis2026software}
@@ -122,174 +134,205 @@
 \citation{openai2026gpt55,openai2025gpt52}
 \citation{deepseek2026v4,deepseek2025v32exp}
 \citation{google2025gemini3flash,comanici2025gemini25}
-\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Canonical 32B training recipe read from the v21 launchers. Caps are the per-dataset \texttt  {max\_samples} limits, not realized token counts. The general mixture is capped separately from Core-A because the limit applies per dataset. Wall-time budgets are the project's documented planning figures for eight H100 GPUs, not metered bills of the reported runs.}}{12}{table.5}\protected@file@percent }
-\newlabel{tab:training}{{5}{12}{Canonical 32B training recipe read from the v21 launchers. Caps are the per-dataset \texttt {max\_samples} limits, not realized token counts. The general mixture is capped separately from Core-A because the limit applies per dataset. Wall-time budgets are the project's documented planning figures for eight H100 GPUs, not metered bills of the reported runs}{table.5}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Single-stage reference run (Qwen2.5-32B-Instruct, release v7 corpus, one pass) against the base model and the staged chain's final checkpoint, on the measures all three share. $A_{\mathrm  {Cl}}$ is the AthenaBench mean with Classic attribution only; $B_{\mathrm  {Cl}}$ is the three-benchmark mean built on it. Canonical attribution and MMLU-Pro were not evaluated for the v7 run. Single evaluations; from the project's results workbook.}}{12}{table.6}\protected@file@percent }
-\newlabel{tab:singlestage}{{6}{12}{Single-stage reference run (Qwen2.5-32B-Instruct, release v7 corpus, one pass) against the base model and the staged chain's final checkpoint, on the measures all three share. $A_{\mathrm {Cl}}$ is the AthenaBench mean with Classic attribution only; $B_{\mathrm {Cl}}$ is the three-benchmark mean built on it. Canonical attribution and MMLU-Pro were not evaluated for the v7 run. Single evaluations; from the project's results workbook}{table.6}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {7}Evaluation protocol}{12}{section.7}\protected@file@percent }
-\newlabel{sec:evaluation}{{7}{12}{Evaluation protocol}{section.7}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {7.1}Task portfolio, scorers, and run records}{12}{subsection.7.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {7.2}Baselines and reference models}{12}{subsection.7.2}\protected@file@percent }
-\newlabel{sec:baselines}{{7.2}{12}{Baselines and reference models}{subsection.7.2}{}}
 \citation{levi2025cyberpal}
-\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces Evaluation portfolio as executed for the 32B chain. Item counts are from the run manifests; scorer definitions are from the evaluation code. TAA and RMS ``combined'' scores award full credit for a strict match and half credit for a plausible match (an alias or related group for TAA; a mitigation from the technique's neighbourhood for RMS).}}{13}{table.7}\protected@file@percent }
-\newlabel{tab:portfolio}{{7}{13}{Evaluation portfolio as executed for the 32B chain. Item counts are from the run manifests; scorer definitions are from the evaluation code. TAA and RMS ``combined'' scores award full credit for a strict match and half credit for a plausible match (an alias or related group for TAA; a mitigation from the technique's neighbourhood for RMS)}{table.7}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {7.3}Evaluation independence}{13}{subsection.7.3}\protected@file@percent }
-\newlabel{sec:independence}{{7.3}{13}{Evaluation independence}{subsection.7.3}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {7.4}Contamination screening: what was run and what it covered}{13}{subsection.7.4}\protected@file@percent }
-\newlabel{sec:contamination}{{7.4}{13}{Contamination screening: what was run and what it covered}{subsection.7.4}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces Verbatim 13-gram screen as executed in the v21 build (build reports, May 2026). ``Flagged'' rows share at least one 13-gram with an indexed evaluation record and are shown by their maximum number of shared 13-grams with a single record; rows at 50 or more were removed. The index held 808,440 distinct 13-grams from 18 files.}}{14}{table.8}\protected@file@percent }
-\newlabel{tab:ngram}{{8}{14}{Verbatim 13-gram screen as executed in the v21 build (build reports, May 2026). ``Flagged'' rows share at least one 13-gram with an indexed evaluation record and are shown by their maximum number of shared 13-grams with a single record; rows at 50 or more were removed. The index held 808,440 distinct 13-grams from 18 files}{table.8}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {7.5}Entity and gold-fact overlap}{14}{subsection.7.5}\protected@file@percent }
-\newlabel{sec:overlap}{{7.5}{14}{Entity and gold-fact overlap}{subsection.7.5}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {7.6}Explicit aggregation and the corrected attribution convention}{14}{subsection.7.6}\protected@file@percent }
-\newlabel{sec:aggregation}{{7.6}{14}{Explicit aggregation and the corrected attribution convention}{subsection.7.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.2}Baselines and reference models}{14}{subsection.7.2}\protected@file@percent }
+\newlabel{sec:baselines}{{7.2}{14}{Baselines and reference models}{subsection.7.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.3}Evaluation independence}{14}{subsection.7.3}\protected@file@percent }
+\newlabel{sec:independence}{{7.3}{14}{Evaluation independence}{subsection.7.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.4}Contamination screening: what was run and what it covered}{14}{subsection.7.4}\protected@file@percent }
+\newlabel{sec:contamination}{{7.4}{14}{Contamination screening: what was run and what it covered}{subsection.7.4}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces Evaluation portfolio as executed for the 32B chain. Item counts are from the run manifests; scorer definitions are from the evaluation code. TAA and RMS ``combined'' scores award full credit for a strict match and half credit for a plausible match (an alias or related group for TAA; a mitigation from the technique's neighborhood for RMS).}}{15}{table.7}\protected@file@percent }
+\newlabel{tab:portfolio}{{7}{15}{Evaluation portfolio as executed for the 32B chain. Item counts are from the run manifests; scorer definitions are from the evaluation code. TAA and RMS ``combined'' scores award full credit for a strict match and half credit for a plausible match (an alias or related group for TAA; a mitigation from the technique's neighborhood for RMS)}{table.7}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.5}Entity and gold-fact overlap}{15}{subsection.7.5}\protected@file@percent }
+\newlabel{sec:overlap}{{7.5}{15}{Entity and gold-fact overlap}{subsection.7.5}{}}
 \citation{efron1993bootstrap}
-\@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces Overlap between the v21 training shards and AthenaBench items, and the final checkpoint's mean item score on overlapping versus non-overlapping items. ``Gold fact in one row'' means that the item's identifying entity and its complete gold answer co-occur in a single training row of the Core shard (Core, TAA, and CSE shards for Canonical TAA). Scores are the per-item metrics of Table\nobreakspace  {}\ref  {tab:portfolio}.}}{15}{table.9}\protected@file@percent }
-\newlabel{tab:overlap}{{9}{15}{Overlap between the v21 training shards and AthenaBench items, and the final checkpoint's mean item score on overlapping versus non-overlapping items. ``Gold fact in one row'' means that the item's identifying entity and its complete gold answer co-occur in a single training row of the Core shard (Core, TAA, and CSE shards for Canonical TAA). Scores are the per-item metrics of Table~\ref {tab:portfolio}}{table.9}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {7.7}Uncertainty}{15}{subsection.7.7}\protected@file@percent }
-\newlabel{sec:uncertainty}{{7.7}{15}{Uncertainty}{subsection.7.7}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {8}Results: adaptation, interference, and transfer}{15}{section.8}\protected@file@percent }
-\newlabel{sec:results}{{8}{15}{Results: adaptation, interference, and transfer}{section.8}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {8.1}The canonical 32B chain}{15}{subsection.8.1}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {10}{\ignorespaces Task scores and aggregates for the canonical Qwen2.5-32B chain (single evaluation per checkpoint; 0--100 scale). $A_{\mathrm  {bal}}$ and $B_{\mathrm  {bal}}$ follow Section\nobreakspace  {}\ref  {sec:aggregation} and are computed from the displayed rounded task scores; recomputing them from unrounded item scores changes them by at most 0.1. Recal-14B is the alternative Stage-4 recipe trained from the same CSE parent. The last row gives the half-width (larger side) of the final checkpoint's 95\% item-bootstrap interval.}}{16}{table.10}\protected@file@percent }
-\newlabel{tab:stage}{{10}{16}{Task scores and aggregates for the canonical Qwen2.5-32B chain (single evaluation per checkpoint; 0--100 scale). $\Abal $ and $\Bbal $ follow Section~\ref {sec:aggregation} and are computed from the displayed rounded task scores; recomputing them from unrounded item scores changes them by at most 0.1. Recal-14B is the alternative Stage-4 recipe trained from the same CSE parent. The last row gives the half-width (larger side) of the final checkpoint's 95\% item-bootstrap interval}{table.10}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {8.2}What each transition reveals}{16}{subsection.8.2}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Six task scores across the retained checkpoints of the canonical chain (points) with 95\% item-bootstrap intervals (bars) and the base model's score as a dashed reference. Intervals for the base are not available. The panels share one 0--100 axis; Stage 3 (CSE) raises the SOC-style tasks and collapses canonical attribution and part of VSP, and Stage 4 recovers CKT and MMLU-Pro but neither attribution nor VSP.}}{17}{figure.2}\protected@file@percent }
-\newlabel{fig:trajectories}{{2}{17}{Six task scores across the retained checkpoints of the canonical chain (points) with 95\% item-bootstrap intervals (bars) and the base model's score as a dashed reference. Intervals for the base are not available. The panels share one 0--100 axis; Stage 3 (CSE) raises the SOC-style tasks and collapses canonical attribution and part of VSP, and Stage 4 recovers CKT and MMLU-Pro but neither attribution nor VSP}{figure.2}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {11}{\ignorespaces Paired differences between checkpoints (later minus earlier) with 95\% paired item-bootstrap intervals; intervals that exclude zero are marked with an asterisk. These quantify item-sampling uncertainty for the specific trained models, not training-seed variance.}}{17}{table.11}\protected@file@percent }
-\newlabel{tab:paired}{{11}{17}{Paired differences between checkpoints (later minus earlier) with 95\% paired item-bootstrap intervals; intervals that exclude zero are marked with an asterisk. These quantify item-sampling uncertainty for the specific trained models, not training-seed variance}{table.11}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {8.3}Why canonical attribution collapses}{17}{subsection.8.3}\protected@file@percent }
-\newlabel{sec:cseshard}{{8.3}{17}{Why canonical attribution collapses}{subsection.8.3}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {8.4}Where the severity regression comes from}{18}{subsection.8.4}\protected@file@percent }
-\newlabel{sec:vsp}{{8.4}{18}{Where the severity regression comes from}{subsection.8.4}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {8.5}Qualitative schema examples}{18}{subsection.8.5}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {12}{\ignorespaces Output and input profile of the two narrow-drill shards, computed over every training row. ``Benchmark group'' means one of the 133 canonical group names of the Canonical-TAA task. The CSE shard never asks the model to produce a group name, G-code, or technique code; the TAA shard almost always does.}}{19}{table.12}\protected@file@percent }
-\newlabel{tab:shardprofile}{{12}{19}{Output and input profile of the two narrow-drill shards, computed over every training row. ``Benchmark group'' means one of the 133 canonical group names of the Canonical-TAA task. The CSE shard never asks the model to produce a group name, G-code, or technique code; the TAA shard almost always does}{table.12}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {13}{\ignorespaces Response taxonomy for the 133 Canonical-TAA items. ``Known group'' means the predicted name is in the benchmark's alias table. Rows sum to 133; the last line counts responses containing an ATT\&CK G-code.}}{19}{table.13}\protected@file@percent }
-\newlabel{tab:taataxonomy}{{13}{19}{Response taxonomy for the 133 Canonical-TAA items. ``Known group'' means the predicted name is in the benchmark's alias table. Rows sum to 133; the last line counts responses containing an ATT\&CK G-code}{table.13}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {14}{\ignorespaces VSP error profile over 2,000 items: exact-vector matches, metric-level accuracy (share of the eight metric values predicted correctly, over all items), and the number of items mismatching each CVSS v3.1 base metric.}}{19}{table.14}\protected@file@percent }
-\newlabel{tab:vsp}{{14}{19}{VSP error profile over 2,000 items: exact-vector matches, metric-level accuracy (share of the eight metric values predicted correctly, over all items), and the number of items mismatching each CVSS v3.1 base metric}{table.14}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {8.6}Where general reasoning is lost}{19}{subsection.8.6}\protected@file@percent }
-\newlabel{sec:mmlu}{{8.6}{19}{Where general reasoning is lost}{subsection.8.6}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {8.7}Cross-architecture ports and the security-specialized baseline}{20}{subsection.8.7}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {8.8}Hosted reference models}{20}{subsection.8.8}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {9}Inference efficiency}{20}{section.9}\protected@file@percent }
-\newlabel{sec:cost}{{9}{20}{Inference efficiency}{section.9}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {9.1}What was measured and how}{20}{subsection.9.1}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {15}{\ignorespaces Cross-architecture ports under the uniform aggregation: base model versus the port's selected checkpoint. Selection is the project's release designation. All values are single evaluations from the consistent sheet of the results workbook.}}{21}{table.15}\protected@file@percent }
-\newlabel{tab:ports}{{15}{21}{Cross-architecture ports under the uniform aggregation: base model versus the port's selected checkpoint. Selection is the project's release designation. All values are single evaluations from the consistent sheet of the results workbook}{table.15}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {16}{\ignorespaces Hosted references and the local models under the uniform aggregation (single evaluations; hosted rows as recorded in the results workbook). GPT-5.2 was run at medium reasoning effort.}}{21}{table.16}\protected@file@percent }
-\newlabel{tab:frontier}{{16}{21}{Hosted references and the local models under the uniform aggregation (single evaluations; hosted rows as recorded in the results workbook). GPT-5.2 was run at medium reasoning effort}{table.16}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {9.2}Results}{21}{subsection.9.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {9.3}Training budget}{21}{subsection.9.3}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {17}{\ignorespaces Resources consumed by one evaluation of the full suite (AthenaBench, CyberSOCEval, CyberMetric, MMLU-Pro). Hosted rows: API token ledgers, which may include reruns. Local rows marked ``run record'' are single passes from the per-suite run manifests on two H100 GPUs; the ledger value, which double-counts every task, is in parentheses. USD conversions use the May 2026 list prices for the hosted models and \$2.50 per GPU-hour for the local host; CTI-only excludes MMLU-Pro.}}{22}{table.17}\protected@file@percent }
-\newlabel{tab:cost}{{17}{22}{Resources consumed by one evaluation of the full suite (AthenaBench, CyberSOCEval, CyberMetric, MMLU-Pro). Hosted rows: API token ledgers, which may include reruns. Local rows marked ``run record'' are single passes from the per-suite run manifests on two H100 GPUs; the ledger value, which double-counts every task, is in parentheses. USD conversions use the May 2026 list prices for the hosted models and \$2.50 per GPU-hour for the local host; CTI-only excludes MMLU-Pro}{table.17}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {10}Threats to validity and operational boundaries}{22}{section.10}\protected@file@percent }
-\newlabel{sec:limits}{{10}{22}{Threats to validity and operational boundaries}{section.10}{}}
-\@writefile{toc}{\contentsline {paragraph}{Attribution of benefit to the schedule}{22}{section*.8}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Evaluation alignment and the developer--evaluator overlap}{22}{section*.9}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{The two regressions}{22}{section*.10}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{General capability}{22}{section*.11}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces Verbatim 13-gram screen as executed in the v21 build (build reports, May 2026). ``Flagged'' rows share at least one 13-gram with an indexed evaluation record and are shown by their maximum number of shared 13-grams with a single record; rows at 50 or more were removed. The index held 808,440 distinct 13-grams from 18 files.}}{16}{table.8}\protected@file@percent }
+\newlabel{tab:ngram}{{8}{16}{Verbatim 13-gram screen as executed in the v21 build (build reports, May 2026). ``Flagged'' rows share at least one 13-gram with an indexed evaluation record and are shown by their maximum number of shared 13-grams with a single record; rows at 50 or more were removed. The index held 808,440 distinct 13-grams from 18 files}{table.8}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces Overlap between the v21 training shards and AthenaBench items, and the final checkpoint's mean item score on overlapping versus non-overlapping items. ``Gold fact in one row'' means that the item's identifying entity and its complete gold answer co-occur in a single training row of the Core shard (Core, TAA, and CSE shards for Canonical TAA). Scores are the per-item metrics of Table~\ref {tab:portfolio}.}}{16}{table.9}\protected@file@percent }
+\newlabel{tab:overlap}{{9}{16}{Overlap between the v21 training shards and AthenaBench items, and the final checkpoint's mean item score on overlapping versus non-overlapping items. ``Gold fact in one row'' means that the item's identifying entity and its complete gold answer co-occur in a single training row of the Core shard (Core, TAA, and CSE shards for Canonical TAA). Scores are the per-item metrics of Table~\ref {tab:portfolio}}{table.9}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.6}Explicit aggregation and the corrected attribution convention}{16}{subsection.7.6}\protected@file@percent }
+\newlabel{sec:aggregation}{{7.6}{16}{Explicit aggregation and the corrected attribution convention}{subsection.7.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.7}Uncertainty}{16}{subsection.7.7}\protected@file@percent }
+\newlabel{sec:uncertainty}{{7.7}{16}{Uncertainty}{subsection.7.7}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {8}Results: adaptation, interference, and transfer}{17}{section.8}\protected@file@percent }
+\newlabel{sec:results}{{8}{17}{Results: adaptation, interference, and transfer}{section.8}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.1}The canonical 32B chain}{17}{subsection.8.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.2}What each transition reveals}{17}{subsection.8.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {10}{\ignorespaces Task scores and aggregates for the canonical Qwen2.5-32B chain (single evaluation per checkpoint; 0--100 scale). $A_{\mathrm  {bal}}$ and $B_{\mathrm  {bal}}$ follow Section~\ref {sec:aggregation} and are computed from the displayed rounded task scores; recomputing them from unrounded item scores changes them by at most 0.1. Recal-14B is the alternative Stage-4 recipe trained from the same CSE parent. The last row gives the half-width (larger side) of the final checkpoint's 95\% item-bootstrap interval.}}{18}{table.10}\protected@file@percent }
+\newlabel{tab:stage}{{10}{18}{Task scores and aggregates for the canonical Qwen2.5-32B chain (single evaluation per checkpoint; 0--100 scale). $\Abal $ and $\Bbal $ follow Section~\ref {sec:aggregation} and are computed from the displayed rounded task scores; recomputing them from unrounded item scores changes them by at most 0.1. Recal-14B is the alternative Stage-4 recipe trained from the same CSE parent. The last row gives the half-width (larger side) of the final checkpoint's 95\% item-bootstrap interval}{table.10}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Six task scores across the retained checkpoints of the canonical chain (points) with 95\% item-bootstrap intervals (bars) and the base model's score as a dashed reference. Intervals for the base are not available. The panels share one 0--100 axis; Stage 3 (CSE) raises the SOC-style tasks and collapses canonical attribution and part of VSP, and Stage 4 recovers CKT and MMLU-Pro but neither attribution nor VSP.}}{18}{figure.2}\protected@file@percent }
+\newlabel{fig:trajectories}{{2}{18}{Six task scores across the retained checkpoints of the canonical chain (points) with 95\% item-bootstrap intervals (bars) and the base model's score as a dashed reference. Intervals for the base are not available. The panels share one 0--100 axis; Stage 3 (CSE) raises the SOC-style tasks and collapses canonical attribution and part of VSP, and Stage 4 recovers CKT and MMLU-Pro but neither attribution nor VSP}{figure.2}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {11}{\ignorespaces Paired differences between checkpoints (later minus earlier) with 95\% paired item-bootstrap intervals; intervals that exclude zero are marked with an asterisk. These quantify item-sampling uncertainty for the specific trained models, not training-seed variance.}}{18}{table.11}\protected@file@percent }
+\newlabel{tab:paired}{{11}{18}{Paired differences between checkpoints (later minus earlier) with 95\% paired item-bootstrap intervals; intervals that exclude zero are marked with an asterisk. These quantify item-sampling uncertainty for the specific trained models, not training-seed variance}{table.11}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.3}The full chain against the single-stage baseline}{19}{subsection.8.3}\protected@file@percent }
+\newlabel{sec:fullchain}{{8.3}{19}{The full chain against the single-stage baseline}{subsection.8.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.4}Why canonical attribution collapses}{19}{subsection.8.4}\protected@file@percent }
+\newlabel{sec:cseshard}{{8.4}{19}{Why canonical attribution collapses}{subsection.8.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.5}Where the severity regression comes from}{20}{subsection.8.5}\protected@file@percent }
+\newlabel{sec:vsp}{{8.5}{20}{Where the severity regression comes from}{subsection.8.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.6}Qualitative schema examples}{20}{subsection.8.6}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {12}{\ignorespaces Output and input profile of the two narrow-drill shards, computed over every training row. ``Benchmark group'' means one of the 133 canonical group names of the Canonical-TAA task. The CSE shard never asks the model to produce a group name, G-code, or technique code; the TAA shard almost always does.}}{21}{table.12}\protected@file@percent }
+\newlabel{tab:shardprofile}{{12}{21}{Output and input profile of the two narrow-drill shards, computed over every training row. ``Benchmark group'' means one of the 133 canonical group names of the Canonical-TAA task. The CSE shard never asks the model to produce a group name, G-code, or technique code; the TAA shard almost always does}{table.12}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {13}{\ignorespaces Response taxonomy for the 133 Canonical-TAA items. ``Known group'' means the predicted name is in the benchmark's alias table. Rows sum to 133; the last line counts responses containing an ATT\&CK G-code.}}{21}{table.13}\protected@file@percent }
+\newlabel{tab:taataxonomy}{{13}{21}{Response taxonomy for the 133 Canonical-TAA items. ``Known group'' means the predicted name is in the benchmark's alias table. Rows sum to 133; the last line counts responses containing an ATT\&CK G-code}{table.13}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {14}{\ignorespaces VSP error profile over 2,000 items: exact-vector matches, metric-level accuracy (share of the eight metric values predicted correctly, over all items), and the number of items mismatching each CVSS v3.1 base metric.}}{21}{table.14}\protected@file@percent }
+\newlabel{tab:vsp}{{14}{21}{VSP error profile over 2,000 items: exact-vector matches, metric-level accuracy (share of the eight metric values predicted correctly, over all items), and the number of items mismatching each CVSS v3.1 base metric}{table.14}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.7}Where general reasoning is lost}{21}{subsection.8.7}\protected@file@percent }
+\newlabel{sec:mmlu}{{8.7}{21}{Where general reasoning is lost}{subsection.8.7}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.8}Cross-architecture ports and the security-specialized baseline}{21}{subsection.8.8}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.9}Hosted reference models}{22}{subsection.8.9}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {9}Inference efficiency}{22}{section.9}\protected@file@percent }
+\newlabel{sec:cost}{{9}{22}{Inference efficiency}{section.9}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.1}What was measured and how}{22}{subsection.9.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.2}Results}{22}{subsection.9.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {15}{\ignorespaces Cross-architecture ports under the uniform aggregation: base model versus the port's selected checkpoint. Selection is the project's release designation. All values are single evaluations from the consistent sheet of the results workbook.}}{23}{table.15}\protected@file@percent }
+\newlabel{tab:ports}{{15}{23}{Cross-architecture ports under the uniform aggregation: base model versus the port's selected checkpoint. Selection is the project's release designation. All values are single evaluations from the consistent sheet of the results workbook}{table.15}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {16}{\ignorespaces Hosted references and the local models under the uniform aggregation (single evaluations; hosted rows as recorded in the results workbook). GPT-5.2 was run at medium reasoning effort.}}{23}{table.16}\protected@file@percent }
+\newlabel{tab:frontier}{{16}{23}{Hosted references and the local models under the uniform aggregation (single evaluations; hosted rows as recorded in the results workbook). GPT-5.2 was run at medium reasoning effort}{table.16}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {17}{\ignorespaces Resources consumed by one evaluation of the full suite (AthenaBench, CyberSOCEval, CyberMetric, MMLU-Pro). Hosted rows: API token ledgers, which may include reruns. Local rows marked ``run record'' are single passes from the per-suite run manifests on two H100 GPUs; the ledger value, which double-counts every task, is in parentheses. USD conversions use the May 2026 list prices for the hosted models and \$2.50 per GPU-hour for the local host; CTI-only excludes MMLU-Pro.}}{23}{table.17}\protected@file@percent }
+\newlabel{tab:cost}{{17}{23}{Resources consumed by one evaluation of the full suite (AthenaBench, CyberSOCEval, CyberMetric, MMLU-Pro). Hosted rows: API token ledgers, which may include reruns. Local rows marked ``run record'' are single passes from the per-suite run manifests on two H100 GPUs; the ledger value, which double-counts every task, is in parentheses. USD conversions use the May 2026 list prices for the hosted models and \$2.50 per GPU-hour for the local host; CTI-only excludes MMLU-Pro}{table.17}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.3}Training budget}{23}{subsection.9.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {10}Discussion}{24}{section.10}\protected@file@percent }
+\newlabel{sec:discussion}{{10}{24}{Discussion}{section.10}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {10.1}Answers to the research questions}{24}{subsection.10.1}\protected@file@percent }
+\newlabel{sec:rqanswers}{{10.1}{24}{Answers to the research questions}{subsection.10.1}{}}
+\@writefile{toc}{\contentsline {paragraph}{RQ1 (traceability and validation)}{24}{section*.10}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{RQ2 (gains and costs)}{24}{section*.11}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{RQ3 (localization)}{24}{section*.12}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{RQ4 (staging)}{24}{section*.13}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{RQ5 (evaluation validity)}{24}{section*.14}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {10.2}Lessons for engineering domain-specialized models}{24}{subsection.10.2}\protected@file@percent }
+\newlabel{sec:lessons}{{10.2}{24}{Lessons for engineering domain-specialized models}{subsection.10.2}{}}
+\citation{wohlin2012experimentation}
+\@writefile{toc}{\contentsline {paragraph}{L1: Version the data artifacts, not only their specifications}{25}{section*.15}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{L2: Treat the data generator as code that can fail silently, and gate the build on the symptoms}{25}{section*.16}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{L3: Budget for reading the data}{25}{section*.17}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{L4: Evaluate every intermediate checkpoint; the last is not necessarily the best}{25}{section*.18}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{L5: Choose measures that cannot hide a regression, and fix the aggregation before comparing}{25}{section*.19}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{L6: Audit the measurement tooling as production code}{25}{section*.20}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{L7: Measure later stages against the single-stage model the pipeline already produces}{25}{section*.21}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {11}Threats to validity}{25}{section.11}\protected@file@percent }
+\newlabel{sec:limits}{{11}{25}{Threats to validity}{section.11}{}}
+\@writefile{toc}{\contentsline {paragraph}{Construct validity}{25}{section*.22}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Internal validity}{25}{section*.23}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{External validity}{26}{section*.24}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Conclusion validity}{26}{section*.25}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Reliability}{26}{section*.26}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Operational boundaries}{26}{section*.27}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {12}Research directions}{26}{section.12}\protected@file@percent }
+\newlabel{sec:directions}{{12}{26}{Research directions}{section.12}{}}
+\@writefile{toc}{\contentsline {paragraph}{Controls before extensions}{26}{section*.28}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Interference-aware scheduling}{26}{section*.29}\protected@file@percent }
 \citation{alam2026minerva}
 \citation{levi2025toward}
-\@writefile{toc}{\contentsline {paragraph}{Uncertainty}{23}{section*.12}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Operational boundaries}{23}{section*.13}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {11}Research directions}{23}{section.11}\protected@file@percent }
-\newlabel{sec:directions}{{11}{23}{Research directions}{section.11}{}}
-\@writefile{toc}{\contentsline {paragraph}{Controls before extensions}{23}{section*.14}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Interference-aware scheduling}{23}{section*.15}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Verifiable-reward training on graph-derived answers}{23}{section*.16}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Held-out incident evaluation}{23}{section*.17}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Paraphrastic leakage}{23}{section*.18}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Surface diversity and rationales}{23}{section*.19}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Larger bases and operational dimensions}{23}{section*.20}\protected@file@percent }
-\citation{alam2026minerva}
 \citation{alam2024ctibench}
 \citation{alam2025athenabench}
+\@writefile{toc}{\contentsline {paragraph}{Verifiable-reward training on graph-derived answers}{27}{section*.30}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Held-out incident evaluation}{27}{section*.31}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Paraphrastic leakage}{27}{section*.32}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Surface diversity and rationales}{27}{section*.33}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Larger bases and operational dimensions}{27}{section*.34}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {13}Conclusion}{27}{section.13}\protected@file@percent }
+\newlabel{sec:conclusion}{{13}{27}{Conclusion}{section.13}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {A}The evaluation suites}{27}{appendix.A}\protected@file@percent }
+\newlabel{app:benchmarks}{{A}{27}{The evaluation suites}{appendix.A}{}}
+\@writefile{toc}{\contentsline {paragraph}{AthenaBench}{27}{section*.35}\protected@file@percent }
 \citation{deason2025cybersoceval}
 \citation{tihanyi2024cybermetric}
-\@writefile{toc}{\contentsline {section}{\numberline {12}Conclusion}{24}{section.12}\protected@file@percent }
-\newlabel{sec:conclusion}{{12}{24}{Conclusion}{section.12}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {A}The evaluation suites}{24}{appendix.A}\protected@file@percent }
-\newlabel{app:benchmarks}{{A}{24}{The evaluation suites}{appendix.A}{}}
-\@writefile{toc}{\contentsline {paragraph}{AthenaBench}{24}{section*.21}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{CyberSOCEval}{24}{section*.22}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{CyberMetric}{24}{section*.23}\protected@file@percent }
 \citation{brown2020gpt3}
-\@writefile{toc}{\contentsline {section}{\numberline {B}The contamination screen: mechanism, enforcement, and posture}{25}{appendix.B}\protected@file@percent }
-\newlabel{app:contamination}{{B}{25}{The contamination screen: mechanism, enforcement, and posture}{appendix.B}{}}
-\@writefile{toc}{\contentsline {paragraph}{Mechanism}{25}{section*.24}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Enforcement}{25}{section*.25}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Per-benchmark posture}{25}{section*.26}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{What the screen does not do}{25}{section*.27}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {C}Example training records}{25}{appendix.C}\protected@file@percent }
-\newlabel{app:examples}{{C}{25}{Example training records}{appendix.C}{}}
-\@writefile{toc}{\contentsline {paragraph}{Core-A, multiple choice (\texttt  {AB.MCQ.6})}{25}{section*.28}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Core-A, tactic-to-technique (\texttt  {X.MT.2})}{25}{section*.29}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Core-A, negative yes/no (\texttt  {YN.MN.N.1})}{25}{section*.30}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Core-A, classification (\texttt  {CL.V.1})}{25}{section*.31}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {18}{\ignorespaces Contamination posture of the release build by benchmark. ``Shared by construction'' is overlap that follows from building the training data and the benchmark from the same public catalogs; ``indexed'' states whether the benchmark's files were in the 13-gram index when the shards were built.}}{26}{table.18}\protected@file@percent }
-\newlabel{tab:contamposture}{{18}{26}{Contamination posture of the release build by benchmark. ``Shared by construction'' is overlap that follows from building the training data and the benchmark from the same public catalogs; ``indexed'' states whether the benchmark's files were in the 13-gram index when the shards were built}{table.18}{}}
-\@writefile{toc}{\contentsline {paragraph}{Core-B, root-cause mapping (\texttt  {AB.RCM.4})}{26}{section*.32}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Core-B, mitigation set (\texttt  {AB.RMS.3d})}{26}{section*.33}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Core-B, technique extraction (\texttt  {AB.ATE.1})}{26}{section*.34}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Core-B, severity vector (\texttt  {AB.VSP.1})}{26}{section*.35}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{TAA shard, attribution (\texttt  {AB.TAA.1})}{26}{section*.36}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{CSE shard, multi-select (\texttt  {JS.CSE.TI.GRP.1})}{26}{section*.37}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{CyberSOCEval}{28}{section*.36}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{CyberMetric}{28}{section*.37}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {B}The contamination screen: mechanism, enforcement, and posture}{28}{appendix.B}\protected@file@percent }
+\newlabel{app:contamination}{{B}{28}{The contamination screen: mechanism, enforcement, and posture}{appendix.B}{}}
+\@writefile{toc}{\contentsline {paragraph}{Mechanism}{28}{section*.38}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Enforcement}{28}{section*.39}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Per-benchmark posture}{28}{section*.40}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{What the screen does not do}{28}{section*.41}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {C}Example training records}{28}{appendix.C}\protected@file@percent }
+\newlabel{app:examples}{{C}{28}{Example training records}{appendix.C}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {18}{\ignorespaces Contamination posture of the release build by benchmark. ``Shared by construction'' is overlap that follows from building the training data and the benchmark from the same public catalogs; ``indexed'' states whether the benchmark's files were in the 13-gram index when the shards were built.}}{29}{table.18}\protected@file@percent }
+\newlabel{tab:contamposture}{{18}{29}{Contamination posture of the release build by benchmark. ``Shared by construction'' is overlap that follows from building the training data and the benchmark from the same public catalogs; ``indexed'' states whether the benchmark's files were in the 13-gram index when the shards were built}{table.18}{}}
+\@writefile{toc}{\contentsline {paragraph}{Core-A, multiple choice (\texttt  {AB.MCQ.6})}{29}{section*.42}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Core-A, tactic-to-technique (\texttt  {X.MT.2})}{29}{section*.43}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Core-A, negative yes/no (\texttt  {YN.MN.N.1})}{29}{section*.44}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Core-A, classification (\texttt  {CL.V.1})}{29}{section*.45}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Core-B, root-cause mapping (\texttt  {AB.RCM.4})}{29}{section*.46}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Core-B, mitigation set (\texttt  {AB.RMS.3d})}{30}{section*.47}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Core-B, technique extraction (\texttt  {AB.ATE.1})}{30}{section*.48}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Core-B, severity vector (\texttt  {AB.VSP.1})}{30}{section*.49}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{TAA shard, attribution (\texttt  {AB.TAA.1})}{30}{section*.50}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{CSE shard, multi-select (\texttt  {JS.CSE.TI.GRP.1})}{30}{section*.51}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {D}Graph statistics}{30}{appendix.D}\protected@file@percent }
+\newlabel{app:graph}{{D}{30}{Graph statistics}{appendix.D}{}}
+\@writefile{toc}{\contentsline {paragraph}{Funding}{30}{section*.53}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Competing interests}{30}{section*.54}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Ethical approval and dual use}{30}{section*.55}\protected@file@percent }
 \citation{glaukopis2026software}
+\@writefile{lot}{\contentsline {table}{\numberline {19}{\ignorespaces Node labels and relationship types of the release graph, with counts.}}{31}{table.19}\protected@file@percent }
+\newlabel{tab:graphcounts}{{19}{31}{Node labels and relationship types of the release graph, with counts}{table.19}{}}
+\@writefile{toc}{\contentsline {paragraph}{Data availability}{31}{section*.56}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Author contributions}{31}{section*.57}\protected@file@percent }
 \bibstyle{spmpsci}
 \bibdata{glaukopis_ijis}
 \bibcite{alam2025athenabench}{1}
 \bibcite{alam2024ctibench}{2}
 \bibcite{alam2026minerva}{3}
-\bibcite{glaukopis2026software}{4}
-\bibcite{bhatt2024cyberseceval2}{5}
-\bibcite{bhatt2023cyberseceval}{6}
-\bibcite{brown2020gpt3}{7}
-\bibcite{cheng2024ctinexus}{8}
-\bibcite{chung2024flant5}{9}
-\bibcite{comanici2025gemini25}{10}
-\@writefile{toc}{\contentsline {paragraph}{Funding}{27}{section*.39}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Competing interests}{27}{section*.40}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Ethical approval and dual use}{27}{section*.41}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Data availability}{27}{section*.42}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Author contributions}{27}{section*.43}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Use of large language models}{27}{section*.44}\protected@file@percent }
-\bibcite{mitreCVE}{11}
-\bibcite{deason2025cybersoceval}{12}
-\bibcite{deepseek2025v32exp}{13}
-\bibcite{deepseek2026v4}{14}
-\bibcite{efron1993bootstrap}{15}
-\bibcite{fieblinger2024actionable}{16}
-\bibcite{first2019cvss}{17}
-\bibcite{google2025gemini3flash}{18}
-\bibcite{grattafiori2024llama3}{19}
-\bibcite{groeneveld2024olmo}{20}
-\bibcite{gururangan2020dontstop}{21}
-\bibcite{ji2024sevenllm}{22}
-\bibcite{kassianik2025foundationsec}{23}
-\bibcite{kwon2023vllm}{24}
-\bibcite{lambert2024tulu3}{25}
-\bibcite{levi2025cyberpal}{26}
-\bibcite{levi2025toward}{27}
-\bibcite{li2023seceval}{28}
-\bibcite{li2024wmdp}{29}
-\bibcite{li2023kctiaa}{30}
-\bibcite{liu2024cyberbench}{31}
-\bibcite{openai2025gpt52}{32}
-\bibcite{openai2026gpt55}{33}
-\bibcite{ouyang2022instructgpt}{34}
-\bibcite{qwen2025qwen25}{35}
-\bibcite{rajbhandari2020zero}{36}
-\bibcite{sarhan2021opencykg}{37}
-\bibcite{strom2018mitre}{38}
-\bibcite{taori2023alpaca}{39}
-\bibcite{mitreCAPEC}{40}
-\bibcite{mitreCWE}{41}
-\bibcite{tihanyi2024cybermetric}{42}
-\bibcite{wang2024mmlupro}{43}
-\bibcite{wei2022flan}{44}
-\bibcite{yang2025qwen3}{45}
-\bibcite{zheng2024llamafactory}{46}
-\gdef \@abspage@last{29}
+\bibcite{amershi2019se4ml}{4}
+\bibcite{glaukopis2026software}{5}
+\bibcite{bhatt2024cyberseceval2}{6}
+\bibcite{bhatt2023cyberseceval}{7}
+\bibcite{breck2019datavalidation}{8}
+\bibcite{brown2020gpt3}{9}
+\bibcite{cheng2024ctinexus}{10}
+\bibcite{chung2024flant5}{11}
+\bibcite{comanici2025gemini25}{12}
+\bibcite{mitreCVE}{13}
+\bibcite{deason2025cybersoceval}{14}
+\bibcite{deepseek2025v32exp}{15}
+\bibcite{deepseek2026v4}{16}
+\bibcite{dong2024composition}{17}
+\bibcite{efron1993bootstrap}{18}
+\bibcite{fieblinger2024actionable}{19}
+\@writefile{toc}{\contentsline {paragraph}{Use of large language models}{32}{section*.58}\protected@file@percent }
+\bibcite{first2019cvss}{20}
+\bibcite{gebru2021datasheets}{21}
+\bibcite{google2025gemini3flash}{22}
+\bibcite{grattafiori2024llama3}{23}
+\bibcite{groeneveld2024olmo}{24}
+\bibcite{gururangan2020dontstop}{25}
+\bibcite{ji2024sevenllm}{26}
+\bibcite{kapoor2023leakage}{27}
+\bibcite{kassianik2025foundationsec}{28}
+\bibcite{kirkpatrick2017ewc}{29}
+\bibcite{kwon2023vllm}{30}
+\bibcite{lambert2024tulu3}{31}
+\bibcite{levi2025cyberpal}{32}
+\bibcite{levi2025toward}{33}
+\bibcite{li2023seceval}{34}
+\bibcite{li2024wmdp}{35}
+\bibcite{li2023kctiaa}{36}
+\bibcite{liu2024cyberbench}{37}
+\bibcite{luo2023forgetting}{38}
+\bibcite{martinez2022se4ai}{39}
+\bibcite{mccloskey1989catastrophic}{40}
+\bibcite{mitchell2019modelcards}{41}
+\bibcite{openai2025gpt52}{42}
+\bibcite{openai2026gpt55}{43}
+\bibcite{ouyang2022instructgpt}{44}
+\bibcite{paleyes2022challenges}{45}
+\bibcite{qwen2025qwen25}{46}
+\bibcite{rajbhandari2020zero}{47}
+\bibcite{sallou2024breaking}{48}
+\bibcite{sarhan2021opencykg}{49}
+\bibcite{sculley2015hidden}{50}
+\bibcite{strom2018mitre}{51}
+\bibcite{taori2023alpaca}{52}
+\bibcite{mitreCAPEC}{53}
+\bibcite{mitreCWE}{54}
+\bibcite{tihanyi2024cybermetric}{55}
+\bibcite{wang2024mmlupro}{56}
+\bibcite{wei2022flan}{57}
+\bibcite{wohlin2012experimentation}{58}
+\bibcite{yang2025qwen3}{59}
+\bibcite{zheng2024llamafactory}{60}
+\gdef \@abspage@last{34}

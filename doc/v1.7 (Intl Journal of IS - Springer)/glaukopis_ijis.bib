@@ -1,6 +1,5 @@
-% Bibliography for the Computers & Security submission (v1.5, 2026-09-06).
-% Publication records were checked against publisher/DBLP/arXiv pages on
-% 2026-09-05/06. Preprints are labelled as preprints.
+% Bibliography for the International Journal of Information Security submission (v1.7.2, 2026-10-25),
+% kept identical to doc/v1.8 .../glaukopis_jss.bib apart from this header.
 
 @inproceedings{wei2022flan,
   author    = {Wei, Jason and Bosma, Maarten and Zhao, Vincent Y. and Guu, Kelvin and Yu, Adams Wei and Lester, Brian and Du, Nan and Dai, Andrew M. and Le, Quoc V.},
@@ -249,10 +248,10 @@
 }
 
 @misc{glaukopis2026software,
-  author = {{Athena Security Group, LLC}},
+  author = {{Athena Software Group Inc.}},
   title  = {{Glaukopis}: Source-Available Software, Training Configuration, and Evaluation Utilities},
   year   = {2026},
-  note   = {{Software repository, commit c4d3a2f45e0a08672c87c2b46c3c4be109440c38; PolyForm Noncommercial 1.0.0 license}},
+  note   = {{[software]. GitHub repository, accessed 25 October 2026; PolyForm Noncommercial 1.0.0 license}},
   url    = {https://github.com/Athena-Software-Group/Glaukopis}
 }
 
@@ -405,4 +404,142 @@
   year      = {2024},
   note      = {{arXiv:2403.03218}},
   url       = {https://arxiv.org/abs/2403.03218}
+}
+
+%% ---- Added in v1.8 (2026-10-25): software engineering for ML systems, forgetting, data composition ----
+
+@inproceedings{amershi2019se4ml,
+  author    = {Amershi, Saleema and Begel, Andrew and Bird, Christian and DeLine, Robert and Gall, Harald and Kamar, Ece and Nagappan, Nachiappan and Nushi, Besmira and Zimmermann, Thomas},
+  title     = {Software Engineering for Machine Learning: A Case Study},
+  booktitle = {2019 IEEE/ACM 41st International Conference on Software Engineering: Software Engineering in Practice (ICSE-SEIP)},
+  pages     = {291--300},
+  year      = {2019},
+  doi       = {10.1109/ICSE-SEIP.2019.00042}
+}
+
+@inproceedings{sculley2015hidden,
+  author    = {Sculley, D. and Holt, Gary and Golovin, Daniel and Davydov, Eugene and Phillips, Todd and Ebner, Dietmar and Chaudhary, Vinay and Young, Michael and Crespo, Jean-Fran{\c{c}}ois and Dennison, Dan},
+  title     = {Hidden Technical Debt in Machine Learning Systems},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume    = {28},
+  pages     = {2503--2511},
+  year      = {2015}
+}
+
+@inproceedings{breck2019datavalidation,
+  author    = {Breck, Eric and Polyzotis, Neoklis and Roy, Sudip and Whang, Steven Euijong and Zinkevich, Martin},
+  title     = {Data Validation for Machine Learning},
+  booktitle = {Proceedings of Machine Learning and Systems (MLSys)},
+  volume    = {1},
+  year      = {2019}
+}
+
+@article{paleyes2022challenges,
+  author  = {Paleyes, Andrei and Urma, Raoul-Gabriel and Lawrence, Neil D.},
+  title   = {Challenges in Deploying Machine Learning: A Survey of Case Studies},
+  journal = {ACM Computing Surveys},
+  volume  = {55},
+  number  = {6},
+  pages   = {114:1--114:29},
+  year    = {2022},
+  doi     = {10.1145/3533378}
+}
+
+@article{martinez2022se4ai,
+  author  = {Mart{\'i}nez-Fern{\'a}ndez, Silverio and Bogner, Justus and Franch, Xavier and Oriol, Marc and Siebert, Julien and Trendowicz, Adam and Vollmer, Anna Maria and Wagner, Stefan},
+  title   = {Software Engineering for {AI}-Based Systems: A Survey},
+  journal = {ACM Transactions on Software Engineering and Methodology},
+  volume  = {31},
+  number  = {2},
+  pages   = {1--59},
+  year    = {2022},
+  doi     = {10.1145/3487043}
+}
+
+@article{gebru2021datasheets,
+  author  = {Gebru, Timnit and Morgenstern, Jamie and Vecchione, Briana and Vaughan, Jennifer Wortman and Wallach, Hanna and Daum{\'e} III, Hal and Crawford, Kate},
+  title   = {Datasheets for Datasets},
+  journal = {Communications of the ACM},
+  volume  = {64},
+  number  = {12},
+  pages   = {86--92},
+  year    = {2021},
+  doi     = {10.1145/3458723}
+}
+
+@inproceedings{mitchell2019modelcards,
+  author    = {Mitchell, Margaret and Wu, Simone and Zaldivar, Andrew and Barnes, Parker and Vasserman, Lucy and Hutchinson, Ben and Spitzer, Elena and Raji, Inioluwa Deborah and Gebru, Timnit},
+  title     = {Model Cards for Model Reporting},
+  booktitle = {Proceedings of the Conference on Fairness, Accountability, and Transparency (FAT*)},
+  pages     = {220--229},
+  year      = {2019},
+  doi       = {10.1145/3287560.3287596}
+}
+
+@article{kapoor2023leakage,
+  author  = {Kapoor, Sayash and Narayanan, Arvind},
+  title   = {Leakage and the Reproducibility Crisis in Machine-Learning-Based Science},
+  journal = {Patterns},
+  volume  = {4},
+  number  = {9},
+  pages   = {100804},
+  year    = {2023},
+  doi     = {10.1016/j.patter.2023.100804}
+}
+
+@inproceedings{sallou2024breaking,
+  author    = {Sallou, June and Durieux, Thomas and Panichella, Annibale},
+  title     = {Breaking the Silence: The Threats of Using {LLMs} in Software Engineering},
+  booktitle = {Proceedings of the 46th International Conference on Software Engineering: New Ideas and Emerging Results (ICSE-NIER '24)},
+  publisher = {ACM},
+  year      = {2024},
+  note      = {{Preprint: arXiv:2312.08055}}
+}
+
+@book{wohlin2012experimentation,
+  author    = {Wohlin, Claes and Runeson, Per and H{\"o}st, Martin and Ohlsson, Magnus C. and Regnell, Bj{\"o}rn and Wessl{\'e}n, Anders},
+  title     = {Experimentation in Software Engineering},
+  publisher = {Springer},
+  address   = {Berlin, Heidelberg},
+  year      = {2012},
+  doi       = {10.1007/978-3-642-29044-2}
+}
+
+@incollection{mccloskey1989catastrophic,
+  author    = {McCloskey, Michael and Cohen, Neal J.},
+  title     = {Catastrophic Interference in Connectionist Networks: The Sequential Learning Problem},
+  booktitle = {Psychology of Learning and Motivation},
+  volume    = {24},
+  pages     = {109--165},
+  publisher = {Academic Press},
+  year      = {1989},
+  doi       = {10.1016/S0079-7421(08)60536-8}
+}
+
+@article{kirkpatrick2017ewc,
+  author  = {Kirkpatrick, James and Pascanu, Razvan and Rabinowitz, Neil and Veness, Joel and Desjardins, Guillaume and Rusu, Andrei A. and Milan, Kieran and Quan, John and Ramalho, Tiago and Grabska-Barwinska, Agnieszka and others},
+  title   = {Overcoming Catastrophic Forgetting in Neural Networks},
+  journal = {Proceedings of the National Academy of Sciences},
+  volume  = {114},
+  number  = {13},
+  pages   = {3521--3526},
+  year    = {2017},
+  doi     = {10.1073/pnas.1611835114}
+}
+
+@misc{luo2023forgetting,
+  author = {Luo, Yun and Yang, Zhen and Meng, Fandong and Li, Yafu and Zhou, Jie and Zhang, Yue},
+  title  = {An Empirical Study of Catastrophic Forgetting in Large Language Models During Continual Fine-Tuning},
+  year   = {2023},
+  note   = {{arXiv preprint arXiv:2308.08747 (v5, January 2025)}},
+  url    = {https://arxiv.org/abs/2308.08747}
+}
+
+@inproceedings{dong2024composition,
+  author    = {Dong, Guanting and Yuan, Hongyi and Lu, Keming and Li, Chengpeng and Xue, Mingfeng and Liu, Dayiheng and Wang, Wei and Yuan, Zheng and Zhou, Chang and Zhou, Jingren},
+  title     = {How Abilities in Large Language Models are Affected by Supervised Fine-tuning Data Composition},
+  booktitle = {Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)},
+  pages     = {177--198},
+  year      = {2024},
+  doi       = {10.18653/v1/2024.acl-long.12}
 }
