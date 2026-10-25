@@ -1,0 +1,15 @@
+Highlights
+
+Glaukopis: Traceable Instruction Data and Checkpoint-Level Diagnosis of Capability Regressions in a Cyber Threat Intelligence Language Model
+
+Peter J. Worth Jr., Ionut Cardei
+
+- Every CTI training target is the rendering of a typed query over a 12-source graph
+- Build gates catch structural data defects; semantic defects still need human review
+- Retained checkpoints localize where a four-stage fine-tune gains and loses ability
+- Aligned benchmark 65.0 vs 57.7 base; independent benchmarks and MMLU-Pro do not gain
+- No advantage of staged training is shown; the matched single-stage control is defined
+
+(Each bullet is at most 85 characters including spaces. If the matched single-stage control is run before
+submission, replace the last bullet with its result, e.g. "A matched single-stage control scores X vs 65.0
+for the staged chain".)

@@ -1,0 +1,53 @@
+This is BibTeX, Version 0.99d (TeX Live 2024)
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
+The top-level auxiliary file: glaukopis_jss.aux
+The style file: cas-model2-names.bst
+Database file #1: glaukopis_jss.bib
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+Warning--empty pages in breck2019datavalidation
+Warning--empty pages in li2024wmdp
+Warning--empty pages in liu2024cyberbench
+Warning--empty pages in sallou2024breaking
+Warning--empty pages in wei2022flan
+You've used 60 entries,
+            2990 wiz_defined-function locations,
+            1086 strings with 23975 characters,
+and the built_in function-call counts, 51702 in all, are:
+= -- 3596
+> -- 3200
+< -- 33
++ -- 1226
+- -- 1155
+* -- 6250
+:= -- 7592
+add.period$ -- 187
+call.type$ -- 60
+change.case$ -- 670
+chr.to.int$ -- 57
+cite$ -- 65
+duplicate$ -- 3442
+empty$ -- 2988
+format.name$ -- 1321
+if$ -- 9384
+int.to.chr$ -- 4
+int.to.str$ -- 1
+missing$ -- 752
+newline$ -- 322
+num.names$ -- 240
+pop$ -- 1282
+preamble$ -- 1
+purify$ -- 613
+quote$ -- 0
+skip$ -- 1133
+stack$ -- 0
+substring$ -- 1519
+swap$ -- 2923
+text.length$ -- 18
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 534
+warning$ -- 5
+while$ -- 243
+width$ -- 0
+write$ -- 886
+(There were 5 warnings)
