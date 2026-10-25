@@ -11,7 +11,7 @@ Created 2026-10-25 from `doc/v1.7 (Intl Journal of IS - Springer)/glaukopis_ijis
 |---|---|
 | `glaukopis_jss.tex`, `glaukopis_jss.bib`, `glaukopis_jss.bbl` | Article source and bibliography (author–year, `cas-model2-names.bst`). |
 | `glaukopis_jss.pdf` | Compiled article (27 pages, two-column). |
-| `glaukopis_jss_supplementary.tex` / `.pdf` | Supplementary material (6 pages), formerly Appendices A–C: S1 evaluation suites; S2 contamination screen with Table S1; S3 verbatim training records. Its references to article sections and tables resolve through `xr-hyper` from `glaukopis_jss.aux`. |
+| `glaukopis_jss_supplementary.tex` / `.pdf` | Supplementary material, formerly Appendices A–C plus graph statistics: S1 evaluation suites; S2 contamination screen with Table S1; S3 verbatim training records; S4 graph statistics with Table S2. Its references to article sections and tables resolve through `xr-hyper` from `glaukopis_jss.aux`. |
 | `build.sh` | Builds the article, then the supplement (`pdflatex → bibtex → pdflatex ×2` each). |
 | `highlights.txt` | Five highlights (≤ 85 characters), for separate upload; not typeset in the PDF. |
 | `VITAE.md` → `vitae.docx` | Author biographies (≤ 100 words each), as the guide requires. Sources: the Athena leadership page and Cardei's FAU pages. |
@@ -19,6 +19,7 @@ Created 2026-10-25 from `doc/v1.7 (Intl Journal of IS - Springer)/glaukopis_ijis
 | `SUBMISSION_CHECKLIST_JSS.md` | Guide-by-guide check, files to upload, author actions. |
 | `SINGLE_STAGE_BASELINE.md` | The single-stage-baseline framing, with the record behind it. |
 | `analysis/v18_additions.py` → `data/v18_additions.json` | Reproduces the earlier-single-pass numbers quoted in §6.3 and the related budget figures from the workbook and shards. Run: `GLAUKOPIS_ROOT=/path/to/Glaukopis python3 analysis/v18_additions.py` (needs `openpyxl`). |
+| `analysis/graph_counts.cypher` → `data/graph_counts_v21.json` | The Cypher queries and output behind the graph statistics in §5.1 and Table S2. Run 2026-10-25 against the release's Neo4j instance (`athena-cti-db`, last written 2026-05-04); its entity counts match the v21 build's substrate report. |
 | `figures/` | `Figure_1`/`Figure_2` as vector PDF/EPS plus their TikZ sources. The article compiles the same figures inline. |
 | `cas-dc.cls`, `cas-common.sty`, `cas-model2-names.bst` | Elsevier CAS files the build needs. |
 | `Guide for authors - Journal of Systems and Software ….pdf` | Elsevier's guide, downloaded 2026-10-25. Untracked: it is Elsevier's page and the repository is public. |
@@ -54,9 +55,7 @@ No result number from v1.7 changed. The new numbers are the paired differences a
 
 ## Remaining markers
 
-`grep -n 'TODO (authors)' glaukopis_jss.tex`:
-
-- the optional Neo4j graph counts, carried over from v1.7.
+None. The Neo4j graph counts are filled in: 214,651 nodes, 330,935 relationships, 31 labels, 41 types. They replace v1.7's approximate "~280K nodes, ~480K edges" and the "26 labels, 37 types" taken from an April schema snapshot, both of which were wrong.
 
 ## Related repository files
 

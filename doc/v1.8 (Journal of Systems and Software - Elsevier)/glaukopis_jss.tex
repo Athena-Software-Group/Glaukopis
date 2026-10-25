@@ -196,10 +196,7 @@ Verbatim $n$-gram screening of training data against evaluation items follows th
 \subsection{Why a knowledge graph, and why these sources}
 The alternative to a graph is to synthesize instruction data directly from documents, either by prompting a large model or by hand. Both produce targets whose justification lives in the generator's reasoning rather than in a record that can be inspected. We chose a property graph because the CTI catalogs are already relational: a CVE record names its CWE, a CAPEC pattern names the weaknesses it exploits and the ATT\&CK techniques it maps to, a technique names the groups that use it and the mitigations that counter it. Loading these records into one graph makes a multi-hop fact (``this CVE's weakness class is exploited by this attack pattern, which maps to this technique'') a path that a query can return and a reviewer can check. Neo4j was chosen for its property-graph model and Cypher query language, which let a template express typed traversals and equality constraints directly; the design does not depend on Neo4j-specific features and the template language targets the schema, not the engine.
 
-Table~\ref{tab:sources} lists the twelve sources, what is loaded from each, and the retention rule. Seven are bounded catalogs loaded in full; the five vulnerability and exploitation feeds are high-churn and are scoped to records from 2024 onward, which keeps the graph at a size that can be rebuilt on a workstation while covering the vulnerability surface that a current SOC encounters. The schema has 26 node labels and 37 relationship types. Because the vulnerability feeds change daily, the node and relationship counts are a property of a build, not of the system; the build used for the reported release contained approximately 280,000 nodes and 480,000 relationships, and the exact counts for any build are obtained from the populator's completion log. \citep{strom2018mitre,mitreCWE,mitreCAPEC,mitreCVE}
-%% TODO (authors): if the Neo4j instance for the v21 build is still available, replace the approximate figure with the per-label counts from
-%%   MATCH (n) RETURN labels(n)[0] AS label, count(*) AS n ORDER BY n DESC;  MATCH ()-[r]->() RETURN type(r) AS rel, count(*) AS n ORDER BY n DESC;
-%% and add them as a small table or as an appendix.
+Table~\ref{tab:sources} lists the twelve sources, what is loaded from each, and the retention rule. Seven are bounded catalogs loaded in full; the five vulnerability and exploitation feeds are high-churn and are scoped to records from 2024 onward, which keeps the graph at a size that can be rebuilt on a workstation while covering the vulnerability surface that a current SOC encounters. The graph from which the release was generated contains 214,651 nodes and 330,935 relationships, with 31 node labels and 41 relationship types, and every node carries exactly one label; Table~S2 of the supplementary material gives the count for each label and relationship type \citep{strom2018mitre,mitreCWE,mitreCAPEC,mitreCVE}. The vulnerability overlays account for most of it (96,946 CVE nodes, 94,972 EPSS score nodes, and 7,047 proof-of-concept references), against 835 ATT\&CK attack patterns, 187 intrusion sets, 969 CWE weakness entries, and 615 CAPEC patterns. Because the vulnerability feeds change daily, these counts are a property of a build rather than of the system. They were read from the graph instance used for the release, whose entity counts match those that the release's build recorded at generation time.
 
 \begin{table*}
 \centering\footnotesize
@@ -237,7 +234,7 @@ Refresh behavior is source-dependent: EPSS and the current-year NVD feed are re-
   ev/.style={box, fill=green!8, draw=green!45!black, text width=22mm, minimum height=7mm},
   arr/.style={->, semithick, black!55}, grp/.style={draw=black!30, rounded corners=4pt, inner sep=3mm, fill=black!2},
   lbl/.style={font=\footnotesize\bfseries, text=black!65}]
-\node[src] (ari) {\textbf{Ariadne}\\Neo4j CTI graph\\12 public sources\\$\sim$280K nodes, $\sim$480K edges};
+\node[src] (ari) {\textbf{Ariadne}\\Neo4j CTI graph\\12 public sources\\214,651 nodes\\330,935 edges};
 \node[gen, right=8mm of ari] (sop) {\textbf{Sophia}\\parse template $\to$ execute typed query $\to$ bind entities $\to$ render record};
 \node[shard, right=8mm of sop, yshift=13mm] (sa) {Core-A\\168,859 rows};
 \node[shard, below=2mm of sa] (sb) {Core-B\\49,581 rows};
@@ -801,7 +798,7 @@ For practitioners, the transferable results are the lessons of Section~\ref{sec:
 
 
 \section*{Supplementary material}
-Supplementary material associated with this article is provided in the file \texttt{glaukopis\_jss\_supplementary.pdf}. Section~S1 describes the three security evaluation suites; Section~S2 documents the mechanism, enforcement, and per-benchmark posture of the contamination screen (Table~S1); Section~S3 reproduces one verbatim training record per template family, including the rendering defects discussed in Section~\ref{sec:sophia}.
+Supplementary material associated with this article is provided in the file \texttt{glaukopis\_jss\_supplementary.pdf}. Section~S1 describes the three security evaluation suites; Section~S2 documents the mechanism, enforcement, and per-benchmark posture of the contamination screen (Table~S1); Section~S3 reproduces one verbatim training record per template family, including the rendering defects discussed in Section~\ref{sec:sophia}; Section~S4 gives the node and relationship counts of the graph (Table~S2).
 
 \printcredits
 

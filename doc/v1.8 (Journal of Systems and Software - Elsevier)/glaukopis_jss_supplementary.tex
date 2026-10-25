@@ -27,7 +27,7 @@
 \begin{document}
 \maketitle
 
-\noindent This file accompanies the article. Section, table, and figure numbers without an ``S'' prefix refer to the article. Section~\ref{app:benchmarks} describes the three security evaluation suites; Section~\ref{app:contamination} documents the contamination screen; Section~\ref{app:examples} reproduces one verbatim training record per template family.
+\noindent This file accompanies the article. Section, table, and figure numbers without an ``S'' prefix refer to the article. Section~\ref{app:benchmarks} describes the three security evaluation suites; Section~\ref{app:contamination} documents the contamination screen; Section~\ref{app:examples} reproduces one verbatim training record per template family; Section~\ref{app:graph} gives the node and relationship counts of the graph.
 
 \section{The evaluation suites}\label{app:benchmarks}
 This section describes the three security benchmarks in the portfolio in more detail than Section~\ref{M-sec:evaluation} of the article; the item counts and scorers as executed are in Table~\ref{M-tab:portfolio} of the article.
@@ -122,6 +122,59 @@ The empty ``detection guidance'' clause is a second rendering defect: the techni
 \emph{Input:} Threat intelligence report excerpt: The intrusion set Gallmaker (G0084) is documented in MITRE ATT\&CK as employing the following techniques during observed operations: T1204.002 (Malicious File), T1560.001 (Archive via Utility), and additional tradecraft consistent with the group's profile. Group profile: \ldots
 \emph{Output:} \texttt{<json\_object>\{"correct\_answers": ["C", "E"]\}</json\_object>}
 The contrast between the last two records is the mechanism of Section~\ref{M-sec:cseshard} of the article: the TAA record produces a group name and G-code; the CSE record consumes them and produces letters.
+
+\section{Graph statistics}\label{app:graph}
+Table~\ref{tab:graphcounts} lists the node labels and relationship types of the Ariadne graph from which the release was generated, with their counts, as returned by \texttt{MATCH (n) UNWIND labels(n) AS l RETURN l, count(*)} and \texttt{MATCH ()-[r]->() RETURN type(r), count(*)} on the release's graph instance (Neo4j 2026.03.1, last written 4 May 2026, queried 25 October 2026). The graph has 214,651 nodes and 330,935 relationships; every node carries exactly one label. Its entity counts for the seven ATT\&CK classes that the build's substrate check verifies (intrusion sets, malware, attack patterns, mitigations, tactics, data sources, and data components) equal the counts that the check recorded when the release was built. Labels are the source catalogs' own type names: the hyphenated lower-case labels are STIX object types from ATT\&CK; \texttt{goal}, \texttt{approach}, \texttt{activity}, \texttt{vulnerability} (ENGAGE's adversary vulnerabilities), and \texttt{reference} are ENGAGE records, and \texttt{attack\_technique} and \texttt{attack\_tactic} are ENGAGE's own records of the ATT\&CK techniques and tactics it maps to. A generation-time schema snapshot taken before the D3FEND, ExploitDB, PoC-in-GitHub, and Sigma sources were loaded lists 26 labels and 37 relationship types; the five labels and four relationship types it lacks belong to those sources.
+
+\begin{table}[ht]
+\centering\small
+\caption{Node labels and relationship types of the release graph, with counts.}\label{tab:graphcounts}
+\begin{tabular}{@{}lr@{\qquad}lr@{}}
+\toprule Node label & Nodes & Relationship type & Relationships \\\midrule
+\texttt{CVE} & 96,946 & \texttt{scores} & 94,123 \\
+\texttt{EPSS} & 94,972 & \texttt{observed\_as} & 82,620 \\
+\texttt{GithubPoC} & 7,047 & \texttt{problemType} & 80,472 \\
+\texttt{SigmaRule} & 3,120 & \texttt{impacts} & 18,152 \\
+\texttt{Observed\_Example} & 2,095 & \texttt{uses} & 17,270 \\
+\texttt{x-mitre-analytic} & 1,739 & \texttt{has\_poc} & 6,854 \\
+\texttt{KEV} & 1,569 & \texttt{detects} & 4,433 \\
+\texttt{Mitigation} & 1,413 & \texttt{requires\_data} & 4,124 \\
+\texttt{Weakness} & 969 & \texttt{counters} & 3,234 \\
+\texttt{attack-pattern} & 835 & \texttt{mitigated\_by} & 2,858 \\
+\texttt{malware} & 696 & \texttt{known\_exploit} & 1,808 \\
+\texttt{x-mitre-detection-strategy} & 691 & \texttt{implemented\_by} & 1,739 \\
+\texttt{CAPEC} & 615 & \texttt{ChildOf} & 1,692 \\
+\texttt{D3FENDTechnique} & 466 & \texttt{mitigates} & 1,445 \\
+\texttt{ExploitDBEntry} & 335 & \texttt{achieves} & 1,307 \\
+\texttt{course-of-action} & 268 & \texttt{exploits} & 1,212 \\
+\texttt{attack\_technique} & 188 & \texttt{related\_attack\_pattern} & 1,212 \\
+\texttt{intrusion-set} & 187 & \texttt{detected\_by} & 936 \\
+\texttt{x-mitre-data-component} & 109 & \texttt{for\_vulnerability} & 764 \\
+\texttt{tool} & 91 & \texttt{for\_activity} & 647 \\
+\texttt{reference} & 60 & \texttt{uses\_technique} & 596 \\
+\texttt{campaign} & 52 & \texttt{with\_tactic} & 518 \\
+\texttt{Detection\_Method} & 41 & \texttt{subtechnique-of} & 477 \\
+\texttt{x-mitre-data-source} & 38 & \texttt{parent} & 437 \\
+\texttt{activity} & 31 & \texttt{for\_CVE} & 372 \\
+\texttt{vulnerability} & 29 & \texttt{has\_weaponized\_exploit} & 339 \\
+\texttt{x-mitre-tactic} & 14 & \texttt{CanPrecede} & 305 \\
+\texttt{attack\_tactic} & 14 & \texttt{map\_ap} & 270 \\
+\texttt{approach} & 9 & \texttt{maps\_ap} & 175 \\
+\texttt{D3FENDTactic} & 7 & \texttt{revoked-by} & 140 \\
+\texttt{goal} & 5 & \texttt{PeerOf} & 117 \\
+& & \texttt{has\_reference} & 63 \\
+& & \texttt{refers} & 63 \\
+& & \texttt{has\_approach} & 51 \\
+& & \texttt{has\_goal} & 41 \\
+& & \texttt{attributed-to} & 25 \\
+& & \texttt{maps\_ack} & 13 \\
+& & \texttt{CanFollow} & 10 \\
+& & \texttt{for\_approach} & 9 \\
+& & \texttt{with\_goal} & 9 \\
+& & \texttt{CanAlsoBe} & 3 \\
+\midrule Total (31 labels) & 214,651 & Total (41 types) & 330,935 \\\bottomrule
+\end{tabular}
+\end{table}
 
 \bibliographystyle{cas-model2-names}
 \bibliography{glaukopis_jss}

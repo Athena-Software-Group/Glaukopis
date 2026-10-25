@@ -21,14 +21,55 @@ The article reports negative results alongside positive ones, which the journal'
 
 It closes with seven lessons for engineering traceable, regression-aware domain specialization.
 
-**Prior history.** [Confirm and edit:] A full version of this work was submitted to *Computers & Security* and an expanded version to the *International Journal of Information Security*; neither was accepted, and the editor of the latter suggested the *Journal of Systems and Software* as a better fit. An abridged version was submitted to IEEE ICTAI 2026 and not accepted. None of these versions was published, and no preprint has been posted. The present manuscript has been rewritten for a software-engineering readership and addresses the earlier reviews. It:
+**Prior history.** No version of this work has been published, and no preprint has been posted. We submitted it three times before, and each round of reviews changed the manuscript.
 
-- makes the exposition self-contained;
-- justifies each design choice;
-- adds a baselines section;
-- measures the later training stages against a single-stage baseline with paired item-level statistics;
-- explains both regressions mechanistically from the training data;
-- reports inference efficiency in durable physical units.
+1. ***IEEE ICTAI 2026*** **(submission 236), an abridged conference version. Not accepted** (one weak accept, one weak reject, two rejects). The reviewers asked:
+   - whether the gains came from the staged schedule or from more task-aligned data;
+   - whether alignment between the training data and the benchmark explained the gains;
+   - for confidence intervals;
+   - for corrected cost accounting.
+
+   In response, we:
+   - re-derived every number from the run records, correcting an aggregation inconsistency (the final checkpoint's three-benchmark mean is 65.0, not the 66.3 reported in that version) and a double count in the cost ledger;
+   - added paired item-level bootstrap intervals;
+   - added an overlap audit (13-gram, entity, and gold-fact) with scores on overlapping and non-overlapping items;
+   - added response-level taxonomies of the attribution and severity errors.
+2. ***Computers & Security*** **(COSE-D-26-05507), the full journal version. Rejected after two reviews** (October 2026).
+   - Reviewer 1 asked for:
+     - self-contained exposition and background;
+     - justified design choices;
+     - experimental baselines;
+     - precise descriptions of the data sources;
+     - exact graph sizes;
+     - an interpretation of every result and example;
+     - a durable alternative to dollar costs.
+   - Reviewer 2 raised:
+     - the lack of a single-stage control;
+     - hyperparameters that change together at stage boundaries;
+     - the attribution and severity regressions;
+     - the loss of general reasoning and the absence of gains on independent benchmarks;
+     - the developer–evaluator overlap;
+     - missing citations for the hosted models.
+
+   In response, we:
+   - rewrote the abstract and introduction, and added a system overview with a glossary;
+   - added background on CTI catalogs, instruction tuning, and benchmarks, and a table of exactly what is loaded from each source;
+   - added a baselines section: base model, security-specialized open model, six cited hosted models;
+   - explained both regressions mechanistically from the content of the training shards;
+   - added a subject-level analysis of the general-reasoning loss and a section on evaluation independence;
+   - reported inference efficiency in physical units.
+3. ***International Journal of Information Security*** **(Springer), an expanded version.** It added the full description of the template engine, the source-selection criteria, research directions, and appendices on the benchmarks, the contamination screen, and example training records. **Not accepted**; the editor suggested the *Journal of Systems and Software*.
+
+**Revisions for this submission.** We reframed the manuscript as a software-engineering study for this journal's readership. It now includes:
+
+- five research questions;
+- a section on engineering machine-learning systems and their training data;
+- a table of the data pipeline's quality checks, including the silent failures that led to them;
+- the first training stage's checkpoint, presented explicitly as a single-stage baseline, with the later stages measured against it by paired item-level differences (answering the single-stage concern of the earlier reviews);
+- seven lessons learned;
+- threats to validity organized by construct, internal, external, and conclusion validity, and reliability;
+- exact node and relationship counts for the knowledge graph (answering Reviewer 1 of *Computers & Security*);
+- the appendices, moved to supplementary material.
 
 We would be glad to provide the earlier reviews and our responses on request.
 

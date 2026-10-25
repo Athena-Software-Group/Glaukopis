@@ -5,7 +5,7 @@
 **Files checked:**
 
 - `glaukopis_jss.tex`: Elsevier CAS double-column, 27 pages.
-- `glaukopis_jss_supplementary.tex`: 6 pages.
+- `glaukopis_jss_supplementary.tex`: 7 pages.
 
 ## Requirements and status
 
@@ -49,14 +49,23 @@
 - the declarations-tool Word file
 - the cover letter
 
+## Two Editorial Manager steps explained
+
+**Article type.** This is not about layout. Editorial Manager's first screen asks which category of contribution you are submitting, from a drop-down of the journal's types: research papers, the *In Practice* track, *New Ideas and Trends Papers*, and special-issue ("VSI: …") entries. Choose the regular research-paper entry; its exact label is whatever the drop-down shows. The two-column layout is a separate matter: the PDF is already two-column, and the guide permits that for LaTeX submissions.
+
+**Declarations tool.** Elsevier asks every author group to fill in a short web form, the *Declaration of Interest tool*. Editorial Manager links it during submission, and it is also reachable from Elsevier's "declaration of competing interests" author page. You tick the categories that apply and type a short statement; the tool then produces a Word file, which you upload at the "attach files" step as the item type *Declaration of Interest Statement*. The content must match the manuscript's "Declaration of competing interest" section:
+
+- **Funding:** Athena Software Group Inc. funded the work and develops Glaukopis.
+- **Employment / leadership:** P. J. Worth Jr. is founder, president and CEO of Athena Software Group Inc.; I. Cardei is its Chief Scientist.
+- **Stock ownership:** tick it if either author holds equity in Athena. The manuscript does not currently say so. If you tick it, add "and holds equity in" to the manuscript's declaration so the two match.
+- **Other relationships:** P. J. Worth Jr. is a co-author of the AthenaBench benchmark used in the evaluation.
+
 ## Author actions before upload
 
-1. Confirm the cover letter's "Prior history" paragraph.
-2. Optional: Neo4j graph counts (`%% TODO` in §5.1).
-3. Run `bash build.sh`. Check that neither log reports undefined citations or references.
-4. In Editorial Manager:
-   - choose the research-paper type;
-   - complete the declarations tool;
+1. Run `bash build.sh`. Check that neither log reports undefined citations or references.
+2. In Editorial Manager:
+   - choose the research-paper article type;
+   - complete the declarations tool and upload its Word file (see above);
    - fill in the data statement;
    - decide on SSRN and the Open Science opt-in.
 
