@@ -465,6 +465,13 @@ model_mapping = {
     # without sacrificing the cse-stage gains, this becomes the 32B ship
     # candidate; otherwise v21-cse stays the headline.
     'athena-cti-sft-qwen25-32b-v21-recal-32b-vllm':            'asg-ai/athena-cti-sft-qwen25-32b-v21-recal-32b',
+    # Matched single-stage control for the v21 32B chain: one pass over the
+    # union of the Stage 1-3 shards at the Stage-1A recipe (lr 1e-5, cutoff
+    # 8192 packed, eff_bs 16), plus the lr 5e-6 sensitivity run. Pushed by
+    # SFT/autotrain/run_sft_qwen25_32b_v21_single_stage.sh; benched by
+    # SFT/eval/utils/serve_and_bench_qwen25_32b_v21_single_stage.sh.
+    'athena-cti-sft-qwen25-32b-v21-single-stage-vllm':         'asg-ai/athena-cti-sft-qwen25-32b-v21-single-stage',
+    'athena-cti-sft-qwen25-32b-v21-single-stage-lr5e-06-vllm': 'asg-ai/athena-cti-sft-qwen25-32b-v21-single-stage-lr5e-06',
     # v21 recal-32b on Qwen3-30B-A3B-Thinking-2507: DEFAULT on-chain Stage
     # 4 of the Qwen3-MoE v21 chain (Core -> TAA -> CSE -> Recal-32b).
     # Chained off asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-
