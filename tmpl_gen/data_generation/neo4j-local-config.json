@@ -1,7 +1,6 @@
-{   
-    "comment": "Connection configuration to the local neo4j service: GUI and bolt JSON/HTTP interface",
+{
+    "comment": "Connection configuration to the local neo4j service: GUI and bolt JSON/HTTP interface. Credentials are not stored here: set NEO4J_USER and NEO4J_PASSWORD in the repository-root .env (gitignored; see .env.example).",
     "uri": "bolt://localhost:7687",
-    "auth": ["neo4j", "athena-cti-db"],    
     "db_name": "athena-cti-db",
     "nickname": "ASG-CTI"
 }

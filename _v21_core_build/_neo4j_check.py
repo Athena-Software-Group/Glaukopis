@@ -18,6 +18,8 @@ import sys
 from pathlib import Path
 
 from neo4j import GraphDatabase
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tmpl_gen" / "src" / "tmpl_gen"))
+from neo4j_env import neo4j_auth  # credentials from NEO4J_USER/NEO4J_PASSWORD or .env
 
 HERE = Path(__file__).resolve().parent
 CFG_PATH = HERE.parent / "tmpl_gen" / "data_generation" / "neo4j-local-config.json"
@@ -30,7 +32,7 @@ def main() -> int:
     args = p.parse_args()
 
     cfg = json.loads(CFG_PATH.read_text())
-    drv = GraphDatabase.driver(cfg["uri"], auth=tuple(cfg["auth"]))
+    drv = GraphDatabase.driver(cfg["uri"], auth=neo4j_auth(cfg))
     failed = []
     entity_results: list[dict] = []
     traversal_results: list[dict] = []

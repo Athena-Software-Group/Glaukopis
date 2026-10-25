@@ -162,7 +162,7 @@ Re-running the populator after a partial refresh is the standard operator patter
 
 The populated graph is consumed by **[`tmpl_gen`](../tmpl_gen/)**, which projects multi-hop graph queries into Sophia CTI templates and emits Alpaca-format IFT triples. The active vintage at the time of writing is **v21** (`tmpl_gen/templates/05182026/`), feeding the v21 SFT chain that targets **Qwen2.5-32B-Instruct** as the ship model (see [`SFT/README.md`](../SFT/README.md) and [`SFT/SFT_FLOW.md`](../SFT/SFT_FLOW.md)).
 
-The single-script entry point on the `tmpl_gen` side is `tmpl_gen/data_generation/make_dataset.sh`, which reads `tmpl_gen/data_generation/neo4j-local-config.json` for the same Neo4j connection parameters used here.
+The single-script entry point on the `tmpl_gen` side is `tmpl_gen/data_generation/make_dataset.sh`, which reads `tmpl_gen/data_generation/neo4j-local-config.json` for the Neo4j URI and database and the repository-root `.env` for the same `NEO4J_USER` / `NEO4J_PASSWORD` used here.
 
 ---
 

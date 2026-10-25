@@ -229,11 +229,12 @@ Edit [`data_generation/neo4j-local-config.json`](data_generation/neo4j-local-con
 ```json
 {
     "uri": "bolt://localhost:7687",
-    "auth": ["neo4j", "your-password"],
     "db_name": "your-db-name",
     "nickname": "ASG-CTI"
 }
 ```
+
+Credentials are not stored in the config. Copy [`.env.example`](../.env.example) to `.env` at the repository root (gitignored) and set `NEO4J_USER` and `NEO4J_PASSWORD`; [`src/tmpl_gen/neo4j_env.py`](src/tmpl_gen/neo4j_env.py) reads them from the environment or that file. A legacy `"auth": [user, password]` entry in the config is still honoured when the variables are unset.
 
 ### 3. Convert Template to JSON
 

@@ -78,5 +78,5 @@ It should be very easy to modify.
 Triple configuration file. No need to change it yet.
 
 ### 2. `neo4j-local-config.json` ###
-CTI DB connection parameters.
-You must edit (or copy) this file with your CTI DB params.
+CTI DB connection parameters (URI and database name).
+You must edit (or copy) this file with your CTI DB params. Credentials go in the repository-root `.env` (`NEO4J_USER`, `NEO4J_PASSWORD`; see `.env.example`), never in this file.

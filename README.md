@@ -137,7 +137,7 @@ cd data_generation/
 ./make_dataset.sh ../templates/Sophia-CTI-Templates.docx results_dir alpaca.json
 ```
 
-Configure Neo4j connection parameters in `data_generation/neo4j-local-config.json` before running.
+Configure the Neo4j URI and database in `data_generation/neo4j-local-config.json`, and put the credentials (`NEO4J_USER`, `NEO4J_PASSWORD`) in a `.env` file at the repository root (gitignored; copy `.env.example`) before running.
 
 ### 3. Fine-tune the base model (`SFT`)
 

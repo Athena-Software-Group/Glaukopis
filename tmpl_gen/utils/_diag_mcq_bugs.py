@@ -8,9 +8,13 @@ the template uses actually yields rows in the local athena-cti-db.
 """
 import json
 from neo4j import GraphDatabase
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src" / "tmpl_gen"))
+from neo4j_env import neo4j_auth  # credentials from NEO4J_USER/NEO4J_PASSWORD or .env
 
 cfg = json.load(open("tmpl_gen/data_generation/neo4j-local-config.json"))
-drv = GraphDatabase.driver(cfg["uri"], auth=tuple(cfg["auth"]))
+drv = GraphDatabase.driver(cfg["uri"], auth=neo4j_auth(cfg))
 
 with drv.session(database=cfg["db_name"]) as s:
     print("=== AB.MCQ.4 -- Weakness <-> CAPEC ===")

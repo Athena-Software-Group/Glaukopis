@@ -5,10 +5,13 @@ import json
 import time
 from pathlib import Path
 from neo4j import GraphDatabase
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tmpl_gen" / "src" / "tmpl_gen"))
+from neo4j_env import neo4j_auth  # credentials from NEO4J_USER/NEO4J_PASSWORD or .env
 
 CFG = json.loads(Path("tmpl_gen/data_generation/neo4j-local-config.json").read_text())
 time.sleep(60)  # clear AuthenticationRateLimit window
-drv = GraphDatabase.driver(CFG["uri"], auth=tuple(CFG["auth"]))
+drv = GraphDatabase.driver(CFG["uri"], auth=neo4j_auth(CFG))
 db = CFG["db_name"]
 
 

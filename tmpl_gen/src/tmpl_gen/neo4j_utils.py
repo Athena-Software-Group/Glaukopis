@@ -25,6 +25,7 @@ from neo4j import GraphDatabase, Record
 
 from .utils import parse_attack, parse_datetime, readfile
 from .utils import ctobjnav, parsecfg_attack, download_web_file
+from .neo4j_env import neo4j_auth
 # import priorityQ
 
 
@@ -69,7 +70,8 @@ RETURN DISTINCT labels(n) AS from_node, type(r) AS relationship, labels(m) AS to
 class Neo4jDriver:
     def __init__(self, neo4j_conf_filename:str):
         cfg_dct = json.loads(readfile(neo4j_conf_filename))
-        uri, auth, db_name = cfg_dct["uri"], cfg_dct["auth"], cfg_dct["db_name"] 
+        uri, db_name = cfg_dct["uri"], cfg_dct["db_name"]
+        auth = neo4j_auth(cfg_dct)
         self.driver = GraphDatabase.driver(uri, auth=tuple(auth))
         self.driver.verify_connectivity()
         print(f"Neo4jDriver: Connection to Neo4j '{db_name}' database successful.")
@@ -251,7 +253,8 @@ def neo4j_get_db_schema(cfg_dct:dict):
     Connects to the Neo4j database, executes queries to retrieve schema information,
     and returns it as a dictionary.
     """
-    uri, auth, db_name = cfg_dct["uri"], cfg_dct["auth"], cfg_dct["db_name"] 
+    uri, db_name = cfg_dct["uri"], cfg_dct["db_name"]
+    auth = neo4j_auth(cfg_dct)
     schema = {
         "nodes": [],
         "relationships": [],
@@ -429,7 +432,8 @@ def neo4j_create_db_from_dict(parsecfg:dict, graph:dict, neo4j_conf:dict):
     None.
 
     """
-    uri, auth, db_name = neo4j_conf["uri"], neo4j_conf["auth"], neo4j_conf["db_name"] 
+    uri, db_name = neo4j_conf["uri"], neo4j_conf["db_name"]
+    auth = neo4j_auth(neo4j_conf)
 
     try:
         driver = GraphDatabase.driver(uri, auth=tuple(auth))

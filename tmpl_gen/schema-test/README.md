@@ -14,7 +14,7 @@ pip install -e .
 ## Prerequisites:
 
 ### Neo4j Database Connection Parameters
-Edit file [`tmpl_gen/schema-test/neo4j-local-config.json`](neo4j-local-config.json) with your neo4j DB connection parameters.
+Edit file [`tmpl_gen/schema-test/neo4j-local-config.json`](neo4j-local-config.json) with your neo4j DB connection parameters (URI and database name). Credentials come from `NEO4J_USER` and `NEO4J_PASSWORD` in the repository-root `.env` (see `.env.example`).
 
 ### Triple Generation Configuration
 Edit file [`tmpl_gen/schema-test/gencfg_default_neo4j.json`](gencfg_default_neo4j.json) if needed, but with caution. This file is maintained by the peple writing the templates and it should not be a concern for the team developing the CTI DB. It may be updated when the actual DB schema changes to add aliases, for instance.
