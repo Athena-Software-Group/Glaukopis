@@ -472,6 +472,20 @@ model_mapping = {
     # SFT/eval/utils/serve_and_bench_qwen25_32b_v21_single_stage.sh.
     'athena-cti-sft-qwen25-32b-v21-single-stage-vllm':         'asg-ai/athena-cti-sft-qwen25-32b-v21-single-stage',
     'athena-cti-sft-qwen25-32b-v21-single-stage-lr5e-06-vllm': 'asg-ai/athena-cti-sft-qwen25-32b-v21-single-stage-lr5e-06',
+    # Skip-attribution controls for the v21 32B chain (AAIML 2027 review,
+    # comment 1): Core -> CSE with the TAA stage skipped (run_sft_qwen25_32b_
+    # v21_final.sh --base-model asg-ai/athena-cti-sft-qwen25-32b-v21-core),
+    # then the Recal-32B replay on top of it (run_sft_qwen25_32b_v21_recal_
+    # 32b.sh --base-model <skip-TAA CSE repo>). Bench either with
+    # MODEL_ALIAS=<alias> serve_and_bench_qwen25_32b_v21_single_stage.sh.
+    'athena-cti-sft-qwen25-32b-v21-skiptaa-cse-vllm':          'asg-ai/athena-cti-sft-qwen25-32b-v21-skiptaa-cse',
+    'athena-cti-sft-qwen25-32b-v21-skiptaa-recal-32b-vllm':    'asg-ai/athena-cti-sft-qwen25-32b-v21-skiptaa-recal-32b',
+    # Seed replicates of the Stage-4 Recal-32B run (same base, data, and
+    # hyperparameters as the released run, which used LlamaFactory's default
+    # seed 42). Trained by run_sft_qwen25_32b_v21_recal_32b.sh --seed N.
+    'athena-cti-sft-qwen25-32b-v21-recal-32b-seed1-vllm':      'asg-ai/athena-cti-sft-qwen25-32b-v21-recal-32b-seed1',
+    'athena-cti-sft-qwen25-32b-v21-recal-32b-seed2-vllm':      'asg-ai/athena-cti-sft-qwen25-32b-v21-recal-32b-seed2',
+    'athena-cti-sft-qwen25-32b-v21-recal-32b-seed3-vllm':      'asg-ai/athena-cti-sft-qwen25-32b-v21-recal-32b-seed3',
     # v21 recal-32b on Qwen3-30B-A3B-Thinking-2507: DEFAULT on-chain Stage
     # 4 of the Qwen3-MoE v21 chain (Core -> TAA -> CSE -> Recal-32b).
     # Chained off asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-

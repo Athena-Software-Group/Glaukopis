@@ -86,6 +86,7 @@
 #                                         [--lr LR]
 #                                                  [--probs P_A,P_B,P_TAA]
 #                                                  [--offload | --no-offload]
+#                                                  [--seed N]   # replicate run; default = LlamaFactory seed 42 (the released run)
 #                                                  [--dry-run]
 
 set -euo pipefail
@@ -107,6 +108,7 @@ LR="3e-06"
 PROBS="0.15,0.60,0.25"
 DRY_RUN=0
 OFFLOAD="auto"
+SEED=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -117,6 +119,7 @@ while [[ $# -gt 0 ]]; do
         --max-samples)  MAX_SAMPLES="$2";  shift 2 ;;
         --lr)           LR="$2";           shift 2 ;;
         --probs)        PROBS="$2";        shift 2 ;;
+        --seed)         SEED="$2";         shift 2 ;;
         --dry-run)      DRY_RUN=1;         shift ;;
         --offload)      OFFLOAD="on";      shift ;;
         --no-offload)   OFFLOAD="off";     shift ;;
@@ -131,14 +134,14 @@ done
 
 if [[ -z "${REPO_ID}" ]]; then
     : "${HF_USERNAME:?Set HF_USERNAME in SFT/.env (or pass --repo-id USER/NAME)}"
-    REPO_ID="${HF_USERNAME}/athena-cti-sft-qwen25-32b-v21-recal-32b"
+    REPO_ID="${HF_USERNAME}/athena-cti-sft-qwen25-32b-v21-recal-32b${SEED:+-seed${SEED}}"
 fi
 
 [[ -z "${BASE_MODEL}" ]] && BASE_MODEL="asg-ai/athena-cti-sft-qwen25-32b-v21-cse"
 
 TIMESTAMP="$(date +"%Y-%m-%d-%H-%M-%S")"
 SAFE_MODEL="Qwen_Qwen2.5-32B-Instruct"
-[[ -z "${OUTPUT_DIR}" ]] && OUTPUT_DIR="${SFT_DIR}/saves/${SAFE_MODEL}/full/v21_recal_32b_${TIMESTAMP}"
+[[ -z "${OUTPUT_DIR}" ]] && OUTPUT_DIR="${SFT_DIR}/saves/${SAFE_MODEL}/full/v21_recal_32b${SEED:+_seed${SEED}}_${TIMESTAMP}"
 
 DS_PHASE_A="ift_data_2026_05_18_v21_core_a_kb_mcq_taa_soc_cm_ms_yn"
 DS_PHASE_B="ift_data_2026_05_18_v21_core_b_rms_ate_vsp_rcm"
@@ -196,7 +199,7 @@ EFFECTIVE_GPUS=$(( GPU_COUNT > 0 ? GPU_COUNT : 1 ))
 # (per_device 1 x grad_accum 1 x 8 GPUs); identical to original recal.
 R_BATCH=1; R_GA=$(( 8 / (R_BATCH * EFFECTIVE_GPUS) )); [[ ${R_GA} -lt 1 ]] && R_GA=1
 
-EXTRA_COMMON="--deepspeed ${DS_CONFIG} --save_total_limit 2 --save_only_model True --enable_liger_kernel True --optim adamw_8bit --do_eval False --eval_strategy no --val_size 0 --mix_strategy interleave_under --interleave_probs ${PROBS}"
+EXTRA_COMMON="--deepspeed ${DS_CONFIG} --save_total_limit 2 --save_only_model True --enable_liger_kernel True --optim adamw_8bit --do_eval False --eval_strategy no --val_size 0 --mix_strategy interleave_under --interleave_probs ${PROBS}${SEED:+ --seed ${SEED}}"
 
 export FORCE_TORCHRUN=1
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
