@@ -1,0 +1,332 @@
+{
+ "definitions": "For each Benchmark-A (AthenaBench) mapping task, every item is assigned to exactly one group:\n  none     -- the item's identifying entity never appears in a training row;\n  entity   -- the entity appears in some training row, but never together with the complete gold answer;\n  answer   -- the entity and the complete gold answer co-occur in one training row.\nItems the scorer excludes (unparseable VSP vectors) are counted separately. Mean item scores are\nreported per group for every retained 32B checkpoint.",
+ "items": {
+  "athena-rcm": {
+   "none": 1340,
+   "entity": 523,
+   "answer": 137
+  },
+  "athena-vsp": {
+   "entity": 439,
+   "none": 1554,
+   "answer": 7
+  },
+  "athena-rms": {
+   "entity": 227,
+   "answer": 273
+  },
+  "athena-taa-canonical": {
+   "none": 93,
+   "answer": 38,
+   "entity": 2
+  }
+ },
+ "scores": {
+  "athena-rcm|Core": {
+   "none": {
+    "n": 1340,
+    "mean": 67.7
+   },
+   "entity": {
+    "n": 523,
+    "mean": 74.4
+   },
+   "answer": {
+    "n": 137,
+    "mean": 72.3
+   },
+   "excluded_unparseable": {},
+   "unmatched_prompts": 0
+  },
+  "athena-rcm|+TAA": {
+   "none": {
+    "n": 1340,
+    "mean": 67.2
+   },
+   "entity": {
+    "n": 523,
+    "mean": 73.8
+   },
+   "answer": {
+    "n": 137,
+    "mean": 68.6
+   },
+   "excluded_unparseable": {},
+   "unmatched_prompts": 0
+  },
+  "athena-rcm|CSE": {
+   "none": {
+    "n": 1340,
+    "mean": 65.9
+   },
+   "entity": {
+    "n": 523,
+    "mean": 72.5
+   },
+   "answer": {
+    "n": 137,
+    "mean": 66.4
+   },
+   "excluded_unparseable": {},
+   "unmatched_prompts": 0
+  },
+  "athena-rcm|Recal-14B": {
+   "none": {
+    "n": 1340,
+    "mean": 65.8
+   },
+   "entity": {
+    "n": 523,
+    "mean": 73.2
+   },
+   "answer": {
+    "n": 137,
+    "mean": 73.0
+   },
+   "excluded_unparseable": {},
+   "unmatched_prompts": 0
+  },
+  "athena-rcm|Recal-32B": {
+   "none": {
+    "n": 1340,
+    "mean": 64.3
+   },
+   "entity": {
+    "n": 523,
+    "mean": 74.2
+   },
+   "answer": {
+    "n": 137,
+    "mean": 66.4
+   },
+   "excluded_unparseable": {},
+   "unmatched_prompts": 0
+  },
+  "athena-vsp|Core": {
+   "none": {
+    "n": 1553,
+    "mean": 82.3
+   },
+   "entity": {
+    "n": 438,
+    "mean": 86.1
+   },
+   "answer": {
+    "n": 7,
+    "mean": 75.3
+   },
+   "excluded_unparseable": {
+    "entity": 1,
+    "none": 1
+   },
+   "unmatched_prompts": 0
+  },
+  "athena-vsp|+TAA": {
+   "none": {
+    "n": 1554,
+    "mean": 82.7
+   },
+   "entity": {
+    "n": 439,
+    "mean": 86.4
+   },
+   "answer": {
+    "n": 7,
+    "mean": 73.1
+   },
+   "excluded_unparseable": {},
+   "unmatched_prompts": 0
+  },
+  "athena-vsp|CSE": {
+   "entity": {
+    "n": 439,
+    "mean": 77.8
+   },
+   "none": {
+    "n": 1554,
+    "mean": 79.2
+   },
+   "answer": {
+    "n": 7,
+    "mean": 87.9
+   },
+   "excluded_unparseable": {},
+   "unmatched_prompts": 0
+  },
+  "athena-vsp|Recal-14B": {
+   "entity": {
+    "n": 439,
+    "mean": 77.0
+   },
+   "none": {
+    "n": 1554,
+    "mean": 75.2
+   },
+   "answer": {
+    "n": 7,
+    "mean": 90.7
+   },
+   "excluded_unparseable": {},
+   "unmatched_prompts": 0
+  },
+  "athena-vsp|Recal-32B": {
+   "entity": {
+    "n": 438,
+    "mean": 77.3
+   },
+   "none": {
+    "n": 1553,
+    "mean": 77.9
+   },
+   "answer": {
+    "n": 7,
+    "mean": 89.2
+   },
+   "excluded_unparseable": {
+    "entity": 1,
+    "none": 1
+   },
+   "unmatched_prompts": 0
+  },
+  "athena-rms|Core": {
+   "answer": {
+    "n": 273,
+    "mean": 57.0
+   },
+   "entity": {
+    "n": 227,
+    "mean": 72.0
+   },
+   "excluded_unparseable": {},
+   "unmatched_prompts": 0
+  },
+  "athena-rms|+TAA": {
+   "answer": {
+    "n": 273,
+    "mean": 55.4
+   },
+   "entity": {
+    "n": 227,
+    "mean": 71.9
+   },
+   "excluded_unparseable": {},
+   "unmatched_prompts": 0
+  },
+  "athena-rms|CSE": {
+   "answer": {
+    "n": 273,
+    "mean": 57.2
+   },
+   "entity": {
+    "n": 227,
+    "mean": 71.6
+   },
+   "excluded_unparseable": {},
+   "unmatched_prompts": 0
+  },
+  "athena-rms|Recal-14B": {
+   "answer": {
+    "n": 273,
+    "mean": 54.7
+   },
+   "entity": {
+    "n": 227,
+    "mean": 74.2
+   },
+   "excluded_unparseable": {},
+   "unmatched_prompts": 0
+  },
+  "athena-rms|Recal-32B": {
+   "answer": {
+    "n": 273,
+    "mean": 53.8
+   },
+   "entity": {
+    "n": 227,
+    "mean": 73.1
+   },
+   "excluded_unparseable": {},
+   "unmatched_prompts": 0
+  },
+  "athena-taa-canonical|Core": {
+   "answer": {
+    "n": 38,
+    "mean": 23.7
+   },
+   "none": {
+    "n": 93,
+    "mean": 16.7
+   },
+   "entity": {
+    "n": 2,
+    "mean": 0.0
+   },
+   "excluded_unparseable": {},
+   "unmatched_prompts": 0
+  },
+  "athena-taa-canonical|+TAA": {
+   "none": {
+    "n": 93,
+    "mean": 30.6
+   },
+   "answer": {
+    "n": 38,
+    "mean": 52.6
+   },
+   "entity": {
+    "n": 2,
+    "mean": 25.0
+   },
+   "excluded_unparseable": {},
+   "unmatched_prompts": 0
+  },
+  "athena-taa-canonical|CSE": {
+   "none": {
+    "n": 93,
+    "mean": 3.2
+   },
+   "answer": {
+    "n": 38,
+    "mean": 3.9
+   },
+   "entity": {
+    "n": 2,
+    "mean": 0.0
+   },
+   "excluded_unparseable": {},
+   "unmatched_prompts": 0
+  },
+  "athena-taa-canonical|Recal-14B": {
+   "none": {
+    "n": 93,
+    "mean": 4.8
+   },
+   "answer": {
+    "n": 38,
+    "mean": 7.9
+   },
+   "entity": {
+    "n": 2,
+    "mean": 0.0
+   },
+   "excluded_unparseable": {},
+   "unmatched_prompts": 0
+  },
+  "athena-taa-canonical|Recal-32B": {
+   "none": {
+    "n": 93,
+    "mean": 1.6
+   },
+   "answer": {
+    "n": 38,
+    "mean": 7.9
+   },
+   "entity": {
+    "n": 2,
+    "mean": 0.0
+   },
+   "excluded_unparseable": {},
+   "unmatched_prompts": 0
+  }
+ }
+}
