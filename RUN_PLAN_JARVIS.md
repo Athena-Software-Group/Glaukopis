@@ -30,8 +30,9 @@ For a session running on the GPU box. The planning conversations and their notes
 - The launchers detect the GPU count and raise gradient accumulation, so the effective batch stays the same (16 for G1 and G2a, 8 for G2b and G4). They print a warning and continue. Leave CPU offload on, which is automatic below 4 GPUs; without it the per-GPU state is not expected to fit.
 - 32B has never been trained on 2 GPUs in this repo. Launcher times scaled by GPU count give: G2a 4–6 h, G2b 8–12 h, each G4 seed 8–12 h, G1 65–90 h.
 - Run G2a first as the test of this setup. Watch `nvidia-smi` and `free -g` through its first save, when the model is gathered into system RAM; that step ran a 4×H100 host out of memory.
-- **Open decision, ask the user before G1:** every launcher passes `--save_only_model True`, so checkpoints cannot resume, despite what the `--resume` comments say. The proposal is to drop that flag for G1 (about 250 GB per checkpoint, two kept, so at least 1 TB of disk) and prove resume on G2a first.
-- **Scoring:** this plan assumes a separate 2-GPU eval box. If this is the only box, scoring waits behind training.
+- **Resume (decided 8 Nov):** by default the launchers pass `--save_only_model True`, so checkpoints cannot resume. Run G1 and G2a with `--resumable`, which writes full ZeRO checkpoints (about 260 GB each at 32B) and keeps one. If G1 crashes, rerun it with `--output-dir <its folder> --resume`. Prove this on G2a before starting G1: once G2a's push is verified, call `SFT/utils/run_train.sh` with G2a's arguments, without `--push-to-hf`, and with `--resume`, and confirm it reloads the optimizer state and finishes.
+- **Disk:** `SFT/saves` and the Hugging Face cache are on `/home` (2 TB, about 1.1 TB free on 8 Nov). Conda and `/tmp` are on the 1 TB overlay. G1 with `--resumable` peaks near 650 GB. Remove a run's local saves only after verifying its Hugging Face push, and look before deleting anything else: `SFT/saves` still holds the May 8B runs.
+- **Scoring** runs on a separate instance named `alkidemos`. This box, `glaukopis`, only trains. Do not start vLLM here.
 - The paper says "eight 80-GB H100 GPUs", so the new runs need a disclosure clause, and the G4 spread should be reported across the three new seeds only.
 
 **Rules.**
@@ -112,10 +113,10 @@ Dry-run each command first (`--dry-run`): it prints the resolved base model, dat
 
 ```bash
 # G1 - matched single pass  ->  asg-ai/athena-cti-sft-qwen25-32b-v21-single-stage
-./run_sft_qwen25_32b_v21_single_stage.sh
+./run_sft_qwen25_32b_v21_single_stage.sh --resumable
 
 # G2a - Core -> CSE, attribution layer omitted  ->  asg-ai/athena-cti-sft-qwen25-32b-v21-skiptaa-cse
-./run_sft_qwen25_32b_v21_final.sh \
+./run_sft_qwen25_32b_v21_final.sh --resumable \
     --base-model asg-ai/athena-cti-sft-qwen25-32b-v21-core \
     --repo-id    asg-ai/athena-cti-sft-qwen25-32b-v21-skiptaa-cse
 

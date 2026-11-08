@@ -55,7 +55,7 @@
 #                                       [--output-dir DIR]
 #                                       [--report-to wandb|none]
 #                                       [--offload | --no-offload]
-#                                       [--skip-eval] [--resume]
+#                                       [--skip-eval] [--resume] [--resumable]
 #                                       [--dry-run]
 #
 # --skip-eval / --resume mirror the v21_core launcher; see that script's
@@ -74,6 +74,7 @@ DRY_RUN=0
 OFFLOAD="auto"
 SKIP_EVAL=0
 RESUME=0
+RESUMABLE=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -86,6 +87,7 @@ while [[ $# -gt 0 ]]; do
         --no-offload)   OFFLOAD="off";     shift ;;
         --skip-eval)    SKIP_EVAL=1;       shift ;;
         --resume)       RESUME=1;          shift ;;
+        --resumable)    RESUMABLE=1;       shift ;;
         -h|--help) sed -n '3,53p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "Unknown argument: $1" >&2; exit 1 ;;
     esac
@@ -167,7 +169,14 @@ GC_FLAG=""
 
 # --optim adamw_8bit carries v8 32B / v11 32B precedent; required to fit
 # 32B ZeRO-3 no-offload at the 80 GB/rank budget.
-EXTRA_BASE="--deepspeed ${DS_CONFIG} --save_total_limit 2 --save_only_model True --enable_liger_kernel True --optim adamw_8bit ${GC_FLAG}"
+# --save_only_model True keeps checkpoints small but they cannot be resumed
+# (no optimizer/scheduler/RNG state). --resumable writes the full ZeRO state
+# (~260 GB per checkpoint at 32B) and keeps one, so the disk peak is two
+# checkpoints while the next is written. --resume implies it.
+[[ ${RESUME} -eq 1 ]] && RESUMABLE=1
+SAVE_ARGS="--save_total_limit 2 --save_only_model True"
+[[ ${RESUMABLE} -eq 1 ]] && SAVE_ARGS="--save_total_limit 1 --save_only_model False"
+EXTRA_BASE="--deepspeed ${DS_CONFIG} ${SAVE_ARGS} --enable_liger_kernel True --optim adamw_8bit ${GC_FLAG}"
 if [[ ${SKIP_EVAL} -eq 1 ]]; then
     EXTRA_COMMON="${EXTRA_BASE} --eval_strategy no"
 else

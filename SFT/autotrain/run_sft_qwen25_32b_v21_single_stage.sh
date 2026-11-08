@@ -56,6 +56,7 @@
 #                                            [--gc auto|on|off]  # default: on
 #                                            [--skip-eval]       # disables in-training eval
 #                                            [--resume]          # resume from latest ckpt
+#                                            [--resumable]       # full ZeRO checkpoints so a crash can --resume
 #                                            [--dry-run]
 #
 # Default push target: ${HF_USERNAME}/athena-cti-sft-qwen25-32b-v21-single-stage,
@@ -75,6 +76,7 @@ DRY_RUN=0
 OFFLOAD="auto"
 SKIP_EVAL=0
 RESUME=0
+RESUMABLE=0
 GC_OVERRIDE="on"
 
 while [[ $# -gt 0 ]]; do
@@ -89,6 +91,7 @@ while [[ $# -gt 0 ]]; do
         --gc)           GC_OVERRIDE="$2";  shift 2 ;;
         --skip-eval)    SKIP_EVAL=1;       shift ;;
         --resume)       RESUME=1;          shift ;;
+        --resumable)    RESUMABLE=1;       shift ;;
         -h|--help) sed -n '3,64p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "Unknown argument: $1" >&2; exit 1 ;;
     esac
@@ -167,7 +170,14 @@ case "${GC_OVERRIDE}" in
           ;;
 esac
 
-EXTRA_BASE="--deepspeed ${DS_CONFIG} --save_total_limit 2 --save_only_model True --enable_liger_kernel True --optim adamw_8bit ${GC_FLAG}"
+# --save_only_model True keeps checkpoints small but they cannot be resumed
+# (no optimizer/scheduler/RNG state). --resumable writes the full ZeRO state
+# (~260 GB per checkpoint at 32B) and keeps one, so the disk peak is two
+# checkpoints while the next is written. --resume implies it.
+[[ ${RESUME} -eq 1 ]] && RESUMABLE=1
+SAVE_ARGS="--save_total_limit 2 --save_only_model True"
+[[ ${RESUMABLE} -eq 1 ]] && SAVE_ARGS="--save_total_limit 1 --save_only_model False"
+EXTRA_BASE="--deepspeed ${DS_CONFIG} ${SAVE_ARGS} --enable_liger_kernel True --optim adamw_8bit ${GC_FLAG}"
 if [[ ${SKIP_EVAL} -eq 1 ]]; then
     EXTRA_COMMON="${EXTRA_BASE} --eval_strategy no"
 else
