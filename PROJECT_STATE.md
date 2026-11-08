@@ -185,6 +185,10 @@ State as of 2026-09-06. Update §7 protocol when these change.
    and a formal metric-level error taxonomy for VSP/TAA/ATE. These are
    acknowledged as limitations rather than implied claims.
 
+4. **AAIML 2027 reviewer-requested control runs** (opened 2026-11-07) --
+   the plan, decisions and GPU-host handoff are in `RUN_PLAN_JARVIS.md` at
+   the repo root. Same v21 shards and harness as the published chain.
+
 ## 7. Update protocol
 
 This file must be touched whenever any of the following happens:
