@@ -38,7 +38,8 @@ and treat this one as an index. Update protocol is in §7.
   05272026.xlsx`) are frozen for posterity. Companion tracked CSVs:
   `SFT/eval/responses/cost_summary.{csv,tsv}` and
   `SFT/eval/responses/mmlu_pro_summary.{csv,tsv}`.
-- **Paper sources**: `doc/` holds the LaTeX manuscripts, figures,
+- **Paper sources** (local only: `doc/` is gitignored and untracked since
+  2026-11-08, so a clone does not contain it): `doc/` holds the LaTeX manuscripts, figures,
   bibliographies, and rendered PDFs for the Glaukopis paper across
   three publisher formats: `doc/ACM/`, `doc/IEEE/`, `doc/Oxford/`
   (each with its own `figures/` tree). LaTeX build caches
