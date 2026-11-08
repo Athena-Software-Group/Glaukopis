@@ -79,6 +79,9 @@
 #   (train stack caps torch at FA_MAX_TORCH_MINOR=2.8 by default so the
 #    prebuilt flash-attn 2.8.3 wheel exists; export FA_MAX_TORCH_MINOR=2.x
 #    to widen the cap, or pass --no-flash-attn to drop it entirely)
+#   (vllm stack installs the latest vllm by default; export
+#    VLLM_SPEC="vllm==0.21.0" to pin it, e.g. to match the 2026-05-21 v21
+#    32B scoring runs, which predate any version record)
 #
 # Dependency note:
 #   LlamaFactory pins datasets<=4.0.0 and transformers<=5.2.0; SFT/eval asks
@@ -608,7 +611,11 @@ EOF
         # may run from within this env (the data fetch is otherwise driven
         # from the ctibench env). Cheap dep, no torch interaction, so we
         # bake it in unconditionally rather than gate behind --no-bench-env.
-        pip install vllm openai python-dotenv huggingface_hub "pypdf>=5.0.0"
+        pip install "${VLLM_SPEC:-vllm}" openai python-dotenv huggingface_hub "pypdf>=5.0.0"
+        # Record the serving stack: score comparisons across eval boxes are
+        # only paired if the vllm/transformers versions are known.
+        python -c "import vllm, transformers, torch; print('vllm', vllm.__version__, '| transformers', transformers.__version__, '| torch', torch.__version__)" \
+            2>/dev/null || true
 
         # DeepGEMM: required by vllm's kernel warmup path on Hopper/Blackwell.
         # vllm imports it unconditionally during engine init when DeepGEMM is

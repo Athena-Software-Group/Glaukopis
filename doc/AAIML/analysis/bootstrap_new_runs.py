@@ -13,6 +13,11 @@ SFT/test/responses/<alias>/ or SFT/eval/responses/<alias>/ (i.e. after its serve
   SkipTAA-Recal  Core -> CSE -> Recal-32B, attribution layer omitted    (reviewer comment 1)
   Recal-32B sN   Stage-4 seed replicates (released run = seed 42)       (reviewer comment 5)
 
+  Recal-32B rerun / Core rerun
+                 a published checkpoint re-scored on the new eval box (its alias written under
+                 SFT/eval/responses/ only); paired against the published run it measures drift
+                 from the serving stack (vLLM / transformers versions), which should be ~0
+
 Paired differences are later-minus-earlier on the items every included checkpoint answered.
 Seed replicates are also summarised as mean and sample SD of the point estimates across
 {released run, seed replicates}; that SD is training variability, which item-bootstrap intervals
@@ -26,7 +31,8 @@ from collections import OrderedDict
 R_ROOT = os.environ.get("GLAUKOPIS_ROOT", "/Users/pietro/code/Glaukopis")
 # Published per-item files were extracted under SFT/test/responses; the current pipeline
 # (SFT/eval/utils/run_foundation_8b_baselines.sh) writes SFT/eval/responses/<alias>/. Search both.
-ROOTS = [f"{R_ROOT}/SFT/test/responses", f"{R_ROOT}/SFT/eval/responses"]
+TEST_ROOT, EVAL_ROOT = f"{R_ROOT}/SFT/test/responses", f"{R_ROOT}/SFT/eval/responses"
+ROOTS = [TEST_ROOT, EVAL_ROOT]
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "bootstrap_new_runs.json")
 P = "athena-cti-sft-qwen25-32b-v21-"
 PUBLISHED = [("Core", P + "core-vllm"), ("+TAA", P + "taa-vllm"), ("CSE", P + "cse-vllm"),
@@ -40,6 +46,9 @@ PAIRS = [("Core", "+TAA"), ("+TAA", "CSE"), ("CSE", "Recal-32B"), ("CSE", "Recal
          # reviewer-requested controls: positive = the layered chain scores higher
          ("1-pass", "Recal-32B"), ("1-pass lr5e-6", "Recal-32B"), ("1-pass", "CSE"),
          ("SkipTAA-CSE", "CSE"), ("SkipTAA-Recal", "Recal-32B"), ("Core", "1-pass"), ("Core", "SkipTAA-Recal")]
+# Published checkpoints re-run on the new eval box (same alias, so they land in EVAL_ROOT only).
+ANCHORS = [("Recal-32B rerun", P + "recal-32b-vllm"), ("Core rerun", P + "core-vllm")]
+PAIRS += [("Recal-32B", "Recal-32B rerun"), ("Core", "Core rerun")]
 SEED_GROUP = ["Recal-32B", "Recal-32B s1", "Recal-32B s2", "Recal-32B s3"]
 VSP_DENOM = 7.7
 TASKS = ["athena-mcq", "athena-ate", "athena-rcm", "athena-rms", "athena-vsp", "athena-taa", "athena-taa-canonical",
@@ -52,19 +61,19 @@ def load_jsonl(p):
         return [json.loads(l) for l in f if l.strip()]
 
 
-def one(d, rel):
-    for root in ROOTS:
+def one(d, rel, roots=ROOTS):
+    for root in roots:
         hits = glob.glob(f"{root}/{d}/{rel}")
         if hits:
             return hits[0]
     raise FileNotFoundError(f"{d}/{rel}")
 
 
-def load_task(d, task):
+def load_task(d, task, roots=ROOTS):
     if task in ("cm2000", "cm10000"):
         stem = "CyberMetric-2000-v1" if task == "cm2000" else "CyberMetric-10000-v1"
         items, seen = {}, {}
-        with open(one(d, f"cybermetric/cybermetric_{stem}_all_v1_*_response.csv"), encoding="utf-8", newline="") as f:
+        with open(one(d, f"cybermetric/cybermetric_{stem}_all_v1_*_response.csv", roots), encoding="utf-8", newline="") as f:
             for r in csv.DictReader(f):
                 q = (r["question"] or "").strip(); c = seen.get(q, 0); seen[q] = c + 1
                 ok = (r["answer"] or "").strip() == (r["answer_after_post_processing"] or "").strip()
@@ -72,13 +81,13 @@ def load_task(d, task):
         return items
     if task == "mmlu":
         items = {}
-        with open(one(d, "mmlu-pro/*.csv"), encoding="utf-8", newline="") as f:
+        with open(one(d, "mmlu-pro/*.csv", roots), encoding="utf-8", newline="") as f:
             for r in csv.DictReader(f):
                 ok = (r["ground_truth"] or "").strip() == (r["prediction"] or "").strip()
                 items[r["question_id"]] = dict(score=1.0 if ok else 0.0, success=True)
         return items
     items = {}
-    for r in load_jsonl(one(d, f"{task}/*_scored.jsonl")):
+    for r in load_jsonl(one(d, f"{task}/*_scored.jsonl", roots)):
         s = r["score"]; suc = bool(r.get("success", True))
         if task in ("athena-taa", "athena-taa-canonical"):
             val = dict(score=float(s["combined"]), correct=s["correct"], plausible=s["plausible"], success=suc)
@@ -123,11 +132,11 @@ def ci(vals, lo=2.5, hi=97.5):
 def main():
     R = int(sys.argv[1]) if len(sys.argv) > 1 else 2000
     CK = OrderedDict(PUBLISHED); data = {}
-    for lab, d in PUBLISHED:
-        data[lab] = {t: load_task(d, t) for t in TASKS}
-    for lab, d in CANDIDATES:
+    for lab, d in PUBLISHED:  # published per-item files only, never a re-run under the same alias
+        data[lab] = {t: load_task(d, t, [TEST_ROOT]) for t in TASKS}
+    for (lab, d), roots in [(c, ROOTS) for c in CANDIDATES] + [(a, [EVAL_ROOT]) for a in ANCHORS]:
         try:
-            data[lab] = {t: load_task(d, t) for t in TASKS}; CK[lab] = d
+            data[lab] = {t: load_task(d, t, roots) for t in TASKS}; CK[lab] = d
             print(f"included {lab} ({d})")
         except FileNotFoundError as e:
             print(f"skipped  {lab}: no scored files yet ({e})")

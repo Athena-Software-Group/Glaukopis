@@ -92,6 +92,17 @@ The seed changes both the training order and the interleaved replay sample, so G
 
 ## Evaluation (eval box: `conda activate vllm; cd ~/Glaukopis/SFT/eval/utils`)
 
+**Check the serving stack first.** The benchmark data and scoring code are unchanged since the published scoring runs of 20–21 May 2026 (the only edits since are cache keying and the `SFT/test` → `SFT/eval` rename). The upstream sets fetched at setup are also unchanged: CyberSOCEval_data last changed 2025-09-22, PurpleLlama `crwd_meta` 2026-05-04, MMLU-Pro 2026-05-02. vLLM is not pinned, though, and no version was recorded for those runs. The most likely version is 0.21.0 (the latest release from 15 to 29 May); a fresh install now gets 0.33.0. Before scoring any new checkpoint:
+
+```bash
+pip freeze > ~/Glaukopis/SFT/eval/responses/eval_stack_$(date +%Y%m%d).txt
+# Anchor: re-score the published Recal-32B on this box (~1-1.5 h)
+MODEL_ALIAS=athena-cti-sft-qwen25-32b-v21-recal-32b-vllm BENCH_CONDA_ENV=ctibench \
+  bash serve_and_bench_qwen25_32b_v21_single_stage.sh
+```
+
+Copy it back with the other results and run `bootstrap_new_runs.py`, which pairs `Recal-32B rerun` with the published run. If every aggregate's interval includes 0, score the new checkpoints on this stack. If not, either reinstall with `VLLM_SPEC="vllm==0.21.0" ./setup.sh --cuda cu128 --mode vllm` and repeat the anchor, or re-score all five published checkpoints on this stack (about 5–7 h, $27–38) so every comparison stays within one stack.
+
 ```bash
 # G3 - needs no training; start it first
 BENCH_CONDA_ENV=ctibench bash serve_and_bench_qwen3_30b_a3b_thinking_2507_v21_cse_thinking_on.sh
