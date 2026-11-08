@@ -12,7 +12,7 @@ For a session running on the GPU box. The planning conversations and their notes
 
 **What is where.** The camera-ready is finished; these runs replace hedged sentences in it. `doc/` is no longer in the repo. The paper, `RESPONSE_TO_REVIEW.md`, `doc/AAIML/analysis/` and the published per-item files (`SFT/test/responses/`) exist only on the author's Mac, so analysis and paper edits happen there. This box only trains, scores, and hands results back.
 
-**Check the box first.** It is a resumed instance, so do not assume its state: run `git pull --ff-only`, confirm `SFT/.env` exists (never print it), and compare any existing conda envs against the pinned versions under Setup before reusing them.
+**Check the box first.** It is a resumed instance, so do not assume its state: run `git pull --ff-only`, confirm `SFT/.env` exists (never print it), and compare any existing conda envs against the pinned versions under Setup before reusing them. **Always pass `--no-disk-cleanup` to `setup.sh` on a box with earlier work:** by default it deletes every `SFT/saves/<model>/<type>/<run>` folder older than 14 days, which on this box is 18 runs and 929 GB.
 
 **Verify the training data before any run.** These files are gitignored and must be the originals. If any is missing or differs, stop: they can only come from the Mac, so ask the user to rsync them. Do not rebuild them.
 
@@ -97,9 +97,9 @@ rsync -avP SFT/data/ift_data_2026_05_18_v21_{core_a_kb_mcq_taa_soc_cm_ms_yn,core
 # Environments
 # Pinned to the May 2026 versions (see "Same data, same harness")
 ssh root@HOST 'cd ~/Glaukopis/SFT/utils && LIGER_SPEC="liger-kernel==0.8.0" BNB_SPEC="bitsandbytes==0.49.2" \
-    ./setup.sh --cuda cu128 --mode train'    # training box: llm-sft
+    ./setup.sh --cuda cu128 --mode train --no-disk-cleanup'    # training box: llm-sft
 ssh root@HOST 'cd ~/Glaukopis/SFT/utils && VLLM_SPEC="vllm==0.21.0" \
-    ./setup.sh --cuda cu128 --mode vllm'     # eval box: vllm + ctibench + CyberSOCEval fetch
+    ./setup.sh --cuda cu128 --mode vllm --no-disk-cleanup'     # eval box: vllm + ctibench + CyberSOCEval fetch
 ```
 
 On the training box, the in-repo LlamaFactory is unchanged since 18 May. Its capped dependencies resolve to the same releases as in May: transformers 5.2.0, deepspeed 0.18.4, accelerate 1.11.0, peft 0.18.1, trl 0.24.0 and torch 2.8.0. Only liger-kernel and bitsandbytes (which provides `adamw_8bit`) are uncapped, hence the two pins. If the pinned vLLM fails to install, drop `VLLM_SPEC`; the anchor check below then decides whether the results are comparable.
