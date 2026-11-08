@@ -85,7 +85,7 @@
 #                                         [--max-samples N]
 #                                         [--lr LR]
 #                                                  [--probs P_A,P_B,P_TAA]
-#                                                  [--offload | --no-offload]
+#                                                  [--offload | --no-offload | --offload-opt]
 #                                                  [--seed N]   # replicate run; default = LlamaFactory seed 42 (the released run)
 #                                                  [--dry-run]
 
@@ -122,6 +122,7 @@ while [[ $# -gt 0 ]]; do
         --seed)         SEED="$2";         shift 2 ;;
         --dry-run)      DRY_RUN=1;         shift ;;
         --offload)      OFFLOAD="on";      shift ;;
+        --offload-opt)  OFFLOAD="opt";     shift ;;
         --no-offload)   OFFLOAD="off";     shift ;;
         -h|--help) sed -n '3,84p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "Unknown argument: $1" >&2; exit 1 ;;
@@ -193,6 +194,9 @@ if [[ "${OFFLOAD}" == "auto" ]]; then
 fi
 DS_CONFIG="examples/deepspeed/ds_z3_offload_config.json"
 [[ "${OFFLOAD}" == "off" ]] && DS_CONFIG="examples/deepspeed/ds_z3_config.json"
+# Optimizer state on CPU, weights on GPU: for 2xH200 141 GB, where full offload
+# overruns the 600 GiB host limit while the GPUs sit nearly empty.
+[[ "${OFFLOAD}" == "opt" ]] && DS_CONFIG="examples/deepspeed/ds_z3_offload_opt_config.json"
 
 EFFECTIVE_GPUS=$(( GPU_COUNT > 0 ? GPU_COUNT : 1 ))
 # 32B chain host is assumed 8xH200 SXM. eff_bs target is 8

@@ -52,7 +52,7 @@
 #                                            [--output-dir DIR]
 #                                            [--lr 1e-05|5e-06]  # default 1e-05
 #                                            [--report-to wandb|none]
-#                                            [--offload | --no-offload]
+#                                            [--offload | --no-offload | --offload-opt]
 #                                            [--gc auto|on|off]  # default: on
 #                                            [--skip-eval]       # disables in-training eval
 #                                            [--resume]          # resume from latest ckpt
@@ -87,6 +87,7 @@ while [[ $# -gt 0 ]]; do
         --report-to)    REPORT_TO="$2";    shift 2 ;;
         --dry-run)      DRY_RUN=1;         shift ;;
         --offload)      OFFLOAD="on";      shift ;;
+        --offload-opt)  OFFLOAD="opt";     shift ;;
         --no-offload)   OFFLOAD="off";     shift ;;
         --gc)           GC_OVERRIDE="$2";  shift 2 ;;
         --skip-eval)    SKIP_EVAL=1;       shift ;;
@@ -156,6 +157,9 @@ if [[ "${OFFLOAD}" == "auto" ]]; then
 fi
 DS_CONFIG="examples/deepspeed/ds_z3_offload_config.json"
 [[ "${OFFLOAD}" == "off" ]] && DS_CONFIG="examples/deepspeed/ds_z3_config.json"
+# Optimizer state on CPU, weights on GPU: for 2xH200 141 GB, where full offload
+# overruns the 600 GiB host limit while the GPUs sit nearly empty.
+[[ "${OFFLOAD}" == "opt" ]] && DS_CONFIG="examples/deepspeed/ds_z3_offload_opt_config.json"
 
 # Same sizing as v21-Core Phase A: bs=1 at cutoff 8192 packed fits ~72 GB/rank
 # on 8xH100 SXM; grad-accum holds the effective batch at 16.

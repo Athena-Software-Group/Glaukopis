@@ -54,7 +54,7 @@
 #                                       [--base-model HF_REPO|LOCAL_DIR]
 #                                       [--output-dir DIR]
 #                                       [--report-to wandb|none]
-#                                       [--offload | --no-offload]
+#                                       [--offload | --no-offload | --offload-opt]
 #                                       [--skip-eval] [--resume] [--resumable]
 #                                       [--dry-run]
 #
@@ -84,6 +84,7 @@ while [[ $# -gt 0 ]]; do
         --report-to)    REPORT_TO="$2";    shift 2 ;;
         --dry-run)      DRY_RUN=1;         shift ;;
         --offload)      OFFLOAD="on";      shift ;;
+        --offload-opt)  OFFLOAD="opt";     shift ;;
         --no-offload)   OFFLOAD="off";     shift ;;
         --skip-eval)    SKIP_EVAL=1;       shift ;;
         --resume)       RESUME=1;          shift ;;
@@ -157,6 +158,9 @@ if [[ "${OFFLOAD}" == "auto" ]]; then
 fi
 DS_CONFIG="examples/deepspeed/ds_z3_offload_config.json"
 [[ "${OFFLOAD}" == "off" ]] && DS_CONFIG="examples/deepspeed/ds_z3_config.json"
+# Optimizer state on CPU, weights on GPU: for 2xH200 141 GB, where full offload
+# overruns the 600 GiB host limit while the GPUs sit nearly empty.
+[[ "${OFFLOAD}" == "opt" ]] && DS_CONFIG="examples/deepspeed/ds_z3_offload_opt_config.json"
 
 EFFECTIVE_GPUS=$(( GPU_COUNT > 0 ? GPU_COUNT : 1 ))
 
