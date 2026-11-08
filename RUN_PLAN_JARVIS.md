@@ -12,7 +12,7 @@ For a session running on the GPU box. The planning conversations and their notes
 
 **What is where.** The camera-ready is finished; these runs replace hedged sentences in it. `doc/` is no longer in the repo. The paper, `RESPONSE_TO_REVIEW.md`, `doc/AAIML/analysis/` and the published per-item files (`SFT/test/responses/`) exist only on the author's Mac, so analysis and paper edits happen there. This box only trains, scores, and hands results back.
 
-**Check the box first.** It is a resumed instance, so do not assume its state: run `git pull --ff-only`, confirm `SFT/.env` exists (never print it), and compare any existing conda envs against the pinned versions under Setup before reusing them. **Always pass `--no-disk-cleanup` to `setup.sh` on a box with earlier work:** by default it deletes every `SFT/saves/<model>/<type>/<run>` folder older than 14 days, which on this box is 18 runs and 929 GB.
+**Check the box first.** It may be a new instance with the earlier `/home` attached, so do not assume its state: run `git pull --ff-only`, confirm `SFT/.env` exists (never print it), and compare any existing conda envs against the pinned versions under Setup before reusing them. **Always pass `--no-disk-cleanup` to `setup.sh` on a box with earlier work:** by default it deletes every `SFT/saves/<model>/<type>/<run>` folder older than 14 days, which would remove the May 8B saves still on `/home`.
 
 **Verify the training data before any run.** These files are gitignored and must be the originals. If any is missing or differs, stop: they can only come from the Mac, so ask the user to rsync them. Do not rebuild them.
 
@@ -26,14 +26,19 @@ For a session running on the GPU box. The planning conversations and their notes
 | `taa_val` | 150 | `55399171ae52369c` |
 | `cse_val` | 350 | `6ccb275a32b2315d` |
 
-**Hardware differs from the table below.** The training box is 2×H200 141 GB with about 600 GB of system RAM (confirm with `nvidia-smi` and `free -g`), not 8×H100.
-- The launchers detect the GPU count and raise gradient accumulation, so the effective batch stays the same (16 for G1 and G2a, 8 for G2b and G4). They print a warning and continue. Leave CPU offload on, which is automatic below 4 GPUs; without it the per-GPU state is not expected to fit.
-- 32B has never been trained on 2 GPUs in this repo. Launcher times scaled by GPU count give: G2a 4–6 h, G2b 8–12 h, each G4 seed 8–12 h, G1 65–90 h.
-- Run G2a first as the test of this setup. Watch `nvidia-smi` and `free -g` through its first save, when the model is gathered into system RAM; that step ran a 4×H100 host out of memory.
+**Hardware: train on 8 GPUs.** Use 8×H100 80GB as in the table below, which is also what the paper states. Check `nvidia-smi` first: below 8 GPUs the launchers only print a warning and carry on. 2×H200 (141 GB each, 600 GiB RAM limit) was tried on 8 Nov and abandoned, with no checkpoint produced and nothing pushed:
+- Full CPU offload was killed at the 600 GiB limit before the first optimizer step, with each GPU using only 18 GB.
+- With `--offload-opt` (weights on GPU, optimizer state on CPU) it trained at about 190 s per optimizer step. The GPUs were idle about 60% of the time while one CPU thread per rank ran the 8-bit optimizer. The two ranks held 553 GB, leaving no room for the 65 GB gather at save. Extrapolated: G1 about 230 h, all training about 18 days.
+- `--offload-opt` stays in the launchers for smaller boxes. It is not needed on 8 GPUs. 4×H200 is untested.
+
+**What survives on `/home`** if the new instance mounts it: the repo, the seven verified shards, `SFT/.env`, the Hugging Face cache (including `…-v21-core`) and the May 8B saves. The conda environments are in `/root/miniconda3` on the container disk, so expect to reinstall them with the Setup commands.
+
+**Running the queue.**
+- Run G2a first: it is short and proves the box. Watch `nvidia-smi` and `free -g` through its first save, when the model is gathered into system RAM.
 - **Resume (decided 8 Nov):** by default the launchers pass `--save_only_model True`, so checkpoints cannot resume. Run G1 and G2a with `--resumable`, which writes full ZeRO checkpoints (about 260 GB each at 32B) and keeps one. If G1 crashes, rerun it with `--output-dir <its folder> --resume`. Prove this on G2a before starting G1: once G2a's push is verified, call `SFT/utils/run_train.sh` with G2a's arguments, without `--push-to-hf`, and with `--resume`, and confirm it reloads the optimizer state and finishes.
 - **Disk:** `SFT/saves` and the Hugging Face cache are on `/home` (2 TB, about 1.1 TB free on 8 Nov). Conda and `/tmp` are on the 1 TB overlay. G1 with `--resumable` peaks near 650 GB. Remove a run's local saves only after verifying its Hugging Face push, and look before deleting anything else: `SFT/saves` still holds the May 8B runs.
-- **Scoring** runs on a separate instance named `alkidemos`. This box, `glaukopis`, only trains. Do not start vLLM here.
-- The paper says "eight 80-GB H100 GPUs", so the new runs need a disclosure clause, and the G4 spread should be reported across the three new seeds only.
+- **Scoring** runs on a separate instance named `alkidemos`, after all training has finished. The training instance only trains, so do not start vLLM there.
+- Any run not on eight 80-GB H100 GPUs needs a disclosure clause in the paper, and if the G4 seeds differ in hardware from the released run, report their spread across the new seeds only.
 
 **Rules.**
 - Same data, same harness: no template regeneration, no Neo4j, no library changes beyond the pins under Setup.
