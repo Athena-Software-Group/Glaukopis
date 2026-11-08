@@ -26,16 +26,18 @@ For a session running on the GPU box. The planning conversations and their notes
 | `taa_val` | 150 | `55399171ae52369c` |
 | `cse_val` | 350 | `6ccb275a32b2315d` |
 
-**Hardware: train on 8 GPUs.** Use 8×H100 80GB as in the table below, which is also what the paper states. Check `nvidia-smi` first: below 8 GPUs the launchers only print a warning and carry on. 2×H200 (141 GB each, 600 GiB RAM limit) was tried on 8 Nov and abandoned, with no checkpoint produced and nothing pushed:
-- Full CPU offload was killed at the 600 GiB limit before the first optimizer step, with each GPU using only 18 GB.
-- With `--offload-opt` (weights on GPU, optimizer state on CPU) it trained at about 190 s per optimizer step. The GPUs were idle about 60% of the time while one CPU thread per rank ran the 8-bit optimizer. The two ranks held 553 GB, leaving no room for the 65 GB gather at save. Extrapolated: G1 about 230 h, all training about 18 days.
-- `--offload-opt` stays in the launchers for smaller boxes. It is not needed on 8 GPUs. 4×H200 is untested.
+**Hardware: 4×H200 with `--no-offload` is the working setup (8 Nov).** The table below assumes 8×H100, which is what the paper states, so these runs need the disclosure clause noted further down. On 4×H200 (141 GB each, 1,200 GiB RAM limit), pass `--no-offload` to every launcher, which keeps the optimizer state on the GPUs; the effective batch is unchanged.
+- Measured on G2a: 9.6 s per optimizer step, 22.6 min of training, GPUs about 100% busy, peak 95 GB per GPU and 70 GB of system memory. A resumable checkpoint was 242 GB.
+- `--resume` is proven: from G2a's final checkpoint it reloaded the optimizer state in about 50 s and trained on for five steps, with loss in line with where it stopped.
+- 2×H200 (600 GiB RAM limit) was tried first and abandoned, with nothing pushed. Full CPU offload was killed at the RAM limit before the first step. With `--offload-opt` it ran at about 190 s per step, because one CPU thread per rank ran the 8-bit optimizer while the GPUs idled, and the ranks held 553 GB, leaving no room for the save.
+
+**Status (8 Nov).** G2a is on Hugging Face and its upload was verified by hash. G2b, G1 and the G4 seeds run as a queue on the training box: `~/train_queue.sh` in `tmux`, progress in `~/logs/queue.log`, one log per job in `~/logs/`. A finished job leaves `~/logs/<name>.done` and is skipped on a rerun.
 
 **What survives on `/home`** if the new instance mounts it: the repo, the seven verified shards, `SFT/.env`, the Hugging Face cache (including `…-v21-core`) and the May 8B saves. The conda environments are in `/root/miniconda3` on the container disk, so expect to reinstall them with the Setup commands.
 
 **Running the queue.**
-- Run G2a first: it is short and proves the box. Watch `nvidia-smi` and `free -g` through its first save, when the model is gathered into system RAM.
-- **Resume (decided 8 Nov):** by default the launchers pass `--save_only_model True`, so checkpoints cannot resume. Run G1 and G2a with `--resumable`, which writes full ZeRO checkpoints (about 260 GB each at 32B) and keeps one. If G1 crashes, rerun it with `--output-dir <its folder> --resume`. Prove this on G2a before starting G1: once G2a's push is verified, call `SFT/utils/run_train.sh` with G2a's arguments, without `--push-to-hf`, and with `--resume`, and confirm it reloads the optimizer state and finishes.
+- On a new box, run G2a's equivalent first: it is short and proves the setup. Watch `nvidia-smi` and `free -g` through its first save, when the model is gathered into system RAM.
+- **Resume (decided 8 Nov):** by default the launchers pass `--save_only_model True`, so checkpoints cannot resume. Run G1 and G2a with `--resumable`, which writes full ZeRO checkpoints (about 260 GB each at 32B) and keeps one. If G1 crashes, rerun it with `--output-dir <its folder> --resume`. This was proven on G2a on 8 Nov (see above).
 - **Disk:** `SFT/saves` and the Hugging Face cache are on `/home` (2 TB, about 1.1 TB free on 8 Nov). Conda and `/tmp` are on the 1 TB overlay. G1 with `--resumable` peaks near 650 GB. Remove a run's local saves only after verifying its Hugging Face push, and look before deleting anything else: `SFT/saves` still holds the May 8B runs.
 - **Scoring** runs on a separate instance named `alkidemos`, after all training has finished. The training instance only trains, so do not start vLLM there.
 - Any run not on eight 80-GB H100 GPUs needs a disclosure clause in the paper, and if the G4 seeds differ in hardware from the released run, report their spread across the new seeds only.
