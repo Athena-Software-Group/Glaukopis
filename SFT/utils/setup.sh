@@ -81,7 +81,11 @@
 #    to widen the cap, or pass --no-flash-attn to drop it entirely)
 #   (vllm stack installs the latest vllm by default; export
 #    VLLM_SPEC="vllm==0.21.0" to pin it, e.g. to match the 2026-05-21 v21
-#    32B scoring runs, which predate any version record)
+#    32B scoring runs, which predate any version record; likewise
+#    LIGER_SPEC="liger-kernel==0.8.0" and BNB_SPEC="bitsandbytes==0.49.2"
+#    pin the train stack's two uncapped libraries to their 2026-05-18
+#    releases; every other train dependency is capped and resolves to the
+#    same version as in May)
 #
 # Dependency note:
 #   LlamaFactory pins datasets<=4.0.0 and transformers<=5.2.0; SFT/eval asks
@@ -673,14 +677,14 @@ EOF
         # Optional at runtime (skip the flag if uninstalled), but baked in
         # here so the trainer's default extras work out of the box.
         echo "=== Installing liger-kernel ==="
-        pip install liger-kernel
+        pip install "${LIGER_SPEC:-liger-kernel}"
 
         # bitsandbytes: 8-bit AdamW (--optim adamw_8bit) cuts the fp32 Adam
         # momentum + variance (~32 GB/rank for 32B under ZeRO-3) down to
         # ~8 GB, freeing the headroom needed for the LM-head grad_weight
         # accumulation on 8x80GB. Required by run_abaligned_sft_qwen25_32b_v7.sh.
         echo "=== Installing bitsandbytes ==="
-        pip install bitsandbytes
+        pip install "${BNB_SPEC:-bitsandbytes}"
     fi
 
     if [[ "${stack}" == "test" || "${stack}" == "all" ]]; then

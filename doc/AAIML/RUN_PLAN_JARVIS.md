@@ -4,6 +4,8 @@ These runs close the review items the existing data cannot: comment 1 (matched s
 
 **Deadline:** final paper and registration form to aaiml_conf@163.com by **30 Nov 2026**. Start the training runs by about 18 Nov to leave time for evaluation, analysis and edits.
 
+**Same data, same harness (decided 7 Nov 2026).** Every run trains on the seven v21 shard files already in `SFT/data` (dated 2026-05-18; row counts match the `_v21_*_build` reports) and is scored with the unchanged benchmark code. Do not regenerate the templates or refresh the Ariadne graph for these runs. A trial rebuild of Core from the same graph and the same templates reproduced only 35% of the rows: 0% of MCQ, 2% of TAA, 1.7% of RCM and 4.2% of VSP rows. The generator samples with `ORDER BY rand()`, so a controlled comparison is only possible on the original files. The library versions are pinned to May's below.
+
 ## The runs
 
 | ID | Run | Answers | Hardware | Wall time | GPU-h | Cost at $2.69/GPU-h |
@@ -60,9 +62,14 @@ rsync -avP SFT/data/ift_data_2026_05_18_v21_{core_a_kb_mcq_taa_soc_cm_ms_yn,core
       root@HOST:~/Glaukopis/SFT/data/
 
 # Environments
-ssh root@HOST 'cd ~/Glaukopis/SFT/utils && ./setup.sh --cuda cu128 --mode train'   # training box: llm-sft
-ssh root@HOST 'cd ~/Glaukopis/SFT/utils && ./setup.sh --cuda cu128 --mode vllm'    # eval box: vllm + ctibench + CyberSOCEval fetch
+# Pinned to the May 2026 versions (see "Same data, same harness")
+ssh root@HOST 'cd ~/Glaukopis/SFT/utils && LIGER_SPEC="liger-kernel==0.8.0" BNB_SPEC="bitsandbytes==0.49.2" \
+    ./setup.sh --cuda cu128 --mode train'    # training box: llm-sft
+ssh root@HOST 'cd ~/Glaukopis/SFT/utils && VLLM_SPEC="vllm==0.21.0" \
+    ./setup.sh --cuda cu128 --mode vllm'     # eval box: vllm + ctibench + CyberSOCEval fetch
 ```
+
+On the training box, the in-repo LlamaFactory is unchanged since 18 May. Its capped dependencies resolve to the same releases as in May: transformers 5.2.0, deepspeed 0.18.4, accelerate 1.11.0, peft 0.18.1, trl 0.24.0 and torch 2.8.0. Only liger-kernel and bitsandbytes (which provides `adamw_8bit`) are uncapped, hence the two pins. If the pinned vLLM fails to install, drop `VLLM_SPEC`; the anchor check below then decides whether the results are comparable.
 
 Run long jobs inside `tmux` so they survive a dropped SSH session. Tülu-3, the base model and the chain checkpoints download from the Hugging Face Hub on first use.
 
@@ -92,7 +99,7 @@ The seed changes both the training order and the interleaved replay sample, so G
 
 ## Evaluation (eval box: `conda activate vllm; cd ~/Glaukopis/SFT/eval/utils`)
 
-**Check the serving stack first.** The benchmark data and scoring code are unchanged since the published scoring runs of 20–21 May 2026 (the only edits since are cache keying and the `SFT/test` → `SFT/eval` rename). The upstream sets fetched at setup are also unchanged: CyberSOCEval_data last changed 2025-09-22, PurpleLlama `crwd_meta` 2026-05-04, MMLU-Pro 2026-05-02. vLLM is not pinned, though, and no version was recorded for those runs. The most likely version is 0.21.0 (the latest release from 15 to 29 May); a fresh install now gets 0.33.0. Before scoring any new checkpoint:
+**Check the serving stack first.** The benchmark data and scoring code are unchanged since the published scoring runs of 20–21 May 2026 (the only edits since are cache keying and the `SFT/test` → `SFT/eval` rename). The upstream sets fetched at setup are also unchanged: CyberSOCEval_data last changed 2025-09-22, PurpleLlama `crwd_meta` 2026-05-04, MMLU-Pro 2026-05-02. No vLLM version was recorded for those runs. The setup above pins 0.21.0, the latest release from 15 to 29 May and so the most likely one; an unpinned install now gets 0.33.0. Confirm with an anchor before scoring any new checkpoint:
 
 ```bash
 pip freeze > ~/Glaukopis/SFT/eval/responses/eval_stack_$(date +%Y%m%d).txt
@@ -101,7 +108,7 @@ MODEL_ALIAS=athena-cti-sft-qwen25-32b-v21-recal-32b-vllm BENCH_CONDA_ENV=ctibenc
   bash serve_and_bench_qwen25_32b_v21_single_stage.sh
 ```
 
-Copy it back with the other results and run `bootstrap_new_runs.py`, which pairs `Recal-32B rerun` with the published run. If every aggregate's interval includes 0, score the new checkpoints on this stack. If not, either reinstall with `VLLM_SPEC="vllm==0.21.0" ./setup.sh --cuda cu128 --mode vllm` and repeat the anchor, or re-score all five published checkpoints on this stack (about 5–7 h, $27–38) so every comparison stays within one stack.
+Copy it back with the other results and run `bootstrap_new_runs.py`, which pairs `Recal-32B rerun` with the published run. If every aggregate's interval includes 0, score the new checkpoints on this stack. If not, re-score all five published checkpoints on this stack (about 5–7 h, $27–38) and compare the new runs with those, so every comparison stays within one stack.
 
 ```bash
 # G3 - needs no training; start it first
