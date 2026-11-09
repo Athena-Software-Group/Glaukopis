@@ -68,6 +68,10 @@ G1 showed a single pass matching the layered chain on Qwen2.5-32B. These runs te
 - All five models (these four and Qwen2.5-32B) are reported whichever way they land, and the claim covers only those that pass. G1 meets the rule, but the margins were set after seeing G1, so only these four are a clean test.
 - The ten-test mean and per-task differences are reported alongside, not used for the decision. "Equivalent" applies to the overall scores only: on 32B the two approaches differ on individual tasks.
 
+**Analysis.** `python3 analysis/aaiml_2027/equivalence_ports.py` (needs numpy; writes `doc/AAIML/data/equivalence_ports.json`) prints one block per model and applies the rule above to whichever models have all twelve tests scored on both sides. It also prints each layered re-score against its May per-item results, failed-request counts, and one sensitivity line, `B_failed_as_wrong`. That line matters because the harness marks an empty answer list (`{"correct_answers": []}`) as a failed request and CyberSOCEval drops failed requests from its denominator, so a model that declines hard items is not charged for them. On Qwen2.5-32B the layered checkpoint did this on 36 malware items and the single pass on none. The sensitivity line counts those items as wrong; it is reported alongside and does not enter the decision.
+
+**Order on the hardware.** The two 8B models train and score on 2×H200 (Foundation measured 9.4 s/step, 2,584 steps, about 6.8 h, 76–79 GB per GPU), and the 14B and Qwen3 layered comparators are re-scored there too. Qwen2.5-14B and Qwen3 training need 4×H200: the 14B default-optimizer state is estimated at about 128 GB per GPU on two GPUs, too tight on 141 GB, and an earlier 30B-class run failed on two. The queue scripts are in `analysis/aaiml_2027/run_scripts/` (`port_pipeline_2x.sh`, `train_queue_ports.sh`, `score_queue_ports.sh`, `verify_hf_ports.py`).
+
 ## The runs
 
 | ID | Run | Answers | Hardware | Wall time | GPU-h | Cost at $2.69/GPU-h |
@@ -198,6 +202,17 @@ python3 -I doc/AAIML/analysis/bootstrap_new_runs.py      # -> doc/AAIML/data/boo
 - **Comment 5b:** the mean and SD of each aggregate across seeds 42, 1, 2 and 3.
 
 G3 is a Qwen3 checkpoint, so it is not in the paired script. Compute its $B_{bal}$ and ten-test mean with the paper's uniform aggregation and compare them with the thinking-on base (61.8 and 54.9). Use the `Final  (v21) 14B 32B` sheet of `SFT/eval/Glaukopis Results.xlsx`, which applies the TAA blend consistently. Do not use the "AB Avg II" column of `Final wMMLUPro-v21`.
+
+## What happened in the 9 Nov 2026 scoring round
+
+G1, G2a, G2b, G3 and G4 were all scored on one 2×H200 box, because the separate scoring instance would not come up.
+
+- **Stack.** Both scoring environments were pinned to what PyPI offered on 20 May 2026 with `pip --uploaded-prior-to` (`pin_may.sh`): vLLM 0.21.0, torch 2.11.0, transformers 5.8.1 in `vllm`; pandas 3.0.3, numpy 2.4.6, openai 2.37.0, scikit-learn 1.8.0 in `ctibench`. The two `pip freeze` files are `SFT/eval/responses/eval_stack_20261109_{vllm,ctibench}.txt`. A resized box loses its conda environments, so repeat the pinning after a resize.
+- **Prefetch.** `prefetch.py` downloads each checkpoint before serving, with retries. Otherwise a slow Hub download counts against the serving timeout.
+- **Anchor passed.** The published Recal-32B re-scored on this stack differs from its May run by −0.10 [−0.27, +0.06] on $B_{bal}$, −0.07 [−0.28, +0.12] on the ten-test mean and +0.02 [−0.28, +0.34] on MMLU-Pro. All interval checks include zero, so the new checkpoints were scored on this stack as planned.
+- **The scorer's exit code does not mean success.** `run_foundation_8b_baselines.sh` logs a failed suite as a warning and exits 0, so `check_scores.py` confirms every expected row exists before a run is marked done. It reads `expected_rows.json` and a 2 MB `published_items.json` of published item ids, which stays with the local records.
+- **Qwen3, May against November.** The thinking-on alias has complete May 26 CTI results in the old scoring instance's archive. They carry 159 TI and 64 malware `ctx-overflow` failures, which November's automatic context length does not have (10 TI and 0 malware). That accounts for the +5.15 difference on CyberSOCEval-TI; the other ten CTI tests show no drift.
+- **Where results live.** Per-item results are in `SFT/eval/responses/<alias>/` on the analysis machine, gitignored like all per-item files. Training and scoring records are kept locally and are available on request. The scripts that drove the rounds are in `analysis/aaiml_2027/run_scripts/`.
 
 ## Putting results into the paper
 

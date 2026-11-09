@@ -1,0 +1,23 @@
+{
+"athena-ate/athena-ate_all_v1_{alias}_response.jsonl": 500,
+"athena-ate/athena-ate_all_v1_{alias}_scored.jsonl": 500,
+"athena-mcq/athena-mcq_all_v1_{alias}_response.jsonl": 3000,
+"athena-mcq/athena-mcq_all_v1_{alias}_scored.jsonl": 3000,
+"athena-rcm/athena-rcm_all_v1_{alias}_response.jsonl": 2000,
+"athena-rcm/athena-rcm_all_v1_{alias}_scored.jsonl": 2000,
+"athena-rms/athena-rms_all_v1_{alias}_response.jsonl": 500,
+"athena-rms/athena-rms_all_v1_{alias}_scored.jsonl": 500,
+"athena-taa-canonical/athena-taa-canonical_all_v1_{alias}_response.jsonl": 133,
+"athena-taa-canonical/athena-taa-canonical_all_v1_{alias}_scored.jsonl": 133,
+"athena-taa/athena-taa_all_v1_{alias}_response.jsonl": 100,
+"athena-taa/athena-taa_all_v1_{alias}_scored.jsonl": 100,
+"athena-vsp/athena-vsp_all_v1_{alias}_response.jsonl": 2000,
+"athena-vsp/athena-vsp_all_v1_{alias}_scored.jsonl": 2000,
+"cybermetric/cybermetric_CyberMetric-10000-v1_all_v1_{alias}_response.csv": 10180,
+"cybermetric/cybermetric_CyberMetric-2000-v1_all_v1_{alias}_response.csv": 2000,
+"cybersoceval-malware/cybersoceval-malware_all_v1_{alias}_response.jsonl": 609,
+"cybersoceval-malware/cybersoceval-malware_all_v1_{alias}_scored.jsonl": 609,
+"cybersoceval-ti/cybersoceval-ti_all_v1_{alias}_response.jsonl": 588,
+"cybersoceval-ti/cybersoceval-ti_all_v1_{alias}_scored.jsonl": 588,
+"mmlu-pro/mmlu-pro_all_v1_{alias}_response.csv": 12032
+}
