@@ -47,6 +47,27 @@ For a session running on the GPU box. The planning conversations and their notes
 - The repo is public. Never commit `.env`, tokens, shards, per-item responses, checkpoints or logs; stage files by explicit name; never print token values.
 - Starting paid training, deleting checkpoints, and pushing to Hugging Face or git beyond what a launcher does are the user's call.
 
+## Cross-model single-pass runs (9 Nov 2026)
+
+G1 showed a single pass matching the layered chain on Qwen2.5-32B. These runs test the same question on the four other v21 models. Their layered checkpoints and per-item scores already exist, so each model needs one training run.
+
+| Model | `--model-key` | Layered comparator | Hardware | Training estimate |
+|---|---|---|---|---:|
+| Foundation-Sec-8B-Instruct | `foundation_8b` | `v21-recalibrate` | 2×H200 | about 8 h |
+| Llama-3.1-8B-Instruct | `llama31_8b` | `v21-recalibrate` | 2×H200 | about 8 h |
+| Qwen2.5-14B-Instruct | `qwen25_14b` | `v21-recalibrate` | 4×H200 | about 7 h |
+| Qwen3-30B-A3B-Thinking-2507 | `qwen3_30b_thinking` | `v21-cse` | 4×H200 | about 16 h |
+
+**Recipe.** `SFT/autotrain/run_sft_v21_single_stage_port.sh`: the same six datasets as G1 at each model's own Stage-1A settings (lr 1e-5, cutoff 8192, packing, effective batch 16, one epoch). Pass `--no-offload --resumable`. Same v21 shards and harness; the shard hashes above must match.
+
+**Scoring.** Run `SFT/eval/utils/serve_and_bench_v21_single_stage_port.sh` for each single-pass checkpoint and again for its layered comparator, so both sides of each comparison use the same stack. Use the May-dated package pins from the 9 Nov scoring round.
+
+**Pre-set decision rule (written before any of these runs was trained).**
+- A model counts as equivalent if the 90% paired interval of single pass minus layered lies entirely inside ±1.5 points on $B_{bal}$ and ±2 points on MMLU-Pro. This is two one-sided tests at the 5% level.
+- ±1.5 is just below the smallest fine-tuning gain the paper reports (+1.6). ±2 is about one seed SD on MMLU-Pro (1.74).
+- All five models (these four and Qwen2.5-32B) are reported whichever way they land, and the claim covers only those that pass. G1 meets the rule, but the margins were set after seeing G1, so only these four are a clean test.
+- The ten-test mean and per-task differences are reported alongside, not used for the decision. "Equivalent" applies to the overall scores only: on 32B the two approaches differ on individual tasks.
+
 ## The runs
 
 | ID | Run | Answers | Hardware | Wall time | GPU-h | Cost at $2.69/GPU-h |

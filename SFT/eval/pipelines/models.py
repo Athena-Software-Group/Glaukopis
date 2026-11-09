@@ -590,6 +590,15 @@ model_mapping = {
     'athena-cti-sft-foundation-8b-v21-taa-vllm':               'asg-ai/athena-cti-sft-foundation-8b-v21-taa',
     'athena-cti-sft-foundation-8b-v21-cse-vllm':               'asg-ai/athena-cti-sft-foundation-8b-v21-cse',
     'athena-cti-sft-foundation-8b-v21-recalibrate-vllm':       'asg-ai/athena-cti-sft-foundation-8b-v21-recalibrate',
+    # Matched single-pass controls for the four other v21 ports: one pass over
+    # the union of the Stage 1-3 shards at each model's Stage-1A recipe. Pushed
+    # by SFT/autotrain/run_sft_v21_single_stage_port.sh; benched by
+    # SFT/eval/utils/serve_and_bench_v21_single_stage_port.sh. The Qwen3 alias
+    # omits '-no-think', so it serves with thinking on, like its base.
+    'athena-cti-sft-foundation-8b-v21-single-stage-vllm':      'asg-ai/athena-cti-sft-foundation-8b-v21-single-stage',
+    'athena-cti-sft-llama31-8b-v21-single-stage-vllm':         'asg-ai/athena-cti-sft-llama31-8b-v21-single-stage',
+    'athena-cti-sft-qwen25-14b-v21-single-stage-vllm':         'asg-ai/athena-cti-sft-qwen25-14b-v21-single-stage',
+    'athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-single-stage-vllm': 'asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-single-stage',
     # v21 chain ported to Gemma 4 31B-it. Same 4-stage recipe (Core Phase
     # A/B -> TAA -> CSE -> Recalibrate) and same datasets as the Qwen
     # 14B v21 chain; only the base model, --template (qwen -> gemma4),
