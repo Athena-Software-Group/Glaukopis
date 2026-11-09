@@ -97,7 +97,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SFT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-TEST_DIR="${SFT_DIR}/test"
+TEST_DIR="${SFT_DIR}/eval"
 
 MODE="all"
 CUDA_TAG="cu124"
