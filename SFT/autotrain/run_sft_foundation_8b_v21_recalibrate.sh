@@ -73,6 +73,7 @@
 #                                            [--output-dir DIR]
 #                                            [--report-to wandb|none]
 #                                            [--max-samples N]
+#                                            [--eff-batch N]   # default 4; 8 reproduces the 8-GPU chain on fewer GPUs
 #                                            [--lr LR]
 #                                            [--probs P_A,P_B,P_TAA]
 #                                            [--offload | --no-offload]
@@ -94,6 +95,7 @@ LR="1e-06"
 PROBS="0.25,0.40,0.35"
 DRY_RUN=0
 OFFLOAD="auto"
+EFF_BATCH=4
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -102,6 +104,7 @@ while [[ $# -gt 0 ]]; do
         --output-dir)   OUTPUT_DIR="$2";   shift 2 ;;
         --report-to)    REPORT_TO="$2";    shift 2 ;;
         --max-samples)  MAX_SAMPLES="$2";  shift 2 ;;
+        --eff-batch)    EFF_BATCH="$2";    shift 2 ;;
         --lr)           LR="$2";           shift 2 ;;
         --probs)        PROBS="$2";        shift 2 ;;
         --dry-run)      DRY_RUN=1;         shift ;;
@@ -181,7 +184,9 @@ DS_CONFIG="examples/deepspeed/ds_z3_offload_config.json"
 [[ "${OFFLOAD}" == "off" ]] && DS_CONFIG="examples/deepspeed/ds_z3_config.json"
 
 EFFECTIVE_GPUS=$(( GPU_COUNT > 0 ? GPU_COUNT : 1 ))
-R_BATCH=1; R_GA=$(( 4 / (R_BATCH * EFFECTIVE_GPUS) )); [[ ${R_GA} -lt 1 ]] && R_GA=1
+# Target effective batch 4 (default). On 8 GPUs the floor of one accumulation step makes it 8, which is
+# what the May chains ran; pass --eff-batch 8 to reproduce that on fewer GPUs.
+R_BATCH=1; R_GA=$(( EFF_BATCH / (R_BATCH * EFFECTIVE_GPUS) )); [[ ${R_GA} -lt 1 ]] && R_GA=1
 
 EXTRA_COMMON="--deepspeed ${DS_CONFIG} --save_total_limit 2 --save_only_model True --enable_liger_kernel True --do_eval False --eval_strategy no --val_size 0 --mix_strategy interleave_under --interleave_probs ${PROBS}"
 

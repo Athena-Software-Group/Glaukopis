@@ -15,7 +15,10 @@ MMLU-Pro 1.74).
 
 Both sides of every comparison are read from SFT/eval/responses, i.e. scored on one serving
 stack. A second block compares each re-scored layered checkpoint against its May per-item
-results, as a check that the serving stack did not move the numbers.
+results, as a check that the serving stack did not move the numbers. A third block is the
+hardware control: the layered chain retrained on 2xH200, against the single pass on the same
+hardware and against the published 8xH100 layered checkpoint. The pre-set rule is not applied
+to that block.
 
 Scoring functions and aggregates are imported from bootstrap_new_runs.py and the resampling
 below is checked against them at the point estimate.
@@ -38,6 +41,11 @@ MODELS = [
     ("Qwen3-30B-A3B-Thinking", Q3 + "single-stage-vllm", Q3 + "cse-vllm", "CSE", True),
     ("Foundation-Sec-8B", C + "foundation-8b-v21-single-stage-vllm", C + "foundation-8b-v21-recalibrate-vllm", "Recalibrate", True),
     ("Llama-3.1-8B", C + "llama31-8b-v21-single-stage-vllm", C + "llama31-8b-v21-recalibrate-vllm", "Recalibrate", True),
+]
+# Hardware control: (label, single pass, layered chain retrained on 2xH200, published layered checkpoint re-scored).
+CONTROLS = [
+    ("Foundation-Sec-8B", C + "foundation-8b-v21-single-stage-vllm", C + "foundation-8b-v21-2xh200-recalibrate-vllm", C + "foundation-8b-v21-recalibrate-vllm"),
+    ("Llama-3.1-8B", C + "llama31-8b-v21-single-stage-vllm", C + "llama31-8b-v21-2xh200-recalibrate-vllm", C + "llama31-8b-v21-recalibrate-vllm"),
 ]
 MARGINS = {"B_bal": 1.5, "mmlu": 2.0}
 SEED = 20260906  # same seed as bootstrap_new_runs.py
@@ -177,7 +185,7 @@ def verdict(res):
 
 def main():
     R = int(sys.argv[1]) if len(sys.argv) > 1 else 2000
-    out = {"R": R, "rule": "90% paired interval of single minus layered inside +/-1.5 B_bal and +/-2 MMLU-Pro", "models": {}, "anchors": {}}
+    out = {"R": R, "rule": "90% paired interval of single minus layered inside +/-1.5 B_bal and +/-2 MMLU-Pro", "models": {}, "anchors": {}, "hardware_controls": {}}
     eval_roots = [B.EVAL_ROOT]
     print("Each row: layered, single pass, difference (single minus layered).\n")
     for label, single, layered, comp, clean in MODELS:
@@ -218,6 +226,23 @@ def main():
         report_failures(res)
         show(res, ["B_bal", "ten", "mmlu"])
         out["anchors"][label] = res
+
+    print("\n=== Hardware control: layered chain retrained on 2xH200 (all checkpoints scored on one stack) ===")
+    names = ["B_bal", "mmlu", "ten", "A_bal", "C", "Y"]
+    for label, single, retrained, published in CONTROLS:
+        loaded = [load(a, eval_roots) for a in (retrained, single, published)]
+        if any(miss for _, miss in loaded):
+            print(f"  {label}: not ready")
+            continue
+        (h, _), (s1, _), (p1, _) = loaded
+        same_hw, hw = compare(h, s1, R), compare(p1, h, R)
+        print(f"  {label}: layered on 2xH200, single pass on 2xH200, single minus layered")
+        report_failures(same_hw)
+        show(same_hw, names)
+        print(f"  {label}: published layered (8xH100), layered on 2xH200, hardware effect")
+        report_failures(hw)
+        show(hw, names)
+        out["hardware_controls"][label] = {"single_minus_layered_on_2xh200": same_hw, "layered_2xh200_minus_published": hw}
 
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w") as f:

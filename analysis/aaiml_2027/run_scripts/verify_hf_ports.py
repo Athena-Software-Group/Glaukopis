@@ -15,7 +15,7 @@ import sys
 
 from huggingface_hub import HfApi
 
-ALLOWED = re.compile(r"^/home/Glaukopis/SFT/saves/[^/]+/full/port_single_stage_(foundation_8b|llama31_8b|qwen25_14b|qwen3_30b_thinking)$")
+ALLOWED = re.compile(r"^/home/Glaukopis/SFT/saves/[^/]+/full/(port_single_stage_(foundation_8b|llama31_8b|qwen25_14b|qwen3_30b_thinking)|ctrl2x_(foundation_8b|llama31_8b)/(phase_b|taa|cse|recalibrate))$")
 
 
 def fail(msg):

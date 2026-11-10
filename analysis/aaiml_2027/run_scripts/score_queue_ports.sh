@@ -72,6 +72,10 @@ for group in "$@"; do
             score qwen3_layered $Q3-cse "--no-compare" ;;
         qwen3_single)
             score qwen3_single $Q3-single-stage "--no-compare" ;;
+        foundation_8b_2xh200)
+            score foundation_2xh200 $C-foundation-8b-v21-2xh200-recalibrate "" ;;
+        llama31_8b_2xh200)
+            score llama_2xh200 $C-llama31-8b-v21-2xh200-recalibrate "" ;;
         *) stop "unknown group $group" ;;
     esac
 done
