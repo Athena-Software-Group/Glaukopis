@@ -12,10 +12,10 @@ step() {
     if [ $rc -ne 0 ]; then echo "failed=$* at=$(stamp)" > ~/logs/pipeline_4x.status; exit 1; fi
 }
 rm -f ~/logs/pipeline_4x.status
-step ~/train_queue_ports.sh qwen25_14b
-step ~/score_queue_ports.sh qwen25_14b_single
-step ~/control_chain_4x.sh qwen25_14b
-step ~/score_queue_ports.sh qwen25_14b_4xh200
-step ~/control_chain_4x.sh qwen25_32b
-step ~/score_queue_ports.sh qwen25_32b_4xh200
+step bash ~/train_queue_ports.sh qwen25_14b
+step bash ~/score_queue_ports.sh qwen25_14b_single
+step bash ~/control_chain_4x.sh qwen25_14b
+step bash ~/score_queue_ports.sh qwen25_14b_4xh200
+step bash ~/control_chain_4x.sh qwen25_32b
+step bash ~/score_queue_ports.sh qwen25_32b_4xh200
 echo "all_ok finished=$(stamp)" > ~/logs/pipeline_4x.status
