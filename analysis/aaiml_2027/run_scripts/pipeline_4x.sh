@@ -1,7 +1,9 @@
 #!/bin/bash
-# 4xH200 round: Qwen2.5-14B single pass, then the layered chains for Qwen2.5-14B and -32B retrained on the same hardware,
-# each scored on the 9 Nov stack as soon as it is trained. Each queue skips finished work, so a rerun resumes.
+# 4xH200 round: Qwen2.5-14B single pass, trained and then scored on the 9 Nov stack. The Qwen3 single pass follows in
+# pipeline_qwen3_4x.sh. Each queue skips finished work, so a rerun resumes.
 # Log ~/logs/pipeline_4x.log; ~/logs/pipeline_4x.status appears when the pipeline ends (all_ok or failed=...).
+# As first launched on 11 Nov this also ran layered retrains of Qwen2.5-14B and -32B; those steps were cancelled
+# (made no-ops) before they started, because the study takes the single pass as its baseline.
 L=~/logs/pipeline_4x.log
 stamp() { date -u +%FT%TZ; }
 step() {
@@ -14,8 +16,4 @@ step() {
 rm -f ~/logs/pipeline_4x.status
 step bash ~/train_queue_ports.sh qwen25_14b
 step bash ~/score_queue_ports.sh qwen25_14b_single
-step bash ~/control_chain_4x.sh qwen25_14b
-step bash ~/score_queue_ports.sh qwen25_14b_4xh200
-step bash ~/control_chain_4x.sh qwen25_32b
-step bash ~/score_queue_ports.sh qwen25_32b_4xh200
 echo "all_ok finished=$(stamp)" > ~/logs/pipeline_4x.status

@@ -599,12 +599,10 @@ model_mapping = {
     'athena-cti-sft-llama31-8b-v21-single-stage-vllm':         'asg-ai/athena-cti-sft-llama31-8b-v21-single-stage',
     'athena-cti-sft-qwen25-14b-v21-single-stage-vllm':         'asg-ai/athena-cti-sft-qwen25-14b-v21-single-stage',
     'athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-single-stage-vllm': 'asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-single-stage',
-    # Hardware control: the layered v21 chain retrained on the hardware of each single-pass run
-    # (2xH200 for the 8B models, 4xH200 for Qwen2.5-14B and -32B), in separate repos from the published checkpoints.
+    # Hardware control: the layered v21 chain retrained on 2xH200, the hardware of the
+    # 8B single-pass runs, in separate repos from the published checkpoints.
     'athena-cti-sft-foundation-8b-v21-2xh200-recalibrate-vllm': 'asg-ai/athena-cti-sft-foundation-8b-v21-2xh200-recalibrate',
     'athena-cti-sft-llama31-8b-v21-2xh200-recalibrate-vllm':    'asg-ai/athena-cti-sft-llama31-8b-v21-2xh200-recalibrate',
-    'athena-cti-sft-qwen25-14b-v21-4xh200-recalibrate-vllm':    'asg-ai/athena-cti-sft-qwen25-14b-v21-4xh200-recalibrate',
-    'athena-cti-sft-qwen25-32b-v21-4xh200-recal-32b-vllm':      'asg-ai/athena-cti-sft-qwen25-32b-v21-4xh200-recal-32b',
     # v21 chain ported to Gemma 4 31B-it. Same 4-stage recipe (Core Phase
     # A/B -> TAA -> CSE -> Recalibrate) and same datasets as the Qwen
     # 14B v21 chain; only the base model, --template (qwen -> gemma4),

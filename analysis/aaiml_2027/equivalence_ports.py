@@ -47,8 +47,6 @@ MODELS = [
 CONTROLS = [
     ("Foundation-Sec-8B", C + "foundation-8b-v21-single-stage-vllm", C + "foundation-8b-v21-2xh200-recalibrate-vllm", C + "foundation-8b-v21-recalibrate-vllm", "2xH200"),
     ("Llama-3.1-8B", C + "llama31-8b-v21-single-stage-vllm", C + "llama31-8b-v21-2xh200-recalibrate-vllm", C + "llama31-8b-v21-recalibrate-vllm", "2xH200"),
-    ("Qwen2.5-14B", C + "qwen25-14b-v21-single-stage-vllm", C + "qwen25-14b-v21-4xh200-recalibrate-vllm", C + "qwen25-14b-v21-recalibrate-vllm", "4xH200"),
-    ("Qwen2.5-32B", C + "qwen25-32b-v21-single-stage-vllm", C + "qwen25-32b-v21-4xh200-recal-32b-vllm", C + "qwen25-32b-v21-recal-32b-vllm", "4xH200"),
 ]
 MARGINS = {"B_bal": 1.5, "mmlu": 2.0}
 SEED = 20260906  # same seed as bootstrap_new_runs.py
