@@ -42,10 +42,13 @@ MODELS = [
     ("Foundation-Sec-8B", C + "foundation-8b-v21-single-stage-vllm", C + "foundation-8b-v21-recalibrate-vllm", "Recalibrate", True),
     ("Llama-3.1-8B", C + "llama31-8b-v21-single-stage-vllm", C + "llama31-8b-v21-recalibrate-vllm", "Recalibrate", True),
 ]
-# Hardware control: (label, single pass, layered chain retrained on 2xH200, published layered checkpoint re-scored).
+# Hardware control: (label, single pass, layered chain retrained on the single pass's hardware, published layered checkpoint
+# re-scored, that hardware).
 CONTROLS = [
-    ("Foundation-Sec-8B", C + "foundation-8b-v21-single-stage-vllm", C + "foundation-8b-v21-2xh200-recalibrate-vllm", C + "foundation-8b-v21-recalibrate-vllm"),
-    ("Llama-3.1-8B", C + "llama31-8b-v21-single-stage-vllm", C + "llama31-8b-v21-2xh200-recalibrate-vllm", C + "llama31-8b-v21-recalibrate-vllm"),
+    ("Foundation-Sec-8B", C + "foundation-8b-v21-single-stage-vllm", C + "foundation-8b-v21-2xh200-recalibrate-vllm", C + "foundation-8b-v21-recalibrate-vllm", "2xH200"),
+    ("Llama-3.1-8B", C + "llama31-8b-v21-single-stage-vllm", C + "llama31-8b-v21-2xh200-recalibrate-vllm", C + "llama31-8b-v21-recalibrate-vllm", "2xH200"),
+    ("Qwen2.5-14B", C + "qwen25-14b-v21-single-stage-vllm", C + "qwen25-14b-v21-4xh200-recalibrate-vllm", C + "qwen25-14b-v21-recalibrate-vllm", "4xH200"),
+    ("Qwen2.5-32B", C + "qwen25-32b-v21-single-stage-vllm", C + "qwen25-32b-v21-4xh200-recal-32b-vllm", C + "qwen25-32b-v21-recal-32b-vllm", "4xH200"),
 ]
 MARGINS = {"B_bal": 1.5, "mmlu": 2.0}
 SEED = 20260906  # same seed as bootstrap_new_runs.py
@@ -227,22 +230,22 @@ def main():
         show(res, ["B_bal", "ten", "mmlu"])
         out["anchors"][label] = res
 
-    print("\n=== Hardware control: layered chain retrained on 2xH200 (all checkpoints scored on one stack) ===")
+    print("\n=== Hardware control: layered chain retrained on the single pass's hardware (all checkpoints scored on one stack) ===")
     names = ["B_bal", "mmlu", "ten", "A_bal", "C", "Y"]
-    for label, single, retrained, published in CONTROLS:
+    for label, single, retrained, published, hw_name in CONTROLS:
         loaded = [load(a, eval_roots) for a in (retrained, single, published)]
         if any(miss for _, miss in loaded):
             print(f"  {label}: not ready")
             continue
         (h, _), (s1, _), (p1, _) = loaded
         same_hw, hw = compare(h, s1, R), compare(p1, h, R)
-        print(f"  {label}: layered on 2xH200, single pass on 2xH200, single minus layered")
+        print(f"  {label}: layered on {hw_name}, single pass on {hw_name}, single minus layered")
         report_failures(same_hw)
         show(same_hw, names)
-        print(f"  {label}: published layered (8xH100), layered on 2xH200, hardware effect")
+        print(f"  {label}: published layered (May), layered on {hw_name}, retrained minus published")
         report_failures(hw)
         show(hw, names)
-        out["hardware_controls"][label] = {"single_minus_layered_on_2xh200": same_hw, "layered_2xh200_minus_published": hw}
+        out["hardware_controls"][label] = {"hardware": hw_name, "single_minus_layered_same_hardware": same_hw, "retrained_minus_published": hw}
 
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w") as f:

@@ -90,6 +90,8 @@ On both 8B models the single pass is clearly ahead on MCQ, CyberSOCEval TI (Llam
 
 **What the two controls show.** The retrained layered chains move in opposite directions (Foundation −2.46, Llama +3.70 on $B_{bal}$), so there is no consistent hardware effect; a full layered retrain moves the overall score by 2.5 to 3.7 points and single tasks by up to 22. That is larger than the ±1.5 margin of the pre-set rule, so the rule can only be applied cleanly when both arms are trained on the same hardware. On matched hardware the single pass beats the layered chain on both 8B models ($B_{bal}$ +8.99 and +4.06; MMLU-Pro +12.23 and +3.73).
 
+**4×H200 round (from 11 Nov).** The box was resized to 4×H200. `pipeline_4x.sh` trains the Qwen2.5-14B single pass, then retrains the layered chains for Qwen2.5-14B and Qwen2.5-32B on the same hardware (`control_chain_4x.sh`, repos `-v21-4xh200-*`), scoring each as soon as it is trained. The 32B single pass (G1) already ran on 4×H200, so with these runs every Qwen2.5 comparison is on matched hardware. Effective batches match May (16, 8, 16, 16, 8); the 14B Layer 4 needs `--eff-batch 8` on 4 GPUs. May step counts to match: Phase B 6,198, TAA 78, CSE 115, Layer 4 755 (14B) and 748 (32B). All stages run `--no-offload`, like the single passes. Each parent checkpoint is verified on Hugging Face and deleted once its child stage is done, which keeps the 32B chain under about 260 GB of disk. Estimates: 14B single pass about 7 h, 14B chain about 12 h, 32B chain about 26 h (G1 took 14.1 h on this hardware), about 47 h with scoring.
+
 ## The runs
 
 | ID | Run | Answers | Hardware | Wall time | GPU-h | Cost at $2.69/GPU-h |

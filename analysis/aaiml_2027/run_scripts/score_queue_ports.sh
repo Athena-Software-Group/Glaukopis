@@ -76,6 +76,10 @@ for group in "$@"; do
             score foundation_2xh200 $C-foundation-8b-v21-2xh200-recalibrate "" ;;
         llama31_8b_2xh200)
             score llama_2xh200 $C-llama31-8b-v21-2xh200-recalibrate "" ;;
+        qwen25_14b_4xh200)
+            score qwen14_4xh200 $C-qwen25-14b-v21-4xh200-recalibrate "" ;;
+        qwen25_32b_4xh200)
+            score qwen32_4xh200 $C-qwen25-32b-v21-4xh200-recal-32b "" ;;
         *) stop "unknown group $group" ;;
     esac
 done
