@@ -599,6 +599,11 @@ model_mapping = {
     'athena-cti-sft-llama31-8b-v21-single-stage-vllm':         'asg-ai/athena-cti-sft-llama31-8b-v21-single-stage',
     'athena-cti-sft-qwen25-14b-v21-single-stage-vllm':         'asg-ai/athena-cti-sft-qwen25-14b-v21-single-stage',
     'athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-single-stage-vllm': 'asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-single-stage',
+    # Qwen3 layered checkpoints served like their base and the single pass (thinking on), for the per-layer
+    # breakdown; the -no-think aliases above are the May development runs.
+    'athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-core-vllm': 'asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-core',
+    'athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-taa-vllm': 'asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-taa',
+    'athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-recal-32b-vllm': 'asg-ai/athena-cti-sft-qwen3-30b-a3b-thinking-2507-v21-recal-32b',
     # Hardware control: the layered v21 chain retrained on 2xH200, the hardware of the
     # 8B single-pass runs, in separate repos from the published checkpoints.
     'athena-cti-sft-foundation-8b-v21-2xh200-recalibrate-vllm': 'asg-ai/athena-cti-sft-foundation-8b-v21-2xh200-recalibrate',

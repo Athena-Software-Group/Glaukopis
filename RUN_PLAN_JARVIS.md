@@ -252,3 +252,8 @@ Candidate cuts, if a sentence grows:
 - the sentence on the 14B Layer-4 variant in §IV.
 
 After editing, rebuild (`pdflatex`, `bibtex`, then `pdflatex` twice) and confirm 10 pages with no overfull boxes. Then update the status table in `RESPONSE_TO_REVIEW.md`.
+
+## Per-layer breakdown scoring (queued 11 Nov 2026)
+
+The paper now presents layered training as the method that develops and selects the template families, with a per-layer, per-model table. Two sets of cells had no matched per-item results: the Qwen2.5-14B Layer-3 checkpoint (`asg-ai/athena-cti-sft-qwen25-14b-v21-cse`, scored in May but its per-item files were not kept) and the Qwen3 Core, +TAA and Layer-4 (`recal-32b`) checkpoints, which were scored in May only with thinking off. `score_layers_after_qwen3.sh` (tmux `layers` on the 4xH200 box) waits for `pipeline_qwen3_4x.status` = all_ok, then runs `score_queue_ports.sh layer_breakdown` on the same stack as the single passes, Qwen3 with thinking on (new aliases without `-no-think` in `SFT/eval/pipelines/models.py`). Expected about 1-2 h of box time. Status: `~/logs/score_layers.status`. `analysis/aaiml_2027/layer_breakdown.py` reads every cell from per-item files and writes `data/layer_breakdown.json`.
+

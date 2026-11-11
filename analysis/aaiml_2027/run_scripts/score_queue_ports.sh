@@ -79,6 +79,13 @@ for group in "$@"; do
         qwen25_14b_4xh200|qwen25_32b_4xh200)
             # Cancelled 11 Nov 2026 before they ran: no layered retraining.
             echo "$(stamp) CANCELLED $group: no layered retraining (decision 11 Nov)" >> "$Q" ;;
+        layer_breakdown)
+            # Per-layer breakdown (11 Nov): the 14B Layer-3 checkpoint, whose May per-item files were not kept, and the
+            # Qwen3 layers scored in May only with thinking off.
+            score qwen14_cse $C-qwen25-14b-v21-cse ""
+            score qwen3_core_think $Q3-core "--no-compare"
+            score qwen3_taa_think $Q3-taa "--no-compare"
+            score qwen3_recal_think $Q3-recal-32b "--no-compare" ;;
         *) stop "unknown group $group" ;;
     esac
 done
