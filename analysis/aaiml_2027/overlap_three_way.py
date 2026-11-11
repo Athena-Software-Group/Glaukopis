@@ -17,7 +17,8 @@ import collections, glob, json, os, re
 
 R = os.environ.get("GLAUKOPIS_ROOT", "/Users/pietro/code/Glaukopis")
 BD = f"{R}/SFT/eval/benchmark_data/athena_bench"
-RESP = f"{R}/SFT/test/responses"
+RESP = f"{R}/SFT/test/responses"          # May per-item files of the layered checkpoints
+RESP_NOV = f"{R}/SFT/eval/responses"     # November runs (single pass)
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "overlap_three_way.json")
 
 def jl(p):
@@ -32,6 +33,7 @@ def word_in(tl, nl):
 
 rcm = jl(f"{BD}/athena-cti-rcm.jsonl"); rms = jl(f"{BD}/athena-cti-rms.jsonl"); vsp = jl(f"{BD}/athena-cti-vsp.jsonl")
 taac = jl(f"{BD}/athena_taa_canonical/athena-cti-taa-canonical.jsonl")
+ate = jl(f"{BD}/athena-cti-ate.jsonl")
 
 def gold_vec(r):
     m = VEC.search(r.get("answer", "") or r.get("cvss_vector", "") or "")
@@ -51,6 +53,7 @@ rms_by_tid = collections.defaultdict(set)
 for _, t, ms in items["athena-rms"]:
     rms_by_tid[t].add(ms)
 vsp_gold = {e: g for _, e, g in items["athena-vsp"]}
+ate_tid_rows = collections.Counter()  # ATE: training rows naming each technique id (for frequency tertiles)
 rcm_gold = collections.defaultdict(set)
 for _, c, w in items["athena-rcm"]:
     rcm_gold[c].add(w)
@@ -69,6 +72,8 @@ for shard in ["core", "taa", "cse"]:
                 seen_entity["athena-vsp"].add(c)
                 if vsp_gold.get(c) in vecs:
                     seen_answer["athena-vsp"].add((c, vsp_gold[c]))
+        for t in set(TID.findall(txt)):
+            ate_tid_rows[t] += 1
         tids = set(TID.findall(txt)) & ent["athena-rms"]
         if tids:
             mids = set(MID.findall(txt))
@@ -88,13 +93,21 @@ for task, lst in items.items():
     for p, e, a in lst:
         group[(task, p)] = "answer" if (e, a) in seen_answer[task] else ("entity" if e in seen_entity[task] else "none")
 
-CK = [("Core", "core"), ("+TAA", "taa"), ("CSE", "cse"), ("Recal-14B", "recalibrate"), ("Recal-32B", "recal-32b")]
+# ATE has no answer-exposure split; items are grouped by the training frequency of the gold technique (tertiles).
+cnts = sorted(ate_tid_rows[r["technique_id"]] for r in ate); q1 = cnts[len(cnts) // 3]; q2 = cnts[2 * len(cnts) // 3]
+for r in ate:
+    n = ate_tid_rows[r["technique_id"]]
+    group[("athena-ate", r["prompt"])] = "low" if n <= q1 else ("mid" if n <= q2 else "high")
+items["athena-ate"] = [(r["prompt"], r["technique_id"], None) for r in ate]
+
+CK = [("Core", "core"), ("+TAA", "taa"), ("CSE", "cse"), ("Recal-14B", "recalibrate"), ("Recal-32B", "recal-32b"), ("1-pass", "single-stage")]
 res = {"definitions": __doc__.strip().split("\n\n")[1], "items": {}, "scores": {}}
 for task, lst in items.items():
     res["items"][task] = dict(collections.Counter(group[(task, p)] for p, _, _ in lst))
 for task in items:
     for lab, d in CK:
-        path = glob.glob(f"{RESP}/athena-cti-sft-qwen25-32b-v21-{d}-vllm/{task}/*_scored.jsonl")[0]
+        path = (glob.glob(f"{RESP}/athena-cti-sft-qwen25-32b-v21-{d}-vllm/{task}/*_scored.jsonl")
+                or glob.glob(f"{RESP_NOV}/athena-cti-sft-qwen25-32b-v21-{d}-vllm/{task}/*_scored.jsonl"))[0]
         agg = collections.defaultdict(list); excluded = collections.Counter(); unmatched = 0
         for r in jl(path):
             g = group.get((task, r.get("prompt")))
@@ -115,7 +128,7 @@ for task in items:
 
 print(json.dumps(res["items"], indent=1))
 for k, v in res["scores"].items():
-    if k.endswith("Recal-32B") or k.endswith("|+TAA"):
+    if k.endswith("Recal-32B") or k.endswith("|+TAA") or k.endswith("|1-pass"):
         print(k, v)
 os.makedirs(os.path.dirname(OUT), exist_ok=True)
 json.dump(res, open(OUT, "w"), indent=1)
