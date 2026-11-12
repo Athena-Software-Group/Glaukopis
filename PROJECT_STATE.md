@@ -25,6 +25,13 @@ and treat this one as an index. Update protocol is in §7.
   checkpoint: **`asg-ai/athena-cti-sft-qwen25-32b-v21-recal-32b`**
   (Total **65.0** / Weighted **62.9** under the 50/50 TAA blend, tops
   all 14B / 8B / MoE peers on absolute leaderboard).
+- **Best model since Nov 2026**: the single-pass
+  **`asg-ai/athena-cti-sft-qwen25-32b-v21-single-stage`** (all v21 shards +
+  general data in one shuffled pass; B_bal **65.2**, ties recal-32b at 65.0,
+  +0.2 [-0.5, 1.0] at 90%). Single passes exist for all five bases
+  (`*-v21-single-stage`); layered training is now the data-development
+  method ("develop in layers, train in one pass"). Results table: README
+  "Current state (Nov 2026)"; scripts: `analysis/aaiml_2027/`.
 - **Per-architecture ship checkpoints (v21):**
   - **dense 32B (ship)**: `qwen25-32b-v21-recal-32b` — 32B-tuned recipe (LR 3e-6, Phase-B-heavy mix)
   - dense 14B: `qwen25-14b-v21-recalibrate` — Total 61.0 / Weighted 59.6
@@ -180,14 +187,16 @@ State as of 2026-09-06. Update §7 protocol when these change.
    remain untracked unless explicitly requested. Do not silently migrate
    these artifacts to `SFT/eval/responses/`; this bundle came from the
    remote test path.
-3. **Open evidence gaps for the paper** — still missing matched
-   single-stage-vs-chain training, repeated-seed/significance analysis,
-   and a formal metric-level error taxonomy for VSP/TAA/ATE. These are
-   acknowledged as limitations rather than implied claims.
+3. **Open evidence gaps for the paper** — matched single-stage-vs-chain
+   training and seed/significance analysis were closed by the AAIML runs
+   (item 4); a formal metric-level error taxonomy for VSP/TAA/ATE is still
+   missing and is acknowledged as a limitation.
 
-4. **AAIML 2027 reviewer-requested control runs** (opened 2026-11-07) --
-   the plan, decisions and GPU-host handoff are in `RUN_PLAN_JARVIS.md` at
-   the repo root. Same v21 shards and harness as the published chain.
+4. **AAIML 2027 reviewer-requested control runs** (opened 2026-11-07,
+   closed 2026-11-12; camera-ready submitted) -- the plan, decisions and
+   outcomes are in `RUN_PLAN_JARVIS.md` at the repo root; run scripts in
+   `analysis/aaiml_2027/run_scripts/`. Same v21 shards and harness as the
+   published chain. Data collection is closed; no further GPU runs planned.
 
 ## 7. Update protocol
 

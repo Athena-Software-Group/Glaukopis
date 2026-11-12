@@ -21,7 +21,7 @@ This repository covers the **Measure** and **Train** loop end-to-end:
 
 1. Build the CTI knowledge graph from public threat-intelligence sources (`athena_cti_db`).
 2. Generate IFT data from the graph via the Sophia template engine (`tmpl_gen`).
-3. Supervised fine-tune base LLMs (Llama-3.1-8B, Qwen2.5-14B / 32B) on the IFT data via LlamaFactory (`SFT`).
+3. Supervised fine-tune base LLMs (Qwen2.5-32B / 14B-Instruct, Qwen3-30B-A3B-Thinking-2507, Foundation-Sec-8B-Instruct, Llama-3.1-8B-Instruct) on the IFT data via LlamaFactory (`SFT`).
 4. Benchmark the resulting models on AthenaBench + general-reasoning suites (`SFT/eval`).
 
 ---
@@ -59,16 +59,29 @@ Per-token rate cards live in [`SFT/eval/pipelines/api_usage.py`](SFT/eval/pipeli
 
 ---
 
-## Current state (Q2 2026)
+## Current state (Nov 2026)
 
-- **Production target:** **Glaukopis-Qwen2.5-32B-Instruct (v21-recal-32b)** — 4-stage chain (Core → TAA → CSE → Recalibrate) on the v21 byte-clone of the v18.1 templates + gates; 32B-tuned Stage-4 recipe (LR 3e-6, Phase-B-heavy 0.15 / 0.60 / 0.25 mix, max-samples 3600). Full SFT, ZeRO-3 + 8-bit AdamW, ~6.5h on 8× H100. **Total 65.0 / Weighted 62.9** under the AthenaBench 50/50 TAA blend — tops all 14B / 8B / MoE peers on absolute leaderboard. HF: [`asg-ai/athena-cti-sft-qwen25-32b-v21-recal-32b`](https://huggingface.co/asg-ai).
-- **14B matched-baseline:** Glaukopis-Qwen2.5-14B (v21-recalibrate) — Total 61.0 / Weighted 59.6; retained as the fast-iteration anchor on the same template set.
-- **MoE port:** Glaukopis-Qwen3-30B-A3B-Thinking-2507 (v21-cse) — Total 63.4 / Weighted 60.9 at the CSE stage; Stage-4 sweeps perturb expert routing, so the chain is closed at Stage 3 for this architecture.
+- **Best model: single-pass Glaukopis-Qwen2.5-32B-Instruct** — HF: [`asg-ai/athena-cti-sft-qwen25-32b-v21-single-stage`](https://huggingface.co/asg-ai). One full-SFT pass over all four v21 Sophia shards (Core-A, Core-B, TAA, CSE) plus the general instruction data, shuffled together: 497,103 examples / 349.4M tokens, one epoch, 14.1 h on 4× H200. Three-benchmark mean **B<sub>bal</sub> 65.2** (base 57.7; paired gain 7.4 [6.7, 8.2]), MMLU-Pro 56.8 (base 69.2). It ties the layered chain `v21-recal-32b` (65.0): difference +0.2 [−0.5, 1.0], 90% paired item bootstrap.
+- **Layered training is the data-development method, not the final schedule.** Training one template family per layer (Core → +TAA → CSE → Layer 4) and scoring every checkpoint shows what each family adds and where families interfere (later layers erase canonical TAA); the families that prove useful are then trained together in one pass — *develop in layers, train in one pass*. All layered checkpoints remain on HF (`*-v21-core`, `*-v21-taa`, `*-v21-cse`, `*-v21-recalibrate`, `*-v21-recal-32b`).
+- **Single pass vs. layered on five bases** (B<sub>bal</sub> = mean of AthenaBench A<sub>bal</sub>, CyberSOCEval, CyberMetric; differences are single − layered with 90% paired intervals; equivalence rule fixed in advance: interval within ±1.5 B<sub>bal</sub> and ±2 MMLU-Pro):
+
+| Base | Single-pass B<sub>bal</sub> | Layered comparator | Δ B<sub>bal</sub> | Δ MMLU-Pro |
+|---|---:|---|---:|---:|
+| Qwen2.5-32B-Instruct | 65.2 | Recal-32B | +0.2 [−0.5, 1.0] | −0.6 [−1.3, 0.1] |
+| Qwen2.5-14B-Instruct | 62.1 | Recalibrate | +1.0 [0.2, 1.7] | −1.6 [−2.3, −0.9] |
+| Qwen3-30B-A3B-Thinking-2507 (thinking on) | 62.3 | CSE | −1.2 [−1.9, −0.7] | −0.4 [−1.1, 0.3] |
+| Foundation-Sec-8B-Instruct | 60.1 | Recalibrate | +6.5 [5.7, 7.4] | +11.0 [10.2, 11.8] |
+| Llama-3.1-8B-Instruct | 57.5 | Recalibrate | +7.8 [7.0, 8.5] | +5.0 [4.2, 5.8] |
+
+Single-pass checkpoints: `asg-ai/athena-cti-sft-{qwen25-32b,qwen25-14b,qwen3-30b-a3b-thinking-2507,foundation-8b,llama31-8b}-v21-single-stage`. Qwen3 base and checkpoints are all served with thinking mode (`--reasoning-parser qwen3`).
+
 - **Historical anchor:** Glaukopis-Llama-3.1-8B v7 — RMS 62.6 strict-F1, MCQ 57.6, VSP 75.0. The RMS.3a..3h cardinality-stratified template family was the original unlock.
 - **Best published RLVR checkpoint:** Minerva-Llama-8B (RLVR layered on v7-class SFT) places **7th overall** on AthenaBench while outperforming GPT-4 and Gemini-2.5-Flash on the two highest-stakes operational axes (RMS, VSP).
 - **Open lineage:** every checkpoint is on Hugging Face under [`asg-ai/athena-cti-sft-*`](https://huggingface.co/asg-ai); every recipe is in-repo.
 
 ### AthenaBench snapshot (Q1–Q2 2026, 50/50 TAA-Classic + TAA-Canonical blend)
+
+Layered checkpoints only; taken before the November single-pass runs (the single-pass 32B, 65.2, would rank 3rd).
 
 | Rank | Model | Class | Total | RMS | VSP |
 |---:|---|---|---:|---:|---:|
@@ -94,6 +107,26 @@ Full per-axis breakdown across all v21 ports lives in [`SFT/eval/Glaukopis Resul
 | ATE / RCM / SOC / CM | ≥ v18-core − 2pp | no-regression guards |
 
 For the live in-flight context — current sweep state, frontier comparator status, cost-tracking instrumentation, and the full v0..v21 lineage table — see [`PROJECT_STATE.md`](PROJECT_STATE.md).
+
+---
+
+## Publications and reproduction
+
+**AAIML 2027** (accepted; camera-ready submitted Nov 2026) — P. J. Worth Jr. and I. Cardei, "*GLAUKOPIS*: Graph-Grounded Instruction Fine-Tuning of Small Language Models for Cyber Threat Intelligence," paper L3544.
+
+Every number in the paper is recomputed from per-item response files; nothing is copied by hand. The scripts are in [`analysis/aaiml_2027/`](analysis/aaiml_2027/):
+
+| Script | Produces |
+|---|---|
+| `paper_numbers.py` | Headline numbers: base vs. single pass vs. layered at 32B, with paired bootstrap intervals |
+| `layer_breakdown.py` | Per-layer, per-model breakdown on all five bases (layer transitions and single pass − each layer) |
+| `equivalence_ports.py` | Pre-set single-pass vs. layered equivalence test, one row per base |
+| `bootstrap_new_runs.py` | Paired item bootstrap for the reviewer-requested controls (Layer-4 seeds, skip-attribution chain, 8B chain retrains) |
+| `stage_tokens.py` | Examples and tokens consumed by each training pass (replays LlamaFactory's encoding) |
+| `overlap_three_way.py` | Entity / complete-answer exposure split of AthenaBench items |
+| `posthoc_screen.py` | Post-hoc 13-gram screen of CyberSOCEval and the general instruction data |
+
+[`analysis/aaiml_2027/run_scripts/`](analysis/aaiml_2027/run_scripts/) holds the training and scoring queues as run on the GPU host in November 2026 (environment setup and May-2026 package pins, train/score queues, parallel scoring lanes, Hugging Face upload checks). The run plan, the equivalence rule fixed before the cross-model runs, and the outcomes are in [`RUN_PLAN_JARVIS.md`](RUN_PLAN_JARVIS.md). Per-item response files are not tracked (size); the scripts read them from `SFT/eval/responses/` and `SFT/test/responses/`, and all checkpoints are on Hugging Face under [`asg-ai`](https://huggingface.co/asg-ai). Paper sources are kept outside the repository.
 
 ---
 
